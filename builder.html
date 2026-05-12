@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CBRE Marketing Builder</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--dk:#0d2b21;--g:#4a9b6f;--gb:#5bbf7a;}
+body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:#1c1c1c;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* TOP BAR */
+.topbar{height:46px;background:#111;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 10px;gap:6px;flex-shrink:0;}
+.logo-txt{font-size:13px;font-weight:900;color:var(--gb);letter-spacing:-.01em;margin-right:8px;white-space:nowrap;}
+.tabs{display:flex;flex:1;overflow-x:auto;gap:0;}
+.tab{padding:0 11px;height:46px;font-size:10px;font-weight:700;cursor:pointer;color:rgba(255,255,255,.4);border:none;background:none;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0;}
+.tab.active{color:#fff;border-bottom-color:var(--gb);}
+.tab:hover:not(.active){color:rgba(255,255,255,.75);}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto;}
+.zoom-lbl{font-size:10px;color:#777;}
+#zoom-range{width:80px;accent-color:var(--gb);}
+.zoom-pct{font-size:11px;color:#ccc;min-width:30px;}
+.tb-btn{padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;border:none;border-radius:3px;white-space:nowrap;}
+.btn-save{background:#2a5a3a;color:#fff;}
+.btn-save:hover{background:#3a7a4e;}
+.btn-undo{background:#2a2a3a;color:#aab;border:1px solid #445;}
+.btn-undo:hover{background:#3a3a4e;color:#fff;}
+.btn-clear{background:#3a1515;color:#e06060;border:1px solid #5a2222;}
+.btn-clear:hover{background:#4a1a1a;color:#ff9090;}
+.btn-all{background:#1a3a5a;color:#7ab8e8;border:1px solid #2a5a8a;}
+.btn-all:hover{background:#254a72;color:#fff;}
+.btn-dl{background:var(--gb);color:#fff;}
+.btn-dl:hover{background:#4aaa65;}
+.btn-dl:disabled{background:#444;cursor:wait;}
+.btn-reset{background:#333;color:#aaa;border:1px solid #555;}
+.btn-reset:hover{background:#444;color:#fff;}
+
+/* LAYOUT */
+.app{display:flex;flex:1;overflow:hidden;}
+
+/* LEFT SIDEBAR */
+.sb{width:250px;min-width:230px;background:#191919;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
+.sb-scroll{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:5px;}
+.fl{display:flex;flex-direction:column;gap:2px;}
+.fl label{font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;}
+.fl input,.fl textarea{width:100%;font-size:11px;padding:5px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-family:inherit;resize:vertical;outline:none;}
+.fl input:focus,.fl textarea:focus{border-color:var(--g);}
+.fl textarea{min-height:50px;line-height:1.5;}
+.sec{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;padding:6px 0 2px;border-top:1px solid #2a2a2a;margin-top:2px;}
+.uz{border:1.5px dashed #444;border-radius:2px;padding:7px;text-align:center;cursor:pointer;font-size:11px;color:#777;background:#222;}
+.uz:hover{background:#2a2a2a;}
+.uz input{display:none;}
+.add-btn{width:100%;padding:6px;font-size:11px;cursor:pointer;border:1px solid #444;border-radius:2px;background:#242424;color:#ccc;text-align:left;}
+.add-btn:hover{background:#2e2e2e;color:#fff;}
+
+/* RIGHT PROPERTIES PANEL */
+.props{width:220px;min-width:200px;background:#191919;border-left:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
+.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;}
+.props-scroll{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:8px;}
+.props-empty{padding:14px 10px;font-size:11px;color:#555;line-height:1.6;}
+.pf{display:flex;flex-direction:column;gap:3px;}
+.pf label{font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.pf input[type=text],.pf input[type=number],.pf select,.pf textarea{width:100%;font-size:11px;padding:4px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;}
+.pf input[type=text]:focus,.pf input[type=number]:focus,.pf select:focus{border-color:var(--g);}
+.pf textarea{resize:vertical;min-height:50px;line-height:1.5;}
+.pf-row{display:flex;gap:5px;}
+.pf-row .pf{flex:1;}
+.color-row{display:flex;align-items:center;gap:6px;}
+.color-row input[type=color]{width:32px;height:28px;border:1px solid #444;border-radius:2px;background:none;cursor:pointer;padding:1px;}
+.color-row input[type=text]{flex:1;}
+.props-del-btn{margin-top:4px;width:100%;padding:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #7a2222;border-radius:2px;background:#2a1515;color:#e06060;}
+.props-del-btn:hover{background:#3a1818;color:#ff8888;}
+
+/* CANVAS */
+.canvas-area{flex:1;overflow:auto;padding:24px;background:#242424;position:relative;}
+.canvas-wrap{position:relative;display:inline-block;}
+
+/* ARTWORK */
+.artwork{position:relative;cursor:default;box-shadow:0 6px 40px rgba(0,0,0,.6);}
+
+/* ELEMENTS */
+.el{position:absolute;cursor:move;user-select:none;}
+.el-inner{position:absolute;inset:0;overflow:hidden;}
+.el.selected > .el-sel-ring{opacity:1;}
+.el-sel-ring{position:absolute;inset:-2px;border:2px solid var(--gb);border-radius:1px;opacity:0;pointer-events:none;z-index:9999;}
+.rh{display:none;position:absolute;width:9px;height:9px;background:#111;border:2px solid var(--gb);border-radius:1px;z-index:10000;}
+.el.selected .rh{display:block;}
+.rh-nw{top:-5px;left:-5px;cursor:nw-resize;}
+.rh-ne{top:-5px;right:-5px;cursor:ne-resize;}
+.rh-sw{bottom:-5px;left:-5px;cursor:sw-resize;}
+.rh-se{bottom:-5px;right:-5px;cursor:se-resize;}
+.rh-n{top:-5px;left:50%;transform:translateX(-50%);cursor:n-resize;}
+.rh-s{bottom:-5px;left:50%;transform:translateX(-50%);cursor:s-resize;}
+.rh-e{right:-5px;top:50%;transform:translateY(-50%);cursor:e-resize;}
+.rh-w{left:-5px;top:50%;transform:translateY(-50%);cursor:w-resize;}
+/* ── CROP MODE ── */
+.el.crop-mode .el-sel-ring{border:2px dashed var(--gb);opacity:1;}
+.el.crop-mode{cursor:default;}
+.el.crop-mode .rh{display:none!important;}
+.crop-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);pointer-events:none;z-index:9990;}
+.crop-label{position:absolute;top:-22px;left:0;background:var(--dk);color:var(--gb);font-size:10px;font-weight:700;padding:2px 7px;border-radius:2px;white-space:nowrap;z-index:9995;pointer-events:none;letter-spacing:.05em;}
+.crop-img-rh{position:absolute;width:12px;height:12px;background:var(--gb);border:2px solid #fff;border-radius:1px;z-index:9995;cursor:nwse-resize;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+.crop-img-rh-ne{cursor:nesw-resize;}
+.crop-img-rh-sw{cursor:nesw-resize;}
+/* Image pan cursor hint */
+.el[data-type="img"].is-panning img{cursor:grabbing!important;}
+.el[data-type="img"].has-crop img{cursor:grab;}
+
+/* ── MASTHEAD ── */
+.masthead{
+  height:38px;background:#060606;border-bottom:1px solid #1a1a1a;
+  display:flex;align-items:center;padding:0 12px;gap:10px;
+  flex-shrink:0;position:relative;z-index:200;
+}
+.mast-home{
+  display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.5);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  padding:3px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.15);
+  cursor:pointer;background:none;white-space:nowrap;
+}
+.mast-home:hover{color:#fff;border-color:rgba(255,255,255,.4);}
+.mast-div{width:1px;height:16px;background:rgba(255,255,255,.12);}
+.mast-crumb{font-size:10px;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:5px;}
+.mast-crumb .port{color:rgba(255,255,255,.5);font-weight:700;}
+.mast-crumb .prop{color:#5bbf7a;font-weight:700;}
+.mast-r{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.cld{display:flex;align-items:center;gap:4px;font-size:9px;color:rgba(255,255,255,.3);padding:2px 7px;border:1px solid rgba(255,255,255,.08);border-radius:2px;}
+.cld-dot{width:5px;height:5px;border-radius:50%;background:#555;}
+.cld.saved .cld-dot{background:#5bbf7a;}
+.cld.saving .cld-dot{background:#f39c12;animation:cdtblink .6s infinite;}
+.cld.error .cld-dot{background:#e74c3c;}
+@keyframes cdtblink{0%,100%{opacity:1}50%{opacity:.2}}
+.mast-usr{font-size:9px;color:rgba(255,255,255,.3);}
+.mast-usr span{color:rgba(255,255,255,.55);}
+.mast-out{font-size:9px;color:rgba(255,255,255,.3);cursor:pointer;padding:2px 6px;border:1px solid rgba(255,255,255,.1);border-radius:2px;background:none;}
+.mast-out:hover{color:#fff;border-color:rgba(255,255,255,.35);}
+.mi-wrap{position:relative;}
+.btn-mi{background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;border-radius:3px;white-space:nowrap;}
+.btn-mi:hover{background:#243e2e;}
+.mi-dd{display:none;position:absolute;right:0;top:calc(100% + 5px);background:#181818;border:1px solid #333;border-radius:3px;padding:6px 0;min-width:195px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.55);}
+.mi-dd.open{display:block;}
+.mi-dh{padding:4px 13px 7px;font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #282828;margin-bottom:3px;}
+.mi-di{display:flex;align-items:center;gap:8px;padding:5px 13px;cursor:pointer;}
+.mi-di:hover{background:#222;}
+.mi-di input{accent-color:#5bbf7a;width:12px;height:12px;cursor:pointer;}
+.mi-di label{font-size:11px;color:#ccc;cursor:pointer;flex:1;user-select:none;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<!-- ═══ MASTHEAD ═══ -->
+<div class="masthead">
+  <button class="mast-home" onclick="goHome()">⌂ Home</button>
+  <div class="mast-div"></div>
+  <div class="mast-crumb">
+    <span class="port" id="mast-port">Portfolio</span>
+    <span style="color:rgba(255,255,255,.2)">›</span>
+    <span class="prop" id="mast-prop">Property</span>
+  </div>
+  <div class="mast-r">
+    <div class="cld" id="cld"><div class="cld-dot"></div><span id="cld-lbl">Ready</span></div>
+    <div class="mast-usr">Signed in as <span id="mast-usr-name">—</span></div>
+    <button class="mast-out" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="logo-txt">CBRE Marketing Builder</span>
+  <div class="tabs" id="tabs">
+    <button class="tab active" onclick="switchTab(0,this)">AFR 2-Agent</button>
+    <button class="tab" onclick="switchTab(1,this)">AFR 4-Agent</button>
+    <button class="tab" onclick="switchTab(2,this)">Auction Poster</button>
+    <button class="tab" onclick="switchTab(3,this)">Brochure</button>
+    <button class="tab" onclick="switchTab(4,this)">Brochure 2-Page</button>
+    <button class="tab" onclick="switchTab(5,this)">EDM</button>
+    <button class="tab" onclick="switchTab(6,this)">LinkedIn</button>
+    <button class="tab" onclick="switchTab(7,this)">Signboard</button>
+  </div>
+  <div class="topbar-right">
+    <span class="zoom-lbl">Zoom</span>
+    <input type="range" id="zoom-range" min="15" max="150" value="65" oninput="setZoom(+this.value)">
+    <span class="zoom-pct" id="zoom-pct">65%</span>
+    <button class="tb-btn btn-undo" onclick="undoStep()" title="Undo last action (Cmd+Z / Ctrl+Z)">↩ Undo</button>
+    <div class="mi-wrap">
+      <button class="btn-mi" onclick="toggleMIDD()">☰ Marketing Items</button>
+      <div class="mi-dd" id="mi-dd">
+        <div class="mi-dh">Show / Hide artwork types</div>
+        <div class="mi-di"><input type="checkbox" id="mi0" checked onchange="toggleMITab(0,this)"><label for="mi0">AFR 2-Agent Ad</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi1" checked onchange="toggleMITab(1,this)"><label for="mi1">AFR 4-Agent Ad</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi2" checked onchange="toggleMITab(2,this)"><label for="mi2">Auction Poster</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi3" checked onchange="toggleMITab(3,this)"><label for="mi3">Brochure (1 Page)</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi4" checked onchange="toggleMITab(4,this)"><label for="mi4">Brochure (2 Page)</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi5" checked onchange="toggleMITab(5,this)"><label for="mi5">EDM</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi6" checked onchange="toggleMITab(6,this)"><label for="mi6">LinkedIn</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi7" checked onchange="toggleMITab(7,this)"><label for="mi7">Signboard</label></div>
+      </div>
+    </div>
+    <button class="tb-btn btn-dl" id="dlb" onclick="downloadPDF()">⬇ PDF</button>
+  </div>
+</div>
+
+<!-- ALL ARTWORKS OVERLAY -->
+<div id="all-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;overflow-y:auto;padding:24px;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h2 style="color:#fff;font-size:16px;font-weight:700;letter-spacing:.05em;">All Artworks</h2>
+      <div style="display:flex;gap:10px;">
+        <button onclick="downloadAllPDF()" id="dl-all-btn" style="padding:7px 16px;font-size:12px;font-weight:700;background:var(--gb);color:#fff;border:none;border-radius:3px;cursor:pointer;">⬇ Download All as PDF</button>
+        <button onclick="closeAllArtworks()" style="padding:7px 16px;font-size:12px;font-weight:700;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;cursor:pointer;">✕ Close</button>
+      </div>
+    </div>
+    <div id="all-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;"></div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- LEFT SIDEBAR -->
+  <div class="sb">
+    <div class="sb-scroll">
+      <div style="font-size:10px;color:#555;line-height:1.5;padding:6px 4px;">Click element to select. Drag to move. Drag handles to resize. Double-click text to edit inline. Properties panel on right.</div>
+      <div class="sec">Content</div>
+      <div class="fl"><label>Heading / Tenant</label><input id="fh" value="IGA Supermarket + Liquor" oninput="globalSync()"></div>
+      <div class="fl"><label>Sub Heading</label><input id="fs" value="Auction" oninput="globalSync()"></div>
+      <div class="fl"><label>Address Line 1</label><input id="fa1" value="Kanwal (Central Coast) NSW" oninput="globalSync()"></div>
+      <div class="fl"><label>Address Line 2</label><input id="fa2" value="Shop 1, 123 Pacific Highway" oninput="globalSync()"></div>
+      <div class="fl"><label>Banner Point</label><input id="fb" value="Dual Income Stream, 100% Leased" oninput="globalSync()"></div>
+      <div class="fl"><label>Highlight Points (one per line)</label><textarea id="fbull" rows="4" oninput="onBulletFieldChange()">Long net lease to 2033
+Fixed 3% annual rent increases
+Tenant pays all outgoings
+Dual street frontage</textarea></div>
+      <div class="fl"><label>Net Income</label><input id="fi" value="$596,986 pa* + GST" oninput="onBulletFieldChange()"></div>
+      <div class="fl"><label>Body Copy (one per line)</label><textarea id="fbc" rows="4" oninput="onBulletFieldChange()">Landlord favourable lease structure
+National brand with 660+ sites
+Current rental below market
+Compounding CPI increases
+Long-standing centre on significant landholding
+Prime education-rich precinct</textarea></div>
+      <div class="sec">Sale</div>
+      <div class="fl"><label>Sale Method</label><input id="fm" value="Auction" oninput="globalSync()"></div>
+      <div class="fl"><label>Sale Date &amp; Details</label><input id="fd" value="10:30am Tuesday 12 May 2026, Sydney Opera House" oninput="globalSync()"></div>
+      <div class="sec">Agents</div>
+      <div class="fl"><label>Agent 1 Name</label><input id="fn1" value="Flynn McFall" oninput="globalSync()"></div>
+      <div class="fl"><label>Number 1</label><input id="fp1" value="0481 187 191" oninput="globalSync()"></div>
+      <div class="fl"><label>Agent 2 Name</label><input id="fn2" value="Darren Beehag" oninput="globalSync()"></div>
+      <div class="fl"><label>Number 2</label><input id="fp2" value="0411 226 223" oninput="globalSync()"></div>
+      <div class="fl"><label>Agent 3 Name</label><input id="fn3" value="Ben Parsonage" oninput="globalSync()"></div>
+      <div class="fl"><label>Number 3</label><input id="fp3" value="0455 331 841" oninput="globalSync()"></div>
+      <div class="sec">Assets</div>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img1')">+ Upload Hero Image</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img2')">+ Upload 2nd Image</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img3')">+ Upload 3rd Image</label>
+      <div class="sec">Add Elements</div>
+      <button class="add-btn" onclick="addEl('text')">+ Text Box</button>
+      <button class="add-btn" onclick="addEl('rect')">+ Colour Block</button>
+      <button class="add-btn" onclick="addEl('img')">+ Image Placeholder</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <div class="artwork" id="artwork"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PROPERTIES PANEL -->
+  <div class="props" id="props">
+    <div class="props-head">Properties</div>
+    <div class="props-scroll" id="props-content">
+      <div class="props-empty">Select an element on the canvas to edit its properties here.</div>
+    </div>
+  </div>
+</div>
+
+<script id="cbre-saved-data" type="application/json">null</script>
+<script>
+// Capture the raw HTML source as our save template BEFORE anything changes.
+// We do this synchronously as the very first thing so the DOM is still pristine.
+// This works with file://, served files, and Claude.ai — no fetch() needed.
+const _HTML_TEMPLATE = (()=>{
+  try {
+    const src = document.documentElement.outerHTML;
+    // Normalise: strip any previously-injected state so the template is always clean
+    return src.replace(
+      /(<script id="cbre-saved-data"[^>]*>)([\s\S]*?)(<\/script>)/,
+      '$1__CBRE_STATE__$3'
+    );
+  } catch(e){ return null; }
+})();
+
+// ════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════
+const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
+const HF="'Financier Display',Georgia,serif";
+const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif";
+const PDF_MM=[[60.5,105.5],[123,105.5],[297,420],[210,297],[420,297],[75,546.8],[317.5,317.5],[240,180]];
+const TAB_NAMES=['AFR2','AFR4','Auction','Brochure','Brochure2','EDM','LinkedIn','Signboard'];
+const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800,800],[907,680]];
+
+
+// ═══════════════════════════════════
+// CBRE LOGO DATA (embedded)
+// ═══════════════════════════════════
+const CBRE_LOGO_WHITE = 'data:image/png;base64,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';
+const CBRE_LOGO_GREEN = 'data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MSAyMC4xMyI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDNmMmQ7fTwvc3R5bGU+PC9kZWZzPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTMzLjU3LDE1LjQxSDI2Ljg5VjEyLjA1aDYuODZhMS42NiwxLjY2LDAsMCwxLDEuNDksMS42NCwxLjczLDEuNzMsMCwwLDEtMS42NywxLjcybS02LjY4LTExaDdBMS42NCwxLjY0LDAsMCwxLDM1LjMsNmExLjcyLDEuNzIsMCwwLDEtMS40MywxLjY4aC03Wm05Ljk0LDUuMzdjMi41Ni0uODUsMy0zLDMtNC43NSwwLTIuNjgtMS44OS01LTcuNDgtNUgyMS45NFYyMC4wOWgxMC40QzM4LDIwLjA5LDQwLDE3LjIxLDQwLDE0LjMyYTQuOTEsNC45MSwwLDAsMC0zLjE5LTQuNThNNjMuMzcsMFYyMC4xM0g4MVYxNS41NEg2OC4yOFYxMkg3OS43NVY3LjYzSDY4LjI4VjQuMzlIODFWMFpNNTUuNzksNi4yNmExLjY1LDEuNjUsMCwwLDEtMS41NywxLjM4SDQ3LjM0VjQuNDNoNi44OGExLjU3LDEuNTcsMCwwLDEsMS41NywxLjRaTTUzLjEyLDBINDIuNDd2MjAuMWg0Ljg5VjEyaDUuMzlhMi44LDIuOCwwLDAsMSwyLjc0LDIuODV2NS4yN2g0Ljc5VjEzLjYyYTQuMjEsNC4yMSwwLDAsMC0yLjktMy44OSw0LjUsNC41LDAsMCwwLDMtNC40NEM2MC4zNC45NCw1Ni42LDAsNTMuMTIsME0xOC43NiwxNS4yN2MtLjA3LDAtNi42OS4xMy05LS4wOWE1LjE2LDUuMTYsMCwwLDEtNS01LjMxLDUuMTQsNS4xNCwwLDAsMSw0LjgyLTUuMmMxLjM5LS4xOSw5LS4xLDkuMDktLjFoLjE2TDE4LjksMGgtLjE2TDEwLjExLDBBMTIuNzMsMTIuNzMsMCwwLDAsNS45My44NCwxMC4yNSwxMC4yNSwwLDAsMCwyLDRhMTAsMTAsMCwwLDAtMiw2LDEyLjE1LDEyLjE1LDAsMCwwLC4xNiwyQTkuOCw5LjgsMCwwLDAsNS42NSwxOWExNC43MiwxNC43MiwwLDAsMCw1LjQ2LDEuMTFsMS42MywwaDYuMTdWMTUuMjdaIi8+PC9zdmc+';
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let currentTab=0, zoom=0.65, selectedEl=null;
+let assets={logo:'',img1:'',img2:'',img3:''};
+// Saved element states per tab: { tabIdx: [{id, type, x,y,w,h, ...props}] }
+let savedStates={};
+let nextId=1;
+
+// ════════════════════════════════════════
+// UNDO STACK (per tab, up to 50 steps)
+// ════════════════════════════════════════
+const UNDO_MAX = 50;
+let undoStacks = {}; // { tabIdx: [snapshot, snapshot, ...] }
+
+function undoSnapshot(){
+  const idx = currentTab;
+  if(!undoStacks[idx]) undoStacks[idx] = [];
+  const snap = serializeTab();
+  undoStacks[idx].push(snap);
+  if(undoStacks[idx].length > UNDO_MAX) undoStacks[idx].shift();
+}
+
+function undoStep(){
+  const idx = currentTab;
+  if(!undoStacks[idx] || undoStacks[idx].length === 0) return;
+  const snap = undoStacks[idx].pop();
+  // Apply snapshot directly
+  savedStates[idx] = snap;
+  restoreTab(idx);
+  deselectAll();
+  debouncedPersist();
+}
+
+// Listen for Cmd+Z / Ctrl+Z globally
+document.addEventListener('keydown', function(e){
+  const active = document.activeElement;
+  // Don't intercept when typing in a sidebar input, textarea, or inline contenteditable
+  if(active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+  if(active && active.contentEditable === 'true') return;
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const undoKey = isMac ? (e.metaKey && e.key === 'z') : (e.ctrlKey && e.key === 'z');
+  if(undoKey){
+    e.preventDefault();
+    undoStep();
+  }
+});
+
+// ════════════════════════════════════════
+// ZOOM
+// ════════════════════════════════════════
+function setZoom(v){
+  zoom=v/100;
+  document.getElementById('zoom-pct').textContent=v+'%';
+  const [sw,sh]=SIZES[currentTab];
+  const cw=document.getElementById('canvas-wrap');
+  // Set the wrap to exactly the scaled size so the canvas-area scroll is correct
+  cw.style.width=Math.round(sw*zoom)+'px';
+  cw.style.height=Math.round(sh*zoom)+'px';
+  // Scale the artwork inside it
+  const art=document.getElementById('artwork');
+  art.style.transform=`scale(${zoom})`;
+  art.style.transformOrigin='top left';
+  art.style.position='absolute';
+  art.style.top='0';
+  art.style.left='0';
+}
+
+// ════════════════════════════════════════
+// ELEMENT CREATION
+// ════════════════════════════════════════
+function createElement(cfg){
+  const art=document.getElementById('artwork');
+  const el=document.createElement('div');
+  el.className='el';
+  el.dataset.eid=cfg.id||(nextId++);
+  el.dataset.type=cfg.type||'text';
+  el.dataset.field=cfg.field||'';
+  el.dataset.assetKey=cfg.assetKey||'';
+  el.style.cssText=`left:${cfg.x}px;top:${cfg.y}px;width:${cfg.w}px;height:${cfg.h}px;z-index:${cfg.z||2};`;
+
+  // INNER
+  const inner=document.createElement('div');
+  inner.className='el-inner';
+
+  if(cfg.type==='rect'){
+    inner.style.background=cfg.bg||DK;
+    if(cfg.extraStyle) inner.style.cssText+=cfg.extraStyle;
+  } else if(cfg.type==='img'){
+    const isLogo=(cfg.assetKey||'')==='logo';
+    inner.style.background=isLogo?'transparent':'#c5ccc5';
+    inner.style.display='flex';inner.style.alignItems='center';inner.style.justifyContent='center';
+    const ph=document.createElement('div');
+    ph.className='img-ph-txt';
+    ph.style.cssText='font-size:10px;color:#aaa;pointer-events:none;';
+    ph.textContent=cfg.label||'Image';
+    if(!isLogo) inner.appendChild(ph);
+    const im=document.createElement('img');
+    const fit=isLogo?'contain':'cover';
+    im.style.cssText=`position:absolute;inset:0;width:100%;height:100%;object-fit:${fit};display:none;`;
+    const ak=cfg.assetKey||'';
+    if(ak && assets[ak]){im.src=assets[ak];im.style.display='';ph.style.display='none';}
+    inner.appendChild(im);
+    el.dataset.assetKey=ak;
+    // Double-click enters full crop mode (with scale handles)
+    el.addEventListener('dblclick', e=>{
+      e.stopPropagation();
+      enterCropMode(el);
+    });
+  } else {
+    // text
+    applyTextStyle(inner, cfg);
+    inner.textContent=cfg.content||'';
+    inner.addEventListener('dblclick',e=>{
+      e.stopPropagation();
+      undoSnapshot();
+      inner.contentEditable='true';
+      inner.style.cursor='text';
+      inner.focus();
+      // Enter key → insert \n at caret position (pre-wrap renders it as a new line)
+      inner.onkeydown=ev=>{
+        if(ev.key==='Enter'){
+          ev.preventDefault();
+          const sel=window.getSelection();
+          if(!sel||!sel.rangeCount) return;
+          const range=sel.getRangeAt(0);
+          range.deleteContents();
+          const textNode=document.createTextNode('\n');
+          range.insertNode(textNode);
+          // Move caret after the inserted \n
+          range.setStartAfter(textNode);
+          range.setEndAfter(textNode);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          // Force a trailing space if at end so caret is visible on last line
+          const txt=inner.textContent;
+          if(txt[txt.length-1]==='\n') inner.textContent=txt+'\u200B';
+        }
+      };
+      inner.onblur=()=>{
+        inner.contentEditable='false';
+        inner.style.cursor='';
+        inner.onkeydown=null;
+        // Strip any zero-width spaces added as caret helpers
+        inner.textContent=inner.textContent.replace(/\u200B/g,'');
+        // Sync edited text back to the sidebar master field
+        const field=el.dataset.field;
+        if(field){
+          const sidebarId=fieldToSidebarId(field);
+          if(sidebarId){
+            const sidebarEl=document.getElementById(sidebarId);
+            if(sidebarEl){
+              let val=inner.textContent;
+              if(field==='income' && val.startsWith('Net Income: ')) val=val.slice('Net Income: '.length);
+              sidebarEl.value=val;
+              globalSync();
+            }
+          }
+        }
+        debouncedPersist();
+      };
+    });
+  }
+  el.appendChild(inner);
+
+  // Selection ring
+  const ring=document.createElement('div');ring.className='el-sel-ring';el.appendChild(ring);
+
+  // Resize handles
+  ['nw','n','ne','e','se','s','sw','w'].forEach(p=>{
+    const h=document.createElement('div');h.className=`rh rh-${p}`;h.dataset.h=p;
+    h.addEventListener('mousedown',e=>{e.stopPropagation();startResize(e,el,p);});
+    el.appendChild(h);
+  });
+
+  // ── Single unified mousedown handler ──
+  // Handles: select, element drag, image pan — all with threshold so a bare
+  // click never moves anything.
+  el.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('rh')) return;
+    if(e.target.classList.contains('crop-img-rh')) return;
+    if(el.classList.contains('crop-mode')) return; // crop mode handles its own events
+    e.stopPropagation();
+    selectElement(el);
+
+    const sx=e.clientX, sy=e.clientY;
+    let committed=false;
+
+    // For cropped images: track whether we're panning the photo or moving the box.
+    // Decision is deferred until threshold is crossed (no action on bare click).
+    const img = el.dataset.type==='img' ? el.querySelector('img') : null;
+    const hasCrop = img && img.dataset.cropW;
+    const fw = parseFloat(el.style.width);
+    const fh = parseFloat(el.style.height);
+    const ox = parseFloat(el.style.left), oy = parseFloat(el.style.top);
+    const imgOx = hasCrop ? parseFloat(img.style.left)||0 : 0;
+    const imgOy = hasCrop ? parseFloat(img.style.top)||0  : 0;
+
+    function mv(e){
+      const dx=e.clientX-sx, dy=e.clientY-sy;
+      // Do nothing until threshold crossed
+      if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
+
+      if(!committed){
+        committed=true;
+        undoSnapshot();
+      }
+
+      if(hasCrop){
+        // Pan the image inside the frame
+        const rawX = imgOx + (e.clientX-sx)/zoom;
+        const rawY = imgOy + (e.clientY-sy)/zoom;
+        const iw=parseFloat(img.style.width), ih=parseFloat(img.style.height);
+        const {nx,ny}=clampPan(rawX, rawY, iw, ih, fw, fh);
+        img.style.left=nx+'px';
+        img.style.top =ny+'px';
+        img.style.cursor='grabbing';
+      } else {
+        // Move the whole element box
+        el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
+        el.style.top =Math.round(oy+(e.clientY-sy)/zoom)+'px';
+        el.style.cursor='grabbing';
+      }
+    }
+
+    function up(){
+      el.style.cursor='';
+      if(img) img.style.cursor = hasCrop ? 'grab' : '';
+      if(committed){
+        if(hasCrop) saveCropData(img);
+        else debouncedPersist();
+      }
+      window.removeEventListener('mousemove',mv);
+      window.removeEventListener('mouseup',up);
+    }
+
+    window.addEventListener('mousemove',mv);
+    window.addEventListener('mouseup',up);
+  });
+
+  art.appendChild(el);
+  return el;
+}
+
+function applyTextStyle(inner, cfg){
+  inner.style.fontFamily=cfg.fontFamily||BF;
+  inner.style.fontSize=cfg.fontSize||'13px';
+  inner.style.fontWeight=cfg.fontWeight||'400';
+  inner.style.fontStyle=cfg.fontStyle||'normal';
+  inner.style.color=cfg.color||'#111';
+  inner.style.lineHeight=cfg.lineHeight||'1.35';
+  inner.style.padding=cfg.padding||'0';
+  inner.style.textAlign=cfg.textAlign||'left';
+  inner.style.letterSpacing=cfg.letterSpacing||'0';
+  inner.style.whiteSpace='pre-wrap';
+  inner.style.wordBreak='break-word';
+  if(cfg.extraStyle) inner.style.cssText+=';'+cfg.extraStyle;
+}
+
+// ════════════════════════════════════════
+// DRAG & RESIZE
+// ════════════════════════════════════════
+const DRAG_THRESHOLD = 4; // px — must move this far before drag begins
+
+function startDrag(e, el){
+  const sx=e.clientX, sy=e.clientY;
+  const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
+  let dragging = false;
+
+  function mv(e){
+    if(!dragging){
+      const dx=e.clientX-sx, dy=e.clientY-sy;
+      if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
+      // Threshold crossed — commit the snapshot and start moving
+      undoSnapshot();
+      dragging = true;
+      el.style.cursor = 'grabbing';
+    }
+    el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
+    el.style.top=Math.round(oy+(e.clientY-sy)/zoom)+'px';
+  }
+  function up(){
+    el.style.cursor = '';
+    window.removeEventListener('mousemove',mv);
+    window.removeEventListener('mouseup',up);
+    if(dragging) debouncedPersist();
+  }
+  window.addEventListener('mousemove',mv);
+  window.addEventListener('mouseup',up);
+}
+
+function startResize(e, el, handle){
+  undoSnapshot();
+  const sx=e.clientX, sy=e.clientY;
+  const ow=parseFloat(el.style.width), oh=parseFloat(el.style.height);
+  const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
+  function mv(e){
+    const dx=(e.clientX-sx)/zoom, dy=(e.clientY-sy)/zoom;
+    if(handle.includes('e')) el.style.width=Math.max(20,Math.round(ow+dx))+'px';
+    if(handle.includes('s')) el.style.height=Math.max(8,Math.round(oh+dy))+'px';
+    if(handle.includes('w')){el.style.width=Math.max(20,Math.round(ow-dx))+'px';el.style.left=Math.round(ox+dx)+'px';}
+    if(handle.includes('n')){el.style.height=Math.max(8,Math.round(oh-dy))+'px';el.style.top=Math.round(oy+dy)+'px';}
+  }
+  function up(){window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up);debouncedPersist();}
+  window.addEventListener('mousemove',mv);
+  window.addEventListener('mouseup',up);
+}
+
+// ════════════════════════════════════════
+// CROP MODE — double-click an image to enter
+// ════════════════════════════════════════
+let cropEl = null; // the element currently being cropped
+
+function enterCropMode(el){
+  if(cropEl) exitCropMode();
+  undoSnapshot();
+  cropEl = el;
+  el.classList.add('crop-mode');
+
+  const inner = el.querySelector('.el-inner');
+  const img   = el.querySelector('img');
+  if(!img || img.style.display === 'none') { exitCropMode(); return; }
+
+  const fw = parseFloat(el.style.width);
+  const fh = parseFloat(el.style.height);
+
+  // Switch img to explicit positioned sizing, preserving any existing crop
+  let iw = parseFloat(img.dataset.cropW) || fw;
+  let ih = parseFloat(img.dataset.cropH) || fh;
+  let ix = parseFloat(img.dataset.cropX) || 0;
+  let iy = parseFloat(img.dataset.cropY) || 0;
+
+  if(!img.dataset.cropW){ iw=fw; ih=fh; ix=0; iy=0; }
+
+  img.style.cssText = `position:absolute;left:${ix}px;top:${iy}px;width:${iw}px;height:${ih}px;object-fit:fill;display:block;`;
+
+  // Dark overlay to show crop boundary
+  const overlay = document.createElement('div');
+  overlay.className = 'crop-overlay';
+  inner.appendChild(overlay);
+
+  // Label
+  const label = document.createElement('div');
+  label.className = 'crop-label';
+  label.textContent = 'CROP — drag to pan  ·  drag corners to scale  ·  click outside to finish';
+  el.appendChild(label);
+
+  // Pan by dragging the image
+  img.style.cursor = 'grab';
+  img.addEventListener('mousedown', onCropPan);
+
+  // 4 corner scale handles
+  ['nw','ne','sw','se'].forEach(pos=>{
+    const h = document.createElement('div');
+    h.className = `crop-img-rh${(pos==='ne'||pos==='sw')?' crop-img-rh-'+pos:''}`;
+    h.dataset.cropHandle = pos;
+    h.style.cssText = buildCropHandleStyle(pos, ix, iy, iw, ih);
+    h.addEventListener('mousedown', onCropScale);
+    el.appendChild(h);
+  });
+
+  // Click outside to exit
+  setTimeout(()=> document.addEventListener('mousedown', onCropOutsideClick), 50);
+}
+
+function buildCropHandleStyle(pos, ix, iy, iw, ih){
+  const x = pos.includes('e') ? ix+iw-6 : ix-6;
+  const y = pos.includes('s') ? iy+ih-6 : iy-6;
+  return `left:${x}px;top:${y}px;`;
+}
+
+function repositionCropHandles(el, img){
+  const ix = parseFloat(img.style.left);
+  const iy = parseFloat(img.style.top);
+  const iw = parseFloat(img.style.width);
+  const ih = parseFloat(img.style.height);
+  el.querySelectorAll('.crop-img-rh').forEach(h=>{
+    const pos = h.dataset.cropHandle;
+    const x = pos.includes('e') ? ix+iw-6 : ix-6;
+    const y = pos.includes('s') ? iy+ih-6 : iy-6;
+    h.style.left = x+'px';
+    h.style.top  = y+'px';
+  });
+}
+
+// Clamp pan so at least `MIN` px of the image is always visible inside the frame
+function clampPan(nx, ny, iw, ih, fw, fh){
+  const MIN = 20;
+  // image right edge must be at least MIN px inside frame left
+  const maxX = fw - MIN;
+  // image left edge must be at most (iw - MIN) past frame right  
+  const minX = -(iw - MIN);
+  const maxY = fh - MIN;
+  const minY = -(ih - MIN);
+  return {
+    nx: Math.min(maxX, Math.max(minX, nx)),
+    ny: Math.min(maxY, Math.max(minY, ny))
+  };
+}
+
+function onCropPan(e){
+  e.stopPropagation();
+  const img = e.currentTarget;
+  const el  = cropEl;
+  const fw  = parseFloat(el.style.width);
+  const fh  = parseFloat(el.style.height);
+  const sx  = e.clientX, sy = e.clientY;
+  const ox  = parseFloat(img.style.left), oy = parseFloat(img.style.top);
+  let panning = false;
+  function mv(e){
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(!panning && Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
+    if(!panning){ panning=true; img.style.cursor='grabbing'; }
+    const rawX = ox + (e.clientX-sx)/zoom;
+    const rawY = oy + (e.clientY-sy)/zoom;
+    const iw = parseFloat(img.style.width);
+    const ih = parseFloat(img.style.height);
+    const {nx, ny} = clampPan(rawX, rawY, iw, ih, fw, fh);
+    img.style.left = nx+'px';
+    img.style.top  = ny+'px';
+    repositionCropHandles(el, img);
+  }
+  function up(){
+    img.style.cursor='grab';
+    if(panning) saveCropData(img);
+    window.removeEventListener('mousemove',mv);
+    window.removeEventListener('mouseup',up);
+  }
+  window.addEventListener('mousemove',mv);
+  window.addEventListener('mouseup',up);
+}
+
+function onCropScale(e){
+  e.stopPropagation();
+  const h   = e.currentTarget;
+  const el  = cropEl;
+  const img = el.querySelector('img');
+  const pos = h.dataset.cropHandle;
+  const fw  = parseFloat(el.style.width);
+  const fh  = parseFloat(el.style.height);
+  const sx  = e.clientX, sy = e.clientY;
+  const ox  = parseFloat(img.style.left), oy = parseFloat(img.style.top);
+  const ow  = parseFloat(img.style.width), oh = parseFloat(img.style.height);
+  const aspect = ow / oh;
+
+  function mv(e){
+    const dx = (e.clientX-sx)/zoom;
+    const dy = (e.clientY-sy)/zoom;
+    let nw = ow, nh = oh, nx = ox, ny = oy;
+
+    if(pos==='se'){ nw=Math.max(50,ow+dx); nh=nw/aspect; }
+    else if(pos==='sw'){ nw=Math.max(50,ow-dx); nh=nw/aspect; nx=ox+(ow-nw); }
+    else if(pos==='ne'){ nw=Math.max(50,ow+dx); nh=nw/aspect; ny=oy+(oh-nh); }
+    else if(pos==='nw'){ nw=Math.max(50,ow-dx); nh=nw/aspect; nx=ox+(ow-nw); ny=oy+(oh-nh); }
+
+    // Clamp after scale too
+    const clamped = clampPan(nx, ny, nw, nh, fw, fh);
+    img.style.width  = nw+'px';
+    img.style.height = nh+'px';
+    img.style.left   = clamped.nx+'px';
+    img.style.top    = clamped.ny+'px';
+    repositionCropHandles(el, img);
+  }
+  function up(){
+    saveCropData(img);
+    window.removeEventListener('mousemove',mv);
+    window.removeEventListener('mouseup',up);
+  }
+  window.addEventListener('mousemove',mv);
+  window.addEventListener('mouseup',up);
+}
+
+function saveCropData(img){
+  img.dataset.cropX = img.style.left;
+  img.dataset.cropY = img.style.top;
+  img.dataset.cropW = img.style.width;
+  img.dataset.cropH = img.style.height;
+  // Mark the element as having crop so cursor changes
+  const el = img.closest('.el');
+  if(el) el.classList.add('has-crop');
+  debouncedPersist();
+}
+
+function onCropOutsideClick(e){
+  if(cropEl && !cropEl.contains(e.target)) exitCropMode();
+}
+
+function exitCropMode(){
+  if(!cropEl) return;
+  const el  = cropEl;
+  const img = el.querySelector('img');
+
+  // Save final crop data to dataset
+  if(img) saveCropData(img);
+
+  // Remove crop UI
+  el.querySelectorAll('.crop-img-rh, .crop-label, .crop-overlay').forEach(n=>n.remove());
+  if(img) img.removeEventListener('mousedown', onCropPan);
+  el.classList.remove('crop-mode');
+  cropEl = null;
+  document.removeEventListener('mousedown', onCropOutsideClick);
+  debouncedPersist();
+}
+
+// Add double-click to image elements to enter crop mode
+// (called from createElement after img element is created)
+function selectElement(el){
+  if(selectedEl && selectedEl!==el) selectedEl.classList.remove('selected');
+  selectedEl=el;
+  el.classList.add('selected');
+  showProps(el);
+}
+
+function deselectAll(){
+  if(cropEl) exitCropMode();
+  if(selectedEl) selectedEl.classList.remove('selected');
+  selectedEl=null;
+  document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+}
+
+function bgClick(e){
+  if(e.target===document.getElementById('canvas-area')||e.target===document.getElementById('canvas-wrap')||e.target===document.getElementById('artwork')) deselectAll();
+}
+
+function showProps(el){
+  const type=el.dataset.type;
+  const inner=el.querySelector('.el-inner');
+  const pc=document.getElementById('props-content');
+
+  let html=`
+  <div class="pf"><label>Position X / Y</label>
+    <div class="pf-row">
+      <div class="pf"><input type="number" value="${Math.round(parseFloat(el.style.left))}" oninput="el_set('left',this.value+'px')" style="width:100%;"></div>
+      <div class="pf"><input type="number" value="${Math.round(parseFloat(el.style.top))}" oninput="el_set('top',this.value+'px')" style="width:100%;"></div>
+    </div>
+  </div>
+  <div class="pf"><label>Width / Height</label>
+    <div class="pf-row">
+      <div class="pf"><input type="number" value="${Math.round(parseFloat(el.style.width))}" oninput="el_set('width',this.value+'px')" style="width:100%;"></div>
+      <div class="pf"><input type="number" value="${Math.round(parseFloat(el.style.height))}" oninput="el_set('height',this.value+'px')" style="width:100%;"></div>
+    </div>
+  </div>
+  <div class="pf"><label>Z-Index (layer)</label>
+    <input type="number" value="${el.style.zIndex||2}" oninput="el_set('zIndex',this.value)" style="width:100%;">
+  </div>`;
+
+  if(type==='rect'){
+    const bg=inner.style.background||DK;
+    html+=`<div class="pf"><label>Background Colour</label>
+      <div class="color-row">
+        <input type="color" value="${rgbToHex(bg)}" oninput="el_inner_set('background',this.value);document.getElementById('rect-color-txt').value=this.value;">
+        <input type="text" id="rect-color-txt" value="${rgbToHex(bg)}" oninput="el_inner_set('background',this.value);this.previousElementSibling.value=this.value;">
+      </div>
+    </div>`;
+  }
+
+  if(type==='text'){
+    const content=inner.textContent;
+    const color=inner.style.color||'#111';
+    const fs=inner.style.fontSize||'13px';
+    const fw=inner.style.fontWeight||'400';
+    const ff=inner.style.fontFamily||BF;
+    const ta=inner.style.textAlign||'left';
+    const curField=el.dataset.field||'';
+    const fieldOptions=[
+      {v:'',l:'— None (manual text) —'},
+      {v:'heading',      l:'Heading / Tenant'},
+      {v:'subheading',   l:'Sub Heading'},
+      {v:'address1',     l:'Address Line 1'},
+      {v:'address2',     l:'Address Line 2'},
+      {v:'banner',       l:'Banner Point'},
+      {v:'bullets',      l:'Highlight Points'},
+      {v:'bodycopy',     l:'Body Copy'},
+      {v:'income',       l:'Net Income'},
+      {v:'salemethod',   l:'Sale Method'},
+      {v:'saledate',     l:'Sale Date & Details'},
+      {v:'agent1name',   l:'Agent 1 Name'},
+      {v:'agent1num',    l:'Agent 1 Number'},
+      {v:'agent2name',   l:'Agent 2 Name'},
+      {v:'agent2num',    l:'Agent 2 Number'},
+      {v:'agent3name',   l:'Agent 3 Name'},
+      {v:'agent3num',    l:'Agent 3 Number'},
+    ];
+    const fieldOpts=fieldOptions.map(o=>`<option value="${o.v}" ${curField===o.v?'selected':''}>${o.l}</option>`).join('');
+    html+=`
+    <div class="pf"><label>Content Field Link</label>
+      <select onchange="el_set_field(this.value)" style="border-color:${curField?'var(--gb)':'#333'};">
+        ${fieldOpts}
+      </select>
+      <div style="font-size:9px;color:#666;margin-top:3px;line-height:1.4;">${curField?'✓ Linked — updates automatically when sidebar field changes':'Not linked — text is manual only'}</div>
+    </div>
+    <div class="pf"><label>Text Content</label>
+      <textarea rows="4" oninput="el_inner_txt(this.value)">${content}</textarea>
+    </div>
+    <div class="pf"><label>Font Size (px)</label>
+      <input type="number" value="${parseInt(fs)}" oninput="el_inner_set('fontSize',this.value+'px')">
+    </div>
+    <div class="pf"><label>Font Weight</label>
+      <select onchange="el_inner_set('fontWeight',this.value)">
+        <option ${fw==='300'?'selected':''} value="300">Light 300</option>
+        <option ${fw==='400'?'selected':''} value="400">Regular 400</option>
+        <option ${fw==='700'?'selected':''} value="700">Bold 700</option>
+        <option ${fw==='900'?'selected':''} value="900">Black 900</option>
+      </select>
+    </div>
+    <div class="pf"><label>Font Family</label>
+      <select onchange="el_inner_set('fontFamily',this.value)">
+        <option ${ff.includes('Calibre')?'selected':''} value="${BF}">Calibre (Body)</option>
+        <option ${ff.includes('Financier')?'selected':''} value="${HF}">Financier Display (Heading)</option>
+        <option ${ff.includes('Georgia')&&!ff.includes('Financier')?'selected':''} value="Georgia,serif">Georgia</option>
+        <option ${ff.includes('Arial')&&!ff.includes('Calibre')?'selected':''} value="Arial,sans-serif">Arial</option>
+      </select>
+    </div>
+    <div class="pf"><label>Text Align</label>
+      <select onchange="el_inner_set('textAlign',this.value)">
+        <option ${ta==='left'?'selected':''} value="left">Left</option>
+        <option ${ta==='center'?'selected':''} value="center">Centre</option>
+        <option ${ta==='right'?'selected':''} value="right">Right</option>
+      </select>
+    </div>
+    <div class="pf"><label>Text Colour</label>
+      <div class="color-row">
+        <input type="color" value="${rgbToHex(color)}" oninput="el_inner_set('color',this.value);document.getElementById('txt-color-val').value=this.value;">
+        <input type="text" id="txt-color-val" value="${rgbToHex(color)}" oninput="el_inner_set('color',this.value);this.previousElementSibling.value=this.value;">
+      </div>
+    </div>
+    <div class="pf"><label>Line Height</label>
+      <input type="text" value="${inner.style.lineHeight||'1.35'}" oninput="el_inner_set('lineHeight',this.value)">
+    </div>`;
+  }
+
+  if(type==='img'){
+    html+=`<div class="pf"><label>Image Source</label>
+      <select onchange="el_set_asset(this.value)">
+        <option value="">— None —</option>
+        <option value="img1" ${el.dataset.assetKey==='img1'?'selected':''}>Hero Image</option>
+        <option value="img2" ${el.dataset.assetKey==='img2'?'selected':''}>Second Image</option>
+        <option value="img3" ${el.dataset.assetKey==='img3'?'selected':''}>Third Image</option>
+        <option value="logo" ${el.dataset.assetKey==='logo'?'selected':''}>Logo</option>
+      </select>
+    </div>`;
+  }
+
+  html+=`<button class="props-del-btn" onclick="deleteSelected()">🗑 Delete Element</button>`;
+  pc.innerHTML=html;
+}
+
+function el_set(prop, val){
+  if(!selectedEl) return;
+  undoSnapshot();
+  selectedEl.style[prop]=val;
+}
+function el_inner_set(prop, val){
+  if(!selectedEl) return;
+  undoSnapshot();
+  const inner=selectedEl.querySelector('.el-inner');
+  if(inner) inner.style[prop]=val;
+}
+function el_inner_txt(val){
+  if(!selectedEl) return;
+  const inner=selectedEl.querySelector('.el-inner');
+  if(inner && inner.contentEditable!=='true') inner.textContent=val;
+  // Also write back to sidebar master field if this element is linked
+  const field=selectedEl.dataset.field;
+  if(field){
+    const sidebarId=fieldToSidebarId(field);
+    if(sidebarId){
+      const sidebarEl=document.getElementById(sidebarId);
+      if(sidebarEl){
+        let writeVal=val;
+        if(field==='income' && writeVal.startsWith('Net Income: ')) writeVal=writeVal.slice('Net Income: '.length);
+        sidebarEl.value=writeVal;
+        globalSync();
+      }
+    }
+  }
+}
+// Link a text element to a content field
+function el_set_field(fieldKey){
+  if(!selectedEl) return;
+  undoSnapshot();
+  selectedEl.dataset.field = fieldKey;
+  // If linking to a field, immediately populate with current field value
+  if(fieldKey){
+    const val = getFieldVal(fieldKey);
+    if(val !== null){
+      const inner = selectedEl.querySelector('.el-inner');
+      if(inner && selectedEl.dataset.type==='text') inner.textContent = val;
+    }
+  }
+  // Refresh props panel so the status hint and border colour update
+  showProps(selectedEl);
+}
+
+function el_set_asset(key){
+  if(!selectedEl) return;
+  undoSnapshot();
+  selectedEl.dataset.assetKey=key;
+  const img=selectedEl.querySelector('img');
+  const ph=selectedEl.querySelector('.img-ph-txt');
+  const inner=selectedEl.querySelector('.el-inner');
+  const isLogo=key==='logo';
+  if(inner) inner.style.background=isLogo?'transparent':'#c5ccc5';
+  if(img) img.style.objectFit=isLogo?'contain':'cover';
+  // Remove old placeholder if switching to logo (logo has no placeholder)
+  if(isLogo && ph) ph.style.display='none';
+  if(key && assets[key]){
+    if(img){img.src=assets[key];img.style.display='';}
+    if(ph) ph.style.display='none';
+  } else {
+    if(img){img.src='';img.style.display='none';}
+    if(ph && !isLogo) ph.style.display='';
+  }
+  // Refresh props panel to reflect change
+  showProps(selectedEl);
+}
+
+function deleteSelected(){
+  if(!selectedEl) return;
+  undoSnapshot();
+  selectedEl.remove();
+  selectedEl=null;
+  document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+  debouncedPersist();
+}
+
+// rgb(r,g,b) → #rrggbb
+function rgbToHex(str){
+  if(!str||str==='') return '#000000';
+  if(str.startsWith('#')) return str.length===4?'#'+str[1]+str[1]+str[2]+str[2]+str[3]+str[3]:str;
+  const m=str.match(/\d+/g);
+  if(!m||m.length<3) return '#000000';
+  return '#'+m.slice(0,3).map(x=>parseInt(x).toString(16).padStart(2,'0')).join('');
+}
+
+// ════════════════════════════════════════
+// SAVE / RESTORE STATE
+// ════════════════════════════════════════
+function serializeTab(){
+  const art=document.getElementById('artwork');
+  const els=[];
+  art.querySelectorAll('.el').forEach(el=>{
+    const inner=el.querySelector('.el-inner');
+    const img=el.querySelector('img');
+    const ak=el.dataset.assetKey||'';
+    const obj={
+      eid:el.dataset.eid, type:el.dataset.type,
+      x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
+      field:el.dataset.field, assetKey:ak,
+    };
+    if(inner){
+      obj.innerStyle=inner.getAttribute('style')||'';
+      if(el.dataset.type==='text') obj.content=inner.textContent;
+      // Store img src: prefer assets store (always up to date), fall back to element src
+      if(el.dataset.type==='img'){
+        obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
+        // Save crop state if image has been cropped
+        if(img && img.dataset.cropW){
+          obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY;
+          obj.cropW=img.dataset.cropW; obj.cropH=img.dataset.cropH;
+        }
+      }
+    }
+    els.push(obj);
+  });
+  return els;
+}
+
+function restoreTab(idx){
+  if(!savedStates[idx]) return false;
+  const art=document.getElementById('artwork');
+  const cw=document.getElementById('canvas-wrap');
+  const s=SIZES[idx];
+  art.style.width=s[0]+'px';
+  art.style.height=s[1]+'px';
+  art.style.background=idx===4?DK:'#fff';
+  art.style.transform=`scale(${zoom})`;
+  art.style.transformOrigin='top left';
+  art.style.position='absolute';
+  art.style.top='0';
+  art.style.left='0';
+  cw.style.width=Math.round(s[0]*zoom)+'px';
+  cw.style.height=Math.round(s[1]*zoom)+'px';
+  art.innerHTML='';
+  selectedEl=null;
+  const state=savedStates[idx];
+  state.forEach(sv=>{
+    const cfg={
+      id:sv.eid, type:sv.type,
+      x:parseFloat(sv.x), y:parseFloat(sv.y), w:parseFloat(sv.w), h:parseFloat(sv.h), z:parseInt(sv.z)||2,
+      field:sv.field, assetKey:sv.assetKey,
+    };
+    const el=createElement(cfg);
+    const inner=el.querySelector('.el-inner');
+    // Apply saved style FIRST
+    if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
+    // Always ensure text elements have pre-wrap (may be missing in older saves)
+    if(sv.type==='text' && inner){
+      inner.style.whiteSpace='pre-wrap';
+      inner.style.wordBreak='break-word';
+    }
+    if(sv.content!==undefined && inner && sv.type==='text') inner.textContent=sv.content;
+    // Apply images AFTER innerStyle (overrides any display:none from innerStyle)
+    if(sv.type==='img'){
+      const img=el.querySelector('img');
+      const ph=el.querySelector('.img-ph-txt');
+      const isLogo=sv.assetKey==='logo';
+      // Re-apply correct background & object-fit
+      if(inner){ inner.style.background=isLogo?'transparent':'#c5ccc5'; }
+      // Use assets store as source of truth, fall back to saved imgSrc
+      const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : sv.imgSrc;
+      if(src){
+        if(img){
+          img.src=src;
+          // Restore crop state if saved
+          if(sv.cropW){
+            img.style.cssText=`position:absolute;left:${sv.cropX};top:${sv.cropY};width:${sv.cropW};height:${sv.cropH};object-fit:fill;display:block;`;
+            img.dataset.cropX=sv.cropX; img.dataset.cropY=sv.cropY;
+            img.dataset.cropW=sv.cropW; img.dataset.cropH=sv.cropH;
+            el.classList.add('has-crop');
+          } else {
+            img.style.cssText=`position:absolute;inset:0;width:100%;height:100%;object-fit:${isLogo?'contain':'cover'};display:block;`;
+          }
+        }
+        if(ph) ph.style.display='none';
+      } else {
+        if(img) img.style.display='none';
+        if(ph && !isLogo) ph.style.display='';
+      }
+    }
+  });
+  return true;
+}
+
+function resetTab(){
+  if(confirm('Reset this template to default? Your edits will be lost.')){
+    delete savedStates[currentTab];
+    buildTemplate(currentTab);
+  }
+}
+
+// ════════════════════════════════════════
+// GLOBAL SYNC (sidebar fields → elements)
+// ════════════════════════════════════════
+function globalSync(){
+  // 1. Update elements on the currently visible tab (live DOM)
+  document.querySelectorAll('.el[data-field]').forEach(el=>{
+    const field=el.dataset.field;
+    if(!field) return;
+    const val=getFieldVal(field);
+    if(val===null) return;
+    const inner=el.querySelector('.el-inner');
+    if(inner && el.dataset.type==='text') inner.textContent=val;
+  });
+
+  // 2. Update savedStates for ALL other tabs
+  //    For tabs that split bullets/bodycopy into multiple elements (no field attr),
+  //    we flag them for a full rebuild next time they're visited.
+  for(const [tabIdx, state] of Object.entries(savedStates)){
+    const ti=parseInt(tabIdx);
+    if(ti===currentTab) continue; // live DOM already handled above
+    if(!state) continue;
+    state.forEach(sv=>{
+      if(sv.type!=='text' || !sv.field) return;
+      const val=getFieldVal(sv.field);
+      if(val===null) return;
+      sv.content=val;
+    });
+  }
+
+  // 3. Save current tab state so its savedStates entry stays current
+  savedStates[currentTab]=serializeTab();
+
+  debouncedPersist();
+}
+
+// Called when switching to a tab — rebuilds if fields have changed since last visit
+function syncTabOnEntry(idx){
+  if(!savedStates[idx]) return; // will be built fresh — already uses current field values
+  const state=savedStates[idx];
+  // Walk every element and push current field values in
+  state.forEach(sv=>{
+    if(sv.type!=='text' || !sv.field) return;
+    const val=getFieldVal(sv.field);
+    if(val!==null) sv.content=val;
+  });
+}
+
+function getFieldVal(field){
+  const map={
+    heading:gv('fh'), subheading:gv('fs'), address1:gv('fa1'), address2:gv('fa2'),
+    banner:gv('fb'), income:gv('fi')?'Net Income: '+gv('fi'):'',
+    bullets:gv('fbull'), bodycopy:gv('fbc'),
+    salemethod:gv('fm'), saledate:gv('fd'),
+    agent1name:gv('fn1'), agent1num:gv('fp1'),
+    agent2name:gv('fn2'), agent2num:gv('fp2'),
+    agent3name:gv('fn3'), agent3num:gv('fp3'),
+  };
+  return map[field]??null;
+}
+
+// When bullets/income/bodycopy change, tabs that expand them into
+// multiple unlabelled elements need a full rebuild on next visit.
+// We clear their savedStates so buildTemplate() runs fresh.
+function onBulletFieldChange(){
+  for(let i=0;i<8;i++){
+    if(i===currentTab) continue;
+    if(savedStates[i]) delete savedStates[i]; // force rebuild on next visit
+  }
+  globalSync();
+}
+
+// Map a field key back to its sidebar input element id
+function fieldToSidebarId(field){
+  const map={
+    heading:'fh', subheading:'fs', address1:'fa1', address2:'fa2',
+    banner:'fb', income:'fi',
+    bullets:'fbull', bodycopy:'fbc',
+    salemethod:'fm', saledate:'fd',
+    agent1name:'fn1', agent1num:'fp1',
+    agent2name:'fn2', agent2num:'fp2',
+    agent3name:'fn3', agent3num:'fp3',
+  };
+  return map[field]||null;
+}
+function gv(id){return document.getElementById(id)?.value?.trim()||'';}
+
+// ════════════════════════════════════════
+// ASSETS
+// ════════════════════════════════════════
+function loadAsset(e, key){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    assets[key]=ev.target.result;
+    const isLogo=key==='logo';
+    // Update all elements currently on the canvas
+    document.querySelectorAll(`.el[data-asset-key="${key}"]`).forEach(el=>{
+      const img=el.querySelector('img');
+      const ph=el.querySelector('.img-ph-txt');
+      const inner=el.querySelector('.el-inner');
+      if(inner) inner.style.background=isLogo?'transparent':'#c5ccc5';
+      if(img){img.src=ev.target.result;img.style.display='';img.style.objectFit=isLogo?'contain':'cover';}
+      if(ph) ph.style.display='none';
+    });
+    // Also update imgSrc in all saved states so other tabs get it when restored
+    Object.keys(savedStates).forEach(tabIdx=>{
+      savedStates[tabIdx].forEach(sv=>{
+        if(sv.assetKey===key) sv.imgSrc=ev.target.result;
+      });
+    });
+    // Persist immediately — assets are important
+    persistAll();
+  };
+  r.readAsDataURL(f);
+}
+
+// ════════════════════════════════════════
+// ADD ELEMENTS (user-initiated)
+// ════════════════════════════════════════
+function addEl(type){
+  undoSnapshot();
+  const cfg={type, x:40, y:40, w:200, h:60, z:50};
+  if(type==='text'){cfg.content='New text';cfg.color='#111';cfg.fontSize='14px';}
+  if(type==='rect'){cfg.bg='#0d2b21';}
+  if(type==='img'){cfg.label='Image';}
+  const el=createElement(cfg);
+  selectElement(el);
+}
+
+// ════════════════════════════════════════
+// TEMPLATE BUILDERS
+// ════════════════════════════════════════
+function mkT(x,y,w,h,content,cfg){
+  return createElement({id:nextId++,type:'text',x,y,w,h,content,...cfg});
+}
+function mkR(x,y,w,h,bg,cfg){
+  return createElement({id:nextId++,type:'rect',x,y,w,h,bg,...cfg});
+}
+function mkI(x,y,w,h,assetKey,label,cfg){
+  return createElement({id:nextId++,type:'img',x,y,w,h,assetKey,label,...cfg});
+}
+
+// ─── INJECT CBRE LOGOS into a freshly built template ───
+// Called at end of every buildXxx() function.
+// Adds a white CBRE logo and (where appropriate) a green CBRE logo
+// as moveable/deleteable image elements.
+function addCBRELogos(W, H, positions){
+  // positions: array of {x,y,w,h,uri,label,z}
+  positions.forEach(p=>{
+    const id = nextId++;
+    const el = document.createElement('div');
+    el.className='el';
+    el.dataset.eid = id;
+    el.dataset.type = 'img';
+    el.dataset.field = '';
+    el.dataset.assetKey = '';
+    el.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;z-index:${p.z||20};`;
+
+    const inner = document.createElement('div');
+    inner.className = 'el-inner';
+    inner.style.cssText = 'background:transparent;display:flex;align-items:center;justify-content:center;';
+
+    const img = document.createElement('img');
+    img.src = p.uri;
+    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;';
+    inner.appendChild(img);
+    el.appendChild(inner);
+
+    // sel ring
+    const ring=document.createElement('div');ring.className='el-sel-ring';el.appendChild(ring);
+    // resize handles
+    ['nw','n','ne','e','se','s','sw','w'].forEach(pos=>{
+      const h=document.createElement('div');h.className=`rh rh-${pos}`;h.dataset.h=pos;
+      h.addEventListener('mousedown',e=>{e.stopPropagation();startResize(e,el,pos);});
+      el.appendChild(h);
+    });
+    // drag / select
+    el.addEventListener('mousedown',e=>{
+      if(e.target.classList.contains('rh')) return;
+      e.stopPropagation();
+      selectElement(el);
+      const sx=e.clientX, sy=e.clientY;
+      const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
+      let committed=false;
+      function mv(e){
+        const dx=e.clientX-sx, dy=e.clientY-sy;
+        if(Math.sqrt(dx*dx+dy*dy)<DRAG_THRESHOLD) return;
+        if(!committed){committed=true;undoSnapshot();}
+        el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
+        el.style.top=Math.round(oy+(e.clientY-sy)/zoom)+'px';
+        el.style.cursor='grabbing';
+      }
+      function up(){
+        el.style.cursor='';
+        if(committed) debouncedPersist();
+        window.removeEventListener('mousemove',mv);
+        window.removeEventListener('mouseup',up);
+      }
+      window.addEventListener('mousemove',mv);
+      window.addEventListener('mouseup',up);
+    });
+
+    document.getElementById('artwork').appendChild(el);
+  });
+}
+
+function mkLine(x,y,w,h,bg){
+  return mkR(x,y,w,h,bg,{z:10});
+}
+
+function buildTemplate(idx){
+  const art=document.getElementById('artwork');
+  const cw=document.getElementById('canvas-wrap');
+  const s=SIZES[idx];
+  // Immediately set size + background BEFORE clearing innerHTML to avoid flash
+  art.style.width=s[0]+'px';
+  art.style.height=s[1]+'px';
+  art.style.background=idx===4?DK:'#fff';
+  art.style.transform=`scale(${zoom})`;
+  art.style.transformOrigin='top left';
+  art.style.position='absolute';
+  art.style.top='0';
+  art.style.left='0';
+  cw.style.width=Math.round(s[0]*zoom)+'px';
+  cw.style.height=Math.round(s[1]*zoom)+'px';
+  // Now clear content
+  art.innerHTML='';
+  selectedEl=null;
+  nextId=1;
+  deselectAll();
+  document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+  [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][idx](s[0],s[1]);
+}
+
+// ─── AFR 2-AGENT 228×398 ───
+function buildAFR2(W,H){
+  mkI(0,0,W,159,'img1','Hero image',{z:1});
+  mkR(W-100,138,100,21,DK,{z:3}); mkT(W-98,140,96,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:4,field:'banner'});
+  mkR(0,159,W,60,DK,{z:2});
+  mkT(8,163,W-16,28,gv('fh'),{color:'#fff',fontSize:'13px',fontFamily:HF,lineHeight:'1.25',z:3,field:'heading'});
+  mkT(8,188,W-16,28,gv('fs'),{color:'#fff',fontSize:'13px',fontFamily:HF,lineHeight:'1.25',z:3,field:'subheading'});
+  mkR(0,219,W,H-219,'#fff',{z:1});
+  mkT(8,225,130,16,gv('fa1'),{fontWeight:'700',fontSize:'9px',z:3,field:'address1'});
+  mkT(8,240,130,14,gv('fa2'),{fontSize:'9px',color:'#444',z:3,field:'address2'});
+  mkI(148,222,68,28,'logo','Logo',{z:3});
+  const bulls=[...gv('fbull').split('\n').filter(Boolean),gv('fi')?'Net Income: '+gv('fi'):''].filter(Boolean);
+  bulls.forEach((b,i)=>mkT(8,258+i*14,W-16,13,'– '+b,{fontSize:'8px',color:'#222',z:3}));
+  const sy=258+bulls.length*14+5;
+  mkT(8,sy,W-16,13,gv('fm'),{fontWeight:'700',fontSize:'9px',z:3,field:'salemethod'});
+  mkT(8,sy+17,W/2-10,13,gv('fn1'),{fontWeight:'700',fontSize:'9px',z:3,field:'agent1name'});
+  mkT(8,sy+29,W/2-10,13,gv('fp1'),{fontSize:'9px',z:3,field:'agent1num'});
+  mkT(W/2+4,sy+17,W/2-12,13,gv('fn2'),{fontWeight:'700',fontSize:'9px',z:3,field:'agent2name'});
+  mkT(W/2+4,sy+29,W/2-12,13,gv('fp2'),{fontSize:'9px',z:3,field:'agent2num'});
+  // border overlay
+  const bord=document.createElement('div');
+  bord.style.cssText=`position:absolute;inset:0;border:1px solid #aaa;pointer-events:none;z-index:9998;`;
+  document.getElementById('artwork').appendChild(bord);
+  // CBRE white logo bottom-right of white body
+  addCBRELogos(W,H,[
+    {x:W-90,y:H-32,w:80,h:22,uri:CBRE_LOGO_WHITE,z:20}
+  ]);
+}
+
+// ─── AFR 4-AGENT 464×398 ───
+function buildAFR4(W,H){
+  mkI(0,0,W,183,'img1','Hero image',{z:1});
+  mkR(W-110,162,110,21,DK,{z:3}); mkT(W-108,164,106,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:4,field:'banner'});
+  mkR(0,183,W,55,DK,{z:2});
+  mkT(10,188,W-20,26,gv('fh'),{color:'#fff',fontSize:'14px',fontFamily:HF,lineHeight:'1.2',z:3,field:'heading'});
+  mkT(10,210,W-20,24,gv('fs'),{color:'#fff',fontSize:'13px',fontFamily:HF,lineHeight:'1.2',z:3,field:'subheading'});
+  mkR(0,238,W,H-238,'#fff',{z:1});
+  mkT(10,245,180,15,gv('fa1'),{fontWeight:'700',fontSize:'10px',z:3,field:'address1'});
+  mkT(10,260,180,13,gv('fa2'),{fontSize:'9px',color:'#444',z:3,field:'address2'});
+  mkI(W-104,242,94,38,'logo','Logo',{z:3});
+  const all=[...gv('fbull').split('\n').filter(Boolean),gv('fi')?'Net Income: '+gv('fi'):''].filter(Boolean);
+  const half=Math.ceil(all.length/2);
+  all.slice(0,half).forEach((b,i)=>mkT(10,276+i*14,W/2-20,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
+  all.slice(half).forEach((b,i)=>mkT(W/2+10,276+i*14,W/2-20,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
+  const sy=276+half*14+6;
+  mkT(10,sy,W-20,14,[gv('fm'),gv('fd')].filter(Boolean).join(' '),{fontWeight:'700',fontSize:'10px',z:3});
+  [[gv('fn1'),gv('fp1'),10],[gv('fn2'),gv('fp2'),W/3+5],[gv('fn3'),gv('fp3'),W*2/3+5]].forEach(([n,p,x])=>{
+    mkT(x,sy+18,W/3-15,13,n,{fontWeight:'700',fontSize:'10px',z:3});
+    mkT(x,sy+30,W/3-15,13,p,{fontSize:'10px',z:3});
+  });
+  const bord=document.createElement('div');
+  bord.style.cssText=`position:absolute;inset:0;border:1px solid #aaa;pointer-events:none;z-index:9998;`;
+  document.getElementById('artwork').appendChild(bord);
+  addCBRELogos(W,H,[
+    {x:W-120,y:H-36,w:110,h:28,uri:CBRE_LOGO_WHITE,z:20}
+  ]);
+}
+
+// ─── AUCTION POSTER 794×1123 ───
+function buildAuction(W,H){
+  mkT(18,12,180,24,'Portfolio',{color:G,fontSize:'17px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:3});
+  mkT(W-86,12,78,24,'CBRE',{color:DK,fontSize:'22px',fontWeight:'900',z:3,extraStyle:'letter-spacing:-.02em;'});
+  mkR(0,44,W,90,DK,{z:2});
+  mkT(20,50,W-40,40,gv('fh'),{color:'#fff',fontSize:'22px',fontFamily:HF,lineHeight:'1.25',z:3,field:'heading'});
+  mkT(20,82,W-40,34,gv('fs'),{color:'#fff',fontSize:'20px',fontFamily:HF,lineHeight:'1.25',z:3,field:'subheading'});
+  mkI(0,134,W,480,'img1','Hero image',{z:1});
+  mkR(W-160,568,160,30,DK,{z:3}); mkT(W-158,571,155,24,gv('fb'),{color:'#fff',fontSize:'11px',fontWeight:'700',z:4,field:'banner'});
+  mkT(20,616,360,30,gv('fa1'),{fontSize:'22px',fontFamily:HF,color:DK,lineHeight:'1.2',z:2,field:'address1'});
+  mkT(20,646,300,18,gv('fa2'),{fontSize:'13px',color:'#555',z:2,field:'address2'});
+  mkI(W-140,612,120,52,'logo','Logo',{z:2});
+  mkR(20,678,44,3,G,{z:2});
+  const bulls=gv('fbull').split('\n').filter(Boolean);
+  bulls.forEach((b,i)=>mkT(20,690+i*22,360,20,b,{fontSize:'13px',color:'#222',z:2}));
+  mkT(20,690+bulls.length*22+4,360,20,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'14px',color:DK,z:2,field:'income'});
+  mkR(W-244,686,1,200,'#ddd',{z:2});
+  mkT(W-234,690,210,18,'CBRE',{fontWeight:'700',fontSize:'13px',color:DK,z:2});
+  mkT(W-234,710,210,18,gv('fn1'),{fontSize:'13px',color:'#333',z:2,field:'agent1name'});
+  mkT(W-234,728,210,18,gv('fn2'),{fontSize:'13px',color:'#333',z:2,field:'agent2name'});
+  mkT(W-234,746,210,18,gv('fn3'),{fontSize:'13px',color:'#333',z:2,field:'agent3name'});
+  mkT(0,H-18,W,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'7px',color:'#999',padding:'0 18px',z:2});
+  // Portfolio + CBRE logos top
+  addCBRELogos(W,H,[
+    {x:W-90,y:10,w:80,h:24,uri:CBRE_LOGO_GREEN,z:10}
+  ]);
+}
+
+// ─── BROCHURE 595×842 ───
+function buildBrochure1(W,H){
+  mkT(18,10,180,22,'Portfolio',{color:G,fontSize:'15px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:3});
+  mkT(W-84,10,76,22,'CBRE',{color:DK,fontSize:'20px',fontWeight:'900',z:3,extraStyle:'letter-spacing:-.02em;'});
+  mkI(0,38,W,308,'img1','Hero image',{z:1});
+  mkI(0,348,W/2-2,190,'img2','Second image',{z:1});
+  mkI(W/2+2,348,W/2-2,190,'img3','Third image',{z:1});
+  mkR(W-130,510,130,28,DK,{z:3}); mkT(W-128,512,125,22,gv('fb'),{color:'#fff',fontSize:'9px',fontWeight:'700',z:4,field:'banner'});
+  mkT(18,546,360,28,gv('fh'),{color:DK,fontSize:'22px',fontFamily:HF,lineHeight:'1.15',z:2,field:'heading'});
+  mkT(18,572,360,26,gv('fs'),{color:DK,fontSize:'20px',fontFamily:HF,lineHeight:'1.15',z:2,field:'subheading'});
+  mkI(W-130,544,112,48,'logo','Logo',{z:2});
+  mkR(0,604,W,1,'#ccc',{z:2});
+  const c1x=18,c2x=212,c3x=408,cW=170,ry=612;
+  mkR(c1x,ry,3,40,G,{z:3});
+  mkT(c1x+7,ry,cW-7,16,gv('fa1'),{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'address1'});
+  mkT(c1x+7,ry+17,cW-7,15,gv('fa2'),{fontSize:'10px',color:'#555',z:3,field:'address2'});
+  mkT(c1x,ry+45,cW,15,gv('fbull').split('\n')[0]||'',{fontSize:'10px',color:'#222',z:3});
+  gv('fbull').split('\n').slice(1).filter(Boolean).forEach((b,i)=>mkT(c1x,ry+62+i*14,cW,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
+  mkT(c1x,ry+150,cW,15,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'income'});
+  mkR(c2x-8,ry,1,200,'#ddd',{z:2}); mkR(c3x-8,ry,1,200,'#ddd',{z:2});
+  gv('fbc').split('\n').filter(Boolean).forEach((b,i)=>mkT(c2x,ry+i*14,cW,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
+  mkT(c3x,ry,cW,14,'Contact',{fontWeight:'700',fontSize:'10px',color:DK,z:3});
+  mkT(c3x,ry+16,cW,13,gv('fn1')+' '+gv('fp1'),{fontSize:'9px',color:'#333',z:3});
+  mkT(c3x,ry+30,cW,13,gv('fn2')+' '+gv('fp2'),{fontSize:'9px',color:'#333',z:3});
+  mkT(c3x,ry+44,cW,13,gv('fn3')+' '+gv('fp3'),{fontSize:'9px',color:'#333',z:3});
+  mkT(c3x,ry+64,cW,14,gv('fm'),{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'salemethod'});
+  mkT(c3x,ry+80,cW,38,gv('fd'),{fontSize:'9px',color:'#555',lineHeight:'1.4',z:3,field:'saledate'});
+  mkT(c3x,ry+122,cW,13,'*Approx',{fontSize:'8px',color:'#999',z:3});
+  mkR(0,H-18,W,1,'#eee',{z:2});
+  mkT(0,H-17,W,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'7px',color:'#999',padding:'0 18px',z:2});
+}
+
+// ─── BROCHURE 2-PAGE 1191×842 (all dark) ───
+function buildBrochure2(W,H){
+  const LW=Math.round(W*0.473), RX=Math.round(W*0.506), RW=W-RX-8;
+  // Full dark bg
+  mkR(0,0,W,H,DK,{z:1});
+  // Header
+  mkT(16,12,180,24,'Portfolio',{color:G,fontSize:'15px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:5});
+  mkT(W-90,12,82,24,'CBRE',{color:'#fff',fontSize:'19px',fontWeight:'900',z:5,extraStyle:'letter-spacing:-.02em;'});
+  // Left large image inset
+  mkI(10,46,LW,Math.round(H*0.71),'img1','Hero image',{z:2});
+  // Left bottom text
+  const lbY=Math.round(H*0.75);
+  mkT(16,lbY,LW-10,Math.round(H*0.13),gv('fh'),{color:'#fff',fontSize:'24px',fontFamily:HF,fontWeight:'400',lineHeight:'1.05',z:3,field:'heading'});
+  mkT(16,lbY+Math.round(H*0.13)+4,LW-10,Math.round(H*0.07),gv('fa1'),{color:GB,fontSize:'17px',fontFamily:HF,z:3,field:'address1'});
+  mkT(16,lbY+Math.round(H*0.21),LW-10,Math.round(H*0.06),gv('fs'),{color:GB,fontSize:'12px',fontFamily:HF,z:3,field:'subheading'});
+  // Right top image
+  const rtH=Math.round(H*0.41);
+  mkI(RX,46,RW,rtH,'img2','Second image',{z:2});
+  // Right sub-images
+  const siT=46+rtH+4, siH=Math.round(H*0.27), siW=Math.round(RW/2)-3;
+  mkI(RX,siT,siW,siH,'img3','Third image',{z:2});
+  mkI(RX+siW+4,siT,siW,siH,'img1','Hero image',{z:2});
+  // Banner point
+  const bT=siT+siH-22;
+  mkR(RX+RW-110,bT,110,22,DK,{z:4}); mkT(RX+RW-108,bT+2,106,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:5,field:'banner'});
+  // White content box
+  const wT=siT+siH+4, wH=H-wT-2;
+  mkR(RX,wT,RW,wH,'#fff',{z:3});
+  // Heading+Sub+Logo in white box
+  mkT(RX+8,wT+5,Math.round(RW*0.58),18,gv('fh'),{color:DK,fontSize:'13px',fontFamily:HF,z:4,field:'heading'});
+  mkT(RX+8,wT+22,Math.round(RW*0.58),16,gv('fs'),{color:DK,fontSize:'12px',fontFamily:HF,z:4,field:'subheading'});
+  mkI(RX+RW-82,wT+3,74,32,'logo','Logo',{z:4});
+  // Rule + 3 cols
+  const ruleY=wT+44, colH=wH-50;
+  mkR(RX,ruleY,RW,1,'#ccc',{z:4});
+  const c1x=RX+6, c2x=RX+Math.round(RW/3)+6, c3x=RX+Math.round(RW*2/3)+6, cW=Math.round(RW/3)-10, ry=ruleY+6;
+  mkR(c2x-6,ry,1,colH,'#ddd',{z:4}); mkR(c3x-6,ry,1,colH,'#ddd',{z:4});
+  mkR(c1x,ry,2,28,G,{z:5});
+  mkT(c1x+5,ry,cW-5,11,gv('fa1'),{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'address1'});
+  mkT(c1x+5,ry+12,cW-5,11,gv('fa2'),{fontSize:'8px',color:'#555',z:5,field:'address2'});
+  mkT(c1x,ry+30,cW,11,gv('fbull').split('\n')[0]||'',{fontSize:'8px',color:'#222',z:5});
+  gv('fbull').split('\n').slice(1).filter(Boolean).forEach((b,i)=>mkT(c1x,ry+42+i*12,cW,11,'– '+b,{fontSize:'7px',color:'#222',z:5}));
+  mkT(c1x,ry+130,cW,12,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'income'});
+  gv('fbc').split('\n').filter(Boolean).forEach((b,i)=>mkT(c2x,ry+i*12,cW,11,'– '+b,{fontSize:'7px',color:'#222',z:5}));
+  mkT(c3x,ry,cW,11,'Contact',{fontWeight:'700',fontSize:'8px',color:DK,z:5});
+  mkT(c3x,ry+13,cW,11,gv('fn1')+' '+gv('fp1'),{fontSize:'7px',color:'#333',z:5});
+  mkT(c3x,ry+25,cW,11,gv('fn2')+' '+gv('fp2'),{fontSize:'7px',color:'#333',z:5});
+  mkT(c3x,ry+37,cW,11,gv('fn3')+' '+gv('fp3'),{fontSize:'7px',color:'#333',z:5});
+  mkT(c3x,ry+52,cW,12,gv('fm'),{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'salemethod'});
+  mkT(c3x,ry+65,cW,22,gv('fd'),{fontSize:'7px',color:'#555',lineHeight:'1.4',z:5,field:'saledate'});
+  mkT(c3x,ry+90,cW,10,'*Approx',{fontSize:'7px',color:'#999',z:5});
+  mkT(RX+4,H-14,RW-8,12,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'6px',color:'#999',z:4});
+  addCBRELogos(W,H,[
+    {x:16,y:12,w:90,h:22,uri:CBRE_LOGO_WHITE,z:10},
+    {x:W-110,y:12,w:100,h:22,uri:CBRE_LOGO_WHITE,z:10}
+  ]);
+}
+
+// ─── EDM 212×1550 ───
+function buildEDM(W,H){
+  mkT(10,8,100,18,'Portfolio',{color:G,fontSize:'12px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:2});
+  mkT(W-60,8,56,18,'CBRE',{color:DK,fontSize:'14px',fontWeight:'900',z:2,extraStyle:'letter-spacing:-.02em;'});
+  mkI(0,32,W,150,'img1','Hero image',{z:1});
+  mkR(W-88,153,88,22,DK,{z:3}); mkT(W-86,155,84,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:4,field:'banner'});
+  mkR(0,182,W,200,DK,{z:2});
+  mkR(12,194,3,100,G,{z:3});
+  mkT(20,194,W-28,34,gv('fh'),{color:'#fff',fontSize:'18px',fontFamily:HF,lineHeight:'1.2',z:3,field:'heading'});
+  mkT(20,228,W-28,16,gv('fa1'),{color:'#fff',fontSize:'12px',fontFamily:HF,z:3,field:'address1'});
+  mkT(20,244,W-28,14,gv('fa2'),{color:'#fff',fontSize:'11px',fontFamily:HF,z:3,field:'address2'});
+  const hpts=gv('fbull').split('\n');
+  mkT(20,260,W-28,13,hpts[0]||'',{color:'rgba(255,255,255,.75)',fontSize:'10px',z:3});
+  mkT(20,273,W-28,13,hpts[1]||'',{color:'rgba(255,255,255,.75)',fontSize:'10px',z:3});
+  mkI(W/2-55,296,110,46,'logo','Logo',{z:3});
+  mkT(12,348,W-24,16,gv('fm'),{color:'#fff',fontWeight:'700',fontSize:'13px',z:3,field:'salemethod'});
+  mkT(12,364,W-24,16,gv('fd'),{color:'rgba(255,255,255,.7)',fontSize:'10px',z:3,field:'saledate'});
+  mkI(0,382,W,140,'img2','Second image',{z:1});
+  mkR(0,522,W,42,DK,{z:2}); mkR(0,522,3,42,G,{z:3});
+  mkT(14,528,W-20,16,gv('fa1'),{color:'#fff',fontWeight:'700',fontSize:'12px',z:3,field:'address1'});
+  mkT(14,544,W-20,14,gv('fa2'),{color:'rgba(255,255,255,.75)',fontSize:'10px',z:3,field:'address2'});
+  const bcLines=gv('fbc').split('\n').filter(Boolean);
+  bcLines.forEach((b,i)=>mkT(12,570+i*17,W-24,16,'– '+b,{fontSize:'10px',color:'#333',z:2}));
+  const i3Y=570+bcLines.length*17+8;
+  mkI(0,i3Y,W,130,'img3','Third image',{z:1});
+  const asY=i3Y+138;
+  mkT(12,asY,W-24,18,'For more information contact the sales team',{fontWeight:'700',fontSize:'12px',color:'#111',z:2});
+  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')]].filter(a=>a[0]).forEach((a,i)=>{
+    const ay=asY+24+i*52;
+    mkR(12,ay,40,40,'#c5ccc5',{z:2});
+    mkT(58,ay+2,W-70,18,a[0],{fontWeight:'700',fontSize:'11px',z:2});
+    mkT(58,ay+18,W-70,16,a[1],{fontSize:'11px',color:'#555',z:2});
+  });
+  const ctaY=asY+24+3*52+10;
+  ['Request Information Memorandum','View Listing','View Full Portfolio Line Up'].forEach((lbl,i)=>{
+    mkR(12,ctaY+i*36,W-24,30,'#fff',{z:2,extraStyle:'border:1px solid '+DK+';'});
+    mkT(16,ctaY+i*36+8,W-50,18,lbl,{fontWeight:'700',fontSize:'11px',color:DK,z:3});
+    mkT(W-28,ctaY+i*36+8,18,18,'→',{color:G,fontSize:'13px',z:3});
+  });
+  const footY=ctaY+3*36+8;
+  mkR(0,footY,W,40,DK,{z:2});
+  mkT(0,footY+10,W,22,'CBRE',{color:'#fff',fontSize:'18px',fontWeight:'900',z:3,extraStyle:'text-align:center;letter-spacing:-.02em;'});
+  mkT(8,footY+52,W-16,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies.',{fontSize:'7px',color:'#999',lineHeight:'1.4',z:2});
+  addCBRELogos(W,H,[
+    {x:W-50,y:8,w:42,h:14,uri:CBRE_LOGO_WHITE,z:10}
+  ]);
+}
+
+// ─── LINKEDIN 800×800 ───
+function buildLinkedIn(W,H){
+  const topH=Math.round(H*0.47);
+  mkR(0,0,W,topH,DK,{z:1});
+  mkT(20,16,200,28,'Portfolio',{color:'#fff',fontSize:'20px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:3});
+  mkT(W-112,16,102,28,'CBRE',{color:'#fff',fontSize:'22px',fontWeight:'900',z:3,extraStyle:'letter-spacing:-.02em;'});
+  mkR(20,Math.round(H*.18),4,Math.round(H*.22),G,{z:3});
+  mkT(32,Math.round(H*.18),W-52,Math.round(H*.11),gv('fh'),{color:'#fff',fontSize:'30px',fontFamily:HF,lineHeight:'1.15',z:3,field:'heading'});
+  mkT(32,Math.round(H*.29),W-52,Math.round(H*.09),gv('fm'),{color:GB,fontSize:'30px',fontFamily:HF,lineHeight:'1.15',z:3,field:'salemethod'});
+  mkT(32,Math.round(H*.39),W-52,Math.round(H*.07),gv('fa1'),{color:'rgba(255,255,255,.85)',fontSize:'14px',fontFamily:HF,z:3,field:'address1'});
+  mkI(0,topH,W,H-topH,'img1','Hero image',{z:1});
+  addCBRELogos(W,H,[
+    {x:16,y:14,w:110,h:28,uri:CBRE_LOGO_WHITE,z:10},
+    {x:W-130,y:14,w:120,h:28,uri:CBRE_LOGO_WHITE,z:10}
+  ]);
+}
+
+// ─── SIGNBOARD 907×680 ───
+function buildSignboard(W,H){
+  const SX=Math.round(W*0.58);
+  mkR(0,0,W,H,DK,{z:1});
+  mkR(SX,0,W-SX,H,'#fff',{z:2});
+  mkR(Math.round(W*.12),Math.round(H*.09),W-Math.round(W*.12),2,GB,{z:4});
+  mkT(28,Math.round(H*.04),Math.round(W*.2),Math.round(H*.1),'CBRE',{color:'#fff',fontSize:'34px',fontWeight:'900',z:4,extraStyle:'letter-spacing:-.02em;'});
+  mkT(SX+14,Math.round(H*.04),W-SX-24,Math.round(H*.1),gv('fm'),{color:DK,fontSize:'18px',fontFamily:HF,z:4,field:'salemethod'});
+  mkT(28,Math.round(H*.18),SX-50,Math.round(H*.28),gv('fh'),{color:'#fff',fontSize:'50px',fontFamily:HF,fontWeight:'400',lineHeight:'1.1',z:3,field:'heading'});
+  gv('fbull').split('\n').filter(Boolean).slice(0,3).forEach((b,i)=>mkT(28,Math.round(H*.52)+i*Math.round(H*.09),SX-50,Math.round(H*.08),'– '+b,{color:'#fff',fontSize:'17px',lineHeight:'1.3',z:3}));
+  mkT(28,Math.round(H*.79),SX-50,Math.round(H*.08),gv('fm'),{color:GB,fontSize:'15px',z:3,field:'salemethod'});
+  mkT(28,Math.round(H*.87),SX-50,Math.round(H*.08),gv('fd'),{color:GB,fontSize:'14px',z:3,field:'saledate'});
+  mkT(28,H-28,SX-50,16,'*Approx.',{color:'rgba(255,255,255,.35)',fontSize:'10px',z:3});
+  mkT(SX-180,H-28,160,16,'cbre.com.au/properties',{color:'rgba(255,255,255,.35)',fontSize:'10px',z:3});
+  const ags=[[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')]].filter(a=>a[0]);
+  ags.forEach((a,i)=>{
+    const ay=Math.round(H*.44)+i*Math.round(H*.17);
+    mkT(SX+16,ay,W-SX-30,Math.round(H*.09),a[0],{fontWeight:'700',fontSize:'19px',color:DK,z:4});
+    mkT(SX+16,ay+30,W-SX-30,Math.round(H*.07),a[1],{fontSize:'17px',color:'#333',z:4});
+  });
+  addCBRELogos(W,H,[
+    {x:20,y:Math.round(H*.03),w:Math.round(W*.18),h:Math.round(H*.1),uri:CBRE_LOGO_WHITE,z:10}
+  ]);
+}
+
+// ════════════════════════════════════════
+// DOWNLOAD PDF (print-to-PDF)
+// ════════════════════════════════════════
+// PDF RENDERER — high-res html2canvas (exact screen match)
+// ════════════════════════════════════════
+
+// ════════════════════════════════════════
+// PDF RENDERER — hybrid vector/image
+// • Rects   → native jsPDF vector fills (crisp, scalable)
+// • Images  → native jsPDF addImage with correct aspect-ratio clipping
+// • Text    → native jsPDF text (vector, Helvetica/Times match sizes exactly)
+// • Unvisited tabs built on-demand from default builders
+// ════════════════════════════════════════
+
+// Parse any CSS colour string → [r,g,b]
+function _rgb(str){
+  if(!str||str==='transparent'||str==='none') return null;
+  str=str.trim();
+  if(str.startsWith('#')){
+    let h=str.slice(1);
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    const n=parseInt(h,16);
+    return [(n>>16)&255,(n>>8)&255,n&255];
+  }
+  const m=str.match(/rgba?\s*\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+  if(m) return [+m[1],+m[2],+m[3]];
+  // Resolve named colours via a throwaway canvas pixel
+  try{
+    const cv=document.createElement('canvas');cv.width=cv.height=1;
+    const cx=cv.getContext('2d');cx.fillStyle=str;cx.fillRect(0,0,1,1);
+    const d=cx.getImageData(0,0,1,1).data;
+    if(d[3]===0) return null;
+    return [d[0],d[1],d[2]];
+  }catch(e){return null;}
+}
+
+// Build the state array for a tab (uses saved state or constructs defaults)
+function _stateForTab(tabIdx){
+  if(savedStates[tabIdx] && savedStates[tabIdx].length) return savedStates[tabIdx];
+  // Build into the real artwork div temporarily so builders work normally
+  const [cw,ch]=SIZES[tabIdx];
+  const realArt=document.getElementById('artwork');
+  const prevHTML=realArt.innerHTML;
+  const prevW=realArt.style.width, prevH=realArt.style.height;
+  const prevT=realArt.style.transform, prevNI=nextId;
+  realArt.style.width=cw+'px'; realArt.style.height=ch+'px';
+  realArt.style.transform='none'; realArt.innerHTML=''; nextId=1;
+  const builders=[buildAFR2,buildAFR4,buildAuction,buildBrochure1,
+                  buildBrochure2,buildEDM,buildLinkedIn,buildSignboard];
+  builders[tabIdx](cw,ch);
+  const state=serializeTabFrom(realArt);
+  realArt.innerHTML=prevHTML; realArt.style.width=prevW;
+  realArt.style.height=prevH; realArt.style.transform=prevT; nextId=prevNI;
+  return state;
+}
+
+// Serialize elements from any artwork div (not just the live one)
+function serializeTabFrom(art){
+  const els=[];
+  art.querySelectorAll('.el').forEach(el=>{
+    const inner=el.querySelector('.el-inner');
+    const img=el.querySelector('img');
+    const ak=el.dataset.assetKey||'';
+    const obj={
+      eid:el.dataset.eid, type:el.dataset.type,
+      x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height,
+      z:el.style.zIndex, field:el.dataset.field||'', assetKey:ak,
+    };
+    if(inner){
+      obj.innerStyle=inner.getAttribute('style')||'';
+      if(el.dataset.type==='text') obj.content=inner.textContent;
+      if(el.dataset.type==='img'){
+        obj.imgSrc=(ak&&assets[ak])?assets[ak]:(img?img.src:'');
+        if(img&&img.dataset.cropW){
+          obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY;
+          obj.cropW=img.dataset.cropW; obj.cropH=img.dataset.cropH;
+        }
+      }
+    }
+    els.push(obj);
+  });
+  return els;
+}
+
+async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
+  if(addPage){
+    pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
+  }
+
+  const [canvasW,canvasH]=SIZES[tabIdx];
+  const sx=pageW/canvasW, sy=pageH/canvasH;
+
+  // Background
+  const bgCol=tabIdx===4?_rgb(DK):[255,255,255];
+  if(bgCol){ pdf.setFillColor(...bgCol); pdf.rect(0,0,pageW,pageH,'F'); }
+
+  const state=_stateForTab(tabIdx);
+  if(!state||!state.length) return;
+
+  const sorted=[...state].sort((a,b)=>(parseInt(a.z)||0)-(parseInt(b.z)||0));
+
+  // Helper: write a clipping rect + draw image in one correct PDF graphics block
+  function addImageClipped(src, fmt, ix, iy, iw, ih, cx, cy, cw, ch){
+    const sc = pdf.internal.scaleFactor;
+    const pH = pdf.internal.pageSize.getHeight();
+    // Convert mm → PDF units (bottom-left origin)
+    const pdfX  = (cx * sc).toFixed(4);
+    const pdfY  = ((pH - cy - ch) * sc).toFixed(4);
+    const pdfW  = (cw * sc).toFixed(4);
+    const pdfH  = (ch * sc).toFixed(4);
+    pdf.saveGraphicsState();
+    // Push clip rect using raw PDF stream operators
+    pdf.internal.write(`${pdfX} ${pdfY} ${pdfW} ${pdfH} re W n`);
+    pdf.addImage(src, fmt, ix, iy, iw, ih, undefined, 'FAST');
+    pdf.restoreGraphicsState();
+  }
+
+  for(const sv of sorted){
+    const x=parseFloat(sv.x)*sx;
+    const y=parseFloat(sv.y)*sy;
+    const w=parseFloat(sv.w)*sx;
+    const h=parseFloat(sv.h)*sy;
+    if(!w||!h) continue;
+
+    // ── RECT (vector) ─────────────────────────────────────────────────────
+    if(sv.type==='rect'){
+      const ist=sv.innerStyle||'';
+      const bgm=ist.match(/background(?:-color)?\s*:\s*([^;]+)/);
+      const col=bgm?_rgb(bgm[1].trim()):_rgb(DK);
+      if(col){ pdf.setFillColor(...col); pdf.rect(x,y,w,h,'F'); }
+    }
+
+    // ── IMAGE (native, correct aspect ratio) ─────────────────────────────
+    else if(sv.type==='img'){
+      const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:sv.imgSrc;
+      if(!src) continue;
+      const fmt=src.startsWith('data:image/png')?'PNG':'JPEG';
+      try{
+        if(sv.cropW){
+          // Manual crop: img is positioned/sized explicitly
+          const iw=parseFloat(sv.cropW)*sx;
+          const ih=parseFloat(sv.cropH)*sy;
+          const ix=parseFloat(sv.cropX)*sx;
+          const iy=parseFloat(sv.cropY)*sy;
+          addImageClipped(src, fmt, x+ix, y+iy, iw, ih, x, y, w, h);
+        } else {
+          // Get natural image size to compute cover/contain correctly
+          const nat=await new Promise(res=>{
+            const im=new Image();
+            im.onload=()=>res({w:im.naturalWidth,h:im.naturalHeight});
+            im.onerror=()=>res(null);
+            im.src=src;
+          });
+          if(!nat){ pdf.addImage(src,fmt,x,y,w,h,undefined,'FAST'); continue; }
+          const isLogo=sv.assetKey==='logo';
+          if(isLogo){
+            // object-fit:contain — fit inside, centered
+            const scale=Math.min(w/nat.w, h/nat.h);
+            const dw=nat.w*scale, dh=nat.h*scale;
+            pdf.addImage(src,fmt,x+(w-dw)/2,y+(h-dh)/2,dw,dh,undefined,'FAST');
+          } else {
+            // object-fit:cover — fill box, clip overflow, centered
+            const scale=Math.max(w/nat.w, h/nat.h);
+            const dw=nat.w*scale, dh=nat.h*scale;
+            addImageClipped(src, fmt, x+(w-dw)/2, y+(h-dh)/2, dw, dh, x, y, w, h);
+          }
+        }
+      }catch(e){ console.warn('img skip',e); }
+    }
+
+    // ── TEXT — rasterised at high DPI so fonts look exactly like screen ───
+    else if(sv.type==='text'){
+      if(!sv.content) continue;
+      try{
+        // Build a tiny off-screen div with just this text element
+        const elW=parseFloat(sv.w), elH=parseFloat(sv.h);
+        const SCALE=4; // 4× = ~300dpi equivalent
+        const holder=document.createElement('div');
+        holder.style.cssText=`position:fixed;left:-99999px;top:0;width:${elW}px;height:${elH}px;overflow:hidden;background:transparent;`;
+        document.body.appendChild(holder);
+
+        const textEl=document.createElement('div');
+        textEl.style.cssText=`position:absolute;inset:0;overflow:hidden;`;
+        if(sv.innerStyle) textEl.setAttribute('style', sv.innerStyle);
+        textEl.style.whiteSpace='pre-wrap';
+        textEl.style.wordBreak='break-word';
+        textEl.style.overflow='hidden';
+        textEl.style.background='transparent';
+        textEl.textContent=sv.content;
+        holder.appendChild(textEl);
+
+        const tc=await html2canvas(holder,{
+          scale:SCALE, useCORS:true, backgroundColor:null,
+          logging:false, width:elW, height:elH
+        });
+        holder.remove();
+
+        // Place the rasterised text into the PDF at the element's exact position
+        const imgData=tc.toDataURL('image/png');
+        pdf.addImage(imgData,'PNG',x,y,w,h,undefined,'FAST');
+      }catch(e){ console.warn('text render skip',e); }
+    }
+  }
+}
+
+// ════════════════════════════════════════
+// DOWNLOAD CURRENT TAB PDF
+// ════════════════════════════════════════
+async function downloadPDF(){
+  const btn = document.getElementById('dlb');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  deselectAll();
+  savedStates[currentTab] = serializeTab();
+  try {
+    const mm = PDF_MM[currentTab];
+    const {jsPDF} = window.jspdf;
+    const isLandscape = mm[0] > mm[1];
+    const pdf = new jsPDF({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: [mm[0], mm[1]]
+    });
+    await renderTabToPdf(pdf, currentTab, mm[0], mm[1], false);
+    const tabName = TAB_NAMES[currentTab] || 'artwork';
+    pdf.save(`CBRE_${tabName}.pdf`);
+  } catch(err){
+    console.error(err);
+    alert('PDF generation failed: ' + err.message);
+  }
+  btn.disabled = false; btn.textContent = '⬇ PDF';
+}
+
+// ════════════════════════════════════════
+// ALL ARTWORKS OVERVIEW + DOWNLOAD
+// ════════════════════════════════════════
+async function showAllArtworks(){
+  // Save current tab first
+  savedStates[currentTab] = serializeTab();
+
+  const overlay = document.getElementById('all-overlay');
+  const grid = document.getElementById('all-grid');
+  overlay.style.display = 'block';
+  grid.innerHTML = '<div style="color:#888;font-size:13px;padding:20px;">Rendering all artworks…</div>';
+
+  const tabNames = ['AFR 2-Agent','AFR 4-Agent','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard'];
+  const origTab = currentTab;
+  const cards = [];
+
+  for(let i=0; i<8; i++){
+    try {
+      const [cw, ch] = SIZES[i];
+
+      // Use the live artwork div (same as PDF export) for faithful rendering
+      const realArt    = document.getElementById('artwork');
+      const canvasWrap = document.getElementById('canvas-wrap');
+      const prevHTML   = realArt.innerHTML;
+      const prevSW = realArt.style.width,    prevSH = realArt.style.height;
+      const prevSB = realArt.style.background, prevST = realArt.style.transform;
+      const prevSP = realArt.style.position,  prevSTp = realArt.style.top;
+      const prevSL = realArt.style.left;
+      const prevWW = canvasWrap.style.width,  prevWH = canvasWrap.style.height;
+      const prevNI = nextId;
+
+      realArt.style.width = cw+'px'; realArt.style.height = ch+'px';
+      realArt.style.background = i===4 ? DK : '#ffffff';
+      realArt.style.transform = 'none';
+      realArt.style.position = 'relative';
+      realArt.style.top = '0'; realArt.style.left = '0';
+      canvasWrap.style.width = cw+'px'; canvasWrap.style.height = ch+'px';
+      realArt.innerHTML = ''; nextId = 1;
+
+      const state = savedStates[i];
+      if(state && state.length){
+        state.forEach(sv=>{
+          const el=document.createElement('div'); el.className='el';
+          el.style.cssText=`position:absolute;left:${sv.x};top:${sv.y};width:${sv.w};height:${sv.h};z-index:${parseInt(sv.z)||2};`;
+          el.dataset.type=sv.type;
+          const inner=document.createElement('div'); inner.className='el-inner';
+          inner.style.cssText='position:absolute;inset:0;overflow:hidden;';
+          if(sv.innerStyle) inner.setAttribute('style',sv.innerStyle);
+          if(sv.type==='text'){
+            inner.style.whiteSpace='pre-wrap';inner.style.wordBreak='break-word';inner.style.overflow='hidden';
+            if(sv.content!==undefined) inner.textContent=sv.content;
+          } else if(sv.type==='img'){
+            const isLogo=sv.assetKey==='logo';
+            inner.style.background=isLogo?'transparent':'#c5ccc5';
+            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:sv.imgSrc;
+            if(src){
+              const imgEl=document.createElement('img'); imgEl.src=src;
+              if(sv.cropW) imgEl.style.cssText=`position:absolute;left:${sv.cropX};top:${sv.cropY};width:${sv.cropW};height:${sv.cropH};object-fit:fill;display:block;`;
+              else imgEl.style.cssText=`position:absolute;inset:0;width:100%;height:100%;object-fit:${isLogo?'contain':'cover'};display:block;`;
+              inner.appendChild(imgEl);
+            }
+          }
+          el.appendChild(inner); realArt.appendChild(el);
+        });
+      } else {
+        const builders=[buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard];
+        builders[i](cw, ch);
+      }
+
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
+      const canvas = await html2canvas(realArt,{
+        scale:1.5, useCORS:true, allowTaint:true,
+        backgroundColor:i===4?DK:'#ffffff', logging:false, width:cw, height:ch, x:0, y:0
+      });
+
+      // Restore
+      realArt.innerHTML=prevHTML; nextId=prevNI;
+      realArt.style.width=prevSW; realArt.style.height=prevSH;
+      realArt.style.background=prevSB; realArt.style.transform=prevST;
+      realArt.style.position=prevSP; realArt.style.top=prevSTp; realArt.style.left=prevSL;
+      canvasWrap.style.width=prevWW; canvasWrap.style.height=prevWH;
+
+      cards.push({idx:i, name:tabNames[i], canvas, mm:PDF_MM[i]});
+    } catch(e){
+      cards.push({idx:i, name:tabNames[i], canvas:null, mm:PDF_MM[i]});
+    }
+  }
+
+  // Restore the current tab properly after all iterations
+  restoreTab(origTab);
+  currentTab = origTab;
+
+  // Render grid
+  grid.innerHTML = '';
+  cards.forEach(({idx, name, canvas}) => {
+    const card = document.createElement('div');
+    card.style.cssText='background:#2a2a2a;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;';
+    const label = document.createElement('div');
+    label.style.cssText='padding:8px 10px;display:flex;align-items:center;justify-content:space-between;';
+    label.innerHTML=`<span style="font-size:11px;font-weight:700;color:#ccc;text-transform:uppercase;letter-spacing:.05em;">${name}</span>
+      <button onclick="downloadSingleFromOverlay(${idx})" style="padding:3px 9px;font-size:10px;font-weight:700;background:var(--gb);color:#fff;border:none;border-radius:2px;cursor:pointer;">⬇ PDF</button>`;
+    card.appendChild(label);
+    if(canvas){
+      const img = document.createElement('img');
+      img.src = canvas.toDataURL('image/png');
+      img.style.cssText='width:100%;display:block;object-fit:contain;';
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.style.cssText='height:160px;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px;';
+      ph.textContent='Could not render';
+      card.appendChild(ph);
+    }
+    grid.appendChild(card);
+  });
+
+  // Store canvases for download
+  window._allCards = cards;
+}
+
+function closeAllArtworks(){
+  document.getElementById('all-overlay').style.display = 'none';
+}
+
+async function downloadSingleFromOverlay(idx){
+  if(!window._allCards) return;
+  const card = window._allCards.find(c=>c.idx===idx);
+  if(!card) return;
+  const {jsPDF} = window.jspdf;
+  const mm = card.mm;
+  const isLandscape = mm[0]>mm[1];
+  const pdf = new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
+  renderTabToPdf(pdf, idx, mm[0], mm[1], false)
+    .then(()=> pdf.save(`CBRE_${TAB_NAMES[idx]}.pdf`))
+    .catch(e=> alert('PDF error: '+e.message));
+}
+
+async function downloadAllPDF(){
+  const btn = document.getElementById('dl-all-btn');
+  btn.disabled=true; btn.textContent='Building PDF…';
+  try {
+    const {jsPDF} = window.jspdf;
+    const tabs = window._allCards || [];
+    if(!tabs.length){ btn.disabled=false; btn.textContent='⬇ Download All as PDF'; return; }
+    const first = tabs[0];
+    const mm0 = first.mm;
+    const pdf = new jsPDF({
+      orientation: mm0[0]>mm0[1]?'landscape':'portrait',
+      unit:'mm',
+      format:[mm0[0],mm0[1]]
+    });
+    for(let i=0; i<tabs.length; i++){
+      const {idx, mm} = tabs[i];
+      await renderTabToPdf(pdf, idx, mm[0], mm[1], i > 0);
+    }
+    pdf.save('CBRE_All_Artworks.pdf');
+  } catch(err){
+    alert('PDF error: '+err.message);
+  }
+  btn.disabled=false; btn.textContent='⬇ Download All as PDF';
+}
+
+// ════════════════════════════════════════
+// TAB SWITCHING — saves state automatically
+// ════════════════════════════════════════
+function switchTab(idx, btn){
+  // Auto-save current tab state before switching
+  savedStates[currentTab]=serializeTab();
+  persistAll();
+  currentTab=idx;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  deselectAll();
+  // Push latest field values into saved state before restoring
+  syncTabOnEntry(idx);
+  // Restore saved state if exists, otherwise build default
+  if(!restoreTab(idx)) buildTemplate(idx);
+}
+
+
+// ════════════════════════════════════════
+// PERSISTENCE — saves state back INTO this HTML file
+// Clicking 💾 Save downloads an updated copy of this file with all your
+// changes baked in. Open that file in any browser and it's exactly where
+// you left off — no browser-specific storage required.
+// localStorage is used as a fast auto-save safety net between explicit saves.
+// ════════════════════════════════════════
+
+// LS_KEY is unique per portfolio+property so each project saves independently
+const LS_KEY = 'cbre_v5_' + (_cdtPortfolioId || 'demo') + '_' + (_cdtPropertyId || 'demo');
+
+// Collect all current state into one plain object
+function collectState(){
+  savedStates[currentTab] = serializeTab();
+  return {
+    v: 5,
+    currentTab,
+    zoom: Math.round(zoom*100),
+    savedStates,
+    assets,
+    fields: {
+      fh:gv('fh'), fs:gv('fs'), fa1:gv('fa1'), fa2:gv('fa2'),
+      fb:gv('fb'), fi:gv('fi'),
+      fbull: document.getElementById('fbull').value,
+      fbc:   document.getElementById('fbc').value,
+      fm:gv('fm'), fd:gv('fd'),
+      fn1:gv('fn1'), fp1:gv('fp1'),
+      fn2:gv('fn2'), fp2:gv('fp2'),
+      fn3:gv('fn3'), fp3:gv('fp3'),
+    }
+  };
+}
+
+// Apply a state object to the app
+function applyState(data){
+  if(!data || data.v !== 5) return false;
+  try {
+    if(data.assets)      assets      = data.assets;
+    if(data.savedStates) savedStates = data.savedStates;
+    if(data.fields){
+      const f=data.fields;
+      const set=(id,val)=>{ const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
+      set('fh',f.fh); set('fs',f.fs); set('fa1',f.fa1); set('fa2',f.fa2);
+      set('fb',f.fb); set('fi',f.fi); set('fbull',f.fbull); set('fbc',f.fbc);
+      set('fm',f.fm); set('fd',f.fd);
+      set('fn1',f.fn1); set('fp1',f.fp1);
+      set('fn2',f.fn2); set('fp2',f.fp2);
+      set('fn3',f.fn3); set('fp3',f.fp3);
+    }
+    if(data.zoom){
+      document.getElementById('zoom-range').value = data.zoom;
+      setZoom(data.zoom);
+    }
+    if(data.currentTab != null){
+      currentTab = parseInt(data.currentTab)||0;
+      document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab));
+    }
+    return true;
+  } catch(e){ console.error('applyState failed',e); return false; }
+}
+
+// ── SAVE INTO FILE ────────────────────────────────────────────────────────────
+// Uses the File System Access API (Chrome/Edge) to overwrite the same file
+// silently after the first save. Falls back to a download on Firefox/Safari.
+let _fileHandle = null; // holds the file handle after first save (Chrome/Edge only)
+
+async function saveToFile(){
+  const btn = document.querySelector('.btn-save');
+  btn.disabled = true;
+  btn.textContent = '💾 Saving…';
+
+  try {
+    const state = collectState();
+    const json  = JSON.stringify(state);
+
+    // Safety net — always keep localStorage up to date
+    try { localStorage.setItem(LS_KEY, json); } catch(e){}
+
+    if(!_HTML_TEMPLATE) throw new Error('Template not captured');
+    const src = _HTML_TEMPLATE.replace('__CBRE_STATE__', json);
+    const blob = new Blob([src], {type:'text/html'});
+
+    // ── Chrome / Edge: File System Access API ─────────────────────────────
+    if(window.showSaveFilePicker){
+      try {
+        if(!_fileHandle){
+          // First save — show the picker once so the user selects the file
+          _fileHandle = await window.showSaveFilePicker({
+            suggestedName: 'CBRE_Marketing_Builder.html',
+            types: [{ description: 'HTML File', accept: {'text/html': ['.html']} }]
+          });
+        }
+        // Write directly to the chosen file — no dialog on subsequent saves
+        const writable = await _fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+
+        btn.textContent = '✓ Saved!';
+        btn.style.background = '#1a6e3a';
+        setTimeout(()=>{ btn.textContent='💾 Save'; btn.style.background=''; btn.disabled=false; }, 2000);
+        return;
+      } catch(fsErr){
+        // User cancelled the picker, or permission denied — fall through to download
+        if(fsErr.name === 'AbortError'){ btn.textContent='💾 Save'; btn.style.background=''; btn.disabled=false; return; }
+        console.warn('File System API failed, falling back to download:', fsErr);
+        _fileHandle = null; // reset so next attempt shows the picker again
+      }
+    }
+
+    // ── Firefox / Safari fallback: trigger a download ─────────────────────
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = 'CBRE_Marketing_Builder.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+
+    btn.textContent = '✓ Saved!';
+    btn.style.background = '#1a6e3a';
+    // Show a one-time hint about Chrome for overwrite support
+    if(!sessionStorage.getItem('_cbre_dl_hint')){
+      sessionStorage.setItem('_cbre_dl_hint','1');
+      setTimeout(()=>alert('File downloaded ✓\n\nTip: Open this file in Chrome or Edge to enable "Save in place" — subsequent saves will overwrite the file directly with no download dialog.'), 300);
+    }
+    setTimeout(()=>{ btn.textContent='💾 Save'; btn.style.background=''; btn.disabled=false; }, 2000);
+
+  } catch(e){
+    console.error('saveToFile failed', e);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(collectState())); } catch(e2){}
+    btn.textContent = '💾 Save';
+    btn.style.background = '';
+    btn.disabled = false;
+    alert('Save error: ' + e.message);
+  }
+}
+
+// ── AUTO-SAVE to localStorage (safety net between explicit saves) ─────────────
+let _persistTimer = null;
+function debouncedPersist(){
+  clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(()=>{
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(collectState()));
+      setCdtStatus('saved','Auto-saved ✓');
+    } catch(e){ setCdtStatus('error','Save failed'); }
+  }, 800);
+}
+
+function persistAll(){ debouncedPersist(); } // alias kept for legacy calls
+
+// ── LOAD on startup ───────────────────────────────────────────────────────────
+function loadPersisted(){
+  // Priority 1: data baked into this file — works in any browser
+  try {
+    const embedded = document.getElementById('cbre-saved-data');
+    if(embedded){
+      const txt = embedded.textContent.trim();
+      if(txt && txt !== 'null'){
+        const data = JSON.parse(txt);
+        if(applyState(data)){
+          console.log('Loaded from embedded file data');
+          return true;
+        }
+      }
+    }
+  } catch(e){ console.warn('Embedded state parse failed', e); }
+
+  // Priority 2: localStorage (auto-save from this browser's last session)
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const data = JSON.parse(raw);
+      if(applyState(data)){
+        console.log('Loaded from localStorage');
+        return true;
+      }
+    }
+  } catch(e){ console.warn('localStorage load failed', e); }
+
+  return false;
+}
+
+function clearPersisted(){
+  if(confirm('Clear all saved data and reset to defaults? This cannot be undone.')){
+    localStorage.removeItem(LS_KEY);
+    const tag = document.getElementById('cbre-saved-data');
+    if(tag) tag.textContent = 'null';
+    savedStates={};
+    assets={logo:'',img1:'',img2:'',img3:''};
+    currentTab=0;
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+    buildTemplate(0);
+    setZoom(65);
+  }
+}
+
+// ── saveTab wired to saveToFile ───────────────────────────────────────────────
+function saveTab(){ saveToFile(); }
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+function init(){
+  const hadSaved = loadPersisted();
+  if(hadSaved && savedStates[currentTab]){
+    restoreTab(currentTab);
+  } else {
+    buildTemplate(0);
+  }
+  if(!document.getElementById('zoom-range').value) setZoom(65);
+
+  // Auto-save hooks — keep local copy fresh
+  document.querySelectorAll(
+    '#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3'
+  ).forEach(el=>el.addEventListener('input', debouncedPersist));
+  document.getElementById('canvas-area').addEventListener('mouseup', debouncedPersist);
+  document.getElementById('zoom-range').addEventListener('input', debouncedPersist);
+
+  // Flush to localStorage on close so nothing is lost before the next explicit save
+  window.addEventListener('beforeunload', ()=>{
+    clearTimeout(_persistTimer);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(collectState())); } catch(e){}
+  });
+}
+
+init();
+
+// ════════════════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ════════════════════════════════════════════════════════════
+const SUPABASE_URL_CDT      = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+const SUPABASE_ANON_KEY_CDT = 'sb_publishable_MzEoGumO7jNqf4dn9pKNFA_meRyU-0O';
+
+// ── URL context (passed from index.html) ─────────────────────
+const _cdtP = new URLSearchParams(window.location.search);
+const _cdtPortfolioId   = _cdtP.get('portfolioId')   || 'demo';
+const _cdtPropertyId    = _cdtP.get('propertyId')    || 'demo';
+const _cdtPortfolioName = _cdtP.get('portfolioName') || 'Portfolio';
+const _cdtPropertyName  = _cdtP.get('propertyName')  || 'Property';
+
+(function initMasthead(){
+  const pp = document.getElementById('mast-port');
+  const pr = document.getElementById('mast-prop');
+  const un = document.getElementById('mast-usr-name');
+  if(pp) pp.textContent = _cdtPortfolioName;
+  if(pr) pr.textContent = _cdtPropertyName;
+  try {
+    const s = JSON.parse(localStorage.getItem('cbre_hub_session') || 'null');
+    if(s && s.name && un) un.textContent = s.name;
+  } catch(e) {}
+})();
+
+function goHome()   { window.location.href = 'index.html'; }
+function doLogout() { localStorage.removeItem('cbre_hub_session'); window.location.href = 'index.html'; }
+
+// ── Cloud status indicator ─────────────────────────────────
+function setCdtStatus(cls, txt) {
+  const el = document.getElementById('cld');
+  const lb = document.getElementById('cld-lbl');
+  if(el) el.className = 'cld ' + cls;
+  if(lb) lb.textContent = txt;
+}
+
+// ── Marketing Items dropdown ───────────────────────────────
+let _miHidden = new Set();
+function toggleMIDD() {
+  const dd = document.getElementById('mi-dd');
+  if(dd) dd.classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  const w = document.querySelector('.mi-wrap');
+  if(w && !w.contains(e.target)) {
+    const dd = document.getElementById('mi-dd');
+    if(dd) dd.classList.remove('open');
+  }
+});
+function toggleMITab(idx, cb) {
+  const tabs = document.querySelectorAll('.tab');
+  const tab = tabs[idx]; if(!tab) return;
+  if(!cb.checked) {
+    _miHidden.add(idx);
+    tab.style.display = 'none';
+    if(currentTab === idx) {
+      for(let i = 0; i < 8; i++) {
+        if(!_miHidden.has(i) && tabs[i]) { switchTab(i, tabs[i]); break; }
+      }
+    }
+  } else {
+    _miHidden.delete(idx);
+    tab.style.display = '';
+  }
+}
+
+
+
+</script>
+</body>
+</html>
