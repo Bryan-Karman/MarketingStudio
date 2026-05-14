@@ -151,6 +151,17 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 .cl-limit-inp:focus{border-color:#f0b429;}
 
 /* (admin modal styles removed — auth is handled by index.html) */
+
+/* ── LIVE SYNC TOAST ── */
+#live-sync-toast{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);
+  background:#0d2b21;color:#5bbf7a;font-size:11px;font-weight:700;
+  padding:7px 16px;border-radius:3px;border:1px solid #2a5a3a;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:99999;
+  transition:transform .25s ease, opacity .25s ease;opacity:0;
+  pointer-events:none;white-space:nowrap;letter-spacing:.03em;
+}
+#live-sync-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -166,6 +177,9 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="mast-out" onclick="doLogout()">Sign Out</button>
   </div>
 </div>
+
+<!-- LIVE SYNC TOAST -->
+<div id="live-sync-toast">↻ Updated by another user</div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -332,9 +346,9 @@ const CBRE_LOGO_GREEN = 'data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0Y
 // ════════════════════════════════════════
 let currentTab=0, zoom=0.65, selectedEl=null;
 let assets={logo:'',img1:'',img2:'',img3:''};
-// Saved element states per tab: { tabIdx: [{id, type, x,y,w,h, ...props}] }
 let savedStates={};
 let nextId=1;
+let _lastKnownUpdatedAt=null; // tracks the Supabase updated_at we last loaded/saved
 
 // ════════════════════════════════════════
 // UNDO STACK (per tab, up to 50 steps)
@@ -2245,11 +2259,11 @@ async function supabaseSave(state){
   } catch(e){ console.warn('Supabase save failed:', e); return false; }
 }
 
-// ── Supabase load ────────────────────────────────────────────────────────────
+// ── Supabase load — returns {state, updatedAt} or null ───────────────────────
 async function supabaseLoad(){
   try {
     console.log('[CBRE] Loading from Supabase...', _portfolioId, _propertyId);
-    const url = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=state_json`;
+    const url = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=state_json,updated_at`;
     const res = await fetch(url, {
       headers:{
         'apikey': SUPA_KEY,
@@ -2257,14 +2271,12 @@ async function supabaseLoad(){
         'Content-Type': 'application/json'
       }
     });
-    console.log('[CBRE] Supabase response status:', res.status);
     const rows = await res.json();
-    console.log('[CBRE] Supabase rows returned:', JSON.stringify(rows).substring(0,200));
     if(rows && rows.length && rows[0].state_json){
-      console.log('[CBRE] State found, applying...');
-      return JSON.parse(rows[0].state_json);
-    } else {
-      console.log('[CBRE] No saved state found for this property.');
+      return {
+        state: JSON.parse(rows[0].state_json),
+        updatedAt: rows[0].updated_at || null
+      };
     }
   } catch(e){
     console.warn('[CBRE] Supabase load failed:', e);
@@ -2321,11 +2333,15 @@ function debouncedPersist(){
   setCdtStatus('saving','Saving…');
   _persistTimer = setTimeout(async ()=>{
     const state = collectState();
-    // Always save to localStorage as instant backup
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
-    // Save to Supabase so all users see the change
     const ok = await supabaseSave(state);
-    setCdtStatus(ok ? 'saved' : 'error', ok ? 'Saved ✓' : 'Local only');
+    if(ok){
+      // Record the time we saved so live sync doesn't re-apply our own changes
+      _lastKnownUpdatedAt = new Date().toISOString();
+      setCdtStatus('saved','Saved ✓');
+    } else {
+      setCdtStatus('error','Local only');
+    }
   }, 1000);
 }
 function persistAll(){ debouncedPersist(); }
@@ -2345,10 +2361,11 @@ async function init(){
 
   // Try Supabase first (cloud — shared across all users)
   let loaded = false;
-  const cloudData = await supabaseLoad();
-  if(cloudData && applyState(cloudData)){
+  const cloudResult = await supabaseLoad();
+  if(cloudResult && applyState(cloudResult.state)){
     if(savedStates[currentTab]) restoreTab(currentTab); else buildTemplate(currentTab);
     setCdtStatus('saved','Loaded ✓');
+    _lastKnownUpdatedAt = cloudResult.updatedAt;
     loaded = true;
   }
 
@@ -2520,11 +2537,110 @@ applyState = function(data){
   return result;
 };
 
+
+// ════════════════════════════════════════
+// LIVE SYNC — polls Supabase every 5s and
+// applies changes made by other users
+// ════════════════════════════════════════
+let _liveSyncTimer = null;
+let _toastTimer = null;
+
+function showSyncToast(msg){
+  const t = document.getElementById('live-sync-toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=> t.classList.remove('show'), 3000);
+}
+
+function isUserBusy(){
+  // Don't apply remote changes if the user is actively doing something
+  const active = document.activeElement;
+  // Typing in a sidebar field
+  if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA') && active.closest('.sb')) return true;
+  // Editing inline on the canvas
+  if(active && active.contentEditable==='true') return true;
+  // Has an element selected (may be mid-drag/resize)
+  if(selectedEl) return true;
+  // Save is in progress (their own changes pending)
+  if(_persistTimer) return true;
+  return false;
+}
+
+async function liveSyncTick(){
+  // Skip entirely if user is busy — try again next tick
+  if(isUserBusy()) return;
+
+  try {
+    // Fetch only updated_at first — cheap check before loading full state
+    const checkUrl = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
+    const checkRes = await fetch(checkUrl, {
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    });
+    if(!checkRes.ok) return;
+    const checkRows = await checkRes.json();
+    if(!checkRows || !checkRows.length) return;
+
+    const remoteUpdatedAt = checkRows[0].updated_at;
+
+    // Nothing new — same timestamp we already have
+    if(remoteUpdatedAt === _lastKnownUpdatedAt) return;
+
+    // There's a newer version — but check again that user is still not busy
+    // (they might have started typing in the time the fetch took)
+    if(isUserBusy()) return;
+
+    // Load the full state
+    const result = await supabaseLoad();
+    if(!result) return;
+
+    // Final busy check before applying
+    if(isUserBusy()) return;
+
+    // Apply the new state
+    const prevTab = currentTab;
+    applyState(result.state);
+
+    // Restore the current tab's canvas (don't switch tabs on the user)
+    if(savedStates[prevTab]) restoreTab(prevTab);
+    else buildTemplate(prevTab);
+
+    // Re-enforce char limits on all fields after update
+    CL_FIELD_IDS.forEach(id=>clEnforce(id));
+
+    _lastKnownUpdatedAt = result.updatedAt;
+    setCdtStatus('saved','Saved ✓');
+    showSyncToast('↻ Updated by another user');
+
+  } catch(e){
+    // Fail silently — live sync errors shouldn't interrupt the user
+    console.warn('[CBRE] Live sync error:', e);
+  }
+}
+
+function startLiveSync(){
+  // Poll every 5 seconds
+  _liveSyncTimer = setInterval(liveSyncTick, 5000);
+}
+
+function stopLiveSync(){
+  clearInterval(_liveSyncTimer);
+}
+
+// Pause live sync while the window is hidden (tab in background)
+// to avoid unnecessary network calls
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden) stopLiveSync();
+  else startLiveSync();
+});
+
 init().then(async ()=>{
-  // Load global char limits from Supabase after init
   await loadGlobalCharLimits();
   clAttachEnforcement();
   clInitAll();
+  // Start live sync after initial load is complete
+  startLiveSync();
 });
 </script>
 </body>
