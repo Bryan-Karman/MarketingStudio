@@ -105,6 +105,16 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 /* Image pan cursor hint */
 .el[data-type="img"].is-panning img{cursor:grabbing!important;}
 .el[data-type="img"].has-crop img{cursor:grab;}
+/* Show grab cursor on any loaded image — not just cropped ones */
+.el[data-type="img"] img{cursor:grab;}
+/* Visible outline of the full image in crop mode — editor-only, not printed */
+.crop-img-outline{
+  position:absolute;
+  border:1.5px dashed rgba(91,191,122,.55);
+  pointer-events:none;
+  z-index:9991;
+  box-sizing:border-box;
+}
 
 .masthead{height:38px;background:#060606;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;position:relative;z-index:200;}
 .mast-home{display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:3px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.15);cursor:pointer;background:none;white-space:nowrap;}
@@ -534,40 +544,48 @@ function createElement(cfg){
   });
 
   // ── Single unified mousedown handler ──
-  // Handles: select, element drag, image pan — all with threshold so a bare
-  // click never moves anything.
   el.addEventListener('mousedown', e=>{
     if(e.target.classList.contains('rh')) return;
     if(e.target.classList.contains('crop-img-rh')) return;
-    if(el.classList.contains('crop-mode')) return; // crop mode handles its own events
+    if(el.classList.contains('crop-mode')) return;
     e.stopPropagation();
     selectElement(el);
 
     const sx=e.clientX, sy=e.clientY;
     let committed=false;
 
-    // For cropped images: track whether we're panning the photo or moving the box.
-    // Decision is deferred until threshold is crossed (no action on bare click).
-    const img = el.dataset.type==='img' ? el.querySelector('img') : null;
-    const hasCrop = img && img.dataset.cropW;
+    const isImg = el.dataset.type==='img';
+    const img   = isImg ? el.querySelector('img') : null;
+    const hasVisibleImg = img && img.src && img.style.display !== 'none';
+
+    // For image elements with a loaded photo — always pan on drag
+    // For images with no photo yet, or non-image elements — move the box
+    const shouldPan = hasVisibleImg;
+
     const fw = parseFloat(el.style.width);
     const fh = parseFloat(el.style.height);
     const ox = parseFloat(el.style.left), oy = parseFloat(el.style.top);
-    const imgOx = hasCrop ? parseFloat(img.style.left)||0 : 0;
-    const imgOy = hasCrop ? parseFloat(img.style.top)||0  : 0;
+
+    // Get current img position — ensure it's in absolute mode for panning
+    let imgOx = 0, imgOy = 0;
+    if(shouldPan){
+      // If image hasn't been cropped yet, initialise its absolute position now
+      if(!img.dataset.cropW){
+        img.style.cssText = `position:absolute;left:0px;top:0px;width:${fw}px;height:${fh}px;object-fit:fill;display:block;`;
+        img.dataset.cropW = fw+'px'; img.dataset.cropH = fh+'px';
+        img.dataset.cropX = '0px';  img.dataset.cropY = '0px';
+        el.classList.add('has-crop');
+      }
+      imgOx = parseFloat(img.style.left)||0;
+      imgOy = parseFloat(img.style.top)||0;
+    }
 
     function mv(e){
       const dx=e.clientX-sx, dy=e.clientY-sy;
-      // Do nothing until threshold crossed
       if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
+      if(!committed){ committed=true; undoSnapshot(); }
 
-      if(!committed){
-        committed=true;
-        undoSnapshot();
-      }
-
-      if(hasCrop){
-        // Pan the image inside the frame
+      if(shouldPan){
         const rawX = imgOx + (e.clientX-sx)/zoom;
         const rawY = imgOy + (e.clientY-sy)/zoom;
         const iw=parseFloat(img.style.width), ih=parseFloat(img.style.height);
@@ -576,7 +594,6 @@ function createElement(cfg){
         img.style.top =ny+'px';
         img.style.cursor='grabbing';
       } else {
-        // Move the whole element box
         el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
         el.style.top =Math.round(oy+(e.clientY-sy)/zoom)+'px';
         el.style.cursor='grabbing';
@@ -585,9 +602,9 @@ function createElement(cfg){
 
     function up(){
       el.style.cursor='';
-      if(img) img.style.cursor = hasCrop ? 'grab' : '';
+      if(img) img.style.cursor = shouldPan ? 'grab' : '';
       if(committed){
-        if(hasCrop) saveCropData(img);
+        if(shouldPan) saveCropData(img);
         else debouncedPersist();
       }
       window.removeEventListener('mousemove',mv);
@@ -699,6 +716,12 @@ function enterCropMode(el){
   overlay.className = 'crop-overlay';
   inner.appendChild(overlay);
 
+  // Dashed outline showing the full image edges (editor-only visual guide)
+  const imgOutline = document.createElement('div');
+  imgOutline.className = 'crop-img-outline';
+  imgOutline.style.cssText = `left:${ix}px;top:${iy}px;width:${iw}px;height:${ih}px;`;
+  inner.appendChild(imgOutline);
+
   // Label
   const label = document.createElement('div');
   label.className = 'crop-label';
@@ -741,6 +764,14 @@ function repositionCropHandles(el, img){
     h.style.left = x+'px';
     h.style.top  = y+'px';
   });
+  // Keep the image outline in sync
+  const outline = el.querySelector('.crop-img-outline');
+  if(outline){
+    outline.style.left   = ix+'px';
+    outline.style.top    = iy+'px';
+    outline.style.width  = iw+'px';
+    outline.style.height = ih+'px';
+  }
 }
 
 // Clamp pan so at least `MIN` px of the image is always visible inside the frame
@@ -853,8 +884,8 @@ function exitCropMode(){
   // Save final crop data to dataset
   if(img) saveCropData(img);
 
-  // Remove crop UI
-  el.querySelectorAll('.crop-img-rh, .crop-label, .crop-overlay').forEach(n=>n.remove());
+  // Remove crop UI (including the image outline guide)
+  el.querySelectorAll('.crop-img-rh, .crop-label, .crop-overlay, .crop-img-outline').forEach(n=>n.remove());
   if(img) img.removeEventListener('mousedown', onCropPan);
   el.classList.remove('crop-mode');
   cropEl = null;
