@@ -2209,7 +2209,7 @@ function collectState(){
 }
 
 // ── Apply state to the app ──────────────────────────────────────────────────
-function applyState(data){
+function applyState(data, skipZoom=false){
   if(!data || data.v !== 5) return false;
   try {
     if(data.assets)      assets      = data.assets;
@@ -2224,7 +2224,8 @@ function applyState(data){
       set('fn2',f.fn2);set('fp2',f.fp2);
       set('fn3',f.fn3);set('fp3',f.fp3);
     }
-    if(data.zoom){ document.getElementById('zoom-range').value=data.zoom; setZoom(data.zoom); }
+    // Don't reset zoom during live sync — jarring for the current user
+    if(!skipZoom && data.zoom){ document.getElementById('zoom-range').value=data.zoom; setZoom(data.zoom); }
     if(data.currentTab!=null){
       currentTab=parseInt(data.currentTab)||0;
       document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab));
@@ -2233,30 +2234,35 @@ function applyState(data){
   } catch(e){ console.error('applyState failed',e); return false; }
 }
 
-// ── Supabase save ────────────────────────────────────────────────────────────
+// ── Supabase save — returns the server's updated_at on success, null on fail ──
 async function supabaseSave(state){
   try {
     const body = { portfolio_id:_portfolioId, property_id:_propertyId, state_json:JSON.stringify(state), updated_at:new Date().toISOString() };
-    // Try update first
     const check = await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${_portfolioId}&property_id=eq.${_propertyId}&select=id`, {
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     });
     const rows = await check.json();
+    let savedRow;
     if(rows && rows.length){
-      await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${rows[0].id}`, {
+      const r = await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${rows[0].id}`, {
         method:'PATCH',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
         body:JSON.stringify(body)
       });
+      const data = await r.json();
+      savedRow = Array.isArray(data) ? data[0] : data;
     } else {
-      await fetch(`${SUPA_URL}/rest/v1/projects`, {
+      const r = await fetch(`${SUPA_URL}/rest/v1/projects`, {
         method:'POST',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
         body:JSON.stringify(body)
       });
+      const data = await r.json();
+      savedRow = Array.isArray(data) ? data[0] : data;
     }
-    return true;
-  } catch(e){ console.warn('Supabase save failed:', e); return false; }
+    // Return the actual server timestamp so we can track it precisely
+    return savedRow?.updated_at || body.updated_at;
+  } catch(e){ console.warn('Supabase save failed:', e); return null; }
 }
 
 // ── Supabase load — returns {state, updatedAt} or null ───────────────────────
@@ -2334,14 +2340,15 @@ function debouncedPersist(){
   _persistTimer = setTimeout(async ()=>{
     const state = collectState();
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
-    const ok = await supabaseSave(state);
-    if(ok){
-      // Record the time we saved so live sync doesn't re-apply our own changes
-      _lastKnownUpdatedAt = new Date().toISOString();
+    const serverTs = await supabaseSave(state);
+    if(serverTs){
+      // Store the exact server timestamp — live sync compares against this
+      _lastKnownUpdatedAt = serverTs;
       setCdtStatus('saved','Saved ✓');
     } else {
       setCdtStatus('error','Local only');
     }
+    _persistTimer = null; // clear so isUserBusy() stops blocking sync
   }, 1000);
 }
 function persistAll(){ debouncedPersist(); }
@@ -2528,8 +2535,8 @@ collectState = function(){
 };
 
 const _origApplyState = applyState;
-applyState = function(data){
-  const result = _origApplyState(data);
+applyState = function(data, skipZoom=false){
+  const result = _origApplyState(data, skipZoom);
   if(data && data.charLimits){
     charLimits = {...data.charLimits};
     clInitAll();
@@ -2555,25 +2562,21 @@ function showSyncToast(msg){
 }
 
 function isUserBusy(){
-  // Don't apply remote changes if the user is actively doing something
   const active = document.activeElement;
-  // Typing in a sidebar field
+  // Typing in a sidebar input or textarea
   if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA') && active.closest('.sb')) return true;
-  // Editing inline on the canvas
+  // Editing text inline on the canvas
   if(active && active.contentEditable==='true') return true;
-  // Has an element selected (may be mid-drag/resize)
-  if(selectedEl) return true;
-  // Save is in progress (their own changes pending)
-  if(_persistTimer) return true;
+  // Their own save is still in flight
+  if(_persistTimer !== null) return true;
   return false;
 }
 
 async function liveSyncTick(){
-  // Skip entirely if user is busy — try again next tick
   if(isUserBusy()) return;
 
   try {
-    // Fetch only updated_at first — cheap check before loading full state
+    // Cheap check — fetch only updated_at
     const checkUrl = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
     const checkRes = await fetch(checkUrl, {
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
@@ -2582,13 +2585,19 @@ async function liveSyncTick(){
     const checkRows = await checkRes.json();
     if(!checkRows || !checkRows.length) return;
 
-    const remoteUpdatedAt = checkRows[0].updated_at;
+    const remoteTs = checkRows[0].updated_at;
 
-    // Nothing new — same timestamp we already have
-    if(remoteUpdatedAt === _lastKnownUpdatedAt) return;
+    // No change — timestamps match
+    if(remoteTs === _lastKnownUpdatedAt) return;
 
-    // There's a newer version — but check again that user is still not busy
-    // (they might have started typing in the time the fetch took)
+    // If we've never set a local timestamp yet, just record and skip
+    // (this prevents a spurious sync on first load)
+    if(!_lastKnownUpdatedAt){
+      _lastKnownUpdatedAt = remoteTs;
+      return;
+    }
+
+    // Remote is newer — check user still not busy after the fetch
     if(isUserBusy()) return;
 
     // Load the full state
@@ -2598,23 +2607,24 @@ async function liveSyncTick(){
     // Final busy check before applying
     if(isUserBusy()) return;
 
-    // Apply the new state
+    // Apply — preserve current user's tab and zoom
     const prevTab = currentTab;
-    applyState(result.state);
+    applyState(result.state, true); // skipZoom=true
 
-    // Restore the current tab's canvas (don't switch tabs on the user)
+    // Keep the user on their current tab — just refresh its canvas
+    currentTab = prevTab;
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active', i===prevTab));
     if(savedStates[prevTab]) restoreTab(prevTab);
     else buildTemplate(prevTab);
 
-    // Re-enforce char limits on all fields after update
+    // Re-apply char limits
     CL_FIELD_IDS.forEach(id=>clEnforce(id));
 
-    _lastKnownUpdatedAt = result.updatedAt;
+    _lastKnownUpdatedAt = result.updatedAt || remoteTs;
     setCdtStatus('saved','Saved ✓');
     showSyncToast('↻ Updated by another user');
 
   } catch(e){
-    // Fail silently — live sync errors shouldn't interrupt the user
     console.warn('[CBRE] Live sync error:', e);
   }
 }
