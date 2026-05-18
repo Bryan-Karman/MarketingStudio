@@ -880,7 +880,7 @@ function openBuilder(portfolioId, propertyId){
 // ═══════════════════════════════════════════════════════════════
 let allAgents = [];
 let _editingAgentId = null;
-let _agentPhotoB64 = '';
+let _agentPhotoFile = null;
 
 async function loadAgents(){
   try {
@@ -912,24 +912,62 @@ async function renderAgents(){
 function previewAgentPhoto(input){
   const file = input.files[0];
   if(!file) return;
+  _agentPhotoFile = file; // store File object for upload
+  document.getElementById('agent-photo-label').textContent = file.name;
+  document.getElementById('agent-upload-status').textContent = 'Ready to upload';
+  // Show local preview immediately
   const reader = new FileReader();
   reader.onload = ev => {
-    _agentPhotoB64 = ev.target.result;
     const preview = document.getElementById('agent-photo-preview');
-    preview.src = _agentPhotoB64;
+    preview.src = ev.target.result;
     preview.style.display = 'block';
-    document.getElementById('agent-photo-label').textContent = file.name;
   };
   reader.readAsDataURL(file);
 }
 
+// Upload photo file to Supabase Storage, return public URL
+async function uploadAgentPhoto(file, agentId){
+  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `agents/${agentId}.${ext}`;
+  const statusEl = document.getElementById('agent-upload-status');
+  if(statusEl) statusEl.textContent = 'Uploading…';
+
+  // Delete existing file first (upsert via delete+upload)
+  await fetch(`${SUPABASE_URL}/storage/v1/object/agent-photos/${path}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+  }).catch(()=>{});
+
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/agent-photos/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': file.type || 'image/jpeg',
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+
+  if(!res.ok){
+    const txt = await res.text();
+    throw new Error(`Photo upload failed: ${res.status} ${txt}`);
+  }
+
+  if(statusEl) statusEl.textContent = 'Upload complete ✓';
+
+  // Return the public URL
+  return `${SUPABASE_URL}/storage/v1/object/public/agent-photos/${path}`;
+}
+
 function openAgentModal(agentId){
   _editingAgentId = agentId || null;
-  _agentPhotoB64 = '';
+  _agentPhotoFile = null;
   document.getElementById('agent-modal-err').textContent = '';
+  document.getElementById('agent-upload-status').textContent = '';
   document.getElementById('agent-photo-preview').style.display = 'none';
   document.getElementById('agent-photo-input').value = '';
-  document.getElementById('agent-photo-label').textContent = 'Click to upload photo';
+  document.getElementById('agent-photo-label').textContent = 'Choose Photo';
 
   if(agentId){
     const a = allAgents.find(x=>x.id===agentId);
@@ -939,10 +977,9 @@ function openAgentModal(agentId){
     document.getElementById('agent-name').value  = a.name||'';
     document.getElementById('agent-phone').value = a.phone||'';
     if(a.photo){
-      _agentPhotoB64 = a.photo;
-      document.getElementById('agent-photo-preview').src = a.photo;
+      document.getElementById('agent-photo-preview').src = a.photo + '?t=' + Date.now();
       document.getElementById('agent-photo-preview').style.display = 'block';
-      document.getElementById('agent-photo-label').textContent = 'Current photo (upload to replace)';
+      document.getElementById('agent-photo-label').textContent = 'Current photo — click to replace';
     }
   } else {
     document.getElementById('agent-modal-title').textContent = 'Add Agent';
@@ -958,27 +995,40 @@ async function saveAgent(){
   const name  = document.getElementById('agent-name').value.trim();
   const phone = document.getElementById('agent-phone').value.trim();
   const errEl = document.getElementById('agent-modal-err');
+  const saveBtn = document.getElementById('agent-modal-save');
   errEl.textContent = '';
   if(!name){ errEl.textContent = 'Name is required.'; return; }
 
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
   const isEdit = !!_editingAgentId;
   try {
+    const agentId = isEdit ? _editingAgentId : ('ag' + Date.now());
+
+    // Upload photo to Supabase Storage if a new file was chosen
+    let photoUrl = isEdit ? (allAgents.find(a=>a.id===agentId)?.photo || '') : '';
+    if(_agentPhotoFile){
+      photoUrl = await uploadAgentPhoto(_agentPhotoFile, agentId);
+    }
+
     if(isEdit){
-      const updates = {name, phone};
-      if(_agentPhotoB64) updates.photo = _agentPhotoB64;
-      await SB.patch('agents', `?id=eq.${_editingAgentId}`, updates);
-      const idx = allAgents.findIndex(a=>a.id===_editingAgentId);
-      if(idx>-1){ allAgents[idx]={...allAgents[idx],name,phone}; if(_agentPhotoB64) allAgents[idx].photo=_agentPhotoB64; }
+      const updates = {name, phone, photo: photoUrl};
+      await SB.patch('agents', `?id=eq.${agentId}`, updates);
+      const idx = allAgents.findIndex(a=>a.id===agentId);
+      if(idx>-1) allAgents[idx] = {...allAgents[idx], name, phone, photo: photoUrl};
     } else {
-      const id = 'ag'+Date.now();
-      const record = {id, name, phone, photo: _agentPhotoB64||''};
+      const record = {id: agentId, name, phone, photo: photoUrl};
       await SB.post('agents', record);
       allAgents.push(record);
     }
     closeModal('modal-agent');
     renderAgents();
   } catch(e){
-    errEl.textContent = 'Save failed: '+(e.message||e);
+    errEl.textContent = 'Save failed: '+(e.message||String(e));
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = isEdit ? 'Save Changes' : 'Add Agent';
   }
 }
 
@@ -1078,11 +1128,14 @@ function escHtml(str){ const d=document.createElement('div');d.textContent=str;r
     <div class="modal-field">
       <label>Photo (square, JPG or PNG)</label>
       <div style="display:flex;gap:12px;align-items:flex-start;">
-        <label style="flex:1;border:2px dashed var(--border);border-radius:3px;padding:14px;text-align:center;cursor:pointer;font-size:11px;color:var(--muted);" id="agent-photo-label">
-          <input type="file" accept="image/*" id="agent-photo-input" style="display:none;" onchange="previewAgentPhoto(this)">
-          Click to upload photo
-        </label>
-        <img id="agent-photo-preview" style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);display:none;">
+        <div style="flex:1;">
+          <input type="file" accept="image/jpeg,image/png,image/webp" id="agent-photo-input" style="display:none;" onchange="previewAgentPhoto(this)">
+          <button type="button" class="admin-btn" style="width:100%;text-align:center;" onclick="document.getElementById('agent-photo-input').click()">
+            📷 <span id="agent-photo-label">Choose Photo</span>
+          </button>
+          <div id="agent-upload-status" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:14px;"></div>
+        </div>
+        <img id="agent-photo-preview" style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);display:none;flex-shrink:0;">
       </div>
     </div>
     <div class="login-err" id="agent-modal-err"></div>
