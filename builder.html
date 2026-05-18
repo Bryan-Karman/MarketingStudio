@@ -1324,9 +1324,6 @@ function globalSync(){
     });
   }
 
-  // 3. Save current tab state so its savedStates entry stays current
-  savedStates[currentTab]=serializeTab();
-
   debouncedPersist();
 }
 
@@ -2293,10 +2290,8 @@ function switchTab(idx, btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   deselectAll();
-  // Push latest field values into saved state before restoring
-  syncTabOnEntry(idx);
-  // Restore saved state if exists, otherwise build default
-  if(!restoreTab(idx)) buildTemplate(idx);
+  // Always rebuild from template using current field values
+  buildTemplate(idx);
   // Always fit zoom to the new tab's height
   fitZoomToTab();
 }
@@ -2662,7 +2657,10 @@ function syncAgentSlot(i){
     if(ph)  ph.style.display = photo?'none':'';
   });
 
-  globalSync();
+  // Clear all tab snapshots so every tab rebuilds fresh with updated agent values
+  for(let i=0;i<8;i++) delete savedStates[i];
+  // Rebuild current tab immediately so the change is visible now
+  buildTemplate(currentTab);
   debouncedPersist();
 }
 
