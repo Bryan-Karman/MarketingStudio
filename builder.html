@@ -68,6 +68,30 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .color-row{display:flex;align-items:center;gap:6px;}
 .color-row input[type=color]{width:32px;height:28px;border:1px solid #444;border-radius:2px;background:none;cursor:pointer;padding:1px;}
 .color-row input[type=text]{flex:1;}
+
+/* ── AGENT SELECTOR ── */
+.agent-block{border:1px solid #2a2a2a;border-radius:3px;padding:6px 7px;background:#1e1e1e;display:flex;flex-direction:column;gap:4px;}
+.agent-block-head{display:flex;align-items:center;justify-content:space-between;}
+.agent-block-label{font-size:10px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;}
+.agent-mode-toggle{display:flex;gap:0;border:1px solid #333;border-radius:2px;overflow:hidden;}
+.agent-mode-btn{padding:2px 7px;font-size:9px;font-weight:700;cursor:pointer;background:#242424;color:#666;border:none;text-transform:uppercase;letter-spacing:.05em;}
+.agent-mode-btn.active{background:#2a5a3a;color:#5bbf7a;}
+.agent-select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;outline:none;}
+.agent-select:focus{border-color:var(--g);}
+.agent-thumb{width:32px;height:32px;border-radius:2px;object-fit:cover;border:1px solid #333;flex-shrink:0;background:#2a2a2a;}
+.agent-preview{display:flex;align-items:center;gap:7px;}
+.agent-preview-info{font-size:10px;color:#888;line-height:1.4;}
+.agent-custom-fields{display:flex;flex-direction:column;gap:3px;}
+.agent-custom-fields input{width:100%;font-size:11px;padding:4px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;outline:none;}
+.agent-custom-fields input:focus{border-color:var(--g);}
+
+.props-lock-btn{width:100%;padding:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #444;border-radius:2px;background:#242424;color:#aaa;margin-top:4px;text-align:center;}
+.props-lock-btn.locked{border-color:#f0b429;background:#2a1e00;color:#f0b429;}
+.props-lock-btn:hover{background:#2e2e2e;color:#fff;}
+.props-lock-btn.locked:hover{background:#3a2a00;}
+.el.locked-el{cursor:not-allowed!important;}
+.el.locked-el .rh{display:none!important;}
+.el.locked-el .el-sel-ring{border-color:#f0b429;border-style:dashed;}
 .props-del-btn{margin-top:4px;width:100%;padding:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #7a2222;border-radius:2px;background:#2a1515;color:#e06060;}
 .props-del-btn:hover{background:#3a1818;color:#ff8888;}
 
@@ -278,18 +302,14 @@ Prime education-rich precinct</textarea>
       <div class="fl"><label>Sale Date &amp; Details</label><input id="fd" value="10:30am Tuesday 12 May 2026, Sydney Opera House" oninput="clEnforce('fd');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fd"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fd" placeholder="∞" oninput="clSetLimit('fd',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Agents</div>
-      <div class="fl"><label>Agent 1 Name</label><input id="fn1" value="Flynn McFall" oninput="clEnforce('fn1');globalSync()">
-        <div class="cl-row"><span class="cl-count" id="cl-fn1"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fn1" placeholder="∞" oninput="clSetLimit('fn1',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Number 1</label><input id="fp1" value="0481 187 191" oninput="clEnforce('fp1');globalSync()">
-        <div class="cl-row"><span class="cl-count" id="cl-fp1"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fp1" placeholder="∞" oninput="clSetLimit('fp1',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Agent 2 Name</label><input id="fn2" value="Darren Beehag" oninput="clEnforce('fn2');globalSync()">
-        <div class="cl-row"><span class="cl-count" id="cl-fn2"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fn2" placeholder="∞" oninput="clSetLimit('fn2',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Number 2</label><input id="fp2" value="0411 226 223" oninput="clEnforce('fp2');globalSync()">
-        <div class="cl-row"><span class="cl-count" id="cl-fp2"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fp2" placeholder="∞" oninput="clSetLimit('fp2',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Agent 3 Name</label><input id="fn3" value="Ben Parsonage" oninput="clEnforce('fn3');globalSync()">
-        <div class="cl-row"><span class="cl-count" id="cl-fn3"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fn3" placeholder="∞" oninput="clSetLimit('fn3',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Number 3</label><input id="fp3" value="0455 331 841" oninput="clEnforce('fp3');globalSync()">
-        <div class="cl-row"><span class="cl-count" id="cl-fp3"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fp3" placeholder="∞" oninput="clSetLimit('fp3',this.value)" title="Max characters"></span></div></div>
+      <!-- Hidden inputs — populated by agent selector JS, consumed by globalSync -->
+      <input type="hidden" id="fn1"><input type="hidden" id="fp1">
+      <input type="hidden" id="fn2"><input type="hidden" id="fp2">
+      <input type="hidden" id="fn3"><input type="hidden" id="fp3">
+      <input type="hidden" id="fn4"><input type="hidden" id="fp4">
+      <div id="agent-blocks-wrap" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:10px;color:#555;padding:4px 0;">Loading agents…</div>
+      </div>
       <div class="sec">Assets</div>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo</label>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img1')">+ Upload Hero Image</label>
@@ -351,11 +371,16 @@ const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800
 const CBRE_LOGO_WHITE = 'data:image/png;base64,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';
 const CBRE_LOGO_GREEN = 'data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MSAyMC4xMyI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDNmMmQ7fTwvc3R5bGU+PC9kZWZzPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTMzLjU3LDE1LjQxSDI2Ljg5VjEyLjA1aDYuODZhMS42NiwxLjY2LDAsMCwxLDEuNDksMS42NCwxLjczLDEuNzMsMCwwLDEtMS42NywxLjcybS02LjY4LTExaDdBMS42NCwxLjY0LDAsMCwxLDM1LjMsNmExLjcyLDEuNzIsMCwwLDEtMS40MywxLjY4aC03Wm05Ljk0LDUuMzdjMi41Ni0uODUsMy0zLDMtNC43NSwwLTIuNjgtMS44OS01LTcuNDgtNUgyMS45NFYyMC4wOWgxMC40QzM4LDIwLjA5LDQwLDE3LjIxLDQwLDE0LjMyYTQuOTEsNC45MSwwLDAsMC0zLjE5LTQuNThNNjMuMzcsMFYyMC4xM0g4MVYxNS41NEg2OC4yOFYxMkg3OS43NVY3LjYzSDY4LjI4VjQuMzlIODFWMFpNNTUuNzksNi4yNmExLjY1LDEuNjUsMCwwLDEtMS41NywxLjM4SDQ3LjM0VjQuNDNoNi44OGExLjU3LDEuNTcsMCwwLDEsMS41NywxLjRaTTUzLjEyLDBINDIuNDd2MjAuMWg0Ljg5VjEyaDUuMzlhMi44LDIuOCwwLDAsMSwyLjc0LDIuODV2NS4yN2g0Ljc5VjEzLjYyYTQuMjEsNC4yMSwwLDAsMC0yLjktMy44OSw0LjUsNC41LDAsMCwwLDMtNC40NEM2MC4zNC45NCw1Ni42LDAsNTMuMTIsME0xOC43NiwxNS4yN2MtLjA3LDAtNi42OS4xMy05LS4wOWE1LjE2LDUuMTYsMCwwLDEtNS01LjMxLDUuMTQsNS4xNCwwLDAsMSw0LjgyLTUuMmMxLjM5LS4xOSw5LS4xLDkuMDktLjFoLjE2TDE4LjksMGgtLjE2TDEwLjExLDBBMTIuNzMsMTIuNzMsMCwwLDAsNS45My44NCwxMC4yNSwxMC4yNSwwLDAsMCwyLDRhMTAsMTAsMCwwLDAtMiw2LDEyLjE1LDEyLjE1LDAsMCwwLC4xNiwyQTkuOCw5LjgsMCwwLDAsNS42NSwxOWExNC43MiwxNC43MiwwLDAsMCw1LjQ2LDEuMTFsMS42MywwaDYuMTdWMTUuMjdaIi8+PC9zdmc+';
 
+const SVG_CBRE_GREEN      = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPGRlZnM+CiAgICA8c3R5bGU+LnN0MHtmaWxsOiNmZmY7fS5zdDF7ZmlsbDojMDAzZjJkO308L3N0eWxlPgogIDwvZGVmcz4KICA8cmVjdCBjbGFzcz0ic3QwIiB3aWR0aD0iMTQyNy44MiIgaGVpZ2h0PSIzODMuODIiLz4KICA8cGF0aCBjbGFzcz0ic3QxIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhsLjM1LTU2LjdaTTY1MC4yNywxODYuOTZjNDQuMzktMTQuNzQsNTIuMDItNTIuMDIsNTIuMDItODIuMzYsMC00Ni40Ny0zMi43Ny04Ni43LTEyOS43LTg2LjdoLTE4MC41djM0Ny44M2gxODAuMzNjOTguMTQsMCwxMzIuODItNDkuOTQsMTMyLjgyLTEwMC4wNSwwLTM1LjM3LTIyLjE5LTY2LjkzLTU1LjMxLTc5LjQxTTExMTAuNDYsMTcuMzh2MzQ5LjA0aDMwNS43di03OS41OWgtMjIwLjU2di02MS4zOGgxOTguODh2LTc1Ljc3aC0xOTguODh2LTU2LjE4aDIyMC41NlYxNy4zOGgtMzA1LjdaTTk3OS4wMiwxMjUuOTNjLTIuMjUsMTMuNTItMTMuNTIsMjMuNDEtMjcuMjIsMjMuOTNoLTExOS4zdi01NS42NmgxMTkuM2MxMy44NywwLDI1LjY2LDEwLjQsMjcuMjIsMjQuMjh2Ny40NlpNOTMyLjczLDE3LjM4aC0xODQuNjd2MzQ4LjUyaDg0Ljc5di0xNDAuNDVoOTMuNDZjMjYuNy41Miw0OC4wMywyMi43MSw0Ny41MSw0OS40MnY5MS4zOGg4My4wNnYtMTEyLjcxYy0uODctMzAuODYtMjAuOTgtNTcuOTEtNTAuMjgtNjcuNDUsMzIuNDItMTEuNDQsNTMuNTgtNDIuNjYsNTIuMDItNzYuOTktLjY5LTc1LjQzLTY1LjU0LTkxLjczLTEyNS44OC05MS43M00zMzYuOTQsMjgyLjE2Yy0xLjIxLDAtMTE2LDIuMjUtMTU2LjA2LTEuNTYtNDkuNDItMS41Ni04OC4wOC00Mi42Ni04Ni43LTkyLjA3LS42OS00Ny41MSwzNi4wNy04Ny4yMiw4My41OC05MC4xNywyNC4xLTMuMjksMTU2LjA2LTEuNzMsMTU3LjYyLTEuNzNoMi43N2wxLjIxLTc5LjI0aC0xNTIuNDFjLTI0LjguNjktNDkuMjQsNS43Mi03Mi40OCwxNC41Ny0yNi44OCwxMi4zMS01MC4yOCwzMS4yMS02OC4xNCw1NC43OS0yMi41NCwzMC0zNC42OCw2Ni41OC0zNC42OCwxMDQuMDQsMCwxMS42Mi44NywyMy4yMywyLjc3LDM0LjY4LDEwLjQsNTMuNDEsNDUuOTUsOTguNDksOTUuMTksMTIxLjM4LDMwLDEyLjMxLDYyLjI1LDE4LjksOTQuNjcsMTkuMjVoMTM1LjI1di04My45MmgtMi42WiIvPgo8L3N2Zz4K';
+const SVG_CBRE_WHITE      = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CgogICAgICAuc3QxIHsKICAgICAgICBmaWxsOiAjMDAzZjJkOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cmVjdCBjbGFzcz0ic3QxIiB3aWR0aD0iMTQyNy44MiIgaGVpZ2h0PSIzODMuODIiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhsLjM1LTU2LjdaTTY1MC4yNywxODYuOTZjNDQuMzktMTQuNzQsNTIuMDItNTIuMDIsNTIuMDItODIuMzYsMC00Ni40Ny0zMi43Ny04Ni43LTEyOS43LTg2LjdoLTE4MC41djM0Ny44M2gxODAuMzNjOTguMTQsMCwxMzIuODItNDkuOTQsMTMyLjgyLTEwMC4wNSwwLTM1LjM3LTIyLjE5LTY2LjkzLTU1LjMxLTc5LjQxTTExMTAuNDYsMTcuMzh2MzQ5LjA0aDMwNS43di03OS41OWgtMjIwLjU2di02MS4zOGgxOTguODh2LTc1Ljc3aC0xOTguODh2LTU2LjE4aDIyMC41NlYxNy4zOGgtMzA1LjdaTTk3OS4wMiwxMjUuOTNjLTIuMjUsMTMuNTItMTMuNTIsMjMuNDEtMjcuMjIsMjMuOTNoLTExOS4zdi01NS42NmgxMTkuM2MxMy44NywwLDI1LjY2LDEwLjQsMjcuMjIsMjQuMjh2Ny40NlpNOTMyLjczLDE3LjM4aC0xODQuNjd2MzQ4LjUyaDg0Ljc5di0xNDAuNDVoOTMuNDZjMjYuNy41Miw0OC4wMywyMi43MSw0Ny41MSw0OS40MnY5MS4zOGg4My4wNnYtMTEyLjcxYy0uODctMzAuODYtMjAuOTgtNTcuOTEtNTAuMjgtNjcuNDUsMzIuNDItMTEuNDQsNTMuNTgtNDIuNjYsNTIuMDItNzYuOTktLjY5LTc1LjQzLTY1LjU0LTkxLjczLTEyNS44OC05MS43M00zMzYuOTQsMjgyLjE2Yy0xLjIxLDAtMTE2LDIuMjUtMTU2LjA2LTEuNTYtNDkuNDItMS41Ni04OC4wOC00Mi42Ni04Ni43LTkyLjA3LS42OS00Ny41MSwzNi4wNy04Ny4yMiw4My41OC05MC4xNywyNC4xLTMuMjksMTU2LjA2LTEuNzMsMTU3LjYyLTEuNzNoMi43N2wxLjIxLTc5LjI0aC0xNTIuNDFjLTI0LjguNjktNDkuMjQsNS43Mi03Mi40OCwxNC41Ny0yNi44OCwxMi4zMS01MC4yOCwzMS4yMS02OC4xNCw1NC43OS0yMi41NCwzMC0zNC42OCw2Ni41OC0zNC42OCwxMDQuMDQsMCwxMS42Mi44NywyMy4yMywyLjc3LDM0LjY4LDEwLjQsNTMuNDEsNDUuOTUsOTguNDksOTUuMTksMTIxLjM4LDMwLDEyLjMxLDYyLjI1LDE4LjksOTQuNjcsMTkuMjVoMTM1LjI1di04My45MmgtMi42WiIvPgo8L3N2Zz4=';
+const SVG_PORTFOLIO_GREEN = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM0Ny44Ij4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuNC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjQgQnVpbGQgMjI2KSAgLS0+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5zdDAgewogICAgICAgIGZpbGw6ICMxN2U4OGY7CiAgICAgIH0KCiAgICAgIC5zdDEgewogICAgICAgIGZpbGw6ICMwMDNmMmQ7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxyZWN0IGNsYXNzPSJzdDEiIHdpZHRoPSIxNDI3LjgyIiBoZWlnaHQ9IjM0Ny44Ii8+CiAgPGc+CiAgICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNzYyLjQ5LDExMy4zaDM5LjQ5djU1LjM4aC0zOS40OXYxNjIuNzhoLTU4LjJ2LTE2Mi43OGgtNTQuODF2ODguNzhjMCw4LjUxLDYuOSwxNS40MSwxNS40MSwxNS40MWgyNC43M3Y1OC4yaC0yNy4xM2MtMzkuMzMsMC03MS4yMS0zMS44OC03MS4yMS03MS4yMXYtOTEuMThoLTIxLjN2LTU1LjM4aDIxLjNWMjguMThoNTguMnY4NS4xMmg1NC44MXYtMTcuNGMwLTQzLjA4LDM0LjkyLTc4LDc4LTc4aDMxLjM3djU4LjJoLTI4Ljg0Yy0xMi4zMywwLTIyLjMzLDEwLTIyLjMzLDIyLjMzdjE0Ljg3Wk01MDEuMjQsMTMxLjY5YzE2LjgzLTExLjQxLDM1LjM0LTE4LjM5LDU0LjQzLTE4LjM5djU1LjM4Yy0zNS42MiwwLTU2LjM0LDI5LjYyLTU2LjM0LDYwLjg0bC0uMDMsMTAxLjk0aC01NC4zMVYxMTUuOTFoNTYuMjZ2MTUuNzhaTTExNy4yNSwxNzUuOGgtNTIuNTl2LTgwLjkyaDUyLjU5YzIwLjg2LDAsMzcuODMsMTguMTUsMzcuODMsNDAuNDZzLTE2Ljk3LDQwLjQ2LTM3LjgzLDQwLjQ2TTExNy4yNSwzNS45SDExLjY1djI5NS41Nmg1M3YtOTYuNjhoNTIuNTljNTMuNDcsMCw5Ni44MS00NC41Miw5Ni44MS05OS40NXMtNDMuMzQtOTkuNDQtOTYuODEtOTkuNDRNMTEyMC4zMiwzNS45aDU4LjJ2NjEuOTFoLTU4LjJ2LTYxLjkxWk0xMTIwLjMyLDExNS45MWg1OC4ydjIxNS41NWgtNTguMlYxMTUuOTFaTTEwMzkuNTUsMzUuOWg1OC4ydjI5NS41NmgtNTguMlYzNS45Wk0xMzA1LjY3LDI3MS4wOWMtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OE0xMzA1LjY3LDExMi4wM2MtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OU05MTMuMTUsMjcxLjA5Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4TTkxMy4xNSwxMTIuMDNjLTYxLjAyLDAtMTEwLjQ5LDQ5LjQ3LTExMC40OSwxMTAuNDlzNDkuNDcsMTEwLjQ5LDExMC40OSwxMTAuNDksMTEwLjQ5LTQ5LjQ3LDExMC40OS0xMTAuNDktNDkuNDctMTEwLjQ5LTExMC40OS0xMTAuNDkiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0zMTkuNDEsMTEwLjAxYy02MS4wMiwwLTExMC40OSw0OS40Ny0xMTAuNDksMTEwLjQ5czQ5LjQ3LDExMC40OSwxMTAuNDksMTEwLjQ5LDExMC40OS00OS40NywxMTAuNDktMTEwLjQ5LTQ5LjQ3LTExMC40OS0xMTAuNDktMTEwLjQ5Wk0zMTkuNDEsMjY5LjA3Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4WiIvPgogIDwvZz4KPC9zdmc+';
+const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM0Ny44Ij4KICA8ZGVmcz4KICAgIDxzdHlsZT4uc3Qwe2ZpbGw6IzE3ZTg4Zjt9LnN0MXtmaWxsOiNmZmY7fTwvc3R5bGU+CiAgPC9kZWZzPgogIDxyZWN0IGNsYXNzPSJzdDEiIHdpZHRoPSIxNDI3LjgyIiBoZWlnaHQ9IjM0Ny44Ii8+CiAgPGc+CiAgICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNzYyLjQ5LDExMy4zaDM5LjQ5djU1LjM4aC0zOS40OXYxNjIuNzhoLTU4LjJ2LTE2Mi43OGgtNTQuODF2ODguNzhjMCw4LjUxLDYuOSwxNS40MSwxNS40MSwxNS40MWgyNC43M3Y1OC4yaC0yNy4xM2MtMzkuMzMsMC03MS4yMS0zMS44OC03MS4yMS03MS4yMXYtOTEuMThoLTIxLjN2LTU1LjM4aDIxLjNWMjguMThoNTguMnY4NS4xMmg1NC44MXYtMTcuNGMwLTQzLjA4LDM0LjkyLTc4LDc4LTc4aDMxLjM3djU4LjJoLTI4Ljg0Yy0xMi4zMywwLTIyLjMzLDEwLTIyLjMzLDIyLjMzdjE0Ljg3Wk01MDEuMjQsMTMxLjY5YzE2LjgzLTExLjQxLDM1LjM0LTE4LjM5LDU0LjQzLTE4LjM5djU1LjM4Yy0zNS42MiwwLTU2LjM0LDI5LjYyLTU2LjM0LDYwLjg0bC0uMDMsMTAxLjk0aC01NC4zMVYxMTUuOTFoNTYuMjZ2MTUuNzhaTTExNy4yNSwxNzUuOGgtNTIuNTl2LTgwLjkyaDUyLjU5YzIwLjg2LDAsMzcuODMsMTguMTUsMzcuODMsNDAuNDZzLTE2Ljk3LDQwLjQ2LTM3LjgzLDQwLjQ2TTExNy4yNSwzNS45SDExLjY1djI5NS41Nmg1M3YtOTYuNjhoNTIuNTljNTMuNDcsMCw5Ni44MS00NC41Miw5Ni44MS05OS40NXMtNDMuMzQtOTkuNDQtOTYuODEtOTkuNDRNMTEyMC4zMiwzNS45aDU4LjJ2NjEuOTFoLTU4LjJ2LTYxLjkxWk0xMTIwLjMyLDExNS45MWg1OC4ydjIxNS41NWgtNTguMlYxMTUuOTFaTTEwMzkuNTUsMzUuOWg1OC4ydjI5NS41NmgtNTguMlYzNS45Wk0xMzA1LjY3LDI3MS4wOWMtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OE0xMzA1LjY3LDExMi4wM2MtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OU05MTMuMTUsMjcxLjA5Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4TTkxMy4xNSwxMTIuMDNjLTYxLjAyLDAtMTEwLjQ5LDQ5LjQ3LTExMC40OSwxMTAuNDlzNDkuNDcsMTEwLjQ5LDExMC40OSwxMTAuNDksMTEwLjQ5LTQ5LjQ3LDExMC40OS0xMTAuNDktNDkuNDctMTEwLjQ5LTExMC40OS0xMTAuNDkiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0zMTkuNDEsMTEwLjAxYy02MS4wMiwwLTExMC40OSw0OS40Ny0xMTAuNDksMTEwLjQ5czQ5LjQ3LDExMC40OSwxMTAuNDksMTEwLjQ5LDExMC40OS00OS40NywxMTAuNDktMTEwLjQ5LTQ5LjQ3LTExMC40OS0xMTAuNDktMTEwLjQ5Wk0zMTkuNDEsMjY5LjA3Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4WiIvPgogIDwvZz4KPC9zdmc+Cg==';
+
 // ════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════
 let currentTab=0, zoom=0.65, selectedEl=null;
-let assets={logo:'',img1:'',img2:'',img3:''};
+let assets={logo:'',img1:'',img2:'',img3:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
 let savedStates={};
 let nextId=1;
 let _lastKnownUpdatedAt=null; // tracks the Supabase updated_at we last loaded/saved
@@ -396,6 +421,11 @@ document.addEventListener('keydown', function(e){
   if(undoKey){
     e.preventDefault();
     undoStep();
+  }
+  // Delete / Backspace — remove the selected element
+  if((e.key === 'Delete' || e.key === 'Backspace') && selectedEl){
+    e.preventDefault();
+    deleteSelected();
   }
 });
 
@@ -550,6 +580,7 @@ function createElement(cfg){
     if(el.classList.contains('crop-mode')) return;
     e.stopPropagation();
     selectElement(el);
+    if(el.dataset.locked==='1') return; // locked — no drag or pan
 
     const sx=e.clientX, sy=e.clientY;
     let committed=false;
@@ -640,6 +671,7 @@ function applyTextStyle(inner, cfg){
 const DRAG_THRESHOLD = 4; // px — must move this far before drag begins
 
 function startDrag(e, el){
+  if(el.dataset.locked==='1') return;
   const sx=e.clientX, sy=e.clientY;
   const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
   let dragging = false;
@@ -667,6 +699,7 @@ function startDrag(e, el){
 }
 
 function startResize(e, el, handle){
+  if(el.dataset.locked==='1') return;
   undoSnapshot();
   const sx=e.clientX, sy=e.clientY;
   const ow=parseFloat(el.style.width), oh=parseFloat(el.style.height);
@@ -1032,6 +1065,10 @@ function showProps(el){
     </div>`;
   }
 
+  const isLocked = selectedEl && selectedEl.dataset.locked === '1';
+  html+=`<button class="props-lock-btn ${isLocked?'locked':''}" onclick="toggleLock()">
+    ${isLocked ? '🔒 Locked — click to unlock' : '🔓 Lock Position &amp; Size'}
+  </button>`;
   html+=`<button class="props-del-btn" onclick="deleteSelected()">🗑 Delete Element</button>`;
   pc.innerHTML=html;
 }
@@ -1116,6 +1153,23 @@ function deleteSelected(){
 }
 
 // rgb(r,g,b) → #rrggbb
+function toggleLock(){
+  if(!selectedEl) return;
+  const locked = selectedEl.dataset.locked === '1';
+  if(locked){
+    selectedEl.dataset.locked = '0';
+    selectedEl.classList.remove('locked-el');
+    selectedEl.style.cursor = '';
+  } else {
+    selectedEl.dataset.locked = '1';
+    selectedEl.classList.add('locked-el');
+    selectedEl.style.cursor = 'not-allowed';
+  }
+  debouncedPersist();
+  showProps(selectedEl); // refresh panel to update button state
+}
+
+
 function rgbToHex(str){
   if(!str||str==='') return '#000000';
   if(str.startsWith('#')) return str.length===4?'#'+str[1]+str[1]+str[2]+str[2]+str[3]+str[3]:str;
@@ -1135,7 +1189,7 @@ function serializeTab(){
     const img=el.querySelector('img');
     const ak=el.dataset.assetKey||'';
     const obj={
-      eid:el.dataset.eid, type:el.dataset.type,
+      eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
       field:el.dataset.field, assetKey:ak,
     };
@@ -1182,6 +1236,11 @@ function restoreTab(idx){
       field:sv.field, assetKey:sv.assetKey,
     };
     const el=createElement(cfg);
+    if(sv.locked==='1'){
+      el.dataset.locked='1';
+      el.classList.add('locked-el');
+      el.style.cursor='not-allowed';
+    }
     const inner=el.querySelector('.el-inner');
     // Apply saved style FIRST
     if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
@@ -1197,7 +1256,8 @@ function restoreTab(idx){
       const ph=el.querySelector('.img-ph-txt');
       const isLogo=sv.assetKey==='logo';
       // Re-apply correct background & object-fit
-      if(inner){ inner.style.background=isLogo?'transparent':'#c5ccc5'; }
+      const isSvg=sv.assetKey===''&&sv.imgSrc&&sv.imgSrc.startsWith('data:image/svg');
+      if(inner){ inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5'; }
       // Use assets store as source of truth, fall back to saved imgSrc
       const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : sv.imgSrc;
       if(src){
@@ -1210,7 +1270,7 @@ function restoreTab(idx){
             img.dataset.cropW=sv.cropW; img.dataset.cropH=sv.cropH;
             el.classList.add('has-crop');
           } else {
-            img.style.cssText=`position:absolute;inset:0;width:100%;height:100%;object-fit:${isLogo?'contain':'cover'};display:block;`;
+            img.style.cssText=`position:absolute;inset:0;width:100%;height:100%;object-fit:${(isLogo||isSvg)?'contain':'cover'};display:block;`;
           }
         }
         if(ph) ph.style.display='none';
@@ -1220,6 +1280,7 @@ function restoreTab(idx){
       }
     }
   });
+  injectSVGLogos(idx);
   return true;
 }
 
@@ -1290,6 +1351,7 @@ function getFieldVal(field){
     agent1name:gv('fn1'), agent1num:gv('fp1'),
     agent2name:gv('fn2'), agent2num:gv('fp2'),
     agent3name:gv('fn3'), agent3num:gv('fp3'),
+    agent4name:gv('fn4'), agent4num:gv('fp4'),
   };
   return map[field]??null;
 }
@@ -1315,6 +1377,7 @@ function fieldToSidebarId(field){
     agent1name:'fn1', agent1num:'fp1',
     agent2name:'fn2', agent2num:'fp2',
     agent3name:'fn3', agent3num:'fp3',
+    agent4name:'fn4', agent4num:'fp4',
   };
   return map[field]||null;
 }
@@ -1375,6 +1438,90 @@ function mkR(x,y,w,h,bg,cfg){
 function mkI(x,y,w,h,assetKey,label,cfg){
   return createElement({id:nextId++,type:'img',x,y,w,h,assetKey,label,...cfg});
 }
+const SVG_LOGO_POS = [
+  [8,167,118,204,102,27,25],
+  [68,151,236,204,160,43,39],
+  [233,514,401,567,160,43,39],
+  [134,373,302,426,160,43,39],
+  [432,373,600,426,160,43,39],
+  [8,745,110,780,94,25,23],
+  [236,352,404,405,160,43,39],
+  [290,292,458,345,160,43,39]
+];
+
+function mkSVGLogo(x,y,w,h,uri,svgKey,cfg){
+  const id = nextId++;
+  const el = document.createElement('div');
+  el.className = 'el';
+  el.dataset.eid = id;
+  el.dataset.type = 'img';
+  el.dataset.field = '';
+  el.dataset.assetKey = '';
+  el.dataset.svgKey = svgKey;
+  el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${cfg&&cfg.z||50};`;
+
+  const inner = document.createElement('div');
+  inner.className = 'el-inner';
+  inner.style.cssText = 'background:transparent;';
+
+  const img = document.createElement('img');
+  img.src = uri;
+  img.dataset.svgUri = svgKey; // store key not full URI to keep serialized state small
+  img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;';
+  inner.appendChild(img);
+  el.appendChild(inner);
+
+  const ring = document.createElement('div'); ring.className='el-sel-ring'; el.appendChild(ring);
+  ['nw','n','ne','e','se','s','sw','w'].forEach(pos=>{
+    const rh=document.createElement('div');rh.className=`rh rh-${pos}`;rh.dataset.h=pos;
+    rh.addEventListener('mousedown',e=>{e.stopPropagation();startResize(e,el,pos);});
+    el.appendChild(rh);
+  });
+
+  // Drag — identical pattern to addCBRELogos which is known to work
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('rh')) return;
+    e.stopPropagation();
+    selectElement(el);
+    if(el.dataset.locked==='1') return;
+    const sx=e.clientX, sy=e.clientY;
+    const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
+    let committed=false;
+    function mv(e){
+      const dx=e.clientX-sx, dy=e.clientY-sy;
+      if(Math.sqrt(dx*dx+dy*dy)<DRAG_THRESHOLD) return;
+      if(!committed){committed=true;undoSnapshot();}
+      el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
+      el.style.top=Math.round(oy+(e.clientY-sy)/zoom)+'px';
+      el.style.cursor='grabbing';
+    }
+    function up(){
+      el.style.cursor='';
+      if(committed) debouncedPersist();
+      window.removeEventListener('mousemove',mv);
+      window.removeEventListener('mouseup',up);
+    }
+    window.addEventListener('mousemove',mv);
+    window.addEventListener('mouseup',up);
+  });
+
+  document.getElementById('artwork').appendChild(el);
+  return el;
+}
+
+// Inject logos onto the current artwork — skips if any already present
+function injectSVGLogos(tabIdx){
+  const art = document.getElementById('artwork');
+  if(art.querySelector('[data-svg-key]')) return; // already there
+  const p = SVG_LOGO_POS[tabIdx];
+  if(!p) return;
+  const [sx,sy,col2x,row2y,lw,h_cbre,h_port] = p;
+  mkSVGLogo(sx,    sy,    lw, h_cbre, SVG_CBRE_GREEN,      'cbre-green',      {z:200});
+  mkSVGLogo(col2x, sy,    lw, h_cbre, SVG_CBRE_WHITE,      'cbre-white',      {z:200});
+  mkSVGLogo(sx,    row2y, lw, h_port, SVG_PORTFOLIO_GREEN, 'portfolio-green', {z:200});
+  mkSVGLogo(col2x, row2y, lw, h_port, SVG_PORTFOLIO_WHITE, 'portfolio-white', {z:200});
+}
+
 
 // ─── INJECT CBRE LOGOS into a freshly built template ───
 // Called at end of every buildXxx() function.
@@ -1466,6 +1613,7 @@ function buildTemplate(idx){
   deselectAll();
   document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
   [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][idx](s[0],s[1]);
+  injectSVGLogos(idx);
 }
 
 // ─── AFR 2-AGENT 228×398 ───
@@ -1514,9 +1662,10 @@ function buildAFR4(W,H){
   all.slice(half).forEach((b,i)=>mkT(W/2+10,276+i*14,W/2-20,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
   const sy=276+half*14+6;
   mkT(10,sy,W-20,14,[gv('fm'),gv('fd')].filter(Boolean).join(' '),{fontWeight:'700',fontSize:'10px',z:3});
-  [[gv('fn1'),gv('fp1'),10],[gv('fn2'),gv('fp2'),W/3+5],[gv('fn3'),gv('fp3'),W*2/3+5]].forEach(([n,p,x])=>{
-    mkT(x,sy+18,W/3-15,13,n,{fontWeight:'700',fontSize:'10px',z:3});
-    mkT(x,sy+30,W/3-15,13,p,{fontSize:'10px',z:3});
+  [[gv('fn1'),gv('fp1'),10],[gv('fn2'),gv('fp2'),W/4+5],[gv('fn3'),gv('fp3'),W/2+5],[gv('fn4'),gv('fp4'),W*3/4+5]].forEach(([n,p,x])=>{
+    if(!n) return;
+    mkT(x,sy+18,W/4-12,13,n,{fontWeight:'700',fontSize:'9px',z:3});
+    mkT(x,sy+30,W/4-12,13,p,{fontSize:'9px',z:3});
   });
   const bord=document.createElement('div');
   bord.style.cssText=`position:absolute;inset:0;border:1px solid #aaa;pointer-events:none;z-index:9998;`;
@@ -1544,9 +1693,11 @@ function buildAuction(W,H){
   mkT(20,690+bulls.length*22+4,360,20,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'14px',color:DK,z:2,field:'income'});
   mkR(W-244,686,1,200,'#ddd',{z:2});
   mkT(W-234,690,210,18,'CBRE',{fontWeight:'700',fontSize:'13px',color:DK,z:2});
-  mkT(W-234,710,210,18,gv('fn1'),{fontSize:'13px',color:'#333',z:2,field:'agent1name'});
-  mkT(W-234,728,210,18,gv('fn2'),{fontSize:'13px',color:'#333',z:2,field:'agent2name'});
-  mkT(W-234,746,210,18,gv('fn3'),{fontSize:'13px',color:'#333',z:2,field:'agent3name'});
+  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
+    if(!n) return;
+    mkT(W-234,710+i*22,130,18,n,{fontSize:'12px',color:'#333',z:2});
+    mkT(W-100,710+i*22,90,18,p,{fontSize:'11px',color:'#555',z:2});
+  });
   mkT(0,H-18,W,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'7px',color:'#999',padding:'0 18px',z:2});
   // Portfolio + CBRE logos top
   addCBRELogos(W,H,[
@@ -1576,9 +1727,10 @@ function buildBrochure1(W,H){
   mkR(c2x-8,ry,1,200,'#ddd',{z:2}); mkR(c3x-8,ry,1,200,'#ddd',{z:2});
   gv('fbc').split('\n').filter(Boolean).forEach((b,i)=>mkT(c2x,ry+i*14,cW,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
   mkT(c3x,ry,cW,14,'Contact',{fontWeight:'700',fontSize:'10px',color:DK,z:3});
-  mkT(c3x,ry+16,cW,13,gv('fn1')+' '+gv('fp1'),{fontSize:'9px',color:'#333',z:3});
-  mkT(c3x,ry+30,cW,13,gv('fn2')+' '+gv('fp2'),{fontSize:'9px',color:'#333',z:3});
-  mkT(c3x,ry+44,cW,13,gv('fn3')+' '+gv('fp3'),{fontSize:'9px',color:'#333',z:3});
+  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
+    if(!n) return;
+    mkT(c3x,ry+16+i*14,cW,13,n+' '+p,{fontSize:'9px',color:'#333',z:3});
+  });
   mkT(c3x,ry+64,cW,14,gv('fm'),{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'salemethod'});
   mkT(c3x,ry+80,cW,38,gv('fd'),{fontSize:'9px',color:'#555',lineHeight:'1.4',z:3,field:'saledate'});
   mkT(c3x,ry+122,cW,13,'*Approx',{fontSize:'8px',color:'#999',z:3});
@@ -1631,9 +1783,10 @@ function buildBrochure2(W,H){
   mkT(c1x,ry+130,cW,12,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'income'});
   gv('fbc').split('\n').filter(Boolean).forEach((b,i)=>mkT(c2x,ry+i*12,cW,11,'– '+b,{fontSize:'7px',color:'#222',z:5}));
   mkT(c3x,ry,cW,11,'Contact',{fontWeight:'700',fontSize:'8px',color:DK,z:5});
-  mkT(c3x,ry+13,cW,11,gv('fn1')+' '+gv('fp1'),{fontSize:'7px',color:'#333',z:5});
-  mkT(c3x,ry+25,cW,11,gv('fn2')+' '+gv('fp2'),{fontSize:'7px',color:'#333',z:5});
-  mkT(c3x,ry+37,cW,11,gv('fn3')+' '+gv('fp3'),{fontSize:'7px',color:'#333',z:5});
+  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
+    if(!n) return;
+    mkT(c3x,ry+13+i*12,cW,11,n+' '+p,{fontSize:'7px',color:'#333',z:5});
+  });
   mkT(c3x,ry+52,cW,12,gv('fm'),{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'salemethod'});
   mkT(c3x,ry+65,cW,22,gv('fd'),{fontSize:'7px',color:'#555',lineHeight:'1.4',z:5,field:'saledate'});
   mkT(c3x,ry+90,cW,10,'*Approx',{fontSize:'7px',color:'#999',z:5});
@@ -1671,11 +1824,12 @@ function buildEDM(W,H){
   mkI(0,i3Y,W,130,'img3','Third image',{z:1});
   const asY=i3Y+138;
   mkT(12,asY,W-24,18,'For more information contact the sales team',{fontWeight:'700',fontSize:'12px',color:'#111',z:2});
-  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')]].filter(a=>a[0]).forEach((a,i)=>{
+  [[gv('fn1'),gv('fp1'),'agent1photo'],[gv('fn2'),gv('fp2'),'agent2photo'],[gv('fn3'),gv('fp3'),'agent3photo'],[gv('fn4'),gv('fp4'),'agent4photo']].forEach(([n,p,photoKey],i)=>{
+    if(!n) return;
     const ay=asY+24+i*52;
-    mkR(12,ay,40,40,'#c5ccc5',{z:2});
-    mkT(58,ay+2,W-70,18,a[0],{fontWeight:'700',fontSize:'11px',z:2});
-    mkT(58,ay+18,W-70,16,a[1],{fontSize:'11px',color:'#555',z:2});
+    mkI(12,ay,40,40,photoKey,'Photo',{z:2});
+    mkT(58,ay+2,W-70,18,n,{fontWeight:'700',fontSize:'11px',z:2});
+    mkT(58,ay+18,W-70,16,p,{fontSize:'11px',color:'#555',z:2});
   });
   const ctaY=asY+24+3*52+10;
   ['Request Information Memorandum','View Listing','View Full Portfolio Line Up'].forEach((lbl,i)=>{
@@ -1723,11 +1877,10 @@ function buildSignboard(W,H){
   mkT(28,Math.round(H*.87),SX-50,Math.round(H*.08),gv('fd'),{color:GB,fontSize:'14px',z:3,field:'saledate'});
   mkT(28,H-28,SX-50,16,'*Approx.',{color:'rgba(255,255,255,.35)',fontSize:'10px',z:3});
   mkT(SX-180,H-28,160,16,'cbre.com.au/properties',{color:'rgba(255,255,255,.35)',fontSize:'10px',z:3});
-  const ags=[[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')]].filter(a=>a[0]);
-  ags.forEach((a,i)=>{
-    const ay=Math.round(H*.44)+i*Math.round(H*.17);
-    mkT(SX+16,ay,W-SX-30,Math.round(H*.09),a[0],{fontWeight:'700',fontSize:'19px',color:DK,z:4});
-    mkT(SX+16,ay+30,W-SX-30,Math.round(H*.07),a[1],{fontSize:'17px',color:'#333',z:4});
+  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].filter(a=>a[0]).forEach((a,i)=>{
+    const ay=Math.round(H*.38)+i*Math.round(H*.15);
+    mkT(SX+16,ay,W-SX-30,Math.round(H*.08),a[0],{fontWeight:'700',fontSize:'17px',color:DK,z:4});
+    mkT(SX+16,ay+24,W-SX-30,Math.round(H*.06),a[1],{fontSize:'15px',color:'#333',z:4});
   });
   addCBRELogos(W,H,[
     {x:20,y:Math.round(H*.03),w:Math.round(W*.18),h:Math.round(H*.1),uri:CBRE_LOGO_WHITE,z:10}
@@ -1798,7 +1951,7 @@ function serializeTabFrom(art){
     const img=el.querySelector('img');
     const ak=el.dataset.assetKey||'';
     const obj={
-      eid:el.dataset.eid, type:el.dataset.type,
+      eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height,
       z:el.style.zIndex, field:el.dataset.field||'', assetKey:ak,
     };
@@ -2223,9 +2376,8 @@ function toggleMITab(idx, cb) {
 
 // ── Collect all state ───────────────────────────────────────────────────────
 function collectState(){
-  savedStates[currentTab] = serializeTab();
   return {
-    v:5, currentTab, zoom:Math.round(zoom*100), savedStates, assets,
+    v:5, currentTab, zoom:Math.round(zoom*100), assets,
     fields:{
       fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),
       fb:gv('fb'),fi:gv('fi'),
@@ -2235,6 +2387,7 @@ function collectState(){
       fn1:gv('fn1'),fp1:gv('fp1'),
       fn2:gv('fn2'),fp2:gv('fp2'),
       fn3:gv('fn3'),fp3:gv('fp3'),
+      fn4:gv('fn4'),fp4:gv('fp4'),
     }
   };
 }
@@ -2243,8 +2396,8 @@ function collectState(){
 function applyState(data, skipZoom=false){
   if(!data || data.v !== 5) return false;
   try {
-    if(data.assets)      assets      = data.assets;
-    if(data.savedStates) savedStates = data.savedStates;
+    if(data.assets) assets = data.assets;
+    savedStates = {}; // always rebuild tabs fresh from buildXxx() using current fields
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{ const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
@@ -2254,6 +2407,7 @@ function applyState(data, skipZoom=false){
       set('fn1',f.fn1);set('fp1',f.fp1);
       set('fn2',f.fn2);set('fp2',f.fp2);
       set('fn3',f.fn3);set('fp3',f.fp3);
+      set('fn4',f.fn4);set('fp4',f.fp4);
     }
     // Don't reset zoom during live sync — jarring for the current user
     if(!skipZoom && data.zoom){ document.getElementById('zoom-range').value=data.zoom; setZoom(data.zoom); }
@@ -2394,6 +2548,147 @@ function clearPersisted(){
 }
 
 // ── Init: load from Supabase first, localStorage as fallback ────────────────
+
+// ════════════════════════════════════════════════════════════════
+// AGENT DATABASE — loads from Supabase agents table
+// ════════════════════════════════════════════════════════════════
+let agentList = []; // [{id,name,phone,photo}]
+
+// Agent slot state: 4 slots, each has mode ('db'|'custom') and selected agentId or custom values
+let agentSlots = [
+  {mode:'db', agentId:'', customName:'', customPhone:''},
+  {mode:'db', agentId:'', customName:'', customPhone:''},
+  {mode:'db', agentId:'', customName:'', customPhone:''},
+  {mode:'db', agentId:'', customName:'', customPhone:''},
+];
+
+async function loadAgents(){
+  try {
+    const rows = await fetch(`${SUPA_URL}/rest/v1/agents?select=id,name,phone,photo&order=name.asc`, {
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    }).then(r=>r.json());
+    if(Array.isArray(rows)) agentList = rows;
+  } catch(e){ console.warn('[CBRE] Could not load agents:', e); }
+  renderAgentBlocks();
+}
+
+function renderAgentBlocks(){
+  const wrap = document.getElementById('agent-blocks-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = agentSlots.map((slot, i) => {
+    const num = i+1;
+    const isDb = slot.mode === 'db';
+    const agent = agentList.find(a => a.id === slot.agentId);
+    const optionsHtml = '<option value="">— None —</option>' +
+      agentList.map(a => `<option value="${a.id}" ${slot.agentId===a.id?'selected':''}>${escAgt(a.name)}</option>`).join('');
+    return `<div class="agent-block">
+      <div class="agent-block-head">
+        <span class="agent-block-label">Agent ${num}</span>
+        <div class="agent-mode-toggle">
+          <button class="agent-mode-btn ${isDb?'active':''}" onclick="setAgentMode(${i},'db')">DB</button>
+          <button class="agent-mode-btn ${!isDb?'active':''}" onclick="setAgentMode(${i},'custom')">Custom</button>
+        </div>
+      </div>
+      ${isDb ? `
+        <select class="agent-select" onchange="selectAgent(${i},this.value)">${optionsHtml}</select>
+        ${agent ? `<div class="agent-preview">
+          ${agent.photo ? `<img class="agent-thumb" src="${agent.photo}">` : '<div class="agent-thumb"></div>'}
+          <div class="agent-preview-info"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}</div>
+        </div>` : ''}
+      ` : `
+        <div class="agent-custom-fields">
+          <input type="text" placeholder="Name" value="${escAgt(slot.customName)}" oninput="setCustomAgent(${i},'name',this.value)">
+          <input type="text" placeholder="Phone" value="${escAgt(slot.customPhone)}" oninput="setCustomAgent(${i},'phone',this.value)">
+        </div>
+      `}
+    </div>`;
+  }).join('');
+}
+
+function escAgt(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function setAgentMode(i, mode){
+  agentSlots[i].mode = mode;
+  if(mode === 'db'){
+    agentSlots[i].customName = '';
+    agentSlots[i].customPhone = '';
+  } else {
+    agentSlots[i].agentId = '';
+  }
+  syncAgentSlot(i);
+  renderAgentBlocks();
+}
+
+function selectAgent(i, agentId){
+  agentSlots[i].agentId = agentId;
+  syncAgentSlot(i);
+  renderAgentBlocks();
+}
+
+function setCustomAgent(i, field, val){
+  if(field==='name') agentSlots[i].customName = val;
+  else agentSlots[i].customPhone = val;
+  syncAgentSlot(i);
+}
+
+// Push slot values into hidden fn/fp inputs and photo assets, then globalSync
+function syncAgentSlot(i){
+  const slot = agentSlots[i];
+  const num = i+1;
+  const nameEl  = document.getElementById('fn'+num);
+  const phoneEl = document.getElementById('fp'+num);
+  const photoKey = 'agent'+num+'photo';
+
+  let name='', phone='', photo='';
+  if(slot.mode==='db' && slot.agentId){
+    const agent = agentList.find(a=>a.id===slot.agentId);
+    if(agent){ name=agent.name||''; phone=agent.phone||''; photo=agent.photo||''; }
+  } else if(slot.mode==='custom'){
+    name = slot.customName||'';
+    phone = slot.customPhone||'';
+  }
+
+  if(nameEl)  nameEl.value  = name;
+  if(phoneEl) phoneEl.value = phone;
+
+  // Update photo asset and any live EDM image elements
+  assets[photoKey] = photo;
+  document.querySelectorAll(`.el[data-asset-key="${photoKey}"]`).forEach(el=>{
+    const img = el.querySelector('img');
+    const ph  = el.querySelector('.img-ph-txt');
+    const inner = el.querySelector('.el-inner');
+    if(inner) inner.style.background = photo ? 'transparent' : '#c5ccc5';
+    if(img){ img.src=photo||''; img.style.display=photo?'':'none'; img.style.objectFit='cover'; }
+    if(ph)  ph.style.display = photo?'none':'';
+  });
+
+  globalSync();
+  debouncedPersist();
+}
+
+function syncAllAgentSlots(){
+  agentSlots.forEach((_,i)=>syncAgentSlot(i));
+}
+
+// Include agentSlots in collectState / applyState
+const _origCollectState2 = collectState;
+collectState = function(){
+  const state = _origCollectState2();
+  state.agentSlots = agentSlots.map(s=>({...s}));
+  return state;
+};
+
+const _origApplyState2 = applyState;
+applyState = function(data, skipZoom=false){
+  const result = _origApplyState2(data, skipZoom);
+  if(data && Array.isArray(data.agentSlots)){
+    data.agentSlots.forEach((s,i)=>{ if(agentSlots[i]) agentSlots[i]={...s}; });
+    syncAllAgentSlots();
+    renderAgentBlocks();
+  }
+  return result;
+};
+
 async function init(){
   setCdtStatus('saving','Loading…');
 
@@ -2401,7 +2696,7 @@ async function init(){
   let loaded = false;
   const cloudResult = await supabaseLoad();
   if(cloudResult && applyState(cloudResult.state)){
-    if(savedStates[currentTab]) restoreTab(currentTab); else buildTemplate(currentTab);
+    buildTemplate(currentTab);
     setCdtStatus('saved','Loaded ✓');
     _lastKnownUpdatedAt = cloudResult.updatedAt;
     loaded = true;
@@ -2411,7 +2706,7 @@ async function init(){
   if(!loaded){
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if(raw){ const d=JSON.parse(raw); if(applyState(d)){ if(savedStates[currentTab]) restoreTab(currentTab); else buildTemplate(currentTab); loaded=true; setCdtStatus('saved','Loaded (local)'); } }
+      if(raw){ const d=JSON.parse(raw); if(d && d.savedStates) d.savedStates={}; if(applyState(d)){ buildTemplate(currentTab); loaded=true; setCdtStatus('saved','Loaded (local)'); } }
     } catch(e){}
   }
 
@@ -2435,7 +2730,7 @@ async function init(){
 // ════════════════════════════════════════
 // ADMIN MODE + CHARACTER LIMITS
 // ════════════════════════════════════════
-const CL_FIELD_IDS = ['fh','fs','fa1','fa2','fb','fbull','fi','fbc','fm','fd','fn1','fp1','fn2','fp2','fn3','fp3'];
+const CL_FIELD_IDS = ['fh','fs','fa1','fa2','fb','fbull','fi','fbc','fm','fd'];
 
 // charLimits: { fieldId: maxChars } — 0 or undefined = no limit
 let charLimits = {};
@@ -2678,6 +2973,7 @@ document.addEventListener('visibilitychange', ()=>{
 
 init().then(async ()=>{
   await loadGlobalCharLimits();
+  await loadAgents();
   clAttachEnforcement();
   clInitAll();
   // Start live sync after initial load is complete
