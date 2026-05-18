@@ -227,6 +227,7 @@ body.is-admin .admin-only-inline{display:inline;}
   <nav class="mast-nav">
     <a class="active" onclick="showPage('portfolios')" id="nav-portfolios">Portfolios</a>
     <a class="admin-only" style="display:none;" onclick="showPage('users')" id="nav-users">Manage Users</a>
+    <a class="admin-only" style="display:none;" onclick="showPage('agents')" id="nav-agents">Agents</a>
   </nav>
   <div class="mast-right">
     <div class="mast-user">Signed in as <span id="mast-username"></span></div>
@@ -695,6 +696,8 @@ async function onLoginSuccess(){
     // Show Manage Users nav link for admins
     const navUsers = document.getElementById('nav-users');
     if(navUsers) navUsers.style.display = 'flex';
+    const navAgents = document.getElementById('nav-agents');
+    if(navAgents) navAgents.style.display = 'flex';
   }
 
   await loadDemoData();
@@ -721,6 +724,7 @@ function showPage(name){
   if(name === 'portfolios') renderPortfolios();
   if(name === 'properties') renderProperties();
   if(name === 'users') renderUsers();
+  if(name === 'agents') renderAgents();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -870,6 +874,125 @@ function openBuilder(portfolioId, propertyId){
   window.location.href = `builder.html?${params.toString()}`;
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// AGENTS
+// ═══════════════════════════════════════════════════════════════
+let allAgents = [];
+let _editingAgentId = null;
+let _agentPhotoB64 = '';
+
+async function loadAgents(){
+  try {
+    const rows = await SB.get('agents','?select=id,name,phone,photo&order=name.asc');
+    if(Array.isArray(rows)) allAgents = rows;
+  } catch(e){ console.warn('Could not load agents:', e); }
+}
+
+async function renderAgents(){
+  if(!allAgents.length) await loadAgents();
+  const tbody = document.getElementById('agents-tbody');
+  if(!allAgents.length){
+    tbody.innerHTML = '<tr><td colspan="4" class="users-empty">No agents yet. Click "+ Add Agent" to get started.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allAgents.map(a => `
+    <tr>
+      <td>${a.photo ? `<img src="${a.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:3px;border:1px solid var(--border);">` : '<div style="width:40px;height:40px;background:var(--light);border-radius:3px;border:1px solid var(--border);"></div>'}</td>
+      <td style="font-weight:700;">${escHtml(a.name||'')}</td>
+      <td>${escHtml(a.phone||'')}</td>
+      <td><div class="user-actions">
+        <button class="tbl-btn" onclick="openAgentModal('${a.id}')">Edit</button>
+        <button class="tbl-btn danger" onclick="deleteAgent('${a.id}')">Delete</button>
+      </div></td>
+    </tr>
+  `).join('');
+}
+
+function previewAgentPhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _agentPhotoB64 = ev.target.result;
+    const preview = document.getElementById('agent-photo-preview');
+    preview.src = _agentPhotoB64;
+    preview.style.display = 'block';
+    document.getElementById('agent-photo-label').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+function openAgentModal(agentId){
+  _editingAgentId = agentId || null;
+  _agentPhotoB64 = '';
+  document.getElementById('agent-modal-err').textContent = '';
+  document.getElementById('agent-photo-preview').style.display = 'none';
+  document.getElementById('agent-photo-input').value = '';
+  document.getElementById('agent-photo-label').textContent = 'Click to upload photo';
+
+  if(agentId){
+    const a = allAgents.find(x=>x.id===agentId);
+    if(!a) return;
+    document.getElementById('agent-modal-title').textContent = 'Edit Agent';
+    document.getElementById('agent-modal-save').textContent = 'Save Changes';
+    document.getElementById('agent-name').value  = a.name||'';
+    document.getElementById('agent-phone').value = a.phone||'';
+    if(a.photo){
+      _agentPhotoB64 = a.photo;
+      document.getElementById('agent-photo-preview').src = a.photo;
+      document.getElementById('agent-photo-preview').style.display = 'block';
+      document.getElementById('agent-photo-label').textContent = 'Current photo (upload to replace)';
+    }
+  } else {
+    document.getElementById('agent-modal-title').textContent = 'Add Agent';
+    document.getElementById('agent-modal-save').textContent = 'Add Agent';
+    document.getElementById('agent-name').value  = '';
+    document.getElementById('agent-phone').value = '';
+  }
+  document.getElementById('modal-agent').classList.add('open');
+  setTimeout(()=>document.getElementById('agent-name').focus(), 50);
+}
+
+async function saveAgent(){
+  const name  = document.getElementById('agent-name').value.trim();
+  const phone = document.getElementById('agent-phone').value.trim();
+  const errEl = document.getElementById('agent-modal-err');
+  errEl.textContent = '';
+  if(!name){ errEl.textContent = 'Name is required.'; return; }
+
+  const isEdit = !!_editingAgentId;
+  try {
+    if(isEdit){
+      const updates = {name, phone};
+      if(_agentPhotoB64) updates.photo = _agentPhotoB64;
+      await SB.patch('agents', `?id=eq.${_editingAgentId}`, updates);
+      const idx = allAgents.findIndex(a=>a.id===_editingAgentId);
+      if(idx>-1){ allAgents[idx]={...allAgents[idx],name,phone}; if(_agentPhotoB64) allAgents[idx].photo=_agentPhotoB64; }
+    } else {
+      const id = 'ag'+Date.now();
+      const record = {id, name, phone, photo: _agentPhotoB64||''};
+      await SB.post('agents', record);
+      allAgents.push(record);
+    }
+    closeModal('modal-agent');
+    renderAgents();
+  } catch(e){
+    errEl.textContent = 'Save failed: '+(e.message||e);
+  }
+}
+
+async function deleteAgent(agentId){
+  const a = allAgents.find(x=>x.id===agentId);
+  if(!a) return;
+  if(!confirm(`Delete agent "${a.name}"? This cannot be undone.`)) return;
+  try {
+    await SB.delete('agents', `?id=eq.${agentId}`);
+    allAgents = allAgents.filter(x=>x.id!==agentId);
+    renderAgents();
+  } catch(e){ alert('Could not delete agent — check Supabase connection.'); }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // AUTO-LOGIN (restore session from localStorage)
 // ═══════════════════════════════════════════════════════════════
@@ -904,10 +1027,71 @@ document.addEventListener('keydown', e => {
     if(document.getElementById('modal-portfolio').classList.contains('open')) createPortfolio();
     if(document.getElementById('modal-property').classList.contains('open')) createProperty();
     if(document.getElementById('modal-user').classList.contains('open')) saveUser();
+    if(document.getElementById('modal-agent').classList.contains('open')) saveAgent();
   }
 });
 
 function escHtml(str){ const d=document.createElement('div');d.textContent=str;return d.innerHTML; }
 </script>
+
+<!-- ═══════════════════════════════════════
+     PAGE: AGENTS
+════════════════════════════════════════ -->
+<div class="page" id="page-agents">
+  <div class="page-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Agents</div>
+        <div class="page-sub">Manage the global agent database used across all marketing materials</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="admin-btn primary" onclick="openAgentModal()">+ Add Agent</button>
+      </div>
+    </div>
+    <div class="users-table-wrap">
+      <table class="users-table">
+        <thead><tr>
+          <th>Photo</th><th>Name</th><th>Phone</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="agents-tbody">
+          <tr><td colspan="4" class="users-empty">Loading agents…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODAL: ADD / EDIT AGENT
+════════════════════════════════════════ -->
+<div class="modal-bg" id="modal-agent">
+  <div class="modal" style="width:440px;">
+    <div class="modal-title" id="agent-modal-title">Add Agent</div>
+    <div class="modal-field">
+      <label>Full Name</label>
+      <input type="text" id="agent-name" placeholder="e.g. Jane Smith">
+    </div>
+    <div class="modal-field">
+      <label>Phone</label>
+      <input type="text" id="agent-phone" placeholder="e.g. 0400 000 000">
+    </div>
+    <div class="modal-field">
+      <label>Photo (square, JPG or PNG)</label>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <label style="flex:1;border:2px dashed var(--border);border-radius:3px;padding:14px;text-align:center;cursor:pointer;font-size:11px;color:var(--muted);" id="agent-photo-label">
+          <input type="file" accept="image/*" id="agent-photo-input" style="display:none;" onchange="previewAgentPhoto(this)">
+          Click to upload photo
+        </label>
+        <img id="agent-photo-preview" style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);display:none;">
+      </div>
+    </div>
+    <div class="login-err" id="agent-modal-err"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-agent')">Cancel</button>
+      <button class="modal-confirm" id="agent-modal-save" onclick="saveAgent()">Add Agent</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
