@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>CBRE Marketing Hub</title>
+<title>CBRE Marketing Studio</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -31,8 +31,8 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
   box-shadow:0 32px 80px rgba(0,0,0,.5);
 }
 .login-head{background:var(--dk);padding:32px;text-align:center;}
-.login-logo{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.02em;}
-.login-logo span{color:var(--gb);}
+.login-logo{display:flex;align-items:center;justify-content:center;}
+
 .login-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.1em;}
 .login-body{padding:28px;}
 .lf{display:flex;flex-direction:column;gap:4px;margin-bottom:16px;}
@@ -57,8 +57,8 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
   padding:0 24px;gap:16px;flex-shrink:0;position:sticky;top:0;z-index:100;
   box-shadow:0 2px 12px rgba(0,0,0,.25);
 }
-.mast-logo{font-size:14px;font-weight:900;color:#fff;letter-spacing:-.01em;}
-.mast-logo span{color:var(--gb);}
+.mast-logo{display:flex;align-items:center;}
+
 .mast-divider{width:1px;height:22px;background:rgba(255,255,255,.15);}
 .mast-nav{display:flex;gap:0;flex:1;}
 .mast-nav a{
@@ -140,7 +140,11 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
   box-shadow:0 2px 8px rgba(0,0,0,.04);
 }
 .property-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px);border-color:var(--gb);}
-.property-card-thumb{height:100px;background:var(--dk);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.property-card-thumb{height:100px;background:var(--dk);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;}
+.property-card-thumb:hover .property-thumb-overlay{opacity:1;}
+.property-thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.property-thumb-overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
+.property-thumb-overlay-label{font-size:11px;font-weight:700;color:#fff;letter-spacing:.06em;text-transform:uppercase;}
 .property-card-thumb-label{font-size:11px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.07em;}
 .property-thumb-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gb);}
 .property-card-body{padding:12px 14px;}
@@ -206,8 +210,8 @@ body.is-admin .admin-only-inline{display:inline;}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-head">
-      <div class="login-logo">CBRE<span>.</span></div>
-      <div class="login-sub">Marketing Hub</div>
+      <div class="login-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:36px;width:auto;display:inline-block;"></div>
+      <div class="login-sub">Marketing Studio</div>
     </div>
     <div class="login-body">
       <div class="lf"><label>Email Address</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="username"></div>
@@ -222,7 +226,7 @@ body.is-admin .admin-only-inline{display:inline;}
      MASTHEAD
 ════════════════════════════════════════ -->
 <div class="masthead" id="masthead" style="display:none;">
-  <div class="mast-logo">CBRE<span>.</span></div>
+  <div class="mast-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:22px;width:auto;display:block;"></div>
   <div class="mast-divider"></div>
   <nav class="mast-nav">
     <a class="active" onclick="showPage('portfolios')" id="nav-portfolios">Portfolios</a>
@@ -799,7 +803,7 @@ async function deletePortfolio(e, id){
 // ═══════════════════════════════════════════════════════════════
 // PROPERTIES
 // ═══════════════════════════════════════════════════════════════
-function renderProperties(){
+async function renderProperties(){
   const list = document.getElementById('property-list');
   const props = properties[currentPortfolioId] || [];
   if(!props.length){
@@ -808,10 +812,13 @@ function renderProperties(){
     return;
   }
   const isAdmin = currentUser && currentUser.role === 'admin';
+
+  // Render cards immediately with placeholder thumbs, then load hero images async
   list.innerHTML = props.map(pr => `
-    <div class="property-card">
-      <div class="property-card-thumb">
-        <div class="property-card-thumb-label">Marketing Builder</div>
+    <div class="property-card" id="pcard-${pr.id}">
+      <div class="property-card-thumb" onclick="openBuilder('${pr.portfolioId}','${pr.id}')">
+        <div class="property-card-thumb-label" id="pthumb-label-${pr.id}">Marketing Studio</div>
+        <div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>
         <div class="property-thumb-bar"></div>
       </div>
       <div class="property-card-body">
@@ -824,6 +831,33 @@ function renderProperties(){
       </div>
     </div>
   `).join('');
+
+  // Fetch hero images for each property in parallel
+  await Promise.all(props.map(async pr => {
+    try {
+      const rows = await fetch(
+        `${SUPABASE_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(pr.portfolioId)}&property_id=eq.${encodeURIComponent(pr.id)}&select=state_json`,
+        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+      ).then(r => r.json());
+
+      if(!rows || !rows.length || !rows[0].state_json) return;
+      const state = JSON.parse(rows[0].state_json);
+      const heroImg = state?.assets?.img1;
+      if(!heroImg) return;
+
+      const thumb = document.querySelector(`#pcard-${pr.id} .property-card-thumb`);
+      const label = document.getElementById(`pthumb-label-${pr.id}`);
+      if(!thumb) return;
+
+      // Inject the hero image
+      const img = document.createElement('img');
+      img.src = heroImg;
+      img.className = 'property-thumb-img';
+      img.alt = pr.name;
+      thumb.insertBefore(img, thumb.firstChild);
+      if(label) label.style.display = 'none';
+    } catch(e){ /* silently skip if no project state */ }
+  }));
 }
 
 function openNewPropertyModal(){
