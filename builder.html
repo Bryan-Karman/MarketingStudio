@@ -289,34 +289,33 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <div class="sb-scroll">
       <div style="font-size:10px;color:#555;line-height:1.5;padding:6px 4px;">Click element to select. Drag to move. Drag handles to resize. Double-click text to edit inline. Properties panel on right.</div>
       <div class="sec">Content</div>
-      <div class="fl"><label>Heading / Tenant</label><input id="fh" value="IGA Supermarket + Liquor" oninput="clEnforce('fh');globalSync()">
+      <div class="fl"><label>Heading / Tenant</label><input id="fh" value="Heading xx" oninput="clEnforce('fh');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fh"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fh" placeholder="∞" oninput="clSetLimit('fh',this.value)" title="Max characters (leave blank for no limit)"></span></div></div>
-      <div class="fl"><label>Sub Heading</label><input id="fs" value="Auction" oninput="clEnforce('fs');globalSync()">
+      <div class="fl"><label>Sub Heading</label><input id="fs" value="Sub Heading xx" oninput="clEnforce('fs');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fs"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fs" placeholder="∞" oninput="clSetLimit('fs',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Address Line 1</label><input id="fa1" value="Kanwal (Central Coast) NSW" oninput="clEnforce('fa1');globalSync()">
+      <div class="fl"><label>Address Line 1</label><input id="fa1" value="Suburb State" oninput="clEnforce('fa1');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fa1"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fa1" placeholder="∞" oninput="clSetLimit('fa1',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Address Line 2</label><input id="fa2" value="Shop 1, 123 Pacific Highway" oninput="clEnforce('fa2');globalSync()">
+      <div class="fl"><label>Address Line 2</label><input id="fa2" value="Address" oninput="clEnforce('fa2');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fa2"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fa2" placeholder="∞" oninput="clSetLimit('fa2',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Banner Point</label><input id="fb" value="Dual Income Stream, 100% Leased" oninput="clEnforce('fb');globalSync()">
+      <div class="fl"><label>Banner Point</label><input id="fb" value="Banner Point" oninput="clEnforce('fb');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fb"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fb" placeholder="∞" oninput="clSetLimit('fb',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Highlight Points (one per line)</label><textarea id="fbull" rows="4" oninput="clEnforce('fbull');onBulletFieldChange()">Long net lease to 2033
-Fixed 3% annual rent increases
-Tenant pays all outgoings
-Dual street frontage</textarea>
+      <div class="fl"><label>Highlight Points (one per line)</label><textarea id="fbull" rows="4" oninput="clEnforce('fbull');onBulletFieldChange()">Point one
+Point two
+Point three
+Point four</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fbull"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fbull" placeholder="∞" oninput="clSetLimit('fbull',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Net Income</label><input id="fi" value="$596,986 pa* + GST" oninput="clEnforce('fi');onBulletFieldChange()">
+      <div class="fl"><label>Net Income</label><input id="fi" value="$xxx pa* + GST" oninput="clEnforce('fi');onBulletFieldChange()">
         <div class="cl-row"><span class="cl-count" id="cl-fi"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fi" placeholder="∞" oninput="clSetLimit('fi',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Body Copy (one per line)</label><textarea id="fbc" rows="4" oninput="clEnforce('fbc');onBulletFieldChange()">Landlord favourable lease structure
-National brand with 660+ sites
-Current rental below market
-Compounding CPI increases
-Long-standing centre on significant landholding
-Prime education-rich precinct</textarea>
+      <div class="fl"><label>Body Copy (one per line)</label><textarea id="fbc" rows="4" oninput="clEnforce('fbc');onBulletFieldChange()">Text line one
+Line two
+Line three
+Line four
+Line five</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fbc"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fbc" placeholder="∞" oninput="clSetLimit('fbc',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Sale</div>
-      <div class="fl"><label>Sale Method</label><input id="fm" value="Auction" oninput="clEnforce('fm');globalSync()">
+      <div class="fl"><label>Sale Method</label><input id="fm" value="For Sale" oninput="clEnforce('fm');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fm"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fm" placeholder="∞" oninput="clSetLimit('fm',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Sale Date &amp; Details</label><input id="fd" value="10:30am Tuesday 12 May 2026, Sydney Opera House" oninput="clEnforce('fd');globalSync()">
+      <div class="fl"><label>Sale Date &amp; Details</label><input id="fd" value="Day Date Month Year" oninput="clEnforce('fd');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fd"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fd" placeholder="∞" oninput="clSetLimit('fd',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Agents</div>
       <!-- Hidden inputs — populated by agent selector JS, consumed by globalSync -->
