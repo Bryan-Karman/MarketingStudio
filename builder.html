@@ -1,9 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CBRE Marketing Studio</title>
+<style>
+/* Fonts served from Supabase Storage */
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype');font-weight:300;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Bold.otf') format('opentype');font-weight:700;font-style:normal;}
+@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
+@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
+@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Semibold.otf') format('opentype');font-weight:600;font-style:normal;}
+body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;}
+</style>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--dk:#0d2b21;--g:#4a9b6f;--gb:#5bbf7a;}
@@ -36,20 +46,6 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .btn-reset:hover{background:#444;color:#fff;}
 .btn-tmpl{background:#2a3a5a;color:#7ab8e8;border:1px solid #3a5a8a;}
 .btn-tmpl:hover{background:#354872;color:#fff;}
-/* Save-as-template modal */
-.tmpl-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99000;align-items:center;justify-content:center;}
-.tmpl-modal-bg.open{display:flex;}
-.tmpl-modal{background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:24px;width:520px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.6);}
-.tmpl-modal h3{font-size:13px;font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:-.01em;}
-.tmpl-modal p{font-size:11px;color:#888;margin-bottom:14px;line-height:1.5;}
-.tmpl-modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
-.tmpl-cancel{padding:7px 16px;font-size:11px;font-weight:700;background:#242424;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;}
-.tmpl-cancel:hover{background:#2e2e2e;color:#fff;}
-.tmpl-confirm{padding:7px 16px;font-size:11px;font-weight:700;background:#2a5a3a;color:#5bbf7a;border:1px solid #3a7a4e;border-radius:3px;cursor:pointer;}
-.tmpl-confirm:hover{background:#3a7a4e;color:#fff;}
-.tmpl-tab-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
-.tmpl-tab-chk{display:flex;align-items:center;gap:5px;font-size:11px;color:#ccc;cursor:pointer;}
-.tmpl-tab-chk input{accent-color:#5bbf7a;cursor:pointer;}
 
 /* LAYOUT */
 .app{display:flex;flex:1;overflow:hidden;}
@@ -101,6 +97,10 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .agent-custom-fields input{width:100%;font-size:11px;padding:4px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;outline:none;}
 .agent-custom-fields input:focus{border-color:var(--g);}
 
+.props-bullet-btn{width:100%;padding:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #444;border-radius:2px;background:#242424;color:#aaa;margin-top:4px;text-align:center;}
+.props-bullet-btn.active{border-color:#5bbf7a;background:#0d2b21;color:#5bbf7a;}
+.props-bullet-btn:hover{background:#2e2e2e;color:#fff;}
+.props-bullet-btn.active:hover{background:#163d28;}
 .props-lock-btn{width:100%;padding:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #444;border-radius:2px;background:#242424;color:#aaa;margin-top:4px;text-align:center;}
 .props-lock-btn.locked{border-color:#f0b429;background:#2a1e00;color:#f0b429;}
 .props-lock-btn:hover{background:#2e2e2e;color:#fff;}
@@ -253,17 +253,17 @@ body.admin-mode .cl-limit-wrap{display:flex;}
       <button class="btn-mi" onclick="toggleMIDD()">☰ Marketing Items</button>
       <div class="mi-dd" id="mi-dd">
         <div class="mi-dh">Show / Hide artwork types</div>
-        <div class="mi-di"><input type="checkbox" id="mi0" checked onchange="toggleMITab(0,this)"><label for="mi0">AFR 2 Mods</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi1" checked onchange="toggleMITab(1,this)"><label for="mi1">AFR 4 Mods</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi2" checked onchange="toggleMITab(2,this)"><label for="mi2">Auction Poster</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi3" checked onchange="toggleMITab(3,this)"><label for="mi3">Brochure (1 Page)</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi4" checked onchange="toggleMITab(4,this)"><label for="mi4">Brochure (2 Page)</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi5" checked onchange="toggleMITab(5,this)"><label for="mi5">EDM</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi6" checked onchange="toggleMITab(6,this)"><label for="mi6">LinkedIn</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi7" checked onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi0" checked="" onchange="toggleMITab(0,this)"><label for="mi0">AFR 2 Mods</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi1" checked="" onchange="toggleMITab(1,this)"><label for="mi1">AFR 4 Mods</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi2" checked="" onchange="toggleMITab(2,this)"><label for="mi2">Auction Poster</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi3" checked="" onchange="toggleMITab(3,this)"><label for="mi3">Brochure (1 Page)</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi4" checked="" onchange="toggleMITab(4,this)"><label for="mi4">Brochure (2 Page)</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi5" checked="" onchange="toggleMITab(5,this)"><label for="mi5">EDM</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">LinkedIn</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
       </div>
     </div>
-    <button class="tb-btn btn-tmpl" onclick="openSaveTemplateModal()" title="Save current layout as the default template for selected artworks">⊙ Save as Template</button>
+    <button class="tb-btn btn-tmpl" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard — paste into Claude to update the base template">⊙ Copy Layout</button>
     <button class="tb-btn btn-dl" id="dlb" onclick="downloadPDF()">⬇ PDF</button>
     <div class="admin-badge" id="admin-badge" title="Admin mode — manage users from the Hub home page">⚙ ADMIN</div>
   </div>
@@ -356,28 +356,45 @@ Prime education-rich precinct</textarea>
   </div>
 </div>
 
-<script id="cbre-saved-data" type="application/json">null</script>
+<script id="cbre-saved-data" type="application/json">__CBRE_STATE__</script>
 <script>
 // Capture the raw HTML source as our save template BEFORE anything changes.
 // We do this synchronously as the very first thing so the DOM is still pristine.
 // This works with file://, served files, and Claude.ai — no fetch() needed.
-const _HTML_TEMPLATE = (()=>{
+// _HTML_TEMPLATE is now fetched fresh on each Save as Template call
+// (outerHTML strips JS comments, breaking sentinel-based replacement)
+const _HTML_TEMPLATE = null; // placeholder — actual source fetched in confirmSaveTemplate
+
+// ── RAW SOURCE STORE ──
+// Stores the raw text of each buildXxx function at page load (before any DOM changes)
+// Used as fallback when fetch(window.location.href) isn't available (file:// protocol)
+const _RAW_FN_SOURCE = (()=>{
   try {
-    const src = document.documentElement.outerHTML;
-    // Normalise: strip any previously-injected state so the template is always clean
-    return src.replace(
-      /(<script id="cbre-saved-data"[^>]*>)([\s\S]*?)(<\/script>)/,
-      '$1__CBRE_STATE__$3'
-    );
-  } catch(e){ return null; }
+    // Find our main script tag by looking for a unique string inside it
+    const scripts = document.querySelectorAll('script:not([src]):not([type])');
+    for(const s of scripts){
+      if(s.textContent.includes('')){
+        const src = s.textContent;
+        const fns = {};
+        ['buildAFR2','buildAFR4','buildAuction','buildBrochure1','buildBrochure2','buildEDM','buildLinkedIn','buildSignboard'].forEach(fn=>{
+          const start = src.indexOf('/*@@'+fn+'_START@@*/');
+          const end   = src.indexOf('/*@@'+fn+'_END@@*/')+('/*@@'+fn+'_END@@*/').length;
+          if(start>-1 && end>-1) fns[fn] = src.slice(start, end);
+        });
+        return fns;
+      }
+    }
+  } catch(e){}
+  return {};
 })();
+
 
 // ════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
-const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif";
+const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
 const PDF_MM=[[60.5,105.5],[123,105.5],[297,420],[210,297],[420,297],[75,546.8],[317.5,317.5],[240,180]];
 const TAB_NAMES=['AFR2Mods','AFR4Mods','Auction','Brochure','Brochure2','EDM','LinkedIn','Signboard8x6'];
 const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800,800],[907,680]];
@@ -389,10 +406,28 @@ const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800
 const CBRE_LOGO_WHITE = 'data:image/png;base64,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';
 const CBRE_LOGO_GREEN = 'data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MSAyMC4xMyI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDNmMmQ7fTwvc3R5bGU+PC9kZWZzPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTMzLjU3LDE1LjQxSDI2Ljg5VjEyLjA1aDYuODZhMS42NiwxLjY2LDAsMCwxLDEuNDksMS42NCwxLjczLDEuNzMsMCwwLDEtMS42NywxLjcybS02LjY4LTExaDdBMS42NCwxLjY0LDAsMCwxLDM1LjMsNmExLjcyLDEuNzIsMCwwLDEtMS40MywxLjY4aC03Wm05Ljk0LDUuMzdjMi41Ni0uODUsMy0zLDMtNC43NSwwLTIuNjgtMS44OS01LTcuNDgtNUgyMS45NFYyMC4wOWgxMC40QzM4LDIwLjA5LDQwLDE3LjIxLDQwLDE0LjMyYTQuOTEsNC45MSwwLDAsMC0zLjE5LTQuNThNNjMuMzcsMFYyMC4xM0g4MVYxNS41NEg2OC4yOFYxMkg3OS43NVY3LjYzSDY4LjI4VjQuMzlIODFWMFpNNTUuNzksNi4yNmExLjY1LDEuNjUsMCwwLDEtMS41NywxLjM4SDQ3LjM0VjQuNDNoNi44OGExLjU3LDEuNTcsMCwwLDEsMS41NywxLjRaTTUzLjEyLDBINDIuNDd2MjAuMWg0Ljg5VjEyaDUuMzlhMi44LDIuOCwwLDAsMSwyLjc0LDIuODV2NS4yN2g0Ljc5VjEzLjYyYTQuMjEsNC4yMSwwLDAsMC0yLjktMy44OSw0LjUsNC41LDAsMCwwLDMtNC40NEM2MC4zNC45NCw1Ni42LDAsNTMuMTIsME0xOC43NiwxNS4yN2MtLjA3LDAtNi42OS4xMy05LS4wOWE1LjE2LDUuMTYsMCwwLDEtNS01LjMxLDUuMTQsNS4xNCwwLDAsMSw0LjgyLTUuMmMxLjM5LS4xOSw5LS4xLDkuMDktLjFoLjE2TDE4LjksMGgtLjE2TDEwLjExLDBBMTIuNzMsMTIuNzMsMCwwLDAsNS45My44NCwxMC4yNSwxMC4yNSwwLDAsMCwyLDRhMTAsMTAsMCwwLDAtMiw2LDEyLjE1LDEyLjE1LDAsMCwwLC4xNiwyQTkuOCw5LjgsMCwwLDAsNS42NSwxOWExNC43MiwxNC43MiwwLDAsMCw1LjQ2LDEuMTFsMS42MywwaDYuMTdWMTUuMjdaIi8+PC9zdmc+';
 
-const SVG_CBRE_GREEN      = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjMDAzZjJkOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=';
-const SVG_CBRE_WHITE      = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const SVG_CBRE_GREEN = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjMDAzZjJkOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=';
+const SVG_CBRE_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=';
 const SVG_PORTFOLIO_GREEN = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM0Ny44Ij4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuNC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjQgQnVpbGQgMjI2KSAgLS0+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5zdDAgewogICAgICAgIGZpbGw6ICMxN2U4OGY7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik03NjIuNDksMTEzLjNoMzkuNDl2NTUuMzhoLTM5LjQ5djE2Mi43OGgtNTguMnYtMTYyLjc4aC01NC44MXY4OC43OGMwLDguNTEsNi45LDE1LjQxLDE1LjQxLDE1LjQxaDI0LjczdjU4LjJoLTI3LjEzYy0zOS4zMywwLTcxLjIxLTMxLjg4LTcxLjIxLTcxLjIxdi05MS4xOGgtMjEuM3YtNTUuMzhoMjEuM1YyOC4xOGg1OC4ydjg1LjEyaDU0Ljgxdi0xNy40YzAtNDMuMDgsMzQuOTItNzgsNzgtNzhoMzEuMzd2NTguMmgtMjguODRjLTEyLjMzLDAtMjIuMzMsMTAtMjIuMzMsMjIuMzN2MTQuODdoMFpNNTAxLjI0LDEzMS42OWMxNi44My0xMS40MSwzNS4zNC0xOC4zOSw1NC40My0xOC4zOXY1NS4zOGMtMzUuNjIsMC01Ni4zNCwyOS42Mi01Ni4zNCw2MC44NGwtLjAzLDEwMS45NGgtNTQuMzFWMTE1LjkxaDU2LjI2djE1Ljc4aC0uMDFaTTExNy4yNSwxNzUuOGgtNTIuNTl2LTgwLjkyaDUyLjU5YzIwLjg2LDAsMzcuODMsMTguMTUsMzcuODMsNDAuNDZzLTE2Ljk3LDQwLjQ2LTM3LjgzLDQwLjQ2TTExNy4yNSwzNS45SDExLjY1djI5NS41Nmg1M3YtOTYuNjhoNTIuNTljNTMuNDcsMCw5Ni44MS00NC41Miw5Ni44MS05OS40NXMtNDMuMzQtOTkuNDQtOTYuODEtOTkuNDRNMTEyMC4zMiwzNS45aDU4LjJ2NjEuOTFoLTU4LjJzMC02MS45MSwwLTYxLjkxWk0xMTIwLjMyLDExNS45MWg1OC4ydjIxNS41NWgtNTguMlYxMTUuOTFaTTEwMzkuNTUsMzUuOWg1OC4ydjI5NS41NmgtNTguMlYzNS45Wk0xMzA1LjY3LDI3MS4wOWMtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OE0xMzA1LjY3LDExMi4wM2MtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OU05MTMuMTUsMjcxLjA5Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4TTkxMy4xNSwxMTIuMDNjLTYxLjAyLDAtMTEwLjQ5LDQ5LjQ3LTExMC40OSwxMTAuNDlzNDkuNDcsMTEwLjQ5LDExMC40OSwxMTAuNDksMTEwLjQ5LTQ5LjQ3LDExMC40OS0xMTAuNDktNDkuNDctMTEwLjQ5LTExMC40OS0xMTAuNDkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMzE5LjQxLDExMC4wMWMtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OVpNMzE5LjQxLDI2OS4wN2MtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OGgwWiIvPgo8L3N2Zz4=';
-const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM0Ny44Ij4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuNC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjQgQnVpbGQgMjI2KSAgLS0+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5zdDAgewogICAgICAgIGZpbGw6ICMxN2U4OGY7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik03NjIuNDksMTEzLjNoMzkuNDl2NTUuMzhoLTM5LjQ5djE2Mi43OGgtNTguMnYtMTYyLjc4aC01NC44MXY4OC43OGMwLDguNTEsNi45LDE1LjQxLDE1LjQxLDE1LjQxaDI0LjczdjU4LjJoLTI3LjEzYy0zOS4zMywwLTcxLjIxLTMxLjg4LTcxLjIxLTcxLjIxdi05MS4xOGgtMjEuM3YtNTUuMzhoMjEuM1YyOC4xOGg1OC4ydjg1LjEyaDU0Ljgxdi0xNy40YzAtNDMuMDgsMzQuOTItNzgsNzgtNzhoMzEuMzd2NTguMmgtMjguODRjLTEyLjMzLDAtMjIuMzMsMTAtMjIuMzMsMjIuMzN2MTQuODdoMFpNNTAxLjI0LDEzMS42OWMxNi44My0xMS40MSwzNS4zNC0xOC4zOSw1NC40My0xOC4zOXY1NS4zOGMtMzUuNjIsMC01Ni4zNCwyOS42Mi01Ni4zNCw2MC44NGwtLjAzLDEwMS45NGgtNTQuMzFWMTE1LjkxaDU2LjI2djE1Ljc4aC0uMDFaTTExNy4yNSwxNzUuOGgtNTIuNTl2LTgwLjkyaDUyLjU5YzIwLjg2LDAsMzcuODMsMTguMTUsMzcuODMsNDAuNDZzLTE2Ljk3LDQwLjQ2LTM3LjgzLDQwLjQ2TTExNy4yNSwzNS45SDExLjY1djI5NS41Nmg1M3YtOTYuNjhoNTIuNTljNTMuNDcsMCw5Ni44MS00NC41Miw5Ni44MS05OS40NXMtNDMuMzQtOTkuNDQtOTYuODEtOTkuNDRNMTEyMC4zMiwzNS45aDU4LjJ2NjEuOTFoLTU4LjJzMC02MS45MSwwLTYxLjkxWk0xMTIwLjMyLDExNS45MWg1OC4ydjIxNS41NWgtNTguMlYxMTUuOTFaTTEwMzkuNTUsMzUuOWg1OC4ydjI5NS41NmgtNTguMlYzNS45Wk0xMzA1LjY3LDI3MS4wOWMtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OE0xMzA1LjY3LDExMi4wM2MtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OU05MTMuMTUsMjcxLjA5Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4TTkxMy4xNSwxMTIuMDNjLTYxLjAyLDAtMTEwLjQ5LDQ5LjQ3LTExMC40OSwxMTAuNDlzNDkuNDcsMTEwLjQ5LDExMC40OSwxMTAuNDksMTEwLjQ5LTQ5LjQ3LDExMC40OS0xMTAuNDktNDkuNDctMTEwLjQ5LTExMC40OS0xMTAuNDkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMzE5LjQxLDExMC4wMWMtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OVpNMzE5LjQxLDI2OS4wN2MtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OGgwWiIvPgo8L3N2Zz4=';
+const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM0Ny44Ij4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuNC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjQgQnVpbGQgMjI2KSAgLS0+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5zdDAgewogICAgICAgIGZpbGw6ICNmZmY7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik03NjIuNDksMTEzLjNoMzkuNDl2NTUuMzhoLTM5LjQ5djE2Mi43OGgtNTguMnYtMTYyLjc4aC01NC44MXY4OC43OGMwLDguNTEsNi45LDE1LjQxLDE1LjQxLDE1LjQxaDI0LjczdjU4LjJoLTI3LjEzYy0zOS4zMywwLTcxLjIxLTMxLjg4LTcxLjIxLTcxLjIxdi05MS4xOGgtMjEuM3YtNTUuMzhoMjEuM1YyOC4xOGg1OC4ydjg1LjEyaDU0Ljgxdi0xNy40YzAtNDMuMDgsMzQuOTItNzgsNzgtNzhoMzEuMzd2NTguMmgtMjguODRjLTEyLjMzLDAtMjIuMzMsMTAtMjIuMzMsMjIuMzN2MTQuODdoMFpNNTAxLjI0LDEzMS42OWMxNi44My0xMS40MSwzNS4zNC0xOC4zOSw1NC40My0xOC4zOXY1NS4zOGMtMzUuNjIsMC01Ni4zNCwyOS42Mi01Ni4zNCw2MC44NGwtLjAzLDEwMS45NGgtNTQuMzFWMTE1LjkxaDU2LjI2djE1Ljc4aC0uMDFaTTExNy4yNSwxNzUuOGgtNTIuNTl2LTgwLjkyaDUyLjU5YzIwLjg2LDAsMzcuODMsMTguMTUsMzcuODMsNDAuNDZzLTE2Ljk3LDQwLjQ2LTM3LjgzLDQwLjQ2TTExNy4yNSwzNS45SDExLjY1djI5NS41Nmg1M3YtOTYuNjhoNTIuNTljNTMuNDcsMCw5Ni44MS00NC41Miw5Ni44MS05OS40NXMtNDMuMzQtOTkuNDQtOTYuODEtOTkuNDRNMTEyMC4zMiwzNS45aDU4LjJ2NjEuOTFoLTU4LjJzMC02MS45MSwwLTYxLjkxWk0xMTIwLjMyLDExNS45MWg1OC4ydjIxNS41NWgtNTguMlYxMTUuOTFaTTEwMzkuNTUsMzUuOWg1OC4ydjI5NS41NmgtNTguMlYzNS45Wk0xMzA1LjY3LDI3MS4wOWMtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OE0xMzA1LjY3LDExMi4wM2MtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OU05MTMuMTUsMjcxLjA5Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4TTkxMy4xNSwxMTIuMDNjLTYxLjAyLDAtMTEwLjQ5LDQ5LjQ3LTExMC40OSwxMTAuNDlzNDkuNDcsMTEwLjQ5LDExMC40OSwxMTAuNDksMTEwLjQ5LTQ5LjQ3LDExMC40OS0xMTAuNDktNDkuNDctMTEwLjQ5LTExMC40OS0xMTAuNDkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMzE5LjQxLDExMC4wMWMtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OVpNMzE5LjQxLDI2OS4wN2MtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OGgwWiIvPgo8L3N2Zz4=';
 
 // ════════════════════════════════════════
 // STATE
@@ -404,7 +439,10 @@ let nextId=1;
 let _lastKnownUpdatedAt=null; // tracks the Supabase updated_at we last loaded/saved
 // When true, buildTemplate will inject default SVG logos (fresh build).
 // Set to false when rebuilding from a user-arranged snapshot so logos aren't re-added.
-let _injectLogosOnBuild = true;
+// Tracks which individual logos have been deleted per tab.
+// { tabIndex: Set(['cbre-green', 'cbre-white', ...]) }
+// Moved logos stay on canvas so are handled naturally by the existing element system.
+const _deletedLogos = {};
 
 // ════════════════════════════════════════
 // UNDO STACK (per tab, up to 50 steps)
@@ -618,16 +656,9 @@ function createElement(cfg){
     const fh = parseFloat(el.style.height);
     const ox = parseFloat(el.style.left), oy = parseFloat(el.style.top);
 
-    // Get current img position — ensure it's in absolute mode for panning
+    // Get current img position for panning (only valid if already in crop mode)
     let imgOx = 0, imgOy = 0;
-    if(shouldPan){
-      // If image hasn't been cropped yet, initialise its absolute position now
-      if(!img.dataset.cropW){
-        img.style.cssText = `position:absolute;left:0px;top:0px;width:${fw}px;height:${fh}px;object-fit:fill;display:block;`;
-        img.dataset.cropW = fw+'px'; img.dataset.cropH = fh+'px';
-        img.dataset.cropX = '0px';  img.dataset.cropY = '0px';
-        el.classList.add('has-crop');
-      }
+    if(shouldPan && img && img.dataset.cropW){
       imgOx = parseFloat(img.style.left)||0;
       imgOy = parseFloat(img.style.top)||0;
     }
@@ -637,7 +668,8 @@ function createElement(cfg){
       if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
       if(!committed){ committed=true; undoSnapshot(); }
 
-      if(shouldPan){
+      if(shouldPan && img && img.dataset.cropW){
+        // Only pan if image is already in crop/positioned mode (has cropW)
         const rawX = imgOx + (e.clientX-sx)/zoom;
         const rawY = imgOy + (e.clientY-sy)/zoom;
         const iw=parseFloat(img.style.width), ih=parseFloat(img.style.height);
@@ -756,14 +788,59 @@ function enterCropMode(el){
   const fh = parseFloat(el.style.height);
 
   // Switch img to explicit positioned sizing, preserving any existing crop
-  let iw = parseFloat(img.dataset.cropW) || fw;
-  let ih = parseFloat(img.dataset.cropH) || fh;
-  let ix = parseFloat(img.dataset.cropX) || 0;
-  let iy = parseFloat(img.dataset.cropY) || 0;
+  let iw, ih, ix, iy;
+  if(img.dataset.cropW && img.naturalWidth > 0){
+    // Restore saved crop — but validate aspect ratio
+    iw = parseFloat(img.dataset.cropW);
+    ih = parseFloat(img.dataset.cropH);
+    ix = parseFloat(img.dataset.cropX);
+    iy = parseFloat(img.dataset.cropY);
+    // Check if saved crop matches natural aspect ratio (within 2%)
+    const savedAR   = iw / ih;
+    const naturalAR = img.naturalWidth / img.naturalHeight;
+    if(Math.abs(savedAR - naturalAR) / naturalAR > 0.02){
+      // Saved crop has wrong aspect ratio — recalculate from natural size
+      img.dataset.cropW = '';  // clear so we fall through to cover calc
+    }
+  }
+  if(!img.dataset.cropW || img.dataset.cropW === ''){
+    // No valid crop — compute from natural dimensions
+  }
+  if(img.dataset.cropW && img.dataset.cropW !== ''){
+    iw = parseFloat(img.dataset.cropW);
+    ih = parseFloat(img.dataset.cropH);
+    ix = parseFloat(img.dataset.cropX);
+    iy = parseFloat(img.dataset.cropY);
+  } else {
+    // No crop yet — compute cover sizing to match what object-fit:cover shows
+    // This MUST maintain the image's natural aspect ratio — never squish
+    const nw = img.naturalWidth  || 0;
+    const nh = img.naturalHeight || 0;
+    if(nw > 0 && nh > 0){
+      // Scale to cover: fill the container, maintain aspect ratio, centre
+      const scale = Math.max(fw / nw, fh / nh);
+      iw = Math.round(nw * scale);
+      ih = Math.round(nh * scale);
+      ix = Math.round((fw - iw) / 2);
+      iy = Math.round((fh - ih) / 2);
+    } else {
+      // Image natural size not available — wait for it then re-enter
+      img.onload = function(){ if(cropEl === el){ exitCropMode(); enterCropMode(el); } };
+      // Temporarily use a safe 2x cover estimate and let it correct on load
+      iw = Math.round(fw * 1.5);
+      ih = Math.round(fh * 1.5);
+      ix = Math.round((fw - iw) / 2);
+      iy = Math.round((fh - ih) / 2);
+    }
+  }
 
-  if(!img.dataset.cropW){ iw=fw; ih=fh; ix=0; iy=0; }
+  // Save initial crop data so it persists correctly
+  img.dataset.cropW = iw + 'px';
+  img.dataset.cropH = ih + 'px';
+  img.dataset.cropX = ix + 'px';
+  img.dataset.cropY = iy + 'px';
 
-  img.style.cssText = `position:absolute;left:${ix}px;top:${iy}px;width:${iw}px;height:${ih}px;object-fit:fill;display:block;`;
+  img.style.cssText = `position:absolute;left:${ix}px;top:${iy}px;width:${iw}px;height:${ih}px;object-fit:fill;display:block;cursor:grab;`;
 
   // Dark overlay to show crop boundary
   const overlay = document.createElement('div');
@@ -845,6 +922,7 @@ function clampPan(nx, ny, iw, ih, fw, fh){
 
 function onCropPan(e){
   e.stopPropagation();
+  e.preventDefault();
   const img = e.currentTarget;
   const el  = cropEl;
   const fw  = parseFloat(el.style.width);
@@ -852,26 +930,36 @@ function onCropPan(e){
   const sx  = e.clientX, sy = e.clientY;
   const ox  = parseFloat(img.style.left), oy = parseFloat(img.style.top);
   let panning = false;
-  function mv(e){
-    const dx=e.clientX-sx, dy=e.clientY-sy;
-    if(!panning && Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
-    if(!panning){ panning=true; img.style.cursor='grabbing'; }
-    const rawX = ox + (e.clientX-sx)/zoom;
-    const rawY = oy + (e.clientY-sy)/zoom;
+  let targetX = ox, targetY = oy;
+  let rafId = null;
+
+  function applyPos(){
     const iw = parseFloat(img.style.width);
     const ih = parseFloat(img.style.height);
-    const {nx, ny} = clampPan(rawX, rawY, iw, ih, fw, fh);
+    const {nx, ny} = clampPan(targetX, targetY, iw, ih, fw, fh);
     img.style.left = nx+'px';
     img.style.top  = ny+'px';
     repositionCropHandles(el, img);
+    rafId = null;
   }
+
+  function mv(e){
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(!panning && Math.sqrt(dx*dx+dy*dy) < 2) return;
+    if(!panning){ panning=true; img.style.cursor='grabbing'; }
+    targetX = ox + (e.clientX-sx)/zoom;
+    targetY = oy + (e.clientY-sy)/zoom;
+    if(!rafId) rafId = requestAnimationFrame(applyPos);
+  }
+
   function up(){
     img.style.cursor='grab';
+    if(rafId){ cancelAnimationFrame(rafId); applyPos(); }
     if(panning) saveCropData(img);
     window.removeEventListener('mousemove',mv);
     window.removeEventListener('mouseup',up);
   }
-  window.addEventListener('mousemove',mv);
+  window.addEventListener('mousemove',mv,{passive:true});
   window.addEventListener('mouseup',up);
 }
 
@@ -886,7 +974,9 @@ function onCropScale(e){
   const sx  = e.clientX, sy = e.clientY;
   const ox  = parseFloat(img.style.left), oy = parseFloat(img.style.top);
   const ow  = parseFloat(img.style.width), oh = parseFloat(img.style.height);
-  const aspect = ow / oh;
+  // ALWAYS use natural aspect ratio - never the potentially-distorted current size
+  const nww = img.naturalWidth, nhh = img.naturalHeight;
+  const aspect = (nww > 0 && nhh > 0) ? (nww / nhh) : (ow / oh);
 
   function mv(e){
     const dx = (e.clientX-sx)/zoom;
@@ -1044,6 +1134,8 @@ function showProps(el){
       <select onchange="el_inner_set('fontWeight',this.value)">
         <option ${fw==='300'?'selected':''} value="300">Light 300</option>
         <option ${fw==='400'?'selected':''} value="400">Regular 400</option>
+        <option ${fw==='500'?'selected':''} value="500">Medium 500</option>
+        <option ${fw==='600'?'selected':''} value="600">Semibold 600</option>
         <option ${fw==='700'?'selected':''} value="700">Bold 700</option>
         <option ${fw==='900'?'selected':''} value="900">Black 900</option>
       </select>
@@ -1069,8 +1161,32 @@ function showProps(el){
         <input type="text" id="txt-color-val" value="${rgbToHex(color)}" oninput="el_inner_set('color',this.value);this.previousElementSibling.value=this.value;">
       </div>
     </div>
-    <div class="pf"><label>Line Height</label>
-      <input type="text" value="${inner.style.lineHeight||'1.35'}" oninput="el_inner_set('lineHeight',this.value)">
+    <div class="pf"><label>Line Height (Leading)</label>
+      <div class="pf-row">
+        <input type="number" step="0.05" min="0.8" max="4" value="${parseFloat(inner.style.lineHeight)||1.35}" oninput="el_inner_set('lineHeight',this.value)" style="width:100%;">
+        <span style="color:#666;font-size:9px;padding-top:6px;">&times; font</span>
+      </div>
+    </div>
+    <div class="pf"><label>Letter Spacing</label>
+      <div class="pf-row">
+        <input type="number" step="0.01" min="-0.1" max="0.5" value="${parseFloat(inner.style.letterSpacing)||0}" oninput="el_inner_set('letterSpacing',this.value+'em')" style="width:100%;">
+        <span style="color:#666;font-size:9px;padding-top:6px;">em</span>
+      </div>
+    </div>
+    <div class="pf"><label>Paragraph Spacing</label>
+      <div class="pf-row">
+        <input type="number" step="1" min="0" max="60" value="${selectedEl&&selectedEl.dataset.bullets==='1'?(inner.dataset.bulletParaSpacing||0):parseInt(inner.style.paddingBottom)||0}" oninput="(function(v){ \
+  var inner=selectedEl&&selectedEl.querySelector('.el-inner'); \
+  if(!inner) return; \
+  if(selectedEl.dataset.bullets==='1'){ \
+    inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom=v+'px'; }); \
+    inner.dataset.bulletParaSpacing=v; \
+  } else { \
+    el_inner_set('paddingBottom',v+'px'); \
+  } \
+})(this.value)"  style="width:100%;">
+        <span style="color:#666;font-size:9px;padding-top:6px;">px below</span>
+      </div>
     </div>`;
   }
 
@@ -1087,6 +1203,13 @@ function showProps(el){
     </div>`;
   }
 
+  // Bullet toggle — only show for text elements
+  if(type==='text'){
+    const hasBullets = selectedEl && selectedEl.dataset.bullets === '1';
+    html+=`<button class="props-bullet-btn ${hasBullets?'active':''}" onclick="toggleBullets()" title="Prefix each line with an em dash (–)">
+      ${hasBullets ? '– Bullets ON — click to remove' : '– Add Dash Bullets'}
+    </button>`;
+  }
   const isLocked = selectedEl && selectedEl.dataset.locked === '1';
   html+=`<button class="props-lock-btn ${isLocked?'locked':''}" onclick="toggleLock()">
     ${isLocked ? '🔒 Locked — click to unlock' : '🔓 Lock Position &amp; Size'}
@@ -1168,6 +1291,11 @@ function el_set_asset(key){
 function deleteSelected(){
   if(!selectedEl) return;
   undoSnapshot();
+  // If deleting an SVG logo, record which one so only that one stays gone
+  if(selectedEl.dataset.svgKey){
+    if(!_deletedLogos[currentTab]) _deletedLogos[currentTab] = new Set();
+    _deletedLogos[currentTab].add(selectedEl.dataset.svgKey);
+  }
   selectedEl.remove();
   selectedEl=null;
   document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
@@ -1175,6 +1303,75 @@ function deleteSelected(){
 }
 
 // rgb(r,g,b) → #rrggbb
+// Apply or strip dash-bullet prefix from each line of an inner element
+function applyBullets(inner, on){
+  if(!inner) return;
+
+  // Extract lines correctly whether inner contains divs (bullet mode) or plain pre-wrap text
+  function getLines(el){
+    // If bullet divs exist, read the TEXT span content (not the dash span)
+    const textSpans = el.querySelectorAll('div > span.bt');
+    if(textSpans.length > 0){
+      return Array.from(textSpans).map(function(s){ return s.textContent; });
+    }
+    const divs = el.querySelectorAll('div');
+    if(divs.length > 0){
+      // Legacy: full text including dash in one div
+      return Array.from(divs).map(function(d){
+        const t = d.textContent;
+        return t.startsWith('\u2013 ') ? t.slice(2) : t;
+      });
+    }
+    // Plain pre-wrap text
+    return (el.textContent || '').split('\n');
+  }
+
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  if(on){
+    const lines = getLines(inner);
+    // Use flex layout: dash in fixed-width span, text in flex span
+    // This guarantees wrapped lines align with the start of the text, not the dash
+    const divs = lines.map(function(l){
+      const text = l.startsWith('\u2013 ') ? l.slice(2) : l;
+      if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+      return '<div style="display:flex;align-items:baseline;">' +
+               '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>' +
+               '<span class="bt">' + esc(text) + '</span>' +
+             '</div>';
+    });
+    inner.innerHTML = divs.join('');
+    inner.style.whiteSpace = 'normal';
+    inner.style.paddingLeft = '';
+    inner.style.textIndent  = '';
+  } else {
+    const lines = getLines(inner);
+    inner.textContent = lines.join('\n');
+    inner.style.whiteSpace = 'pre-wrap';
+    inner.style.paddingLeft = '';
+    inner.style.textIndent  = '';
+  }
+}
+
+function toggleBullets(){
+  if(!selectedEl) return;
+  const on = selectedEl.dataset.bullets !== '1';
+  selectedEl.dataset.bullets = on ? '1' : '0';
+  const inner = selectedEl.querySelector('.el-inner');
+  applyBullets(inner, on);
+  // Update text-indent for hanging indent on wrapped lines
+  if(inner){
+    if(on){
+      inner.style.paddingLeft = '0';
+      inner.style.textIndent = '0';
+    }
+  }
+  debouncedPersist();
+  showProps(selectedEl); // refresh panel
+}
+
 function toggleLock(){
   if(!selectedEl) return;
   const locked = selectedEl.dataset.locked === '1';
@@ -1211,13 +1408,31 @@ function serializeTab(){
     const img=el.querySelector('img');
     const ak=el.dataset.assetKey||'';
     const obj={
-      eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0',
+      eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
-      field:el.dataset.field, assetKey:ak,
+      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0',
     };
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
-      if(el.dataset.type==='text') obj.content=inner.textContent;
+      if(el.dataset.type==='text'){
+        if(el.dataset.bullets==='1'){
+          // Bullet elements use flex div-per-line — read from .bt text spans
+          const textSpans = inner.querySelectorAll('span.bt');
+          if(textSpans.length > 0){
+            // Store with '– ' prefix so restoreTab can identify bullet lines
+            obj.content = Array.from(textSpans).map(function(s){
+              return '\u2013 ' + s.textContent;
+            }).join('\n');
+          } else {
+            const divs = inner.querySelectorAll('div');
+            obj.content = divs.length > 0
+              ? Array.from(divs).map(function(d){ return d.textContent; }).join('\n')
+              : inner.textContent;
+          }
+        } else {
+          obj.content = inner.textContent;
+        }
+      }
       // Store img src: prefer assets store (always up to date), fall back to element src
       if(el.dataset.type==='img'){
         obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
@@ -1264,6 +1479,7 @@ function restoreTab(idx){
       el.classList.add('locked-el');
       el.style.cursor='not-allowed';
     }
+    if(sv.combinedAgent==='1') el.dataset.combinedAgent='1';
     const inner=el.querySelector('.el-inner');
     // Apply saved style FIRST
     if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
@@ -1273,6 +1489,11 @@ function restoreTab(idx){
       inner.style.wordBreak='break-word';
     }
     if(sv.content!==undefined && inner && sv.type==='text') inner.textContent=sv.content;
+    // Apply bullets AFTER content is set so prefix isn't overwritten
+    if(sv.bullets==='1'){
+      el.dataset.bullets='1';
+      applyBullets(inner, true);
+    }
     // Apply images AFTER innerStyle (overrides any display:none from innerStyle)
     if(sv.type==='img'){
       const img=el.querySelector('img');
@@ -1288,7 +1509,19 @@ function restoreTab(idx){
           img.src=src;
           // Restore crop state if saved
           if(sv.cropW){
-            img.style.cssText=`position:absolute;left:${sv.cropX};top:${sv.cropY};width:${sv.cropW};height:${sv.cropH};object-fit:fill;display:block;`;
+            // Validate aspect ratio before restoring crop
+            const _nw=img.naturalWidth, _nh=img.naturalHeight;
+            const _cw=parseFloat(sv.cropW), _ch=parseFloat(sv.cropH);
+            const _validAR = (_nw>0&&_nh>0) ? Math.abs((_cw/_ch)-(_nw/_nh))/(_nw/_nh) < 0.02 : true;
+            if(!_validAR && _nw>0){
+              // Recalculate cover sizing
+              const _scale=Math.max(parseFloat(el.style.width)/_nw, parseFloat(el.style.height)/_nh);
+              const _iw=Math.round(_nw*_scale), _ih=Math.round(_nh*_scale);
+              const _ix=Math.round((parseFloat(el.style.width)-_iw)/2), _iy=Math.round((parseFloat(el.style.height)-_ih)/2);
+              img.style.cssText=`position:absolute;left:${_ix}px;top:${_iy}px;width:${_iw}px;height:${_ih}px;object-fit:fill;display:block;`;
+            } else {
+              img.style.cssText=`position:absolute;left:${sv.cropX};top:${sv.cropY};width:${sv.cropW};height:${sv.cropH};object-fit:fill;display:block;`;
+            }
             img.dataset.cropX=sv.cropX; img.dataset.cropY=sv.cropY;
             img.dataset.cropW=sv.cropW; img.dataset.cropH=sv.cropH;
             el.classList.add('has-crop');
@@ -1304,6 +1537,8 @@ function restoreTab(idx){
     }
   });
   injectSVGLogos(idx);
+  // Sync all field values so combined agents, bullets etc all populate correctly
+  globalSync();
   return true;
 }
 
@@ -1329,7 +1564,18 @@ function globalSync(){
     const val=getFieldVal(field);
     if(val===null) return;
     const inner=el.querySelector('.el-inner');
-    if(inner && el.dataset.type==='text') inner.textContent=val;
+    if(inner && el.dataset.type==='text'){
+      // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
+      const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
+      if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
+        const phone = gv(agentPhoneMap[field]) || '';
+        inner.textContent = phone ? val+' '+phone : val;
+      } else {
+        inner.textContent = val;
+      }
+      // Re-apply bullet prefix if this element has bullets enabled
+      if(el.dataset.bullets==='1') applyBullets(inner, true);
+    }
   });
 
   // 2. Update savedStates for ALL other tabs
@@ -1343,7 +1589,15 @@ function globalSync(){
       if(sv.type!=='text' || !sv.field) return;
       const val=getFieldVal(sv.field);
       if(val===null) return;
-      sv.content=val;
+      // For combined agent elements, store name+phone together
+      if(sv.combinedAgent==='1'){
+        const phoneMap={agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
+        const phoneField=phoneMap[sv.field];
+        const phone = phoneField ? gv(phoneField) : '';
+        sv.content = phone ? val+' '+phone : val;
+      } else {
+        sv.content=val;
+      }
     });
   }
 
@@ -1450,7 +1704,16 @@ function addEl(type){
 // TEMPLATE BUILDERS
 // ════════════════════════════════════════
 function mkT(x,y,w,h,content,cfg){
-  return createElement({id:nextId++,type:'text',x,y,w,h,content,...cfg});
+  const el = createElement({id:nextId++,type:'text',x,y,w,h,content,...cfg});
+  if(cfg && cfg.bullets){
+    el.dataset.bullets = '1';
+    const inner = el.querySelector('.el-inner');
+    if(inner) applyBullets(inner, true);
+  }
+  if(cfg && cfg.combinedAgent){
+    el.dataset.combinedAgent = '1';
+  }
+  return el;
 }
 function mkR(x,y,w,h,bg,cfg){
   return createElement({id:nextId++,type:'rect',x,y,w,h,bg,...cfg});
@@ -1531,16 +1794,24 @@ function mkSVGLogo(x,y,w,h,uri,svgKey,cfg){
 
 // Inject logos onto the current artwork — skips if any already present
 function injectSVGLogos(tabIdx){
-  if(!_injectLogosOnBuild) return; // skip — user has a custom logo arrangement
   const art = document.getElementById('artwork');
-  if(art.querySelector('[data-svg-key]')) return; // already there
   const p = SVG_LOGO_POS[tabIdx];
   if(!p) return;
   const [sx,sy,col2x,row2y,lw,h_cbre,h_port] = p;
-  mkSVGLogo(sx,    sy,    lw, h_cbre, SVG_CBRE_GREEN,      'cbre-green',      {z:200});
-  mkSVGLogo(col2x, sy,    lw, h_cbre, SVG_CBRE_WHITE,      'cbre-white',      {z:200});
-  mkSVGLogo(sx,    row2y, lw, h_port, SVG_PORTFOLIO_GREEN, 'portfolio-green', {z:200});
-  mkSVGLogo(col2x, row2y, lw, h_port, SVG_PORTFOLIO_WHITE, 'portfolio-white', {z:200});
+  const deleted = _deletedLogos[tabIdx] || new Set();
+  // Define all 4 logos
+  const logos = [
+    {key:'cbre-green',      x:sx,    y:sy,    w:lw, h:h_cbre, uri:SVG_CBRE_GREEN},
+    {key:'cbre-white',      x:col2x, y:sy,    w:lw, h:h_cbre, uri:SVG_CBRE_WHITE},
+    {key:'portfolio-green', x:sx,    y:row2y, w:lw, h:h_port, uri:SVG_PORTFOLIO_GREEN},
+    {key:'portfolio-white', x:col2x, y:row2y, w:lw, h:h_port, uri:SVG_PORTFOLIO_WHITE},
+  ];
+  logos.forEach(lg => {
+    // Skip if already on canvas or was deleted by the user
+    if(art.querySelector(`[data-svg-key="${lg.key}"]`)) return;
+    if(deleted.has(lg.key)) return;
+    mkSVGLogo(lg.x, lg.y, lg.w, lg.h, lg.uri, lg.key, {z:200});
+  });
 }
 
 
@@ -1635,128 +1906,114 @@ function buildTemplate(idx){
   document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
   [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][idx](s[0],s[1]);
   injectSVGLogos(idx);
+  // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
+  globalSync();
 }
 
 // ─── AFR 2-AGENT 228×398 ───
 function buildAFR2(W,H){
-  mkI(0,0,W,159,'img1','Hero image',{z:1});
-  mkR(W-100,138,100,21,DK,{z:3}); mkT(W-98,140,96,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:4,field:'banner'});
-  mkR(0,159,W,60,DK,{z:2});
-  mkT(8,163,W-16,28,gv('fh'),{color:'#fff',fontSize:'13px',fontFamily:HF,lineHeight:'1.25',z:3,field:'heading'});
-  mkT(8,188,W-16,28,gv('fs'),{color:'#fff',fontSize:'13px',fontFamily:HF,lineHeight:'1.25',z:3,field:'subheading'});
-  mkR(0,219,W,H-219,'#fff',{z:1});
-  mkT(8,225,130,16,gv('fa1'),{fontWeight:'700',fontSize:'9px',z:3,field:'address1'});
-  mkT(8,240,130,14,gv('fa2'),{fontSize:'9px',color:'#444',z:3,field:'address2'});
-  mkI(148,222,68,28,'logo','Logo',{z:3});
-  const bulls=[...gv('fbull').split('\n').filter(Boolean),gv('fi')?'Net Income: '+gv('fi'):''].filter(Boolean);
-  bulls.forEach((b,i)=>mkT(8,258+i*14,W-16,13,'– '+b,{fontSize:'8px',color:'#222',z:3}));
-  const sy=258+bulls.length*14+5;
-  mkT(8,sy,W-16,13,gv('fm'),{fontWeight:'700',fontSize:'9px',z:3,field:'salemethod'});
-  mkT(8,sy+17,W/2-10,13,gv('fn1'),{fontWeight:'700',fontSize:'9px',z:3,field:'agent1name'});
-  mkT(8,sy+29,W/2-10,13,gv('fp1'),{fontSize:'9px',z:3,field:'agent1num'});
-  mkT(W/2+4,sy+17,W/2-12,13,gv('fn2'),{fontWeight:'700',fontSize:'9px',z:3,field:'agent2name'});
-  mkT(W/2+4,sy+29,W/2-12,13,gv('fp2'),{fontSize:'9px',z:3,field:'agent2num'});
-  // border overlay
+  mkI(0,0,228,172,'img1','Image',{z:1});
+  mkR(128,140,100,28,'rgb(0, 63, 45)',{z:3});
+  mkT(79,147,140,17,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
+  mkR(0,168,228,59,'rgb(1, 42, 45)',{z:2});
+  mkT(11,172,214,50,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'19px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'heading',z:3});
+  mkR(0,219,228,179,'rgb(255, 255, 255)',{z:1});
+  mkT(11,235,170,16,gv('fa1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
+  mkT(11,249,161,18,gv('fa2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
+  mkI(173,231,51,36,'logo','Image',{z:3});
+  mkT(11,265,212,64,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'});
+  mkT(11,330,211,14,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
+  mkT(11,346,213,13,gv('fm'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
+  mkT(11,361,105,13,gv('fn1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
+  mkT(11,377,106,13,gv('fp1'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
+  mkT(119,362,102,13,gv('fn2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3});
+  mkT(119,377,102,13,gv('fp2'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3});
   const bord=document.createElement('div');
   bord.style.cssText=`position:absolute;inset:0;border:1px solid #aaa;pointer-events:none;z-index:9998;`;
   document.getElementById('artwork').appendChild(bord);
-  // CBRE white logo bottom-right of white body
-  addCBRELogos(W,H,[
-    {x:W-90,y:H-32,w:80,h:22,uri:CBRE_LOGO_WHITE,z:20}
-  ]);
 }
 
 // ─── AFR 4-AGENT 464×398 ───
 function buildAFR4(W,H){
-  mkI(0,0,W,183,'img1','Hero image',{z:1});
-  mkR(W-110,162,110,21,DK,{z:3}); mkT(W-108,164,106,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:4,field:'banner'});
-  mkR(0,183,W,55,DK,{z:2});
-  mkT(10,188,W-20,26,gv('fh'),{color:'#fff',fontSize:'14px',fontFamily:HF,lineHeight:'1.2',z:3,field:'heading'});
-  mkT(10,210,W-20,24,gv('fs'),{color:'#fff',fontSize:'13px',fontFamily:HF,lineHeight:'1.2',z:3,field:'subheading'});
-  mkR(0,238,W,H-238,'#fff',{z:1});
-  mkT(10,245,180,15,gv('fa1'),{fontWeight:'700',fontSize:'10px',z:3,field:'address1'});
-  mkT(10,260,180,13,gv('fa2'),{fontSize:'9px',color:'#444',z:3,field:'address2'});
-  mkI(W-104,242,94,38,'logo','Logo',{z:3});
-  const all=[...gv('fbull').split('\n').filter(Boolean),gv('fi')?'Net Income: '+gv('fi'):''].filter(Boolean);
-  const half=Math.ceil(all.length/2);
-  all.slice(0,half).forEach((b,i)=>mkT(10,276+i*14,W/2-20,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
-  all.slice(half).forEach((b,i)=>mkT(W/2+10,276+i*14,W/2-20,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
-  const sy=276+half*14+6;
-  mkT(10,sy,W-20,14,[gv('fm'),gv('fd')].filter(Boolean).join(' '),{fontWeight:'700',fontSize:'10px',z:3});
-  [[gv('fn1'),gv('fp1'),10],[gv('fn2'),gv('fp2'),W/4+5],[gv('fn3'),gv('fp3'),W/2+5],[gv('fn4'),gv('fp4'),W*3/4+5]].forEach(([n,p,x])=>{
-    if(!n) return;
-    mkT(x,sy+18,W/4-12,13,n,{fontWeight:'700',fontSize:'9px',z:3});
-    mkT(x,sy+30,W/4-12,13,p,{fontSize:'9px',z:3});
-  });
+  mkI(0,0,464,172,'img1','Image',{z:1});
+  mkR(353,143,110,28,'rgb(0, 63, 45)',{z:3});
+  mkT(309,151,145,14,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
+  mkR(0,171,464,57,'rgb(1, 42, 45)',{z:2});
+  mkT(13,177,444,26,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'19px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.2',field:'heading',z:3});
+  mkT(11,199,444,24,gv('fs'),{color:'rgb(255, 255, 255)',fontSize:'19px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.2',field:'subheading',z:3});
+  mkR(0,238,464,160,'rgb(255, 255, 255)',{z:1});
+  mkT(11,236,340,14,gv('fa1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
+  mkT(11,250,351,13,gv('fa2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
+  mkI(395,232,62,31,'logo','Image',{z:3});
+  mkT(10,267,212,72,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'});
+  mkT(10,331,212,13,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
+  mkT(11,347,442,14,gv('fd'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
+  mkT(12,363,103,13,gv('fn1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
+  mkT(11,378,105,13,gv('fp1'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
+  mkT(122,364,104,13,gv('fn2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3});
+  mkT(122,378,106,13,gv('fp2'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3});
+  mkT(237,364,104,13,gv('fn3'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3});
+  mkT(237,378,104,13,gv('fp3'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3});
+  mkT(353,364,103,13,gv('fn4'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3});
+  mkT(353,379,104,13,gv('fp4'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3});
   const bord=document.createElement('div');
   bord.style.cssText=`position:absolute;inset:0;border:1px solid #aaa;pointer-events:none;z-index:9998;`;
   document.getElementById('artwork').appendChild(bord);
-  addCBRELogos(W,H,[
-    {x:W-120,y:H-36,w:110,h:28,uri:CBRE_LOGO_WHITE,z:20}
-  ]);
 }
 
 // ─── AUCTION POSTER 794×1123 ───
 function buildAuction(W,H){
-  mkT(18,12,180,24,'Portfolio',{color:G,fontSize:'17px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:3});
-  mkT(W-86,12,78,24,'CBRE',{color:DK,fontSize:'22px',fontWeight:'900',z:3,extraStyle:'letter-spacing:-.02em;'});
-  mkR(0,44,W,90,DK,{z:2});
-  mkT(20,50,W-40,40,gv('fh'),{color:'#fff',fontSize:'22px',fontFamily:HF,lineHeight:'1.25',z:3,field:'heading'});
-  mkT(20,82,W-40,34,gv('fs'),{color:'#fff',fontSize:'20px',fontFamily:HF,lineHeight:'1.25',z:3,field:'subheading'});
-  mkI(0,134,W,480,'img1','Hero image',{z:1});
-  mkR(W-160,568,160,30,DK,{z:3}); mkT(W-158,571,155,24,gv('fb'),{color:'#fff',fontSize:'11px',fontWeight:'700',z:4,field:'banner'});
-  mkT(20,616,360,30,gv('fa1'),{fontSize:'22px',fontFamily:HF,color:DK,lineHeight:'1.2',z:2,field:'address1'});
-  mkT(20,646,300,18,gv('fa2'),{fontSize:'13px',color:'#555',z:2,field:'address2'});
-  mkI(W-140,612,120,52,'logo','Logo',{z:2});
-  mkR(20,678,44,3,G,{z:2});
-  const bulls=gv('fbull').split('\n').filter(Boolean);
-  bulls.forEach((b,i)=>mkT(20,690+i*22,360,20,b,{fontSize:'13px',color:'#222',z:2}));
-  mkT(20,690+bulls.length*22+4,360,20,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'14px',color:DK,z:2,field:'income'});
-  mkR(W-244,686,1,200,'#ddd',{z:2});
-  mkT(W-234,690,210,18,'CBRE',{fontWeight:'700',fontSize:'13px',color:DK,z:2});
-  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
-    if(!n) return;
-    mkT(W-234,710+i*22,130,18,n,{fontSize:'12px',color:'#333',z:2});
-    mkT(W-100,710+i*22,90,18,p,{fontSize:'11px',color:'#555',z:2});
-  });
-  mkT(0,H-18,W,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'7px',color:'#999',padding:'0 18px',z:2});
-  // Portfolio + CBRE logos top
-  addCBRELogos(W,H,[
-    {x:W-90,y:10,w:80,h:24,uri:CBRE_LOGO_GREEN,z:10}
-  ]);
+  mkR(30,109,736,110,'rgb(1, 42, 45)',{z:2});
+  mkT(52,127,715,42,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'heading',z:3});
+  mkT(52,165,713,36,gv('fs'),{color:'rgb(255, 255, 255)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'subheading',z:3});
+  mkI(30,218,736,456,'img1','Image',{z:1});
+  mkR(545,623,221,51,'rgb(0, 63, 45)',{z:3});
+  mkT(417,636,336,27,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
+  mkT(30,705,518,45,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.2',field:'address1',z:2});
+  mkT(30,743,516,48,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',field:'address2',z:2});
+  mkI(637,690,128,93,'logo','Image',{z:2});
+  mkR(32,807,56,3,'rgb(23, 232, 143)',{z:2});
+  mkT(32,837,431,133,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:2});
+  mkT(31,974,424,48,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2});
+  mkR(498,840,2,200,'rgb(203, 205, 203)',{z:2});
+  mkT(534,837,210,27,'CBRE',{color:'rgb(127, 132, 128)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:2});
+  mkT(534,867,234,30,gv('fn1'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:2});
+  mkT(534,900,241,28,gv('fn2'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:2});
+  mkT(534,932,244,28,gv('fn3'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:2});
+  mkT(534,963,236,26,gv('fn4'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:2});
+  mkSVGLogo(600,36,160,43,SVG_CBRE_GREEN,'cbre-green',{z:200});
+  mkSVGLogo(33,38,160,39,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200});
 }
 
 // ─── BROCHURE 595×842 ───
 function buildBrochure1(W,H){
-  mkT(18,10,180,22,'Portfolio',{color:G,fontSize:'15px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:3});
-  mkT(W-84,10,76,22,'CBRE',{color:DK,fontSize:'20px',fontWeight:'900',z:3,extraStyle:'letter-spacing:-.02em;'});
-  mkI(0,38,W,308,'img1','Hero image',{z:1});
-  mkI(0,348,W/2-2,190,'img2','Second image',{z:1});
-  mkI(W/2+2,348,W/2-2,190,'img3','Third image',{z:1});
-  mkR(W-130,510,130,28,DK,{z:3}); mkT(W-128,512,125,22,gv('fb'),{color:'#fff',fontSize:'9px',fontWeight:'700',z:4,field:'banner'});
-  mkT(18,546,360,28,gv('fh'),{color:DK,fontSize:'22px',fontFamily:HF,lineHeight:'1.15',z:2,field:'heading'});
-  mkT(18,572,360,26,gv('fs'),{color:DK,fontSize:'20px',fontFamily:HF,lineHeight:'1.15',z:2,field:'subheading'});
-  mkI(W-130,544,112,48,'logo','Logo',{z:2});
-  mkR(0,604,W,1,'#ccc',{z:2});
-  const c1x=18,c2x=212,c3x=408,cW=170,ry=612;
-  mkR(c1x,ry,3,40,G,{z:3});
-  mkT(c1x+7,ry,cW-7,16,gv('fa1'),{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'address1'});
-  mkT(c1x+7,ry+17,cW-7,15,gv('fa2'),{fontSize:'10px',color:'#555',z:3,field:'address2'});
-  mkT(c1x,ry+45,cW,15,gv('fbull').split('\n')[0]||'',{fontSize:'10px',color:'#222',z:3});
-  gv('fbull').split('\n').slice(1).filter(Boolean).forEach((b,i)=>mkT(c1x,ry+62+i*14,cW,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
-  mkT(c1x,ry+150,cW,15,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'income'});
-  mkR(c2x-8,ry,1,200,'#ddd',{z:2}); mkR(c3x-8,ry,1,200,'#ddd',{z:2});
-  gv('fbc').split('\n').filter(Boolean).forEach((b,i)=>mkT(c2x,ry+i*14,cW,13,'– '+b,{fontSize:'9px',color:'#222',z:3}));
-  mkT(c3x,ry,cW,14,'Contact',{fontWeight:'700',fontSize:'10px',color:DK,z:3});
-  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
-    if(!n) return;
-    mkT(c3x,ry+16+i*14,cW,13,n+' '+p,{fontSize:'9px',color:'#333',z:3});
-  });
-  mkT(c3x,ry+64,cW,14,gv('fm'),{fontWeight:'700',fontSize:'10px',color:DK,z:3,field:'salemethod'});
-  mkT(c3x,ry+80,cW,38,gv('fd'),{fontSize:'9px',color:'#555',lineHeight:'1.4',z:3,field:'saledate'});
-  mkT(c3x,ry+122,cW,13,'*Approx',{fontSize:'8px',color:'#999',z:3});
-  mkR(0,H-18,W,1,'#eee',{z:2});
-  mkT(0,H-17,W,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'7px',color:'#999',padding:'0 18px',z:2});
+  mkI(29,66,539,300,'img1','Image',{z:1,cropX:'0px',cropY:'0px',cropW:'595px',cropH:'308px'});
+  mkI(29,377,264,196,'img2','Image',{z:1});
+  mkI(304,377,265,196,'img3','Image',{z:1});
+  mkR(439,545,130,28,'rgb(0, 63, 45)',{z:3});
+  mkT(389,552,171,17,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
+  mkT(31,588,498,28,gv('fh'),{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'heading',z:2});
+  mkT(31,614,358,26,gv('fs'),{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'subheading',z:2});
+  mkI(505,581,64,54,'logo','Image',{z:2,cropX:'-15.4472px',cropY:'4.29733px',cropW:'103.87px',cropH:'44.5157px'});
+  mkR(32,654,3,27,'rgb(23, 232, 143)',{z:3});
+  mkT(44,653,163,16,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
+  mkT(45,669,163,15,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
+  mkT(33,693,172,99,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3});
+  mkT(32,791,175,15,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3});
+  mkR(426,655,1,145,'rgb(221, 221, 221)',{z:2});
+  mkT(214,655,170,143,document.getElementById('fbc').value,{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bodycopy',z:3,bullets:'1'});
+  mkT(440,656,128,14,'Contact',{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
+  mkT(443,672,140,12,(gv('fn1')&&gv('fp1'))?gv('fn1')+' '+gv('fp1'):(gv('fn1')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3,combinedAgent:'1'});
+  mkT(443,685,140,12,(gv('fn2')&&gv('fp2'))?gv('fn2')+' '+gv('fp2'):(gv('fn2')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3,combinedAgent:'1'});
+  mkT(443,698,140,12,(gv('fn3')&&gv('fp3'))?gv('fn3')+' '+gv('fp3'):(gv('fn3')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3,combinedAgent:'1'});
+  mkT(443,711,140,12,(gv('fn4')&&gv('fp4'))?gv('fn4')+' '+gv('fp4'):(gv('fn4')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3,combinedAgent:'1'});
+  mkT(443,733,170,14,gv('fm'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
+  mkT(443,750,116,38,gv('fd'),{color:'rgb(77, 77, 79)',fontSize:'9px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
+  mkT(443,796,170,13,'*Approx',{color:'rgb(77, 77, 79)',fontSize:'6px',fontWeight:'300',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
+  mkR(30,813,539,1,'rgb(238, 238, 238)',{z:2});
+  mkT(11,825,584,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(153, 153, 153)',fontSize:'7px',fontWeight:'300',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',padding:'0px 18px',z:2});
+  mkSVGLogo(450,17,121,31,SVG_CBRE_GREEN,'cbre-green',{z:200});
+  mkSVGLogo(28,13,137,39,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200});
 }
 
 // ─── BROCHURE 2-PAGE 1191×842 (all dark) ───
@@ -1806,7 +2063,8 @@ function buildBrochure2(W,H){
   mkT(c3x,ry,cW,11,'Contact',{fontWeight:'700',fontSize:'8px',color:DK,z:5});
   [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
     if(!n) return;
-    mkT(c3x,ry+13+i*12,cW,11,n+' '+p,{fontSize:'7px',color:'#333',z:5});
+    const agentField = ['agent1name','agent2name','agent3name','agent4name'][i];
+    mkT(c3x,ry+13+i*12,cW,11,n+(p?' '+p:''),{fontSize:'7px',color:'#333',z:5,field:agentField,combinedAgent:'1'});
   });
   mkT(c3x,ry+52,cW,12,gv('fm'),{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'salemethod'});
   mkT(c3x,ry+65,cW,22,gv('fd'),{fontSize:'7px',color:'#555',lineHeight:'1.4',z:5,field:'saledate'});
@@ -1869,19 +2127,14 @@ function buildEDM(W,H){
 
 // ─── LINKEDIN 800×800 ───
 function buildLinkedIn(W,H){
-  const topH=Math.round(H*0.47);
-  mkR(0,0,W,topH,DK,{z:1});
-  mkT(20,16,200,28,'Portfolio',{color:'#fff',fontSize:'20px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:3});
-  mkT(W-112,16,102,28,'CBRE',{color:'#fff',fontSize:'22px',fontWeight:'900',z:3,extraStyle:'letter-spacing:-.02em;'});
-  mkR(20,Math.round(H*.18),4,Math.round(H*.22),G,{z:3});
-  mkT(32,Math.round(H*.18),W-52,Math.round(H*.11),gv('fh'),{color:'#fff',fontSize:'30px',fontFamily:HF,lineHeight:'1.15',z:3,field:'heading'});
-  mkT(32,Math.round(H*.29),W-52,Math.round(H*.09),gv('fm'),{color:GB,fontSize:'30px',fontFamily:HF,lineHeight:'1.15',z:3,field:'salemethod'});
-  mkT(32,Math.round(H*.39),W-52,Math.round(H*.07),gv('fa1'),{color:'rgba(255,255,255,.85)',fontSize:'14px',fontFamily:HF,z:3,field:'address1'});
-  mkI(0,topH,W,H-topH,'img1','Hero image',{z:1});
-  addCBRELogos(W,H,[
-    {x:16,y:14,w:110,h:28,uri:CBRE_LOGO_WHITE,z:10},
-    {x:W-130,y:14,w:120,h:28,uri:CBRE_LOGO_WHITE,z:10}
-  ]);
+  mkR(0,0,800,376,'rgb(1, 42, 45)',{z:1});
+  mkR(38,144,3,311,'rgb(23, 232, 143)',{z:3});
+  mkT(69,135,711,66,gv('fa1'),{color:'rgb(255, 255, 255)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'address1',z:3});
+  mkT(70,198,699,68,gv('fm'),{color:'rgb(23, 232, 143)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'salemethod',z:3});
+  mkT(74,289,702,58,document.getElementById('fbull').value,{color:'rgba(255, 255, 255, 0.85)',fontSize:'22px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3});
+  mkI(0,376,800,424,'img1','Image',{z:1});
+  mkSVGLogo(611,37,145,35,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkSVGLogo(34,36,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
 }
 
 // ─── SIGNBOARD 907×680 ───
@@ -1972,13 +2225,31 @@ function serializeTabFrom(art){
     const img=el.querySelector('img');
     const ak=el.dataset.assetKey||'';
     const obj={
-      eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0',
+      eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height,
       z:el.style.zIndex, field:el.dataset.field||'', assetKey:ak,
     };
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
-      if(el.dataset.type==='text') obj.content=inner.textContent;
+      if(el.dataset.type==='text'){
+        if(el.dataset.bullets==='1'){
+          // Bullet elements use flex div-per-line — read from .bt text spans
+          const textSpans = inner.querySelectorAll('span.bt');
+          if(textSpans.length > 0){
+            // Store with '– ' prefix so restoreTab can identify bullet lines
+            obj.content = Array.from(textSpans).map(function(s){
+              return '\u2013 ' + s.textContent;
+            }).join('\n');
+          } else {
+            const divs = inner.querySelectorAll('div');
+            obj.content = divs.length > 0
+              ? Array.from(divs).map(function(d){ return d.textContent; }).join('\n')
+              : inner.textContent;
+          }
+        } else {
+          obj.content = inner.textContent;
+        }
+      }
       if(el.dataset.type==='img'){
         obj.imgSrc=(ak&&assets[ak])?assets[ak]:(img?img.src:'');
         if(img&&img.dataset.cropW){
@@ -1997,121 +2268,159 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
     pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
   }
 
-  const [canvasW,canvasH]=SIZES[tabIdx];
-  const sx=pageW/canvasW, sy=pageH/canvasH;
+  const [canvasW, canvasH] = SIZES[tabIdx];
+  const realArt    = document.getElementById('artwork');
+  const canvasWrap = document.getElementById('canvas-wrap');
 
-  // Background
-  const bgCol=tabIdx===4?_rgb(DK):[255,255,255];
-  if(bgCol){ pdf.setFillColor(...bgCol); pdf.rect(0,0,pageW,pageH,'F'); }
+  // Stash current state
+  const prevHTML = realArt.innerHTML;
+  const prevW    = realArt.style.width;
+  const prevH    = realArt.style.height;
+  const prevBg   = realArt.style.background;
+  const prevT    = realArt.style.transform;
+  const prevPos  = realArt.style.position;
+  const prevTop  = realArt.style.top;
+  const prevLeft = realArt.style.left;
+  const prevWW   = canvasWrap.style.width;
+  const prevWH   = canvasWrap.style.height;
+  const prevNI   = nextId;
+  const prevTab  = currentTab;
 
-  const state=_stateForTab(tabIdx);
-  if(!state||!state.length) return;
+  try {
+    // Position off-screen at 1:1 scale
+    realArt.style.position  = 'fixed';
+    realArt.style.top       = '-99999px';
+    realArt.style.left      = '0px';
+    realArt.style.transform = 'none';
+    realArt.style.width     = canvasW + 'px';
+    realArt.style.height    = canvasH + 'px';
+    realArt.style.background = tabIdx === 4 ? DK : '#ffffff';
+    canvasWrap.style.width  = canvasW + 'px';
+    canvasWrap.style.height = canvasH + 'px';
+    realArt.innerHTML = '';
+    nextId = 1;
+    currentTab = tabIdx;
 
-  const sorted=[...state].sort((a,b)=>(parseInt(a.z)||0)-(parseInt(b.z)||0));
+    // Build template (same path as screen render)
+    [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][tabIdx](canvasW, canvasH);
+    injectSVGLogos(tabIdx);
 
-  // Helper: write a clipping rect + draw image in one correct PDF graphics block
-  function addImageClipped(src, fmt, ix, iy, iw, ih, cx, cy, cw, ch){
-    const sc = pdf.internal.scaleFactor;
-    const pH = pdf.internal.pageSize.getHeight();
-    // Convert mm → PDF units (bottom-left origin)
-    const pdfX  = (cx * sc).toFixed(4);
-    const pdfY  = ((pH - cy - ch) * sc).toFixed(4);
-    const pdfW  = (cw * sc).toFixed(4);
-    const pdfH  = (ch * sc).toFixed(4);
-    pdf.saveGraphicsState();
-    // Push clip rect using raw PDF stream operators
-    pdf.internal.write(`${pdfX} ${pdfY} ${pdfW} ${pdfH} re W n`);
-    pdf.addImage(src, fmt, ix, iy, iw, ih, undefined, 'FAST');
-    pdf.restoreGraphicsState();
-  }
+    // Inject saved asset images with correct object-fit
+    realArt.querySelectorAll('.el[data-type="img"]').forEach(el => {
+      const ak    = el.dataset.assetKey;
+      const src   = ak && assets[ak] ? assets[ak] : null;
+      if(!src) return;
+      const inner  = el.querySelector('.el-inner');
+      const isLogo = ak === 'logo';
+      if(inner) inner.style.background = isLogo ? 'transparent' : '';
+      // Remove existing img and replace with fresh one
+      const oldImg = el.querySelector('img');
+      if(oldImg) oldImg.remove();
+      const imgEl = document.createElement('img');
+      imgEl.src         = src;
+      imgEl.crossOrigin = 'anonymous';
+      imgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:' +
+                            (isLogo ? 'contain' : 'cover') + ';display:block;';
+      if(inner) inner.appendChild(imgEl);
+    });
 
-  for(const sv of sorted){
-    const x=parseFloat(sv.x)*sx;
-    const y=parseFloat(sv.y)*sy;
-    const w=parseFloat(sv.w)*sx;
-    const h=parseFloat(sv.h)*sy;
-    if(!w||!h) continue;
+    // Wait for raster images to load (with 8s timeout safety)
+    // SVG data URIs load synchronously — skip them
+    const rasterImgs = [...realArt.querySelectorAll('img')].filter(img => {
+      const s = img.src || '';
+      return !s.startsWith('data:image/svg') && s.length > 0;
+    });
+    await Promise.race([
+      Promise.all(rasterImgs.map(img => new Promise(res => {
+        if(img.complete) { res(); return; }
+        img.addEventListener('load',  res, {once:true});
+        img.addEventListener('error', res, {once:true});
+      }))),
+      new Promise(res => setTimeout(res, 8000)) // 8s max wait
+    ]);
 
-    // ── RECT (vector) ─────────────────────────────────────────────────────
-    if(sv.type==='rect'){
-      const ist=sv.innerStyle||'';
-      const bgm=ist.match(/background(?:-color)?\s*:\s*([^;]+)/);
-      const col=bgm?_rgb(bgm[1].trim()):_rgb(DK);
-      if(col){ pdf.setFillColor(...col); pdf.rect(x,y,w,h,'F'); }
-    }
+    // Two frames for layout
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    // ── IMAGE (native, correct aspect ratio) ─────────────────────────────
-    else if(sv.type==='img'){
-      const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:sv.imgSrc;
-      if(!src) continue;
-      const fmt=src.startsWith('data:image/png')?'PNG':'JPEG';
-      try{
-        if(sv.cropW){
-          // Manual crop: img is positioned/sized explicitly
-          const iw=parseFloat(sv.cropW)*sx;
-          const ih=parseFloat(sv.cropH)*sy;
-          const ix=parseFloat(sv.cropX)*sx;
-          const iy=parseFloat(sv.cropY)*sy;
-          addImageClipped(src, fmt, x+ix, y+iy, iw, ih, x, y, w, h);
-        } else {
-          // Get natural image size to compute cover/contain correctly
-          const nat=await new Promise(res=>{
-            const im=new Image();
-            im.onload=()=>res({w:im.naturalWidth,h:im.naturalHeight});
-            im.onerror=()=>res(null);
-            im.src=src;
-          });
-          if(!nat){ pdf.addImage(src,fmt,x,y,w,h,undefined,'FAST'); continue; }
-          const isLogo=sv.assetKey==='logo';
-          if(isLogo){
-            // object-fit:contain — fit inside, centered
-            const scale=Math.min(w/nat.w, h/nat.h);
-            const dw=nat.w*scale, dh=nat.h*scale;
-            pdf.addImage(src,fmt,x+(w-dw)/2,y+(h-dh)/2,dw,dh,undefined,'FAST');
+    // Capture
+    const canvas = await html2canvas(realArt, {
+      scale:           3,
+      useCORS:         true,
+      allowTaint:      true,
+      backgroundColor: tabIdx === 4 ? DK : '#ffffff',
+      logging:         false,
+      width:           canvasW,
+      height:          canvasH,
+      x: 0,
+      y: 0,
+      imageTimeout:    10000,
+      onclone: function(clonedDoc, clonedEl) {
+        // Fix object-fit:contain for all images by converting to
+        // a pre-rendered canvas element that html2canvas handles correctly
+        clonedEl.querySelectorAll('.el-inner').forEach(function(inner) {
+          const img = inner.querySelector('img');
+          if(!img || !img.src) return;
+          const fit = img.style.objectFit || 'cover';
+          const iw  = inner.offsetWidth  || parseFloat(inner.style.width)  || 100;
+          const ih  = inner.offsetHeight || parseFloat(inner.style.height) || 100;
+          if(iw < 1 || ih < 1) return;
+
+          // Create a canvas with the correct fit applied
+          const c = clonedDoc.createElement('canvas');
+          c.width  = iw * 3;
+          c.height = ih * 3;
+          const ctx = c.getContext('2d');
+
+          // Find the original (non-cloned) image to get natural dimensions
+          const origSrc = img.src;
+          const origImg = document.querySelector('img[src="' + origSrc + '"]') || img;
+          const nw = origImg.naturalWidth  || iw;
+          const nh = origImg.naturalHeight || ih;
+
+          const cw = c.width, ch = c.height;
+          let dx, dy, dw, dh;
+          if(fit === 'contain') {
+            const scale = Math.min(cw/nw, ch/nh);
+            dw = nw*scale; dh = nh*scale;
+            dx = (cw-dw)/2; dy = (ch-dh)/2;
           } else {
-            // object-fit:cover — fill box, clip overflow, centered
-            const scale=Math.max(w/nat.w, h/nat.h);
-            const dw=nat.w*scale, dh=nat.h*scale;
-            addImageClipped(src, fmt, x+(w-dw)/2, y+(h-dh)/2, dw, dh, x, y, w, h);
+            const scale = Math.max(cw/nw, ch/nh);
+            dw = nw*scale; dh = nh*scale;
+            dx = (cw-dw)/2; dy = (ch-dh)/2;
           }
-        }
-      }catch(e){ console.warn('img skip',e); }
-    }
+          try { ctx.drawImage(origImg, dx, dy, dw, dh); } catch(e) { return; }
 
-    // ── TEXT — rasterised at high DPI so fonts look exactly like screen ───
-    else if(sv.type==='text'){
-      if(!sv.content) continue;
-      try{
-        // Build a tiny off-screen div with just this text element
-        const elW=parseFloat(sv.w), elH=parseFloat(sv.h);
-        const SCALE=4; // 4× = ~300dpi equivalent
-        const holder=document.createElement('div');
-        holder.style.cssText=`position:fixed;left:-99999px;top:0;width:${elW}px;height:${elH}px;overflow:hidden;background:transparent;`;
-        document.body.appendChild(holder);
-
-        const textEl=document.createElement('div');
-        textEl.style.cssText=`position:absolute;inset:0;overflow:hidden;`;
-        if(sv.innerStyle) textEl.setAttribute('style', sv.innerStyle);
-        textEl.style.whiteSpace='pre-wrap';
-        textEl.style.wordBreak='break-word';
-        textEl.style.overflow='hidden';
-        textEl.style.background='transparent';
-        textEl.textContent=sv.content;
-        holder.appendChild(textEl);
-
-        const tc=await html2canvas(holder,{
-          scale:SCALE, useCORS:true, backgroundColor:null,
-          logging:false, width:elW, height:elH
+          const replacement = clonedDoc.createElement('img');
+          replacement.src = c.toDataURL('image/png');
+          replacement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+          inner.style.background = 'transparent';
+          img.replaceWith(replacement);
         });
-        holder.remove();
+      }
+    });
 
-        // Place the rasterised text into the PDF at the element's exact position
-        const imgData=tc.toDataURL('image/png');
-        pdf.addImage(imgData,'PNG',x,y,w,h,undefined,'FAST');
-      }catch(e){ console.warn('text render skip',e); }
-    }
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+
+  } finally {
+    // Always restore — even if an error occurred
+    realArt.innerHTML        = prevHTML;
+    realArt.style.width      = prevW;
+    realArt.style.height     = prevH;
+    realArt.style.background = prevBg;
+    realArt.style.transform  = prevT;
+    realArt.style.position   = prevPos;
+    realArt.style.top        = prevTop;
+    realArt.style.left       = prevLeft;
+    canvasWrap.style.width   = prevWW;
+    canvasWrap.style.height  = prevWH;
+    nextId     = prevNI;
+    currentTab = prevTab;
   }
 }
+
+
+
 
 // ════════════════════════════════════════
 // DOWNLOAD CURRENT TAB PDF
@@ -2397,6 +2706,7 @@ function toggleMITab(idx, cb) {
 function collectState(){
   return {
     v:5, currentTab, zoom:Math.round(zoom*100), assets,
+    deletedLogos: Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     fields:{
       fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),
       fb:gv('fb'),fi:gv('fi'),
@@ -2416,6 +2726,12 @@ function applyState(data, skipZoom=false){
   if(!data || data.v !== 5) return false;
   try {
     if(data.assets) assets = data.assets;
+    // Restore deleted logos record
+    if(data.deletedLogos){
+      Object.entries(data.deletedLogos).forEach(([tab, keys]) => {
+        _deletedLogos[parseInt(tab)] = new Set(keys);
+      });
+    }
     savedStates = {}; // always rebuild tabs fresh from buildXxx() using current fields
     if(data.fields){
       const f=data.fields;
@@ -2681,10 +2997,22 @@ function syncAgentSlot(i){
     if(ph)  ph.style.display = photo?'none':'';
   });
 
-  // Clear all tab snapshots so every tab rebuilds fresh with updated agent values
-  for(let i=0;i<8;i++) delete savedStates[i];
-  // Rebuild current tab immediately so the change is visible now
-  buildTemplate(currentTab);
+  // Update live canvas text elements in-place (preserves bullets, positions etc)
+  globalSync();
+
+  // Extra pass: directly update any combinedAgent elements on the live canvas
+  // This catches timing issues where globalSync ran before agents were loaded
+  const agentField = ['agent1name','agent2name','agent3name','agent4name'][i];
+  const phoneField  = ['fp1','fp2','fp3','fp4'][i];
+  const agentNum = i+1;
+  document.querySelectorAll('.el[data-combined-agent="1"][data-field="'+agentField+'"]').forEach(function(el){
+    const inner = el.querySelector('.el-inner');
+    if(!inner) return;
+    const n = gv('fn'+agentNum);
+    const p = gv(phoneField);
+    inner.textContent = (n && p) ? n+' '+p : (n||'');
+  });
+
   debouncedPersist();
 }
 
@@ -2726,211 +3054,113 @@ const _SVG_KEY_TO_CONST = {
 // Captures current canvas layout and bakes it into the buildXxx() functions,
 // then downloads an updated builder.html with the new base templates.
 // ════════════════════════════════════════
-const _TMPL_TAB_NAMES  = ['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6'];
-const _TMPL_BUILD_FNS  = ['buildAFR2','buildAFR4','buildAuction','buildBrochure1','buildBrochure2','buildEDM','buildLinkedIn','buildSignboard'];
 
 // Snapshot of serialized layouts keyed by tab index — filled when modal opens
-let _tmplSnapshots = {};
 
-function openSaveTemplateModal(){
-  // Capture current tab first
-  savedStates[currentTab] = serializeTab();
 
-  // Pre-render all tabs to capture their current layouts
-  _tmplSnapshots = {};
-  _tmplSnapshots[currentTab] = serializeTab();
 
-  // Build the tab checklist — current tab pre-checked, others unchecked
-  const list = document.getElementById('tmpl-tab-list');
-  list.innerHTML = _TMPL_TAB_NAMES.map((name, i) => `
-    <label class="tmpl-tab-chk">
-      <input type="checkbox" id="tmpl-chk-${i}" ${i===currentTab?'checked':''}>
-      ${name}
-    </label>
-  `).join('');
 
-  document.getElementById('tmpl-modal-bg').classList.add('open');
-}
 
-function closeSaveTemplateModal(){
-  document.getElementById('tmpl-modal-bg').classList.remove('open');
-}
 
-async function confirmSaveTemplate(){
-  // Find which tabs are checked
-  const selected = _TMPL_TAB_NAMES.map((_,i) =>
-    document.getElementById('tmpl-chk-'+i)?.checked
-  );
-
-  if(!selected.some(Boolean)){
-    alert('Please select at least one artwork to update.');
-    return;
-  }
-
-  const btn = document.querySelector('.tmpl-confirm');
-  btn.textContent = 'Generating…';
-  btn.disabled = true;
-
-  // For each selected tab that we don't yet have a snapshot for,
-  // we need to build it off-screen to capture its element layout.
-  // For unvisited tabs, buildTemplate populates the live artwork div,
-  // so we temporarily render each one.
-  // Suppress default logo injection during off-screen renders —
-  // the snapshot already contains the user's logo arrangement
-  _injectLogosOnBuild = false;
-
-  const realArt    = document.getElementById('artwork');
-  const canvasWrap = document.getElementById('canvas-wrap');
-  const prevHTML   = realArt.innerHTML;
-  const prevW      = realArt.style.width;
-  const prevH      = realArt.style.height;
-  const prevBg     = realArt.style.background;
-  const prevT      = realArt.style.transform;
-  const prevTab    = currentTab;
-  const prevNI     = nextId;
-
-  for(let i=0;i<8;i++){
-    if(!selected[i]) continue;
-    if(_tmplSnapshots[i]) continue; // already have it
-    // Render this tab off-screen
-    const s = SIZES[i];
-    realArt.style.width  = s[0]+'px';
-    realArt.style.height = s[1]+'px';
-    realArt.style.background = i===4?DK:'#fff';
-    realArt.style.transform = 'scale(1)';
-    realArt.innerHTML = '';
-    nextId = 1;
-    currentTab = i;
-    [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][i](s[0],s[1]);
-    _tmplSnapshots[i] = serializeTab();
-  }
-
-  // Restore canvas and logo injection behaviour
-  _injectLogosOnBuild = true;
-  realArt.innerHTML  = prevHTML;
-  realArt.style.width     = prevW;
-  realArt.style.height    = prevH;
-  realArt.style.background = prevBg;
-  realArt.style.transform  = prevT;
-  currentTab = prevTab;
-  nextId = prevNI;
-
-  // Now generate updated HTML
-  let updatedHtml = _HTML_TEMPLATE || document.documentElement.outerHTML;
-
-  for(let i=0;i<8;i++){
-    if(!selected[i] || !_tmplSnapshots[i]) continue;
-    const fnName   = _TMPL_BUILD_FNS[i];
-    const snapshot = _tmplSnapshots[i];
-    const W = SIZES[i][0], H = SIZES[i][1];
-    updatedHtml = _injectSnapshotIntoFn(updatedHtml, fnName, snapshot, W, H);
-  }
-
-  // Download the updated file
-  const blob = new Blob([updatedHtml], {type:'text/html'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'builder_updated.html';
-  a.click();
-  URL.revokeObjectURL(a.href);
-
-  btn.textContent = '⬇ Download Updated builder.html';
-  btn.disabled = false;
-  closeSaveTemplateModal();
-}
 
 // Generates a new buildXxx() function body from a snapshot and replaces it in html
-function _injectSnapshotIntoFn(html, fnName, snapshot, W, H){
-  // Find start and end of the function
-  const fnStart = html.indexOf('function '+fnName+'(');
-  if(fnStart === -1) return html;
-  // Find the matching closing brace
-  let depth = 0, i = fnStart, fnEnd = -1;
-  while(i < html.length){
-    if(html[i]==='{'[0]) depth++;
-    else if(html[i]==='}') { depth--; if(depth===0){ fnEnd=i+1; break; } }
-    i++;
-  }
-  if(fnEnd === -1) return html;
 
-  // Generate new function body from snapshot
-  const newBody = _snapshotToFnBody(snapshot, fnName, W, H);
-  return html.slice(0, fnStart) + newBody + html.slice(fnEnd);
-}
+
 
 // Converts a serialized tab snapshot into a buildXxx function string
-function _snapshotToFnBody(snapshot, fnName, W, H){
-  const lines = [`function ${fnName}(W,H){`];
 
-  snapshot.forEach(sv => {
-    const x  = parseFloat(sv.x);
-    const y  = parseFloat(sv.y);
-    const w  = parseFloat(sv.w);
-    const h  = parseFloat(sv.h);
-    const z  = parseInt(sv.z)||2;
-    const ak = sv.assetKey||'';
-    const fld = sv.field||'';
-    const locked = sv.locked==='1' ? ',locked:true' : '';
 
-    if(sv.type==='rect'){
-      // Extract background from innerStyle
-      const bgMatch = (sv.innerStyle||'').match(/background(?:-color)?\s*:\s*([^;]+)/);
-      const bg = bgMatch ? bgMatch[1].trim() : DK;
-      lines.push(`  mkR(${x},${y},${w},${h},'${bg}',{z:${z}});`);
-    }
-    else if(sv.type==='text'){
-      const content = (sv.content||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
-      // Build cfg
-      const ist = sv.innerStyle||'';
-      const fsM  = ist.match(/font-size:\s*([^;]+)/);
-      const fwM  = ist.match(/font-weight:\s*([^;]+)/);
-      const ffM  = ist.match(/font-family:\s*([^;]+)/);
-      const colM = ist.match(/(?:^|;)\s*color:\s*([^;]+)/);
-      const taM  = ist.match(/text-align:\s*([^;]+)/);
-      const lhM  = ist.match(/line-height:\s*([^;]+)/);
-      const pdM  = ist.match(/padding:\s*([^;]+)/);
-      const lsM  = ist.match(/letter-spacing:\s*([^;]+)/);
-      const fiM  = ist.match(/font-style:\s*([^;]+)/);
-      let cfg = '';
-      if(colM) cfg += `,color:'${colM[1].trim()}'`;
-      if(fsM)  cfg += `,fontSize:'${fsM[1].trim()}'`;
-      if(fwM && fwM[1].trim()!=='400') cfg += `,fontWeight:'${fwM[1].trim()}'`;
-      if(ffM)  cfg += `,fontFamily:'${ffM[1].trim()}'`;
-      if(taM && taM[1].trim()!=='left') cfg += `,textAlign:'${taM[1].trim()}'`;
-      if(lhM && lhM[1].trim()!=='1.35') cfg += `,lineHeight:'${lhM[1].trim()}'`;
-      if(pdM && pdM[1].trim()!=='0') cfg += `,padding:'${pdM[1].trim()}'`;
-      if(lsM && lsM[1].trim()!=='0') cfg += `,letterSpacing:'${lsM[1].trim()}'`;
-      if(fiM && fiM[1].trim()!=='normal') cfg += `,fontStyle:'${fiM[1].trim()}'`;
-      if(fld) cfg += `,field:'${fld}'`;
-      cfg += `,z:${z}${locked}`;
-      lines.push(`  mkT(${x},${y},${w},${h},'${content}',{${cfg.replace(/^,/,'')}});`);
-    }
-    else if(sv.type==='img'){
-      if(sv.svgKey){
-        // SVG logo — emit mkSVGLogo with correct URI constant
-        const uriConst = _SVG_KEY_TO_CONST[sv.svgKey];
-        if(uriConst){
-          lines.push(`  mkSVGLogo(${x},${y},${w},${h},${uriConst},'${sv.svgKey}',{z:${z}});`);
-        }
-        return;
+
+// ════════════════════════════════════════
+// COPY LAYOUT — copies current canvas state as JSON to clipboard
+// Paste into Claude chat to update the base template permanently
+// ════════════════════════════════════════
+function copyLayoutToClipboard(){
+  const tabLabels = ['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6'];
+  const fnNames   = ['buildAFR2','buildAFR4','buildAuction','buildBrochure1','buildBrochure2','buildEDM','buildLinkedIn','buildSignboard'];
+  const snapshot  = serializeTab();
+  const output    = {
+    tab:      currentTab,
+    tabName:  tabLabels[currentTab] || ('Tab '+currentTab),
+    fnName:   fnNames[currentTab],
+    size:     SIZES[currentTab],
+    elements: snapshot
+  };
+  const json = JSON.stringify(output, null, 2);
+
+  // Always show the copy dialog — most reliable across all environments
+  // Remove any existing dialog first
+  const existing = document.getElementById('copy-layout-dialog');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'copy-layout-dialog';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a1a;border:1px solid #444;border-radius:4px;padding:20px;width:min(700px,90vw);display:flex;flex-direction:column;gap:10px;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:13px;font-weight:700;color:#fff;';
+  title.textContent = 'Layout JSON — ' + (tabLabels[currentTab]||'Tab '+currentTab);
+
+  const instructions = document.createElement('div');
+  instructions.style.cssText = 'font-size:11px;color:#888;line-height:1.5;';
+  instructions.textContent = 'Select all and copy this JSON, then paste it into Claude chat to update the base template.';
+
+  const ta = document.createElement('textarea');
+  ta.value = json;
+  ta.style.cssText = 'width:100%;height:40vh;font-size:10px;padding:10px;background:#111;color:#ccc;border:1px solid #333;border-radius:3px;resize:vertical;font-family:monospace;';
+  ta.readOnly = true;
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Select All & Copy';
+  copyBtn.style.cssText = 'padding:7px 16px;font-size:11px;font-weight:700;background:#2a5a3a;color:#5bbf7a;border:1px solid #3a7a4e;border-radius:3px;cursor:pointer;';
+  copyBtn.onclick = ()=>{
+    ta.select();
+    try {
+      // Modern clipboard API
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(json).then(()=>{
+          copyBtn.textContent = '✓ Copied!';
+          setTimeout(()=>{ copyBtn.textContent = 'Select All & Copy'; }, 2000);
+        }).catch(()=>{
+          document.execCommand('copy');
+          copyBtn.textContent = '✓ Copied!';
+          setTimeout(()=>{ copyBtn.textContent = 'Select All & Copy'; }, 2000);
+        });
+      } else {
+        document.execCommand('copy');
+        copyBtn.textContent = '✓ Copied!';
+        setTimeout(()=>{ copyBtn.textContent = 'Select All & Copy'; }, 2000);
       }
-      let cfg = `z:${z}${locked}`;
-      if(fld) cfg += `,field:'${fld}'`;
-      // Crop data
-      if(sv.cropW) cfg += `,cropX:'${sv.cropX}',cropY:'${sv.cropY}',cropW:'${sv.cropW}',cropH:'${sv.cropH}'`;
-      lines.push(`  mkI(${x},${y},${w},${h},'${ak}','${sv.label||'Image'}',{${cfg}});`);
+    } catch(e){
+      copyBtn.textContent = 'Copy manually (Cmd+A, Cmd+C)';
     }
-  });
+  };
 
-  // Re-add border overlay for AFR tabs
-  if(fnName==='buildAFR2'||fnName==='buildAFR4'){
-    lines.push(`  const bord=document.createElement('div');`);
-    lines.push(`  bord.style.cssText=\`position:absolute;inset:0;border:1px solid #aaa;pointer-events:none;z-index:9998;\`;`);
-    lines.push(`  document.getElementById('artwork').appendChild(bord);`);
-  }
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Close';
+  closeBtn.style.cssText = 'padding:7px 16px;font-size:11px;font-weight:700;background:#242424;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;';
+  closeBtn.onclick = ()=> overlay.remove();
 
-  lines.push(`}`);
-  return lines.join('\n');
+  btnRow.appendChild(copyBtn);
+  btnRow.appendChild(closeBtn);
+  box.appendChild(title);
+  box.appendChild(instructions);
+  box.appendChild(ta);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Auto-select the text
+  setTimeout(()=>{ ta.focus(); ta.select(); }, 50);
+
+  // Close on background click
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
 }
 
 async function init(){
@@ -3008,12 +3238,12 @@ function clUpdate(id){
   const len = el.value.length;
   const lim = clGetLimit(id);
   if(lim > 0){
-    countEl.textContent = len + ' / ' + lim;
+    countEl.textContent = len + ' / ' + lim + ' Characters';
     countEl.classList.remove('cl-warn','cl-over');
     if(len > lim){ countEl.classList.add('cl-over'); }
     else if(len > lim * 0.85){ countEl.classList.add('cl-warn'); }
   } else {
-    countEl.textContent = len > 0 ? len + ' chars' : '';
+    countEl.textContent = len > 0 ? len + ' Characters' : '';
     countEl.classList.remove('cl-warn','cl-over');
   }
 }
@@ -3223,21 +3453,4 @@ init().then(async ()=>{
   // Start live sync after initial load is complete
   startLiveSync();
 });
-</script>
-
-<!-- SAVE AS TEMPLATE MODAL -->
-<div class="tmpl-modal-bg" id="tmpl-modal-bg">
-  <div class="tmpl-modal">
-    <h3>⊙ Save Current Layout as Base Template</h3>
-    <p>This will update the default starting layout for the selected artworks. Every new project will begin with this layout. Choose which tabs to update:</p>
-    <div class="tmpl-tab-list" id="tmpl-tab-list"></div>
-    <p style="color:#f0b429;font-size:10px;">⚠ This downloads an updated builder.html file. Upload it to your server to apply the new templates.</p>
-    <div class="tmpl-modal-actions">
-      <button class="tmpl-cancel" onclick="closeSaveTemplateModal()">Cancel</button>
-      <button class="tmpl-confirm" onclick="confirmSaveTemplate()">⬇ Download Updated builder.html</button>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
+</script></body></html>
