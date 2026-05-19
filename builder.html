@@ -1175,12 +1175,13 @@ function showProps(el){
     </div>
     <div class="pf"><label>Paragraph Spacing</label>
       <div class="pf-row">
-        <input type="number" step="1" min="0" max="60" value="${selectedEl&&selectedEl.dataset.bullets==='1'?(inner.dataset.bulletParaSpacing||0):parseInt(inner.style.paddingBottom)||0}" oninput="(function(v){ \
+        <input type="number" step="1" min="0" max="60" value="${selectedEl&&selectedEl.dataset.bullets==='1'?(selectedEl.dataset.bulletParaSpacing||inner.dataset.bulletSpacing||0):parseInt(inner.style.paddingBottom)||0}" oninput="(function(v){ \
   var inner=selectedEl&&selectedEl.querySelector('.el-inner'); \
   if(!inner) return; \
   if(selectedEl.dataset.bullets==='1'){ \
     inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom=v+'px'; }); \
-    inner.dataset.bulletParaSpacing=v; \
+    selectedEl.dataset.bulletParaSpacing=v; \
+    inner.dataset.bulletSpacing=v; \
   } else { \
     el_inner_set('paddingBottom',v+'px'); \
   } \
@@ -1334,10 +1335,14 @@ function applyBullets(inner, on){
     const lines = getLines(inner);
     // Use flex layout: dash in fixed-width span, text in flex span
     // This guarantees wrapped lines align with the start of the text, not the dash
+    // Check if parent element has paragraph spacing set
+    const _el = inner.closest('.el');
+    const _spacing = (_el && _el.dataset.bulletParaSpacing) || inner.dataset.bulletSpacing || '0';
+    const _mb = (parseFloat(_spacing)||0) > 0 ? ';margin-bottom:'+_spacing+'px' : '';
     const divs = lines.map(function(l){
       const text = l.startsWith('\u2013 ') ? l.slice(2) : l;
       if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
-      return '<div style="display:flex;align-items:baseline;">' +
+      return '<div style="display:flex;align-items:baseline'+_mb+'">' +
                '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>' +
                '<span class="bt">' + esc(text) + '</span>' +
              '</div>';
@@ -1410,7 +1415,7 @@ function serializeTab(){
     const obj={
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
-      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0',
+      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0',
     };
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
@@ -1492,6 +1497,11 @@ function restoreTab(idx){
     // Apply bullets AFTER content is set so prefix isn't overwritten
     if(sv.bullets==='1'){
       el.dataset.bullets='1';
+      // Restore paragraph spacing BEFORE applyBullets so it picks it up
+      if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
+        el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+        inner.dataset.bulletSpacing = sv.bulletParaSpacing;
+      }
       applyBullets(inner, true);
     }
     // Apply images AFTER innerStyle (overrides any display:none from innerStyle)
@@ -1707,6 +1717,11 @@ function mkT(x,y,w,h,content,cfg){
   if(cfg && cfg.bullets){
     el.dataset.bullets = '1';
     const inner = el.querySelector('.el-inner');
+    // Set paragraph spacing before applyBullets so it's picked up
+    if(cfg.bulletParaSpacing){
+      el.dataset.bulletParaSpacing = cfg.bulletParaSpacing;
+      if(inner) inner.dataset.bulletSpacing = cfg.bulletParaSpacing;
+    }
     if(inner) applyBullets(inner, true);
   }
   if(cfg && cfg.combinedAgent){
@@ -1985,28 +2000,28 @@ function buildAuction(W,H){
 
 // ─── BROCHURE 595×842 ───
 function buildBrochure1(W,H){
-  mkI(29,66,539,300,'img1','Image',{z:1,cropX:'0px',cropY:'0px',cropW:'595px',cropH:'308px'});
+  mkI(29,66,539,300,'img1','Image',{z:1});
   mkI(29,377,264,196,'img2','Image',{z:1});
   mkI(304,377,265,196,'img3','Image',{z:1});
   mkR(439,545,130,28,'rgb(0, 63, 45)',{z:3});
   mkT(389,552,171,17,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
   mkT(31,588,498,28,gv('fh'),{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'heading',z:2});
   mkT(31,614,358,26,gv('fs'),{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'subheading',z:2});
-  mkI(505,581,64,54,'logo','Image',{z:2,cropX:'-15.4472px',cropY:'4.29733px',cropW:'103.87px',cropH:'44.5157px'});
+  mkI(505,581,64,54,'logo','Image',{z:2});
   mkR(32,654,3,27,'rgb(23, 232, 143)',{z:3});
   mkT(44,653,163,16,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
   mkT(45,669,163,15,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
-  mkT(33,693,172,99,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3});
-  mkT(32,791,175,15,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3});
+  mkT(33,693,170,99,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:3});
+  mkT(32,791,175,15,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'income',z:3});
   mkR(426,655,1,145,'rgb(221, 221, 221)',{z:2});
-  mkT(214,655,170,143,document.getElementById('fbc').value,{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bodycopy',z:3,bullets:'1'});
-  mkT(440,656,128,14,'Contact',{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
-  mkT(443,672,140,12,(gv('fn1')&&gv('fp1'))?gv('fn1')+' '+gv('fp1'):(gv('fn1')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3,combinedAgent:'1'});
-  mkT(443,685,140,12,(gv('fn2')&&gv('fp2'))?gv('fn2')+' '+gv('fp2'):(gv('fn2')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3,combinedAgent:'1'});
-  mkT(443,698,140,12,(gv('fn3')&&gv('fp3'))?gv('fn3')+' '+gv('fp3'):(gv('fn3')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3,combinedAgent:'1'});
-  mkT(443,711,140,12,(gv('fn4')&&gv('fp4'))?gv('fn4')+' '+gv('fp4'):(gv('fn4')||''),{color:'rgb(1, 42, 45)',fontSize:'9px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3,combinedAgent:'1'});
+  mkT(214,655,201,143,document.getElementById('fbc').value,{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1'});
+  mkT(442,656,126,14,'Contact',{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
+  mkT(443,672,140,12,gv('fn1'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3,combinedAgent:'1'});
+  mkT(443,685,140,12,gv('fn2'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3,combinedAgent:'1'});
+  mkT(443,698,140,12,gv('fn3'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3,combinedAgent:'1'});
+  mkT(443,711,140,12,gv('fn4'),{color:'rgb(1, 42, 45)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3,combinedAgent:'1'});
   mkT(443,733,170,14,gv('fm'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
-  mkT(443,750,116,38,gv('fd'),{color:'rgb(77, 77, 79)',fontSize:'9px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
+  mkT(443,750,116,38,gv('fd'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
   mkT(443,796,170,13,'*Approx',{color:'rgb(77, 77, 79)',fontSize:'6px',fontWeight:'300',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
   mkR(30,813,539,1,'rgb(238, 238, 238)',{z:2});
   mkT(11,825,584,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(153, 153, 153)',fontSize:'7px',fontWeight:'300',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',padding:'0px 18px',z:2});
@@ -2016,60 +2031,37 @@ function buildBrochure1(W,H){
 
 // ─── BROCHURE 2-PAGE 1191×842 (all dark) ───
 function buildBrochure2(W,H){
-  const LW=Math.round(W*0.473), RX=Math.round(W*0.506), RW=W-RX-8;
-  // Full dark bg
-  mkR(0,0,W,H,DK,{z:1});
-  // Header
-  mkT(16,12,180,24,'Portfolio',{color:G,fontSize:'15px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:5});
-  mkT(W-90,12,82,24,'CBRE',{color:'#fff',fontSize:'19px',fontWeight:'900',z:5,extraStyle:'letter-spacing:-.02em;'});
-  // Left large image inset
-  mkI(10,46,LW,Math.round(H*0.71),'img1','Hero image',{z:2});
-  // Left bottom text
-  const lbY=Math.round(H*0.75);
-  mkT(16,lbY,LW-10,Math.round(H*0.13),gv('fh'),{color:'#fff',fontSize:'24px',fontFamily:HF,fontWeight:'400',lineHeight:'1.05',z:3,field:'heading'});
-  mkT(16,lbY+Math.round(H*0.13)+4,LW-10,Math.round(H*0.07),gv('fa1'),{color:GB,fontSize:'17px',fontFamily:HF,z:3,field:'address1'});
-  mkT(16,lbY+Math.round(H*0.21),LW-10,Math.round(H*0.06),gv('fs'),{color:GB,fontSize:'12px',fontFamily:HF,z:3,field:'subheading'});
-  // Right top image
-  const rtH=Math.round(H*0.41);
-  mkI(RX,46,RW,rtH,'img2','Second image',{z:2});
-  // Right sub-images
-  const siT=46+rtH+4, siH=Math.round(H*0.27), siW=Math.round(RW/2)-3;
-  mkI(RX,siT,siW,siH,'img3','Third image',{z:2});
-  mkI(RX+siW+4,siT,siW,siH,'img1','Hero image',{z:2});
-  // Banner point
-  const bT=siT+siH-22;
-  mkR(RX+RW-110,bT,110,22,DK,{z:4}); mkT(RX+RW-108,bT+2,106,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:5,field:'banner'});
-  // White content box
-  const wT=siT+siH+4, wH=H-wT-2;
-  mkR(RX,wT,RW,wH,'#fff',{z:3});
-  // Heading+Sub+Logo in white box
-  mkT(RX+8,wT+5,Math.round(RW*0.58),18,gv('fh'),{color:DK,fontSize:'13px',fontFamily:HF,z:4,field:'heading'});
-  mkT(RX+8,wT+22,Math.round(RW*0.58),16,gv('fs'),{color:DK,fontSize:'12px',fontFamily:HF,z:4,field:'subheading'});
-  mkI(RX+RW-82,wT+3,74,32,'logo','Logo',{z:4});
-  // Rule + 3 cols
-  const ruleY=wT+44, colH=wH-50;
-  mkR(RX,ruleY,RW,1,'#ccc',{z:4});
-  const c1x=RX+6, c2x=RX+Math.round(RW/3)+6, c3x=RX+Math.round(RW*2/3)+6, cW=Math.round(RW/3)-10, ry=ruleY+6;
-  mkR(c2x-6,ry,1,colH,'#ddd',{z:4}); mkR(c3x-6,ry,1,colH,'#ddd',{z:4});
-  mkR(c1x,ry,2,28,G,{z:5});
-  mkT(c1x+5,ry,cW-5,11,gv('fa1'),{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'address1'});
-  mkT(c1x+5,ry+12,cW-5,11,gv('fa2'),{fontSize:'8px',color:'#555',z:5,field:'address2'});
-  mkT(c1x,ry+30,cW,11,gv('fbull').split('\n')[0]||'',{fontSize:'8px',color:'#222',z:5});
-  gv('fbull').split('\n').slice(1).filter(Boolean).forEach((b,i)=>mkT(c1x,ry+42+i*12,cW,11,'– '+b,{fontSize:'7px',color:'#222',z:5}));
-  mkT(c1x,ry+130,cW,12,gv('fi')?'Net Income: '+gv('fi'):'',{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'income'});
-  gv('fbc').split('\n').filter(Boolean).forEach((b,i)=>mkT(c2x,ry+i*12,cW,11,'– '+b,{fontSize:'7px',color:'#222',z:5}));
-  mkT(c3x,ry,cW,11,'Contact',{fontWeight:'700',fontSize:'8px',color:DK,z:5});
-  [[gv('fn1'),gv('fp1')],[gv('fn2'),gv('fp2')],[gv('fn3'),gv('fp3')],[gv('fn4'),gv('fp4')]].forEach(([n,p],i)=>{
-    if(!n) return;
-    const agentField = ['agent1name','agent2name','agent3name','agent4name'][i];
-    mkT(c3x,ry+13+i*12,cW,11,n+(p?' '+p:''),{fontSize:'7px',color:'#333',z:5,field:agentField,combinedAgent:'1'});
-  });
-  mkT(c3x,ry+52,cW,12,gv('fm'),{fontWeight:'700',fontSize:'8px',color:DK,z:5,field:'salemethod'});
-  mkT(c3x,ry+65,cW,22,gv('fd'),{fontSize:'7px',color:'#555',lineHeight:'1.4',z:5,field:'saledate'});
-  mkT(c3x,ry+90,cW,10,'*Approx',{fontSize:'7px',color:'#999',z:5});
-  mkT(RX+4,H-14,RW-8,12,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'6px',color:'#999',z:4});
-  mkSVGLogo(16,12,145,35,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkSVGLogo(W-180,12,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
+  mkR(0,0,1191,842,'rgb(1, 42, 45)',{z:1});
+  mkI(31,65,541,508,'img1','Image',{z:2});
+  mkT(66,612,464,153,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1',field:'heading',z:3});
+  mkT(71,783,478,47,gv('fa1'),{color:'rgb(91, 191, 122)',fontSize:'18px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'address1',z:3});
+  mkI(620,66,541,299,'img2','Image',{z:2});
+  mkI(620,379,270,194,'img3','Image',{z:2});
+  mkI(894,380,267,191,'img1','Image',{z:2});
+  mkR(1057,545,104,26,'rgb(0, 63, 45)',{z:4});
+  mkT(1046,551,106,17,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:5});
+  mkT(621,586,552,31,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',field:'heading',z:4});
+  mkT(622,612,499,31,gv('fs'),{color:'rgb(255, 255, 255)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',field:'subheading',z:4});
+  mkI(1101,575,59,64,'logo','Image',{z:4});
+  mkR(624,820,538,1,'rgb(255, 255, 255)',{z:4});
+  mkR(1023,657,1,148,'rgb(255, 255, 255)',{z:4});
+  mkR(623,657,3,28,'rgb(23, 232, 143)',{z:5});
+  mkT(635,654,178,11,gv('fa1'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:5});
+  mkT(636,671,178,11,gv('fa2'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:5});
+  mkT(624,698,171,100,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:5});
+  mkT(624,793,168,25,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:5});
+  mkT(808,657,201,151,document.getElementById('fbc').value,{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4'});
+  mkT(1036,656,132,10,'Contact',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:5});
+  mkT(1037,670,144,13,gv('fn1'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:5,combinedAgent:'1'});
+  mkT(1036,684,138,13,gv('fn2'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:5,combinedAgent:'1'});
+  mkT(1037,699,135,11,gv('fn3'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:5,combinedAgent:'1'});
+  mkT(1037,714,143,13,gv('fn4'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:5,combinedAgent:'1'});
+  mkT(1038,735,139,12,gv('fm'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:5});
+  mkT(1039,753,137,29,gv('fd'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.4',field:'saledate',z:5});
+  mkT(1039,795,183,10,'*Approx',{color:'rgb(255, 255, 255)',fontSize:'6px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:5});
+  mkT(622,828,545,12,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255, 255, 255)',fontSize:'6px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
+  mkSVGLogo(1026,17,138,36,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkSVGLogo(24,6,182,47,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
 }
 
 // ─── EDM 212×1550 ───
@@ -2298,7 +2290,8 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
 
     // Build template (same path as screen render)
     [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][tabIdx](canvasW, canvasH);
-    injectSVGLogos(tabIdx);
+    // Logos are already placed by buildXxx functions — no inject needed
+    globalSync(); // Populate combined agents (name+phone) and all fields
 
     // Inject saved asset images with correct object-fit
     realArt.querySelectorAll('.el[data-type="img"]').forEach(el => {
