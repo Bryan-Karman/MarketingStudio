@@ -1536,7 +1536,6 @@ function restoreTab(idx){
       }
     }
   });
-  injectSVGLogos(idx);
   // Sync all field values so combined agents, bullets etc all populate correctly
   globalSync();
   return true;
@@ -1905,7 +1904,6 @@ function buildTemplate(idx){
   deselectAll();
   document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
   [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][idx](s[0],s[1]);
-  injectSVGLogos(idx);
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
@@ -2070,10 +2068,8 @@ function buildBrochure2(W,H){
   mkT(c3x,ry+65,cW,22,gv('fd'),{fontSize:'7px',color:'#555',lineHeight:'1.4',z:5,field:'saledate'});
   mkT(c3x,ry+90,cW,10,'*Approx',{fontSize:'7px',color:'#999',z:5});
   mkT(RX+4,H-14,RW-8,12,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{fontSize:'6px',color:'#999',z:4});
-  addCBRELogos(W,H,[
-    {x:16,y:12,w:90,h:22,uri:CBRE_LOGO_WHITE,z:10},
-    {x:W-110,y:12,w:100,h:22,uri:CBRE_LOGO_WHITE,z:10}
-  ]);
+  mkSVGLogo(16,12,145,35,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkSVGLogo(W-180,12,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
 }
 
 // ─── EDM 212×1550 ───
@@ -2120,9 +2116,9 @@ function buildEDM(W,H){
   mkR(0,footY,W,40,DK,{z:2});
   mkT(0,footY+10,W,22,'CBRE',{color:'#fff',fontSize:'18px',fontWeight:'900',z:3,extraStyle:'text-align:center;letter-spacing:-.02em;'});
   mkT(8,footY+52,W-16,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies.',{fontSize:'7px',color:'#999',lineHeight:'1.4',z:2});
-  addCBRELogos(W,H,[
-    {x:W-50,y:8,w:42,h:14,uri:CBRE_LOGO_WHITE,z:10}
-  ]);
+  mkSVGLogo(8,12,90,23,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200});
+  mkSVGLogo(116,12,88,23,SVG_CBRE_GREEN,'cbre-green',{z:200});
+  mkSVGLogo(116,38,88,23,SVG_CBRE_WHITE,'cbre-white',{z:200});
 }
 
 // ─── LINKEDIN 800×800 ───
@@ -2156,9 +2152,8 @@ function buildSignboard(W,H){
     mkT(SX+16,ay,W-SX-30,Math.round(H*.08),a[0],{fontWeight:'700',fontSize:'17px',color:DK,z:4});
     mkT(SX+16,ay+24,W-SX-30,Math.round(H*.06),a[1],{fontSize:'15px',color:'#333',z:4});
   });
-  addCBRELogos(W,H,[
-    {x:20,y:Math.round(H*.03),w:Math.round(W*.18),h:Math.round(H*.1),uri:CBRE_LOGO_WHITE,z:10}
-  ]);
+
+  mkSVGLogo(W-170,16,145,35,SVG_CBRE_WHITE,'cbre-white',{z:200});
 }
 
 // ════════════════════════════════════════
@@ -2938,6 +2933,8 @@ function renderAgentBlocks(){
       `}
     </div>`;
   }).join('');
+  // Sync all agent slots so canvas elements get populated
+  syncAllAgentSlots();
 }
 
 function escAgt(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
