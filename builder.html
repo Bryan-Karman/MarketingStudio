@@ -305,7 +305,7 @@ Point two
 Point three
 Point four</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fbull"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fbull" placeholder="∞" oninput="clSetLimit('fbull',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Net Income</label><input id="fi" value="$xxx pa* + GST" oninput="clEnforce('fi');onBulletFieldChange()">
+      <div class="fl"><label>Net Income</label><input id="fi" value="Net Income: $xxx pa* + GST" oninput="clEnforce('fi');onBulletFieldChange()">
         <div class="cl-row"><span class="cl-count" id="cl-fi"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fi" placeholder="∞" oninput="clSetLimit('fi',this.value)" title="Max characters"></span></div></div>
       <div class="fl"><label>Body Copy (one per line)</label><textarea id="fbc" rows="4" oninput="clEnforce('fbc');onBulletFieldChange()">Text line one
 Line two
@@ -610,7 +610,7 @@ function createElement(cfg){
             const sidebarEl=document.getElementById(sidebarId);
             if(sidebarEl){
               let val=inner.textContent;
-              if(field==='income' && val.startsWith('Net Income: ')) val=val.slice('Net Income: '.length);
+              // income field used as-is (no prefix added)
               sidebarEl.value=val;
               globalSync();
             }
@@ -1255,7 +1255,7 @@ function el_inner_txt(val){
       const sidebarEl=document.getElementById(sidebarId);
       if(sidebarEl){
         let writeVal=val;
-        if(field==='income' && writeVal.startsWith('Net Income: ')) writeVal=writeVal.slice('Net Income: '.length);
+        if(false && writeVal.startsWith('Net Income: ')) writeVal=writeVal.slice('Net Income: '.length);
         sidebarEl.value=writeVal;
         globalSync();
       }
@@ -1643,7 +1643,7 @@ function syncTabOnEntry(idx){
 function getFieldVal(field){
   const map={
     heading:gv('fh'), subheading:gv('fs'), address1:gv('fa1'), address2:gv('fa2'),
-    banner:gv('fb'), income:gv('fi')?'Net Income: '+gv('fi'):'',
+    banner:gv('fb'), income:gv('fi')||'',
     bullets:gv('fbull'), bodycopy:gv('fbc'),
     salemethod:gv('fm'), saledate:gv('fd'),
     agent1name:gv('fn1'), agent1num:gv('fp1'),
@@ -1924,7 +1924,7 @@ function buildAFR2(W,H){
   mkT(11,249,161,18,gv('fa2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
   mkI(173,231,51,36,'logo','Image',{z:3});
   mkT(11,265,212,64,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'});
-  mkT(11,330,211,14,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
+  mkT(11,330,211,14,gv('fi')||'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
   mkT(11,346,213,13,gv('fm'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
   mkT(11,361,105,13,gv('fn1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
   mkT(11,377,106,13,gv('fp1'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
@@ -1948,7 +1948,7 @@ function buildAFR4(W,H){
   mkT(11,250,351,13,gv('fa2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
   mkI(395,232,62,31,'logo','Image',{z:3});
   mkT(10,267,212,72,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'});
-  mkT(10,331,212,13,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
+  mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
   mkT(11,347,442,14,gv('fd'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
   mkT(12,363,103,13,gv('fn1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
   mkT(11,378,105,13,gv('fp1'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
@@ -1976,7 +1976,7 @@ function buildAuction(W,H){
   mkI(637,690,128,93,'logo','Image',{z:2});
   mkR(32,807,56,3,'rgb(23, 232, 143)',{z:2});
   mkT(32,837,431,133,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:2});
-  mkT(31,974,424,48,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2});
+  mkT(31,974,424,48,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2});
   mkR(498,840,2,200,'rgb(203, 205, 203)',{z:2});
   mkT(534,837,210,27,'CBRE',{color:'rgb(127, 132, 128)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:2});
   mkT(534,867,234,30,gv('fn1'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:2});
@@ -2001,7 +2001,7 @@ function buildBrochure1(W,H){
   mkT(44,653,163,16,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
   mkT(45,669,163,15,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
   mkT(33,693,170,99,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:3});
-  mkT(32,791,175,15,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'income',z:3});
+  mkT(32,791,175,15,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'income',z:3});
   mkR(426,655,1,145,'rgb(221, 221, 221)',{z:2});
   mkT(214,655,201,143,document.getElementById('fbc').value,{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1'});
   mkT(442,656,126,14,'Contact',{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
@@ -2038,7 +2038,7 @@ function buildBrochure2(W,H){
   mkT(635,654,178,11,gv('fa1'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:5});
   mkT(636,671,178,11,gv('fa2'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:5});
   mkT(624,698,171,100,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:5});
-  mkT(624,793,168,25,gv('fi')?'Net Income: '+gv('fi'):'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:5});
+  mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:5});
   mkT(808,657,201,151,document.getElementById('fbc').value,{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4'});
   mkT(1036,656,132,10,'Contact',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:5});
   mkT(1037,670,144,13,gv('fn1'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:5,combinedAgent:'1'});
@@ -3163,7 +3163,12 @@ async function init(){
   let loaded = false;
   const cloudResult = await supabaseLoad();
   if(cloudResult && applyState(cloudResult.state)){
-    buildTemplate(currentTab);
+    // Use restoreTab if we have saved layouts, otherwise build fresh
+    if(savedStates[currentTab] && savedStates[currentTab].length){
+      restoreTab(currentTab);
+    } else {
+      buildTemplate(currentTab);
+    }
     setCdtStatus('saved','Loaded ✓');
     _lastKnownUpdatedAt = cloudResult.updatedAt;
     loaded = true;
@@ -3173,7 +3178,18 @@ async function init(){
   if(!loaded){
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if(raw){ const d=JSON.parse(raw); if(d && d.savedStates) d.savedStates={}; if(applyState(d)){ buildTemplate(currentTab); loaded=true; setCdtStatus('saved','Loaded (local)'); } }
+      if(raw){
+        const d=JSON.parse(raw);
+        if(applyState(d)){
+          if(savedStates[currentTab] && savedStates[currentTab].length){
+            restoreTab(currentTab);
+          } else {
+            buildTemplate(currentTab);
+          }
+          loaded=true;
+          setCdtStatus('saved','Loaded (local)');
+        }
+      }
     } catch(e){}
   }
 
