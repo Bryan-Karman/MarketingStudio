@@ -664,22 +664,27 @@ function createElement(cfg){
     }
 
     function mv(e){
-      const dx=e.clientX-sx, dy=e.clientY-sy;
+      let dx=e.clientX-sx, dy=e.clientY-sy;
       if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
       if(!committed){ committed=true; undoSnapshot(); }
 
+      // Shift key: constrain to axis with larger movement (horizontal or vertical)
+      if(e.shiftKey){
+        if(Math.abs(dx) >= Math.abs(dy)){ dy=0; } else { dx=0; }
+      }
+
       if(shouldPan && img && img.dataset.cropW){
         // Only pan if image is already in crop/positioned mode (has cropW)
-        const rawX = imgOx + (e.clientX-sx)/zoom;
-        const rawY = imgOy + (e.clientY-sy)/zoom;
+        const rawX = imgOx + dx/zoom;
+        const rawY = imgOy + dy/zoom;
         const iw=parseFloat(img.style.width), ih=parseFloat(img.style.height);
         const {nx,ny}=clampPan(rawX, rawY, iw, ih, fw, fh);
         img.style.left=nx+'px';
         img.style.top =ny+'px';
         img.style.cursor='grabbing';
       } else {
-        el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
-        el.style.top =Math.round(oy+(e.clientY-sy)/zoom)+'px';
+        el.style.left=Math.round(ox+dx/zoom)+'px';
+        el.style.top =Math.round(oy+dy/zoom)+'px';
         el.style.cursor='grabbing';
       }
     }
@@ -948,11 +953,15 @@ function onCropPan(e){
   }
 
   function mv(e){
-    const dx=e.clientX-sx, dy=e.clientY-sy;
+    let dx=e.clientX-sx, dy=e.clientY-sy;
     if(!panning && Math.sqrt(dx*dx+dy*dy) < 2) return;
     if(!panning){ panning=true; img.style.cursor='grabbing'; }
-    targetX = ox + (e.clientX-sx)/zoom;
-    targetY = oy + (e.clientY-sy)/zoom;
+    // Shift key: lock to axis with larger movement
+    if(e.shiftKey){
+      if(Math.abs(dx) >= Math.abs(dy)){ dy=0; } else { dx=0; }
+    }
+    targetX = ox + dx/zoom;
+    targetY = oy + dy/zoom;
     if(!rafId) rafId = requestAnimationFrame(applyPos);
   }
 
@@ -963,7 +972,7 @@ function onCropPan(e){
     window.removeEventListener('mousemove',mv);
     window.removeEventListener('mouseup',up);
   }
-  window.addEventListener('mousemove',mv,{passive:true});
+  window.addEventListener('mousemove',mv,{passive:false});
   window.addEventListener('mouseup',up);
 }
 
@@ -1523,18 +1532,20 @@ function restoreTab(idx){
           img.src=src;
           // Restore crop state if saved
           if(sv.cropW){
-            // Validate aspect ratio before restoring crop
-            const _nw=img.naturalWidth, _nh=img.naturalHeight;
-            const _cw=parseFloat(sv.cropW), _ch=parseFloat(sv.cropH);
-            const _validAR = (_nw>0&&_nh>0) ? Math.abs((_cw/_ch)-(_nw/_nh))/(_nw/_nh) < 0.02 : true;
-            if(!_validAR && _nw>0){
-              // Recalculate cover sizing
-              const _scale=Math.max(parseFloat(el.style.width)/_nw, parseFloat(el.style.height)/_nh);
-              const _iw=Math.round(_nw*_scale), _ih=Math.round(_nh*_scale);
-              const _ix=Math.round((parseFloat(el.style.width)-_iw)/2), _iy=Math.round((parseFloat(el.style.height)-_ih)/2);
-              img.style.cssText=`position:absolute;left:${_ix}px;top:${_iy}px;width:${_iw}px;height:${_ih}px;object-fit:fill;display:block;`;
-            } else {
+            // Always restore saved crop position directly — trust the saved values
+            // The user deliberately positioned this image; don't recalculate
+            const _applyCrop = ()=>{
               img.style.cssText=`position:absolute;left:${sv.cropX};top:${sv.cropY};width:${sv.cropW};height:${sv.cropH};object-fit:fill;display:block;`;
+              img.dataset.cropX=sv.cropX; img.dataset.cropY=sv.cropY;
+              img.dataset.cropW=sv.cropW; img.dataset.cropH=sv.cropH;
+              el.classList.add('has-crop');
+            };
+            _applyCrop();
+            // Also re-apply after image loads in case browser resets style
+            if(!img.complete || img.naturalWidth===0){
+              img.addEventListener('load', _applyCrop, {once:true});
+            }
+            if(false){
             }
             img.dataset.cropX=sv.cropX; img.dataset.cropY=sv.cropY;
             img.dataset.cropW=sv.cropW; img.dataset.cropH=sv.cropH;
@@ -2589,8 +2600,12 @@ function switchTab(idx, btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   deselectAll();
-  // Always rebuild from template using current field values
-  buildTemplate(idx);
+  // Restore saved state if available, otherwise build fresh from template
+  if(savedStates[idx] && savedStates[idx].length){
+    restoreTab(idx);
+  } else {
+    buildTemplate(idx);
+  }
   // Always fit zoom to the new tab's height
   fitZoomToTab();
 }
@@ -3421,6 +3436,34 @@ function stopLiveSync(){
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden) stopLiveSync();
   else startLiveSync();
+});
+
+// ── Arrow key nudge ──────────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e){
+  // Only act when an element is selected and we're not editing text inline
+  if(!selectedEl) return;
+  if(document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.isContentEditable)) return;
+  if(selectedEl.dataset.locked==='1') return;
+
+  const arrows = {'ArrowLeft':'left','ArrowRight':'left','ArrowUp':'top','ArrowDown':'top'};
+  if(!arrows[e.key]) return;
+  e.preventDefault();
+
+  const step = e.shiftKey ? 10 : 1; // 10px with shift, 1px without
+  const prop = arrows[e.key];
+  const cur = parseFloat(selectedEl.style[prop]) || 0;
+  const delta = (e.key==='ArrowRight'||e.key==='ArrowDown') ? step : -step;
+
+  undoSnapshot();
+  selectedEl.style[prop] = Math.round(cur + delta) + 'px';
+
+  // Update the position inputs in the props panel if visible
+  const xInp = document.getElementById('prop-x');
+  const yInp = document.getElementById('prop-y');
+  if(xInp) xInp.value = parseFloat(selectedEl.style.left)||0;
+  if(yInp) yInp.value = parseFloat(selectedEl.style.top)||0;
+
+  debouncedPersist();
 });
 
 init().then(async ()=>{
