@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -687,8 +688,12 @@ function createElement(cfg){
       el.style.cursor='';
       if(img) img.style.cursor = shouldPan ? 'grab' : '';
       if(committed){
-        if(shouldPan) saveCropData(img);
-        else debouncedPersist();
+        if(shouldPan){
+          saveCropData(img);
+          debouncedPersist(); // also persist after panning so position is saved
+        } else {
+          debouncedPersist();
+        }
       }
       window.removeEventListener('mousemove',mv);
       window.removeEventListener('mouseup',up);
@@ -1668,32 +1673,6 @@ function gv(id){return document.getElementById(id)?.value?.trim()||'';}
 // ════════════════════════════════════════
 // ASSETS
 // ════════════════════════════════════════
-function loadAsset(e, key){
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    assets[key]=ev.target.result;
-    const isLogo=key==='logo';
-    // Update all elements currently on the canvas
-    document.querySelectorAll(`.el[data-asset-key="${key}"]`).forEach(el=>{
-      const img=el.querySelector('img');
-      const ph=el.querySelector('.img-ph-txt');
-      const inner=el.querySelector('.el-inner');
-      if(inner) inner.style.background=isLogo?'transparent':'#c5ccc5';
-      if(img){img.src=ev.target.result;img.style.display='';img.style.objectFit=isLogo?'contain':'cover';}
-      if(ph) ph.style.display='none';
-    });
-    // Also update imgSrc in all saved states so other tabs get it when restored
-    Object.keys(savedStates).forEach(tabIdx=>{
-      savedStates[tabIdx].forEach(sv=>{
-        if(sv.assetKey===key) sv.imgSrc=ev.target.result;
-      });
-    });
-    // Persist immediately — assets are important
-    persistAll();
-  };
-  r.readAsDataURL(f);
-}
 
 // ════════════════════════════════════════
 // ADD ELEMENTS (user-initiated)
@@ -2691,8 +2670,11 @@ function toggleMITab(idx, cb) {
 
 // ── Collect all state ───────────────────────────────────────────────────────
 function collectState(){
+  // Snapshot current tab before collecting so all positions/crops are up to date
+  savedStates[currentTab] = serializeTab();
   return {
     v:5, currentTab, zoom:Math.round(zoom*100), assets,
+    tabLayouts: JSON.parse(JSON.stringify(savedStates)),
     deletedLogos: Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     fields:{
       fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),
@@ -2719,7 +2701,14 @@ function applyState(data, skipZoom=false){
         _deletedLogos[parseInt(tab)] = new Set(keys);
       });
     }
-    savedStates = {}; // always rebuild tabs fresh from buildXxx() using current fields
+    // Restore saved canvas layouts (element positions, crops, etc.)
+    if(data.tabLayouts && Object.keys(data.tabLayouts).length > 0){
+      savedStates = data.tabLayouts;
+    } else if(data.savedStates && Object.keys(data.savedStates).length > 0){
+      savedStates = data.savedStates; // legacy key
+    } else {
+      savedStates = {}; // no saved layouts — will build fresh from templates
+    }
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{ const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
