@@ -328,7 +328,16 @@ Line five</textarea>
         <div style="font-size:10px;color:#555;padding:4px 0;">Loading agents…</div>
       </div>
       <div class="sec">Assets</div>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo 1</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo2')">+ Upload Logo 2</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo3')">+ Upload Logo 3</label>
+      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo4')">+ Upload Logo 4</label>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+        <button class="btn-sm" onclick="addLogoElement('logo')"  title="Place Logo 1 on canvas">Place L1</button>
+        <button class="btn-sm" onclick="addLogoElement('logo2')" title="Place Logo 2 on canvas">Place L2</button>
+        <button class="btn-sm" onclick="addLogoElement('logo3')" title="Place Logo 3 on canvas">Place L3</button>
+        <button class="btn-sm" onclick="addLogoElement('logo4')" title="Place Logo 4 on canvas">Place L4</button>
+      </div>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img1')">+ Upload Hero Image</label>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img2')">+ Upload 2nd Image</label>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img3')">+ Upload 3rd Image</label>
@@ -424,6 +433,7 @@ const CBRE_LOGO_GREEN = 'data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0Y
 
 
 
+const SVG_ARROW_WHITE = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDkuNjYgNDA5LjYzIj4KICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLmNscy0xIHsKICAgICAgICBmaWxsOiBub25lOwogICAgICAgIHN0cm9rZTogI2ZmZjsKICAgICAgICBzdHJva2UtbWl0ZXJsaW1pdDogMTA7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAyMHB4OwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xOTkuODcsMTIybDg3LjY3LDg3LjY3LTg3LjY3LDg3LjY3TTExMi4yMSwyMDkuNjdoMTc1LjMzTTIwNC44MywzOTkuNjNjMTA3LjU4LDAsMTk0LjgzLTg3LjIxLDE5NC44My0xOTQuODNTMzEyLjQxLDEwLDIwNC44MywxMCwxMCw5Ny4yMSwxMCwyMDQuOHM4Ny4yNCwxOTQuODMsMTk0LjgzLDE5NC44M1oiLz4KPC9zdmc+";
 const SVG_CBRE_GREEN = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjMDAzZjJkOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=';
 const SVG_CBRE_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=';
 const SVG_PORTFOLIO_GREEN = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM0Ny44Ij4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuNC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjQgQnVpbGQgMjI2KSAgLS0+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5zdDAgewogICAgICAgIGZpbGw6ICMxN2U4OGY7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik03NjIuNDksMTEzLjNoMzkuNDl2NTUuMzhoLTM5LjQ5djE2Mi43OGgtNTguMnYtMTYyLjc4aC01NC44MXY4OC43OGMwLDguNTEsNi45LDE1LjQxLDE1LjQxLDE1LjQxaDI0LjczdjU4LjJoLTI3LjEzYy0zOS4zMywwLTcxLjIxLTMxLjg4LTcxLjIxLTcxLjIxdi05MS4xOGgtMjEuM3YtNTUuMzhoMjEuM1YyOC4xOGg1OC4ydjg1LjEyaDU0Ljgxdi0xNy40YzAtNDMuMDgsMzQuOTItNzgsNzgtNzhoMzEuMzd2NTguMmgtMjguODRjLTEyLjMzLDAtMjIuMzMsMTAtMjIuMzMsMjIuMzN2MTQuODdoMFpNNTAxLjI0LDEzMS42OWMxNi44My0xMS40MSwzNS4zNC0xOC4zOSw1NC40My0xOC4zOXY1NS4zOGMtMzUuNjIsMC01Ni4zNCwyOS42Mi01Ni4zNCw2MC44NGwtLjAzLDEwMS45NGgtNTQuMzFWMTE1LjkxaDU2LjI2djE1Ljc4aC0uMDFaTTExNy4yNSwxNzUuOGgtNTIuNTl2LTgwLjkyaDUyLjU5YzIwLjg2LDAsMzcuODMsMTguMTUsMzcuODMsNDAuNDZzLTE2Ljk3LDQwLjQ2LTM3LjgzLDQwLjQ2TTExNy4yNSwzNS45SDExLjY1djI5NS41Nmg1M3YtOTYuNjhoNTIuNTljNTMuNDcsMCw5Ni44MS00NC41Miw5Ni44MS05OS40NXMtNDMuMzQtOTkuNDQtOTYuODEtOTkuNDRNMTEyMC4zMiwzNS45aDU4LjJ2NjEuOTFoLTU4LjJzMC02MS45MSwwLTYxLjkxWk0xMTIwLjMyLDExNS45MWg1OC4ydjIxNS41NWgtNTguMlYxMTUuOTFaTTEwMzkuNTUsMzUuOWg1OC4ydjI5NS41NmgtNTguMlYzNS45Wk0xMzA1LjY3LDI3MS4wOWMtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OE0xMzA1LjY3LDExMi4wM2MtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OU05MTMuMTUsMjcxLjA5Yy0yNi43OSwwLTQ4LjU4LTIxLjc5LTQ4LjU4LTQ4LjU4czIxLjc5LTQ4LjU4LDQ4LjU4LTQ4LjU4LDQ4LjU4LDIxLjc5LDQ4LjU4LDQ4LjU4LTIxLjc5LDQ4LjU4LTQ4LjU4LDQ4LjU4TTkxMy4xNSwxMTIuMDNjLTYxLjAyLDAtMTEwLjQ5LDQ5LjQ3LTExMC40OSwxMTAuNDlzNDkuNDcsMTEwLjQ5LDExMC40OSwxMTAuNDksMTEwLjQ5LTQ5LjQ3LDExMC40OS0xMTAuNDktNDkuNDctMTEwLjQ5LTExMC40OS0xMTAuNDkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMzE5LjQxLDExMC4wMWMtNjEuMDIsMC0xMTAuNDksNDkuNDctMTEwLjQ5LDExMC40OXM0OS40NywxMTAuNDksMTEwLjQ5LDExMC40OSwxMTAuNDktNDkuNDcsMTEwLjQ5LTExMC40OS00OS40Ny0xMTAuNDktMTEwLjQ5LTExMC40OVpNMzE5LjQxLDI2OS4wN2MtMjYuNzksMC00OC41OC0yMS43OS00OC41OC00OC41OHMyMS43OS00OC41OCw0OC41OC00OC41OCw0OC41OCwyMS43OSw0OC41OCw0OC41OC0yMS43OSw0OC41OC00OC41OCw0OC41OGgwWiIvPgo8L3N2Zz4=';
@@ -433,7 +443,7 @@ const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wI
 // STATE
 // ════════════════════════════════════════
 let currentTab=0, zoom=0.65, selectedEl=null;
-let assets={logo:'',img1:'',img2:'',img3:'',img4:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
+let assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
 let savedStates={};
 let nextId=1;
 let _lastKnownUpdatedAt=null; // tracks the Supabase updated_at we last loaded/saved
@@ -546,7 +556,7 @@ function createElement(cfg){
     inner.style.background=cfg.bg||DK;
     if(cfg.extraStyle) inner.style.cssText+=cfg.extraStyle;
   } else if(cfg.type==='img'){
-    const isLogo=(cfg.assetKey||'')==='logo';
+    const isLogo=['logo','logo2','logo3','logo4'].includes(cfg.assetKey||'');
     inner.style.background=isLogo?'transparent':'#c5ccc5';
     inner.style.display='flex';inner.style.alignItems='center';inner.style.justifyContent='center';
     const ph=document.createElement('div');
@@ -766,12 +776,39 @@ function startResize(e, el, handle){
   const sx=e.clientX, sy=e.clientY;
   const ow=parseFloat(el.style.width), oh=parseFloat(el.style.height);
   const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
+  const aspect = ow / oh; // natural aspect ratio of the element
+
+  // Logo elements always lock aspect ratio; shift key locks for any element
+  const ak = el.dataset.assetKey || '';
+  const isLogoEl = ['logo','logo2','logo3','logo4'].includes(ak);
+
   function mv(e){
     const dx=(e.clientX-sx)/zoom, dy=(e.clientY-sy)/zoom;
-    if(handle.includes('e')) el.style.width=Math.max(20,Math.round(ow+dx))+'px';
-    if(handle.includes('s')) el.style.height=Math.max(8,Math.round(oh+dy))+'px';
-    if(handle.includes('w')){el.style.width=Math.max(20,Math.round(ow-dx))+'px';el.style.left=Math.round(ox+dx)+'px';}
-    if(handle.includes('n')){el.style.height=Math.max(8,Math.round(oh-dy))+'px';el.style.top=Math.round(oy+dy)+'px';}
+    const lockAR = isLogoEl || e.shiftKey;
+
+    let nw = ow, nh = oh, nx = ox, ny = oy;
+
+    if(handle.includes('e')) nw = Math.max(20, Math.round(ow+dx));
+    if(handle.includes('s')) nh = Math.max(8,  Math.round(oh+dy));
+    if(handle.includes('w')){ nw = Math.max(20, Math.round(ow-dx)); nx = Math.round(ox+dx); }
+    if(handle.includes('n')){ nh = Math.max(8,  Math.round(oh-dy)); ny = Math.round(oy+dy); }
+
+    // Lock aspect ratio: use the dominant axis
+    if(lockAR){
+      const dw = nw - ow, dh = nh - oh;
+      if(Math.abs(dw) >= Math.abs(dh)){
+        nh = Math.round(nw / aspect);
+        if(handle.includes('n')) ny = Math.round(oy + (oh - nh));
+      } else {
+        nw = Math.round(nh * aspect);
+        if(handle.includes('w')) nx = Math.round(ox + (ow - nw));
+      }
+    }
+
+    el.style.width  = nw + 'px';
+    el.style.height = nh + 'px';
+    el.style.left   = nx + 'px';
+    el.style.top    = ny + 'px';
   }
   function up(){window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up);debouncedPersist();}
   window.addEventListener('mousemove',mv);
@@ -1195,6 +1232,7 @@ function showProps(el){
     inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom=v+'px'; }); \
     selectedEl.dataset.bulletParaSpacing=v; \
     inner.dataset.bulletSpacing=v; \
+    inner.style.setProperty('--bullet-spacing', v); \
   } else { \
     el_inner_set('paddingBottom',v+'px'); \
   } \
@@ -1212,7 +1250,10 @@ function showProps(el){
         <option value="img2" ${el.dataset.assetKey==='img2'?'selected':''}>Second Image</option>
         <option value="img3" ${el.dataset.assetKey==='img3'?'selected':''}>Third Image</option>
         <option value="img4" ${el.dataset.assetKey==='img4'?'selected':''}>Fourth Image</option>
-        <option value="logo" ${el.dataset.assetKey==='logo'?'selected':''}>Logo</option>
+        <option value="logo" ${el.dataset.assetKey==='logo'?'selected':''}>Logo 1</option>
+        <option value="logo2" ${el.dataset.assetKey==='logo2'?'selected':''}>Logo 2</option>
+        <option value="logo3" ${el.dataset.assetKey==='logo3'?'selected':''}>Logo 3</option>
+        <option value="logo4" ${el.dataset.assetKey==='logo4'?'selected':''}>Logo 4</option>
       </select>
     </div>`;
   }
@@ -1228,7 +1269,14 @@ function showProps(el){
   html+=`<button class="props-lock-btn ${isLocked?'locked':''}" onclick="toggleLock()">
     ${isLocked ? '🔒 Locked — click to unlock' : '🔓 Lock Position &amp; Size'}
   </button>`;
-  html+=`<button class="props-del-btn" onclick="deleteSelected()">🗑 Delete Element</button>`;
+  html+=`
+  <div style="display:flex;gap:4px;margin-bottom:4px;">
+    <button class="btn-sm" style="flex:1;padding:5px 4px;font-size:10px;" onclick="layerMove('front')" title="Bring to Front">⬆ Front</button>
+    <button class="btn-sm" style="flex:1;padding:5px 4px;font-size:10px;" onclick="layerMove('forward')" title="Bring Forward">↑ Forward</button>
+    <button class="btn-sm" style="flex:1;padding:5px 4px;font-size:10px;" onclick="layerMove('backward')" title="Send Backward">↓ Backward</button>
+    <button class="btn-sm" style="flex:1;padding:5px 4px;font-size:10px;" onclick="layerMove('back')" title="Send to Back">⬇ Back</button>
+  </div>`;
+html+=`<button class="props-del-btn" onclick="deleteSelected()">🗑 Delete Element</button>`;
   pc.innerHTML=html;
 }
 
@@ -1286,7 +1334,7 @@ function el_set_asset(key){
   const img=selectedEl.querySelector('img');
   const ph=selectedEl.querySelector('.img-ph-txt');
   const inner=selectedEl.querySelector('.el-inner');
-  const isLogo=key==='logo';
+  const isLogo=['logo','logo2','logo3','logo4'].includes(key);
   if(inner) inner.style.background=isLogo?'transparent':'#c5ccc5';
   if(img) img.style.objectFit=isLogo?'contain':'cover';
   // Remove old placeholder if switching to logo (logo has no placeholder)
@@ -1350,7 +1398,12 @@ function applyBullets(inner, on){
     // This guarantees wrapped lines align with the start of the text, not the dash
     // Check if parent element has paragraph spacing set
     const _el = inner.closest('.el');
-    const _spacing = (_el && _el.dataset.bulletParaSpacing) || inner.dataset.bulletSpacing || '0';
+    // Read spacing from el.dataset (most reliable - survives textContent wipes)
+    // Fall back to CSS custom property stored on inner, then inner.dataset
+    const _storedSpacing = inner.style.getPropertyValue('--bullet-spacing');
+    const _spacing = (_el && _el.dataset.bulletParaSpacing && _el.dataset.bulletParaSpacing !== '0')
+      ? _el.dataset.bulletParaSpacing
+      : (_storedSpacing || inner.dataset.bulletSpacing || '0');
     const _mb = (parseFloat(_spacing)||0) > 0 ? ';margin-bottom:'+_spacing+'px' : '';
     const divs = lines.map(function(l){
       const text = l.startsWith('\u2013 ') ? l.slice(2) : l;
@@ -1514,6 +1567,7 @@ function restoreTab(idx){
       if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
         el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
         inner.dataset.bulletSpacing = sv.bulletParaSpacing;
+        inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
       }
       applyBullets(inner, true);
     }
@@ -1521,17 +1575,29 @@ function restoreTab(idx){
     if(sv.type==='img'){
       const img=el.querySelector('img');
       const ph=el.querySelector('.img-ph-txt');
-      const isLogo=sv.assetKey==='logo';
+      const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
       // Re-apply correct background & object-fit
       const isSvg=sv.assetKey===''&&sv.imgSrc&&sv.imgSrc.startsWith('data:image/svg');
       if(inner){ inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5'; }
+      // If element has a svgKey, always use the current SVG constant (not stale saved imgSrc)
+      if(sv.svgKey){
+        const svgMap={'cbre-green':SVG_CBRE_GREEN,'cbre-white':SVG_CBRE_WHITE,'portfolio-green':SVG_PORTFOLIO_GREEN,'portfolio-white':SVG_PORTFOLIO_WHITE};
+        const svgData=svgMap[sv.svgKey];
+        if(svgData && inner){
+          inner.innerHTML='';
+          const img2=document.createElement('img');
+          img2.src=svgData; img2.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;';
+          inner.appendChild(img2);
+          el.dataset.svgKey=sv.svgKey;
+        }
+      } else {
       // Use assets store as source of truth, fall back to saved imgSrc
       const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : sv.imgSrc;
       if(src){
         if(img){
           img.src=src;
           // Restore crop state if saved
-          if(sv.cropW){
+          if(sv.cropW && !String(sv.cropW).includes('%')){
             // Always restore saved crop position directly — trust the saved values
             // The user deliberately positioned this image; don't recalculate
             const _applyCrop = ()=>{
@@ -1545,20 +1611,17 @@ function restoreTab(idx){
             if(!img.complete || img.naturalWidth===0){
               img.addEventListener('load', _applyCrop, {once:true});
             }
-            if(false){
-            }
-            img.dataset.cropX=sv.cropX; img.dataset.cropY=sv.cropY;
-            img.dataset.cropW=sv.cropW; img.dataset.cropH=sv.cropH;
-            el.classList.add('has-crop');
+
           } else {
             img.style.cssText=`position:absolute;inset:0;width:100%;height:100%;object-fit:${(isLogo||isSvg)?'contain':'cover'};display:block;`;
           }
         }
         if(ph) ph.style.display='none';
+        if(img) img.style.display='';
       } else {
         if(img) img.style.display='none';
-        if(ph && !isLogo) ph.style.display='';
       }
+      } // end else (non-svg)
     }
   });
   // Sync all field values so combined agents, bullets etc all populate correctly
@@ -1709,7 +1772,8 @@ function mkT(x,y,w,h,content,cfg){
     // Set paragraph spacing before applyBullets so it's picked up
     if(cfg.bulletParaSpacing){
       el.dataset.bulletParaSpacing = cfg.bulletParaSpacing;
-      if(inner) inner.dataset.bulletSpacing = cfg.bulletParaSpacing;
+      if(inner){ inner.dataset.bulletSpacing = cfg.bulletParaSpacing;
+        inner.style.setProperty('--bullet-spacing', cfg.bulletParaSpacing); }
     }
     if(inner) applyBullets(inner, true);
   }
@@ -2055,51 +2119,50 @@ function buildBrochure2(W,H){
 
 // ─── EDM 212×1550 ───
 function buildEDM(W,H){
-  mkT(10,8,100,18,'Portfolio',{color:G,fontSize:'12px',fontFamily:HF,fontWeight:'900',fontStyle:'italic',z:2});
-  mkT(W-60,8,56,18,'CBRE',{color:DK,fontSize:'14px',fontWeight:'900',z:2,extraStyle:'letter-spacing:-.02em;'});
-  mkI(0,32,W,150,'img1','Hero image',{z:1});
-  mkR(W-88,153,88,22,DK,{z:3}); mkT(W-86,155,84,18,gv('fb'),{color:'#fff',fontSize:'8px',fontWeight:'700',z:4,field:'banner'});
-  mkR(0,182,W,200,DK,{z:2});
-  mkR(12,194,3,100,G,{z:3});
-  mkT(20,194,W-28,34,gv('fh'),{color:'#fff',fontSize:'18px',fontFamily:HF,lineHeight:'1.2',z:3,field:'heading'});
-  mkT(20,228,W-28,16,gv('fa1'),{color:'#fff',fontSize:'12px',fontFamily:HF,z:3,field:'address1'});
-  mkT(20,244,W-28,14,gv('fa2'),{color:'#fff',fontSize:'11px',fontFamily:HF,z:3,field:'address2'});
-  const hpts=gv('fbull').split('\n');
-  mkT(20,260,W-28,13,hpts[0]||'',{color:'rgba(255,255,255,.75)',fontSize:'10px',z:3});
-  mkT(20,273,W-28,13,hpts[1]||'',{color:'rgba(255,255,255,.75)',fontSize:'10px',z:3});
-  mkI(W/2-55,296,110,46,'logo','Logo',{z:3});
-  mkT(12,348,W-24,16,gv('fm'),{color:'#fff',fontWeight:'700',fontSize:'13px',z:3,field:'salemethod'});
-  mkT(12,364,W-24,16,gv('fd'),{color:'rgba(255,255,255,.7)',fontSize:'10px',z:3,field:'saledate'});
-  mkI(0,382,W,140,'img2','Second image',{z:1});
-  mkR(0,522,W,42,DK,{z:2}); mkR(0,522,3,42,G,{z:3});
-  mkT(14,528,W-20,16,gv('fa1'),{color:'#fff',fontWeight:'700',fontSize:'12px',z:3,field:'address1'});
-  mkT(14,544,W-20,14,gv('fa2'),{color:'rgba(255,255,255,.75)',fontSize:'10px',z:3,field:'address2'});
-  const bcLines=gv('fbc').split('\n').filter(Boolean);
-  bcLines.forEach((b,i)=>mkT(12,570+i*17,W-24,16,'– '+b,{fontSize:'10px',color:'#333',z:2}));
-  const i3Y=570+bcLines.length*17+8;
-  mkI(0,i3Y,W,130,'img3','Third image',{z:1});
-  const asY=i3Y+138;
-  mkT(12,asY,W-24,18,'For more information contact the sales team',{fontWeight:'700',fontSize:'12px',color:'#111',z:2});
-  [[gv('fn1'),gv('fp1'),'agent1photo'],[gv('fn2'),gv('fp2'),'agent2photo'],[gv('fn3'),gv('fp3'),'agent3photo'],[gv('fn4'),gv('fp4'),'agent4photo']].forEach(([n,p,photoKey],i)=>{
-    if(!n) return;
-    const ay=asY+24+i*52;
-    mkI(12,ay,40,40,photoKey,'Photo',{z:2});
-    mkT(58,ay+2,W-70,18,n,{fontWeight:'700',fontSize:'11px',z:2});
-    mkT(58,ay+18,W-70,16,p,{fontSize:'11px',color:'#555',z:2});
-  });
-  const ctaY=asY+24+3*52+10;
-  ['Request Information Memorandum','View Listing','View Full Portfolio Line Up'].forEach((lbl,i)=>{
-    mkR(12,ctaY+i*36,W-24,30,'#fff',{z:2,extraStyle:'border:1px solid '+DK+';'});
-    mkT(16,ctaY+i*36+8,W-50,18,lbl,{fontWeight:'700',fontSize:'11px',color:DK,z:3});
-    mkT(W-28,ctaY+i*36+8,18,18,'→',{color:G,fontSize:'13px',z:3});
-  });
-  const footY=ctaY+3*36+8;
-  mkR(0,footY,W,40,DK,{z:2});
-  mkT(0,footY+10,W,22,'CBRE',{color:'#fff',fontSize:'18px',fontWeight:'900',z:3,extraStyle:'text-align:center;letter-spacing:-.02em;'});
-  mkT(8,footY+52,W-16,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies.',{fontSize:'7px',color:'#999',lineHeight:'1.4',z:2});
-  mkSVGLogo(8,12,90,23,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200});
-  mkSVGLogo(116,12,88,23,SVG_CBRE_GREEN,'cbre-green',{z:200});
-  mkSVGLogo(116,38,88,23,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkI(0,41,212,150,'img1','Image',{z:2});
+  mkR(125,169,87,22,'rgb(0, 63, 45)',{z:4});
+  mkT(119,176,84,11,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'700',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:5});
+  mkR(0,0,213,464,'rgb(1, 42, 45)',{z:1});
+  mkR(12,209,3,127,'rgb(23, 232, 143)',{z:4});
+  mkT(30,206,174,65,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'18px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'heading',z:4});
+  mkT(29,286,175,54,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:4});
+  mkI(51,359,110,46,'logo','Image',{z:4});
+  mkT(12,424,188,16,gv('fm'),{color:'rgb(255, 255, 255)',fontSize:'13px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:4});
+  mkT(12,442,201,13,gv('fd'),{color:'rgb(255, 255, 255)',fontSize:'9px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:4});
+  mkI(0,464,212,140,'img2','Image',{z:2});
+  mkR(0,604,212,44,'rgb(13, 42, 45)',{z:3});
+  mkR(12,614,3,24,'rgb(23, 232, 143)',{z:4});
+  mkT(27,613,179,16,gv('fa1'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:4});
+  mkT(27,628,179,14,gv('fa2'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:4});
+  mkT(12,661,188,218,document.getElementById('fbc').value,{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bodycopy',z:3,bullets:'1'});
+  mkI(0,872,212,130,'img3','Image',{z:2});
+  mkT(12,1014,157,34,'For more information contact the sales team',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',z:3});
+  mkI(12,1055,40,40,'agent1photo','Image',{z:3});
+  mkT(65,1061,142,18,gv('fn1'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
+  mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
+  mkI(12,1103,40,40,'agent2photo','Image',{z:3});
+  mkT(65,1109,142,18,gv('fn2'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3});
+  mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3});
+  mkI(12,1151,40,40,'agent3photo','Image',{z:3});
+  mkT(65,1158,142,18,gv('fn3'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3});
+  mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3});
+  mkI(12,1199,40,40,'agent4photo','Image',{z:3});
+  mkT(65,1206,142,18,gv('fn4'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3});
+  mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3});
+  mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3});
+  mkT(21,1270,162,18,'Request Information Memorandum',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
+  (function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _m=document.createElement('img'); _m.src=SVG_ARROW_WHITE; _m.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.appendChild(_m); _i.style.background='transparent'; } })();
+  mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3});
+  mkT(21,1308,162,18,'View Listing',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
+  (function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _m=document.createElement('img'); _m.src=SVG_ARROW_WHITE; _m.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.appendChild(_m); _i.style.background='transparent'; } })();
+  mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3});
+  mkT(21,1346,162,18,'View Full Portfolio Line Up',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
+  (function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _m=document.createElement('img'); _m.src=SVG_ARROW_WHITE; _m.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.appendChild(_m); _i.style.background='transparent'; } })();
+  mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3});
+  mkT(8,1431,196,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',z:3});
+  mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
+  mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
+  mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 
 // ─── LINKEDIN 800×800 ───
@@ -2240,197 +2303,259 @@ function serializeTabFrom(art){
 }
 
 async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
-  if(addPage){
-    pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  }
+  if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
   const [canvasW, canvasH] = SIZES[tabIdx];
-  const realArt    = document.getElementById('artwork');
-  const canvasWrap = document.getElementById('canvas-wrap');
 
-  // Stash current state
-  const prevHTML = realArt.innerHTML;
-  const prevW    = realArt.style.width;
-  const prevH    = realArt.style.height;
-  const prevBg   = realArt.style.background;
-  const prevT    = realArt.style.transform;
-  const prevPos  = realArt.style.position;
-  const prevTop  = realArt.style.top;
-  const prevLeft = realArt.style.left;
-  const prevWW   = canvasWrap.style.width;
-  const prevWH   = canvasWrap.style.height;
-  const prevNI   = nextId;
-  const prevTab  = currentTab;
+  return new Promise(async (resolve, reject) => {
+    // Build into a completely isolated div attached to body
+    // Never touch the live #artwork or #canvas-wrap
+    const offscreen = document.createElement('div');
+    offscreen.style.cssText = [
+      'position:fixed',
+      'top:0',
+      'left:0',
+      'width:'+canvasW+'px',
+      'height:'+canvasH+'px',
+      'overflow:hidden',
+      'z-index:-99999',
+      'pointer-events:none',
+      'visibility:visible',
+      'background:'+(tabIdx===4?DK:'#ffffff'),
+    ].join(';');
+    document.body.appendChild(offscreen);
 
-  try {
-    // Position off-screen at 1:1 scale
-    realArt.style.position  = 'fixed';
-    realArt.style.top       = '-99999px';
-    realArt.style.left      = '0px';
-    realArt.style.transform = 'none';
-    realArt.style.width     = canvasW + 'px';
-    realArt.style.height    = canvasH + 'px';
-    realArt.style.background = tabIdx === 4 ? DK : '#ffffff';
-    canvasWrap.style.width  = canvasW + 'px';
-    canvasWrap.style.height = canvasH + 'px';
-    realArt.innerHTML = '';
-    nextId = 1;
+    const prevNextId = nextId;
+    const prevTab    = currentTab;
+    nextId    = 1;
     currentTab = tabIdx;
 
-    // Build template (same path as screen render)
-    [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][tabIdx](canvasW, canvasH);
-    // Logos are already placed by buildXxx functions — no inject needed
-    globalSync(); // Populate combined agents (name+phone) and all fields
+    try {
+      // Build layout from saved state or fresh template
+      if(savedStates[tabIdx] && savedStates[tabIdx].length){
+        // Manually reconstruct from savedStates into offscreen div
+        savedStates[tabIdx].forEach(sv => {
+          const el = document.createElement('div');
+          el.className = 'el';
+          el.dataset.type       = sv.type;
+          el.dataset.assetKey   = sv.assetKey || '';
+          el.dataset.svgKey     = sv.svgKey   || '';
+          el.dataset.field      = sv.field    || '';
+          el.dataset.bullets    = sv.bullets  || '0';
+          el.dataset.combinedAgent = sv.combinedAgent || '0';
+          if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+          el.style.cssText = 'position:absolute;left:'+sv.x+';top:'+sv.y+
+            ';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+
+            ';overflow:hidden;';
 
-    // Inject saved asset images with correct object-fit
-    realArt.querySelectorAll('.el[data-type="img"]').forEach(el => {
-      const ak    = el.dataset.assetKey;
-      const src   = ak && assets[ak] ? assets[ak] : null;
-      if(!src) return;
-      const inner  = el.querySelector('.el-inner');
-      const isLogo = ak === 'logo';
-      if(inner) inner.style.background = isLogo ? 'transparent' : '';
-      // Remove existing img and replace with fresh one
-      const oldImg = el.querySelector('img');
-      if(oldImg) oldImg.remove();
-      const imgEl = document.createElement('img');
-      imgEl.src         = src;
-      imgEl.crossOrigin = 'anonymous';
-      imgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:' +
-                            (isLogo ? 'contain' : 'cover') + ';display:block;';
-      if(inner) inner.appendChild(imgEl);
-    });
+          const inner = document.createElement('div');
+          inner.className = 'el-inner';
+          // Apply saved innerStyle, but always keep position:absolute;inset:0
+          const baseStyle = 'position:absolute;inset:0;overflow:hidden;';
+          inner.setAttribute('style', baseStyle + (sv.innerStyle||''));
 
-    // Wait for raster images to load (with 8s timeout safety)
-    // SVG data URIs load synchronously — skip them
-    const rasterImgs = [...realArt.querySelectorAll('img')].filter(img => {
-      const s = img.src || '';
-      return !s.startsWith('data:image/svg') && s.length > 0;
-    });
-    await Promise.race([
-      Promise.all(rasterImgs.map(img => new Promise(res => {
-        if(img.complete) { res(); return; }
-        img.addEventListener('load',  res, {once:true});
-        img.addEventListener('error', res, {once:true});
-      }))),
-      new Promise(res => setTimeout(res, 8000)) // 8s max wait
-    ]);
+          if(sv.type === 'text'){
+            inner.style.overflow   = 'hidden';
+            const content = sv.content !== undefined ? sv.content : '';
+            if(sv.bullets === '1'){
+              // Re-apply bullet formatting
+              const spacing = sv.bulletParaSpacing || '0';
+              const mb = parseFloat(spacing) > 0 ? ';margin-bottom:'+spacing+'px' : '';
+              const lines = content.split('\n');
+              inner.innerHTML = lines.map(l => {
+                const text = l.startsWith('– ') ? l.slice(2) : l;
+                if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+                return '<div style="display:flex;align-items:baseline'+mb+'">' +
+                  '<span style="flex:0 0 auto;margin-right:0.25em;">–</span>' +
+                  '<span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+              }).join('');
+            } else {
+              inner.textContent = content;
+            }
+          } else if(sv.type === 'img'){
+            const isLogo = ['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
+            const isSvg  = sv.svgKey || (sv.imgSrc||'').startsWith('data:image/svg');
+            inner.style.background = (isLogo||isSvg) ? 'transparent' : '#c5ccc5';
+            const src = (sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : (sv.imgSrc||'');
+            if(src){
+              const imgEl = document.createElement('img');
+              imgEl.src         = src;
+              imgEl.crossOrigin = 'anonymous';
+              const _hasRealCrop = sv.cropW && !isLogo && !isSvg &&
+                !String(sv.cropW).includes('%') && parseFloat(sv.cropW) > 0;
+            if(_hasRealCrop){
+                // Pixel crop — user positioned this image
+                imgEl.style.cssText = 'position:absolute;left:'+sv.cropX+';top:'+sv.cropY+
+                  ';width:'+sv.cropW+';height:'+sv.cropH+';object-fit:fill;display:block;';
+              } else {
+                imgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:'+
+                  (isLogo||isSvg?'contain':'cover')+';display:block;';
+              }
+              inner.appendChild(imgEl);
+            } else if(!isLogo && !isSvg){
+              const ph = document.createElement('div');
+              ph.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;';
+              ph.textContent = 'Image';
+              inner.appendChild(ph);
+            }
+          }
 
-    // Two frames for layout
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          el.appendChild(inner);
+          offscreen.appendChild(el);
+        });
 
-    // Capture
-    const canvas = await html2canvas(realArt, {
-      scale:           3,
-      useCORS:         true,
-      allowTaint:      true,
-      backgroundColor: tabIdx === 4 ? DK : '#ffffff',
-      logging:         false,
-      width:           canvasW,
-      height:          canvasH,
-      x: 0,
-      y: 0,
-      imageTimeout:    10000,
-      onclone: function(clonedDoc, clonedEl) {
-        // Fix object-fit:contain for all images by converting to
-        // a pre-rendered canvas element that html2canvas handles correctly
-        clonedEl.querySelectorAll('.el-inner').forEach(function(inner) {
-          const img = inner.querySelector('img');
-          if(!img || !img.src) return;
-          const fit = img.style.objectFit || 'cover';
-          const iw  = inner.offsetWidth  || parseFloat(inner.style.width)  || 100;
-          const ih  = inner.offsetHeight || parseFloat(inner.style.height) || 100;
-          if(iw < 1 || ih < 1) return;
+        // Apply current field values (agents, headings etc)
+        const fieldMap = {
+          heading:'fh', subheading:'fs', address1:'fa1', address2:'fa2',
+          banner:'fb', income:'fi', salemethod:'fm', saledate:'fd',
+          bullets:'fbull', bodycopy:'fbc',
+          agent1name:'fn1', agent2name:'fn2', agent3name:'fn3', agent4name:'fn4',
+        };
+        const phoneMap = {agent1name:'fp1', agent2name:'fp2', agent3name:'fp3', agent4name:'fp4'};
+        offscreen.querySelectorAll('.el[data-type="text"]').forEach(el => {
+          const field = el.dataset.field;
+          if(!field || !fieldMap[field]) return;
+          const val = gv(fieldMap[field]) || document.getElementById(fieldMap[field])?.value || '';
+          const inner = el.querySelector('.el-inner');
+          if(!inner) return;
+          if(el.dataset.combinedAgent === '1' && phoneMap[field]){
+            const phone = gv(phoneMap[field]) || '';
+            inner.textContent = phone ? val+' '+phone : val;
+          } else if(el.dataset.bullets === '1'){
+            const spacing = el.dataset.bulletParaSpacing || '0';
+            const mb = parseFloat(spacing) > 0 ? ';margin-bottom:'+spacing+'px' : '';
+            const lines = val.split('\n');
+            inner.innerHTML = lines.map(l => {
+              const text = l.startsWith('– ') ? l.slice(2) : l;
+              if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+              return '<div style="display:flex;align-items:baseline'+mb+'">' +
+                '<span style="flex:0 0 auto;margin-right:0.25em;">–</span>' +
+                '<span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+            }).join('');
+          } else {
+            inner.textContent = val;
+          }
+        });
 
-          // Create a canvas with the correct fit applied
-          const c = clonedDoc.createElement('canvas');
-          c.width  = iw * 3;
-          c.height = ih * 3;
+      } else {
+        // No saved state — build fresh into a temporary clone of artwork
+        const realArt    = document.getElementById('artwork');
+        const canvasWrap = document.getElementById('canvas-wrap');
+        const ph = realArt.innerHTML, pw = realArt.style.width, phh = realArt.style.height;
+        const pbg = realArt.style.background, pt = realArt.style.transform;
+        realArt.innerHTML = ''; nextId = 1;
+        realArt.style.width = canvasW+'px'; realArt.style.height = canvasH+'px';
+        realArt.style.background = tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
+        [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][tabIdx](canvasW,canvasH);
+        globalSync();
+        offscreen.innerHTML = realArt.innerHTML;
+        realArt.innerHTML = ph; realArt.style.width=pw; realArt.style.height=phh;
+        realArt.style.background=pbg; realArt.style.transform=pt;
+      }
+
+      // Pre-render all images to canvas elements.
+      // Strategy: load each image into a new Image() with explicit dimensions,
+      // draw onto a canvas at the correct size/position, replace the img with the canvas.
+      // This bypasses all object-fit/crop issues in html2canvas.
+      const allImgEls = [...offscreen.querySelectorAll('.el[data-type="img"] .el-inner')];
+      await Promise.all(allImgEls.map(inner => new Promise(resolve => {
+        const img = inner.querySelector('img');
+        if(!img || !img.src){ resolve(); return; }
+
+        const el  = inner.closest('.el');
+        const fw  = parseFloat(el.style.width)  || 100;
+        const fh  = parseFloat(el.style.height) || 60;
+        const fit = img.style.objectFit || 'cover';
+        const SCALE = 3;
+        const cw = Math.round(fw * SCALE);
+        const ch = Math.round(fh * SCALE);
+
+        // Load a fresh copy with explicit pixel dimensions
+        // For SVGs: setting width/height on Image() forces rasterisation at that size
+        const loader = new Image(cw, ch);
+        loader.crossOrigin = 'anonymous';
+
+        loader.onload = function(){
+          const c   = document.createElement('canvas');
+          c.width   = cw;
+          c.height  = ch;
           const ctx = c.getContext('2d');
+          ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
 
-          // Find the original (non-cloned) image to get natural dimensions
-          const origSrc = img.src;
-          const origImg = document.querySelector('img[src="' + origSrc + '"]') || img;
-          const nw = origImg.naturalWidth  || iw;
-          const nh = origImg.naturalHeight || ih;
+          // Use naturalWidth if valid, otherwise use the loader dimensions
+          const nw = loader.naturalWidth  > 0 ? loader.naturalWidth  : cw;
+          const nh = loader.naturalHeight > 0 ? loader.naturalHeight : ch;
 
-          const cw = c.width, ch = c.height;
           let dx, dy, dw, dh;
-          if(fit === 'contain') {
-            const scale = Math.min(cw/nw, ch/nh);
-            dw = nw*scale; dh = nh*scale;
+          if(fit === 'fill' && !img.style.width.includes('%') && parseFloat(img.style.width) > 0){
+            // Cropped/panned image — use saved left/top/width/height in pixels
+            const il = parseFloat(img.style.left)   || 0;
+            const it = parseFloat(img.style.top)    || 0;
+            const iw = parseFloat(img.style.width)  || fw;
+            const ih = parseFloat(img.style.height) || fh;
+            dw = iw*SCALE; dh = ih*SCALE; dx = il*SCALE; dy = it*SCALE;
+          } else if(fit === 'contain'){
+            const s = Math.min(cw/nw, ch/nh);
+            dw = nw*s; dh = nh*s;
             dx = (cw-dw)/2; dy = (ch-dh)/2;
           } else {
-            const scale = Math.max(cw/nw, ch/nh);
-            dw = nw*scale; dh = nh*scale;
+            // cover
+            const s = Math.max(cw/nw, ch/nh);
+            dw = nw*s; dh = nh*s;
             dx = (cw-dw)/2; dy = (ch-dh)/2;
           }
-          try { ctx.drawImage(origImg, dx, dy, dw, dh); } catch(e) { return; }
 
-          const replacement = clonedDoc.createElement('img');
-          replacement.src = c.toDataURL('image/png');
-          replacement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+          try{ ctx.drawImage(loader, dx, dy, dw, dh); } catch(e){ resolve(); return; }
+
+          c.style.cssText = 'position:absolute;left:0;top:0;width:'+fw+'px;height:'+fh+'px;display:block;';
           inner.style.background = 'transparent';
-          img.replaceWith(replacement);
-        });
-      }
-    });
+          img.replaceWith(c);
+          resolve();
+        };
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+        loader.onerror = function(){ resolve(); }; // skip on error, don't block
+        setTimeout(resolve, 8000); // safety timeout
 
-  } finally {
-    // Always restore — even if an error occurred
-    realArt.innerHTML        = prevHTML;
-    realArt.style.width      = prevW;
-    realArt.style.height     = prevH;
-    realArt.style.background = prevBg;
-    realArt.style.transform  = prevT;
-    realArt.style.position   = prevPos;
-    realArt.style.top        = prevTop;
-    realArt.style.left       = prevLeft;
-    canvasWrap.style.width   = prevWW;
-    canvasWrap.style.height  = prevWH;
-    nextId     = prevNI;
-    currentTab = prevTab;
-  }
+        loader.src = img.src;
+      })));
+
+      // Settle
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
+      // Capture — offscreen div is exactly canvasW x canvasH at position:fixed top:0 left:0
+      const canvas = await html2canvas(offscreen, {
+        scale:           3,
+        useCORS:         true,
+        allowTaint:      true,
+        backgroundColor: tabIdx===4?DK:'#ffffff',
+        logging:         false,
+        width:           canvasW,
+        height:          canvasH,
+        windowWidth:     canvasW,
+        windowHeight:    canvasH,
+        x:               0,
+        y:               0,
+        scrollX:         0,
+        scrollY:         0,
+        imageTimeout:    15000,
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg',0.95);
+      pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'FAST');
+      resolve();
+
+    } catch(err){
+      reject(err);
+    } finally {
+      if(offscreen.parentNode) document.body.removeChild(offscreen);
+      nextId     = prevNextId;
+      currentTab = prevTab;
+    }
+  });
 }
 
 
-
-
-// ════════════════════════════════════════
-// DOWNLOAD CURRENT TAB PDF
-// ════════════════════════════════════════
-async function downloadPDF(){
-  const btn = document.getElementById('dlb');
-  btn.disabled = true; btn.textContent = 'Generating…';
-  deselectAll();
-  savedStates[currentTab] = serializeTab();
-  try {
-    const mm = PDF_MM[currentTab];
-    const {jsPDF} = window.jspdf;
-    const isLandscape = mm[0] > mm[1];
-    const pdf = new jsPDF({
-      orientation: isLandscape ? 'landscape' : 'portrait',
-      unit: 'mm',
-      format: [mm[0], mm[1]]
-    });
-    await renderTabToPdf(pdf, currentTab, mm[0], mm[1], false);
-    const tabName = TAB_NAMES[currentTab] || 'artwork';
-    pdf.save(`CBRE_${tabName}.pdf`);
-  } catch(err){
-    console.error(err);
-    alert('PDF generation failed: ' + err.message);
-  }
-  btn.disabled = false; btn.textContent = '⬇ PDF';
-}
-
-// ════════════════════════════════════════
-// ALL ARTWORKS OVERVIEW + DOWNLOAD
-// ════════════════════════════════════════
 async function showAllArtworks(){
-  // Save current tab first
   savedStates[currentTab] = serializeTab();
 
   const overlay = document.getElementById('all-overlay');
@@ -2445,8 +2570,6 @@ async function showAllArtworks(){
   for(let i=0; i<8; i++){
     try {
       const [cw, ch] = SIZES[i];
-
-      // Use the live artwork div (same as PDF export) for faithful rendering
       const realArt    = document.getElementById('artwork');
       const canvasWrap = document.getElementById('canvas-wrap');
       const prevHTML   = realArt.innerHTML;
@@ -2478,7 +2601,7 @@ async function showAllArtworks(){
             inner.style.whiteSpace='pre-wrap';inner.style.wordBreak='break-word';inner.style.overflow='hidden';
             if(sv.content!==undefined) inner.textContent=sv.content;
           } else if(sv.type==='img'){
-            const isLogo=sv.assetKey==='logo';
+            const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
             inner.style.background=isLogo?'transparent':'#c5ccc5';
             const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:sv.imgSrc;
             if(src){
@@ -2502,7 +2625,6 @@ async function showAllArtworks(){
         backgroundColor:i===4?DK:'#ffffff', logging:false, width:cw, height:ch, x:0, y:0
       });
 
-      // Restore
       realArt.innerHTML=prevHTML; nextId=prevNI;
       realArt.style.width=prevSW; realArt.style.height=prevSH;
       realArt.style.background=prevSB; realArt.style.transform=prevST;
@@ -2515,11 +2637,9 @@ async function showAllArtworks(){
     }
   }
 
-  // Restore the current tab properly after all iterations
   restoreTab(origTab);
   currentTab = origTab;
 
-  // Render grid
   grid.innerHTML = '';
   cards.forEach(({idx, name, canvas}) => {
     const card = document.createElement('div');
@@ -2543,7 +2663,6 @@ async function showAllArtworks(){
     grid.appendChild(card);
   });
 
-  // Store canvases for download
   window._allCards = cards;
 }
 
@@ -2590,39 +2709,29 @@ async function downloadAllPDF(){
 }
 
 // ════════════════════════════════════════
-// TAB SWITCHING — saves state automatically
+// TAB SWITCHING
 // ════════════════════════════════════════
 function switchTab(idx, btn){
-  // Auto-save current tab state before switching
   savedStates[currentTab]=serializeTab();
   persistAll();
   currentTab=idx;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   deselectAll();
-  // Restore saved state if available, otherwise build fresh from template
   if(savedStates[idx] && savedStates[idx].length){
     restoreTab(idx);
   } else {
     buildTemplate(idx);
   }
-  // Always fit zoom to the new tab's height
   fitZoomToTab();
 }
 
-
 // ════════════════════════════════════════
-// PERSISTENCE — saves state back INTO this HTML file
-// Clicking 💾 Save downloads an updated copy of this file with all your
-// changes baked in. Open that file in any browser and it's exactly where
-// you left off — no browser-specific storage required.
-// ════════════════════════════════════════════════════════════════
-// SUPABASE CONFIG — cloud save/load for all users
-// ════════════════════════════════════════════════════════════════
+// PERSISTENCE
+// ════════════════════════════════════════
 const SUPA_URL = 'https://pgsgjafgetdvuctmpibf.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
 
-// URL params passed from index.html
 const _qp             = new URLSearchParams(window.location.search);
 const _portfolioId    = _qp.get('portfolioId')   || 'demo';
 const _propertyId     = _qp.get('propertyId')    || 'demo';
@@ -2631,14 +2740,12 @@ const _propertyName   = _qp.get('propertyName')  || 'Property';
 const _userRole       = _qp.get('userRole')      || 'user';
 const LS_KEY          = 'cbre_v5_' + _portfolioId + '_' + _propertyId;
 
-// Masthead context + role-based admin mode
 (function(){
   const pp = document.getElementById('mast-port');
   const pr = document.getElementById('mast-prop');
   const un = document.getElementById('mast-usr-name');
   if(pp) pp.textContent = _portfolioName;
   if(pr) pr.textContent = _propertyName;
-  // Show user name from URL param (already resolved in index.html)
   const userName = _qp.get('userName') || '';
   if(un && userName) un.textContent = userName;
   else {
@@ -2659,11 +2766,8 @@ function setCdtStatus(cls, txt) {
   if(lb) lb.textContent = txt;
 }
 
-// ── Marketing Items dropdown ────────────────────────────────────────────────
 let _miHidden = new Set();
-function toggleMIDD() {
-  document.getElementById('mi-dd').classList.toggle('open');
-}
+function toggleMIDD() { document.getElementById('mi-dd').classList.toggle('open'); }
 document.addEventListener('click', function(e) {
   const w = document.querySelector('.mi-wrap');
   if(w && !w.contains(e.target)) document.getElementById('mi-dd').classList.remove('open');
@@ -2683,9 +2787,7 @@ function toggleMITab(idx, cb) {
   }
 }
 
-// ── Collect all state ───────────────────────────────────────────────────────
 function collectState(){
-  // Snapshot current tab before collecting so all positions/crops are up to date
   savedStates[currentTab] = serializeTab();
   return {
     v:5, currentTab, zoom:Math.round(zoom*100), assets,
@@ -2705,25 +2807,25 @@ function collectState(){
   };
 }
 
-// ── Apply state to the app ──────────────────────────────────────────────────
 function applyState(data, skipZoom=false){
   if(!data || data.v !== 5) return false;
   try {
     if(data.assets) assets = data.assets;
-    // Restore deleted logos record
     if(data.deletedLogos){
       Object.entries(data.deletedLogos).forEach(([tab, keys]) => {
         _deletedLogos[parseInt(tab)] = new Set(keys);
       });
     }
-    // Restore saved canvas layouts (element positions, crops, etc.)
     if(data.tabLayouts && Object.keys(data.tabLayouts).length > 0){
       savedStates = data.tabLayouts;
     } else if(data.savedStates && Object.keys(data.savedStates).length > 0){
-      savedStates = data.savedStates; // legacy key
+      savedStates = data.savedStates;
     } else {
-      savedStates = {}; // no saved layouts — will build fresh from templates
+      savedStates = {};
     }
+    // EDM tab (5): always rebuild fresh from buildEDM so template updates
+    // (logo colours, arrow icons etc) always take effect
+    delete savedStates[5];
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{ const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
@@ -2735,7 +2837,6 @@ function applyState(data, skipZoom=false){
       set('fn3',f.fn3);set('fp3',f.fp3);
       set('fn4',f.fn4);set('fp4',f.fp4);
     }
-    // Don't reset zoom during live sync — jarring for the current user
     if(!skipZoom && data.zoom){ document.getElementById('zoom-range').value=data.zoom; setZoom(data.zoom); }
     if(data.currentTab!=null){
       currentTab=parseInt(data.currentTab)||0;
@@ -2745,7 +2846,6 @@ function applyState(data, skipZoom=false){
   } catch(e){ console.error('applyState failed',e); return false; }
 }
 
-// ── Supabase save — returns the server's updated_at on success, null on fail ──
 async function supabaseSave(state){
   try {
     const body = { portfolio_id:_portfolioId, property_id:_propertyId, state_json:JSON.stringify(state), updated_at:new Date().toISOString() };
@@ -2771,47 +2871,32 @@ async function supabaseSave(state){
       const data = await r.json();
       savedRow = Array.isArray(data) ? data[0] : data;
     }
-    // Return the actual server timestamp so we can track it precisely
     return savedRow?.updated_at || body.updated_at;
   } catch(e){ console.warn('Supabase save failed:', e); return null; }
 }
 
-// ── Supabase load — returns {state, updatedAt} or null ───────────────────────
 async function supabaseLoad(){
   try {
-    console.log('[CBRE] Loading from Supabase...', _portfolioId, _propertyId);
     const url = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=state_json,updated_at`;
     const res = await fetch(url, {
-      headers:{
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json'
-      }
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'}
     });
     const rows = await res.json();
     if(rows && rows.length && rows[0].state_json){
-      return {
-        state: JSON.parse(rows[0].state_json),
-        updatedAt: rows[0].updated_at || null
-      };
+      return { state: JSON.parse(rows[0].state_json), updatedAt: rows[0].updated_at || null };
     }
-  } catch(e){
-    console.warn('[CBRE] Supabase load failed:', e);
-  }
+  } catch(e){ console.warn('[CBRE] Supabase load failed:', e); }
   return null;
 }
 
-// ── Upload image to Supabase Storage ────────────────────────────────────────
 function loadAsset(e, key){
   const f = e.target.files[0]; if(!f) return;
-  const isLogo = key==='logo';
+  const isLogo = ['logo','logo2','logo3','logo4'].includes(key);
   setCdtStatus('saving','Uploading…');
   const reader = new FileReader();
   reader.onload = async ev => {
     const base64 = ev.target.result;
-    let finalSrc = base64; // fallback
-
-    // Try uploading to Supabase Storage
+    let finalSrc = base64;
     try {
       const ext = f.name.split('.').pop();
       const path = `${_portfolioId}/${_propertyId}/${key}_${Date.now()}.${ext}`;
@@ -2820,12 +2905,8 @@ function loadAsset(e, key){
         headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':f.type},
         body:f
       });
-      if(uploadRes.ok){
-        finalSrc = `${SUPA_URL}/storage/v1/object/public/assets/${path}`;
-      }
+      if(uploadRes.ok){ finalSrc = `${SUPA_URL}/storage/v1/object/public/assets/${path}`; }
     } catch(err){ console.warn('Storage upload failed, using base64 fallback'); }
-
-    // Apply to assets and canvas
     assets[key] = finalSrc;
     document.querySelectorAll(`.el[data-asset-key="${key}"]`).forEach(el => {
       const img=el.querySelector('img');
@@ -2843,7 +2924,6 @@ function loadAsset(e, key){
   reader.readAsDataURL(f);
 }
 
-// ── Auto-save with Supabase ──────────────────────────────────────────────────
 let _persistTimer = null;
 function debouncedPersist(){
   clearTimeout(_persistTimer);
@@ -2853,13 +2933,12 @@ function debouncedPersist(){
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
     const serverTs = await supabaseSave(state);
     if(serverTs){
-      // Store the exact server timestamp — live sync compares against this
       _lastKnownUpdatedAt = serverTs;
       setCdtStatus('saved','Saved ✓');
     } else {
       setCdtStatus('error','Local only');
     }
-    _persistTimer = null; // clear so isUserBusy() stops blocking sync
+    _persistTimer = null;
   }, 1000);
 }
 function persistAll(){ debouncedPersist(); }
@@ -2867,20 +2946,13 @@ function saveTab(){ debouncedPersist(); }
 function clearPersisted(){
   if(confirm('Clear all saved data and reset to defaults?')){
     localStorage.removeItem(LS_KEY);
-    savedStates={};assets={logo:'',img1:'',img2:'',img3:'',img4:''};currentTab=0;
+    savedStates={};assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:''};currentTab=0;
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===0));
     buildTemplate(0);fitZoomToTab();
   }
 }
 
-// ── Init: load from Supabase first, localStorage as fallback ────────────────
-
-// ════════════════════════════════════════════════════════════════
-// AGENT DATABASE — loads from Supabase agents table
-// ════════════════════════════════════════════════════════════════
-let agentList = []; // [{id,name,phone,photo}]
-
-// Agent slot state: 4 slots, each has mode ('db'|'custom') and selected agentId or custom values
+let agentList = [];
 let agentSlots = [
   {mode:'db', agentId:'', customName:'', customPhone:''},
   {mode:'db', agentId:'', customName:'', customPhone:''},
@@ -2929,565 +3001,266 @@ function renderAgentBlocks(){
       `}
     </div>`;
   }).join('');
-  // Sync all agent slots so canvas elements get populated
   syncAllAgentSlots();
 }
 
 function escAgt(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function setAgentMode(i, mode){ agentSlots[i].mode=mode; if(mode==='db'){agentSlots[i].customName='';agentSlots[i].customPhone='';}else{agentSlots[i].agentId='';} syncAgentSlot(i); renderAgentBlocks(); }
+function selectAgent(i, agentId){ agentSlots[i].agentId=agentId; syncAgentSlot(i); renderAgentBlocks(); }
+function setCustomAgent(i, field, val){ if(field==='name') agentSlots[i].customName=val; else agentSlots[i].customPhone=val; syncAgentSlot(i); }
 
-function setAgentMode(i, mode){
-  agentSlots[i].mode = mode;
-  if(mode === 'db'){
-    agentSlots[i].customName = '';
-    agentSlots[i].customPhone = '';
-  } else {
-    agentSlots[i].agentId = '';
-  }
-  syncAgentSlot(i);
-  renderAgentBlocks();
-}
-
-function selectAgent(i, agentId){
-  agentSlots[i].agentId = agentId;
-  syncAgentSlot(i);
-  renderAgentBlocks();
-}
-
-function setCustomAgent(i, field, val){
-  if(field==='name') agentSlots[i].customName = val;
-  else agentSlots[i].customPhone = val;
-  syncAgentSlot(i);
-}
-
-// Push slot values into hidden fn/fp inputs and photo assets, then globalSync
 function syncAgentSlot(i){
-  const slot = agentSlots[i];
-  const num = i+1;
-  const nameEl  = document.getElementById('fn'+num);
-  const phoneEl = document.getElementById('fp'+num);
-  const photoKey = 'agent'+num+'photo';
-
-  let name='', phone='', photo='';
-  if(slot.mode==='db' && slot.agentId){
-    const agent = agentList.find(a=>a.id===slot.agentId);
-    if(agent){ name=agent.name||''; phone=agent.phone||''; photo=agent.photo||''; }
-  } else if(slot.mode==='custom'){
-    name = slot.customName||'';
-    phone = slot.customPhone||'';
-  }
-
-  if(nameEl)  nameEl.value  = name;
-  if(phoneEl) phoneEl.value = phone;
-
-  // Update photo asset and any live EDM image elements
-  assets[photoKey] = photo;
+  const slot=agentSlots[i]; const num=i+1;
+  const nameEl=document.getElementById('fn'+num); const phoneEl=document.getElementById('fp'+num);
+  const photoKey='agent'+num+'photo';
+  let name='',phone='',photo='';
+  if(slot.mode==='db'&&slot.agentId){ const agent=agentList.find(a=>a.id===slot.agentId); if(agent){name=agent.name||'';phone=agent.phone||'';photo=agent.photo||'';} }
+  else if(slot.mode==='custom'){ name=slot.customName||''; phone=slot.customPhone||''; }
+  if(nameEl) nameEl.value=name; if(phoneEl) phoneEl.value=phone;
+  assets[photoKey]=photo;
   document.querySelectorAll(`.el[data-asset-key="${photoKey}"]`).forEach(el=>{
-    const img = el.querySelector('img');
-    const ph  = el.querySelector('.img-ph-txt');
-    const inner = el.querySelector('.el-inner');
-    if(inner) inner.style.background = photo ? 'transparent' : '#c5ccc5';
-    if(img){ img.src=photo||''; img.style.display=photo?'':'none'; img.style.objectFit='cover'; }
-    if(ph)  ph.style.display = photo?'none':'';
+    const img=el.querySelector('img'); const ph=el.querySelector('.img-ph-txt'); const inner=el.querySelector('.el-inner');
+    if(inner) inner.style.background=photo?'transparent':'#c5ccc5';
+    if(img){img.src=photo||'';img.style.display=photo?'':'none';img.style.objectFit='cover';}
+    if(ph) ph.style.display=photo?'none':'';
   });
-
-  // Update live canvas text elements in-place (preserves bullets, positions etc)
   globalSync();
-
-  // Extra pass: directly update any combinedAgent elements on the live canvas
-  // This catches timing issues where globalSync ran before agents were loaded
-  const agentField = ['agent1name','agent2name','agent3name','agent4name'][i];
-  const phoneField  = ['fp1','fp2','fp3','fp4'][i];
-  const agentNum = i+1;
+  const agentField=['agent1name','agent2name','agent3name','agent4name'][i];
+  const phoneField=['fp1','fp2','fp3','fp4'][i];
+  const agentNum=i+1;
   document.querySelectorAll('.el[data-combined-agent="1"][data-field="'+agentField+'"]').forEach(function(el){
-    const inner = el.querySelector('.el-inner');
-    if(!inner) return;
-    const n = gv('fn'+agentNum);
-    const p = gv(phoneField);
-    inner.textContent = (n && p) ? n+' '+p : (n||'');
+    const inner=el.querySelector('.el-inner'); if(!inner) return;
+    const n=gv('fn'+agentNum); const p=gv(phoneField);
+    inner.textContent=(n&&p)?n+' '+p:(n||'');
   });
-
   debouncedPersist();
 }
+function syncAllAgentSlots(){ agentSlots.forEach((_,i)=>syncAgentSlot(i)); }
 
-function syncAllAgentSlots(){
-  agentSlots.forEach((_,i)=>syncAgentSlot(i));
-}
+const _origCollectState2=collectState;
+collectState=function(){ const state=_origCollectState2(); state.agentSlots=agentSlots.map(s=>({...s})); return state; };
+const _origApplyState2=applyState;
+applyState=function(data,skipZoom=false){ const result=_origApplyState2(data,skipZoom); if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i])agentSlots[i]={...s};});syncAllAgentSlots();renderAgentBlocks();} return result; };
 
-// Include agentSlots in collectState / applyState
-const _origCollectState2 = collectState;
-collectState = function(){
-  const state = _origCollectState2();
-  state.agentSlots = agentSlots.map(s=>({...s}));
-  return state;
-};
+const _SVG_KEY_TO_CONST={'cbre-green':'SVG_CBRE_GREEN','cbre-white':'SVG_CBRE_WHITE','portfolio-green':'SVG_PORTFOLIO_GREEN','portfolio-white':'SVG_PORTFOLIO_WHITE'};
 
-const _origApplyState2 = applyState;
-applyState = function(data, skipZoom=false){
-  const result = _origApplyState2(data, skipZoom);
-  if(data && Array.isArray(data.agentSlots)){
-    data.agentSlots.forEach((s,i)=>{ if(agentSlots[i]) agentSlots[i]={...s}; });
-    syncAllAgentSlots();
-    renderAgentBlocks();
-  }
-  return result;
-};
-
-
-
-// Map svgKey → the JS constant name for code generation
-const _SVG_KEY_TO_CONST = {
-  'cbre-green':      'SVG_CBRE_GREEN',
-  'cbre-white':      'SVG_CBRE_WHITE',
-  'portfolio-green': 'SVG_PORTFOLIO_GREEN',
-  'portfolio-white': 'SVG_PORTFOLIO_WHITE',
-};
-
-// ════════════════════════════════════════
-// SAVE AS TEMPLATE
-// Captures current canvas layout and bakes it into the buildXxx() functions,
-// then downloads an updated builder.html with the new base templates.
-// ════════════════════════════════════════
-
-// Snapshot of serialized layouts keyed by tab index — filled when modal opens
-
-
-
-
-
-
-
-// Generates a new buildXxx() function body from a snapshot and replaces it in html
-
-
-
-// Converts a serialized tab snapshot into a buildXxx function string
-
-
-
-// ════════════════════════════════════════
-// COPY LAYOUT — copies current canvas state as JSON to clipboard
-// Paste into Claude chat to update the base template permanently
-// ════════════════════════════════════════
 function copyLayoutToClipboard(){
-  const tabLabels = ['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6'];
-  const fnNames   = ['buildAFR2','buildAFR4','buildAuction','buildBrochure1','buildBrochure2','buildEDM','buildLinkedIn','buildSignboard'];
-  const snapshot  = serializeTab();
-  const output    = {
-    tab:      currentTab,
-    tabName:  tabLabels[currentTab] || ('Tab '+currentTab),
-    fnName:   fnNames[currentTab],
-    size:     SIZES[currentTab],
-    elements: snapshot
-  };
-  const json = JSON.stringify(output, null, 2);
-
-  // Always show the copy dialog — most reliable across all environments
-  // Remove any existing dialog first
-  const existing = document.getElementById('copy-layout-dialog');
-  if(existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'copy-layout-dialog';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;';
-
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a1a;border:1px solid #444;border-radius:4px;padding:20px;width:min(700px,90vw);display:flex;flex-direction:column;gap:10px;';
-
-  const title = document.createElement('div');
-  title.style.cssText = 'font-size:13px;font-weight:700;color:#fff;';
-  title.textContent = 'Layout JSON — ' + (tabLabels[currentTab]||'Tab '+currentTab);
-
-  const instructions = document.createElement('div');
-  instructions.style.cssText = 'font-size:11px;color:#888;line-height:1.5;';
-  instructions.textContent = 'Select all and copy this JSON, then paste it into Claude chat to update the base template.';
-
-  const ta = document.createElement('textarea');
-  ta.value = json;
-  ta.style.cssText = 'width:100%;height:40vh;font-size:10px;padding:10px;background:#111;color:#ccc;border:1px solid #333;border-radius:3px;resize:vertical;font-family:monospace;';
-  ta.readOnly = true;
-
-  const btnRow = document.createElement('div');
-  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
-
-  const copyBtn = document.createElement('button');
-  copyBtn.textContent = 'Select All & Copy';
-  copyBtn.style.cssText = 'padding:7px 16px;font-size:11px;font-weight:700;background:#2a5a3a;color:#5bbf7a;border:1px solid #3a7a4e;border-radius:3px;cursor:pointer;';
-  copyBtn.onclick = ()=>{
-    ta.select();
-    try {
-      // Modern clipboard API
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(json).then(()=>{
-          copyBtn.textContent = '✓ Copied!';
-          setTimeout(()=>{ copyBtn.textContent = 'Select All & Copy'; }, 2000);
-        }).catch(()=>{
-          document.execCommand('copy');
-          copyBtn.textContent = '✓ Copied!';
-          setTimeout(()=>{ copyBtn.textContent = 'Select All & Copy'; }, 2000);
-        });
-      } else {
-        document.execCommand('copy');
-        copyBtn.textContent = '✓ Copied!';
-        setTimeout(()=>{ copyBtn.textContent = 'Select All & Copy'; }, 2000);
-      }
-    } catch(e){
-      copyBtn.textContent = 'Copy manually (Cmd+A, Cmd+C)';
-    }
-  };
-
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Close';
-  closeBtn.style.cssText = 'padding:7px 16px;font-size:11px;font-weight:700;background:#242424;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;';
-  closeBtn.onclick = ()=> overlay.remove();
-
-  btnRow.appendChild(copyBtn);
-  btnRow.appendChild(closeBtn);
-  box.appendChild(title);
-  box.appendChild(instructions);
-  box.appendChild(ta);
-  box.appendChild(btnRow);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-
-  // Auto-select the text
-  setTimeout(()=>{ ta.focus(); ta.select(); }, 50);
-
-  // Close on background click
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  const tabLabels=['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6'];
+  const fnNames=['buildAFR2','buildAFR4','buildAuction','buildBrochure1','buildBrochure2','buildEDM','buildLinkedIn','buildSignboard'];
+  const snapshot=serializeTab();
+  const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:SIZES[currentTab],elements:snapshot};
+  const json=JSON.stringify(output,null,2);
+  const existing=document.getElementById('copy-layout-dialog'); if(existing) existing.remove();
+  const overlay=document.createElement('div'); overlay.id='copy-layout-dialog';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  const box=document.createElement('div'); box.style.cssText='background:#1a1a1a;border:1px solid #444;border-radius:4px;padding:20px;width:min(700px,90vw);display:flex;flex-direction:column;gap:10px;';
+  const title=document.createElement('div'); title.style.cssText='font-size:13px;font-weight:700;color:#fff;'; title.textContent='Layout JSON — '+(tabLabels[currentTab]||'Tab '+currentTab);
+  const instructions=document.createElement('div'); instructions.style.cssText='font-size:11px;color:#888;line-height:1.5;'; instructions.textContent='Select all and copy this JSON, then paste it into Claude chat to update the base template.';
+  const ta=document.createElement('textarea'); ta.value=json; ta.style.cssText='width:100%;height:40vh;font-size:10px;padding:10px;background:#111;color:#ccc;border:1px solid #333;border-radius:3px;resize:vertical;font-family:monospace;'; ta.readOnly=true;
+  const btnRow=document.createElement('div'); btnRow.style.cssText='display:flex;gap:8px;justify-content:flex-end;';
+  const copyBtn=document.createElement('button'); copyBtn.textContent='Select All & Copy'; copyBtn.style.cssText='padding:7px 16px;font-size:11px;font-weight:700;background:#2a5a3a;color:#5bbf7a;border:1px solid #3a7a4e;border-radius:3px;cursor:pointer;';
+  copyBtn.onclick=()=>{ ta.select(); if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(json).then(()=>{copyBtn.textContent='✓ Copied!';setTimeout(()=>{copyBtn.textContent='Select All & Copy';},2000);}).catch(()=>{document.execCommand('copy');copyBtn.textContent='✓ Copied!';setTimeout(()=>{copyBtn.textContent='Select All & Copy';},2000);});}else{document.execCommand('copy');copyBtn.textContent='✓ Copied!';setTimeout(()=>{copyBtn.textContent='Select All & Copy';},2000);} };
+  const closeBtn=document.createElement('button'); closeBtn.textContent='Close'; closeBtn.style.cssText='padding:7px 16px;font-size:11px;font-weight:700;background:#242424;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;'; closeBtn.onclick=()=>overlay.remove();
+  btnRow.appendChild(copyBtn); btnRow.appendChild(closeBtn); box.appendChild(title); box.appendChild(instructions); box.appendChild(ta); box.appendChild(btnRow); overlay.appendChild(box); document.body.appendChild(overlay);
+  setTimeout(()=>{ta.focus();ta.select();},50);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
 async function init(){
   setCdtStatus('saving','Loading…');
-
-  // Try Supabase first (cloud — shared across all users)
-  let loaded = false;
-  const cloudResult = await supabaseLoad();
-  if(cloudResult && applyState(cloudResult.state)){
-    // Use restoreTab if we have saved layouts, otherwise build fresh
-    if(savedStates[currentTab] && savedStates[currentTab].length){
-      restoreTab(currentTab);
-    } else {
-      buildTemplate(currentTab);
-    }
-    setCdtStatus('saved','Loaded ✓');
-    _lastKnownUpdatedAt = cloudResult.updatedAt;
-    loaded = true;
+  let loaded=false;
+  const cloudResult=await supabaseLoad();
+  if(cloudResult&&applyState(cloudResult.state)){
+    if(savedStates[currentTab]&&savedStates[currentTab].length){ restoreTab(currentTab); } else { buildTemplate(currentTab); }
+    setCdtStatus('saved','Loaded ✓'); _lastKnownUpdatedAt=cloudResult.updatedAt; loaded=true;
   }
-
-  // Fallback to localStorage (same computer last session)
   if(!loaded){
     try {
-      const raw = localStorage.getItem(LS_KEY);
-      if(raw){
-        const d=JSON.parse(raw);
-        if(applyState(d)){
-          if(savedStates[currentTab] && savedStates[currentTab].length){
-            restoreTab(currentTab);
-          } else {
-            buildTemplate(currentTab);
-          }
-          loaded=true;
-          setCdtStatus('saved','Loaded (local)');
-        }
-      }
+      const raw=localStorage.getItem(LS_KEY);
+      if(raw){ const d=JSON.parse(raw); if(applyState(d)){ if(savedStates[currentTab]&&savedStates[currentTab].length){restoreTab(currentTab);}else{buildTemplate(currentTab);} loaded=true; setCdtStatus('saved','Loaded (local)'); } }
     } catch(e){}
   }
-
-  // Nothing saved yet — show blank template
   if(!loaded){ buildTemplate(0); setCdtStatus('saved','New project'); }
-
-  // Fit zoom after the template is fully painted
   fitZoomToTab();
-
-  // Auto-save hooks
-  document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3')
-    .forEach(el=>el.addEventListener('input', debouncedPersist));
-  document.getElementById('canvas-area').addEventListener('mouseup', debouncedPersist);
-  document.getElementById('zoom-range').addEventListener('input', debouncedPersist);
-  window.addEventListener('beforeunload', ()=>{
-    clearTimeout(_persistTimer);
-    try { localStorage.setItem(LS_KEY, JSON.stringify(collectState())); } catch(e){}
-  });
+  document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
+  document.getElementById('canvas-area').addEventListener('mouseup',debouncedPersist);
+  document.getElementById('zoom-range').addEventListener('input',debouncedPersist);
+  window.addEventListener('beforeunload',()=>{ clearTimeout(_persistTimer); try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){} });
 }
 
-// ════════════════════════════════════════
-// ADMIN MODE + CHARACTER LIMITS
-// ════════════════════════════════════════
-const CL_FIELD_IDS = ['fh','fs','fa1','fa2','fb','fbull','fi','fbc','fm','fd'];
-
-// charLimits: { fieldId: maxChars } — 0 or undefined = no limit
-let charLimits = {};
-// Admin mode is set by the role passed from index.html — no password needed
-let _adminMode = (_userRole === 'admin');
-
-// Apply admin mode class immediately on load
+const CL_FIELD_IDS=['fh','fs','fa1','fa2','fb','fbull','fi','fbc','fm','fd'];
+let charLimits={};
+let _adminMode=(_userRole==='admin');
 if(_adminMode) document.body.classList.add('admin-mode');
+const _adminBadge=document.getElementById('admin-badge');
+if(_adminBadge) _adminBadge.style.display=_adminMode?'flex':'none';
+if(_adminBadge) _adminBadge.onclick=()=>{alert('You are in Admin mode.\n\nTo manage users, return to the Marketing Hub home page.');};
+const _oldModal=document.getElementById('admin-modal'); if(_oldModal) _oldModal.remove();
 
-// Show/hide admin badge based on role
-const _adminBadge = document.getElementById('admin-badge');
-if(_adminBadge) _adminBadge.style.display = _adminMode ? 'flex' : 'none';
+function clGetLimit(id){ const v=charLimits[id]; return(v&&v>0)?v:0; }
+function clUpdate(id){ const el=document.getElementById(id); const countEl=document.getElementById('cl-'+id); if(!el||!countEl)return; const len=el.value.length; const lim=clGetLimit(id); if(lim>0){countEl.textContent=len+' / '+lim+' Characters';countEl.classList.remove('cl-warn','cl-over');if(len>lim){countEl.classList.add('cl-over');}else if(len>lim*0.85){countEl.classList.add('cl-warn');}}else{countEl.textContent=len>0?len+' Characters':'';countEl.classList.remove('cl-warn','cl-over');} }
+function clSetLimit(id,val){ const num=parseInt(val); charLimits[id]=(isNaN(num)||num<=0)?0:num; clUpdate(id); clEnforce(id); saveGlobalCharLimits(); }
+function clEnforce(id){ const el=document.getElementById(id); if(!el)return; const lim=clGetLimit(id); if(lim>0){el.setAttribute('maxlength',lim);if(el.value.length>lim){el.value=el.value.slice(0,lim);}}else{el.removeAttribute('maxlength');} clUpdate(id); }
+function clAttachEnforcement(){ CL_FIELD_IDS.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.addEventListener('paste',()=>{setTimeout(()=>{clEnforce(id);},0);});}); }
+function clInitAll(){ CL_FIELD_IDS.forEach(id=>{clUpdate(id);const limInp=document.getElementById('lim-'+id);if(limInp){const lim=clGetLimit(id);limInp.value=lim>0?lim:'';}}); }
 
-// Badge click just shows a tooltip — admins manage users from index.html
-if(_adminBadge) _adminBadge.onclick = ()=>{ alert('You are in Admin mode.\n\nTo manage users, return to the Marketing Hub home page.'); };
-
-// Remove the old modal entirely (no longer needed)
-const _oldModal = document.getElementById('admin-modal');
-if(_oldModal) _oldModal.remove();
-
-// ── Character limit helpers ──
-function clGetLimit(id){
-  const v = charLimits[id];
-  return (v && v > 0) ? v : 0;
-}
-
-function clUpdate(id){
-  const el = document.getElementById(id);
-  const countEl = document.getElementById('cl-'+id);
-  if(!el || !countEl) return;
-  const len = el.value.length;
-  const lim = clGetLimit(id);
-  if(lim > 0){
-    countEl.textContent = len + ' / ' + lim + ' Characters';
-    countEl.classList.remove('cl-warn','cl-over');
-    if(len > lim){ countEl.classList.add('cl-over'); }
-    else if(len > lim * 0.85){ countEl.classList.add('cl-warn'); }
-  } else {
-    countEl.textContent = len > 0 ? len + ' Characters' : '';
-    countEl.classList.remove('cl-warn','cl-over');
-  }
-}
-
-function clSetLimit(id, val){
-  const num = parseInt(val);
-  charLimits[id] = (isNaN(num) || num <= 0) ? 0 : num;
-  clUpdate(id);
-  clEnforce(id);
-  // Save limits globally to Supabase settings table
-  saveGlobalCharLimits();
-}
-
-function clEnforce(id){
-  const el = document.getElementById(id);
-  if(!el) return;
-  const lim = clGetLimit(id);
-  if(lim > 0){
-    el.setAttribute('maxlength', lim);
-    if(el.value.length > lim){
-      el.value = el.value.slice(0, lim);
-    }
-  } else {
-    el.removeAttribute('maxlength');
-  }
-  clUpdate(id);
-}
-
-function clAttachEnforcement(){
-  // HTML oninput handlers call clEnforce first so typing is always caught.
-  // This adds paste-only handlers as an extra safety net for paste events.
-  CL_FIELD_IDS.forEach(id=>{
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('paste', ()=>{ setTimeout(()=>{ clEnforce(id); }, 0); });
-  });
-}
-
-function clInitAll(){
-  CL_FIELD_IDS.forEach(id=>{
-    clUpdate(id);
-    const limInp = document.getElementById('lim-'+id);
-    if(limInp){
-      const lim = clGetLimit(id);
-      limInp.value = lim > 0 ? lim : '';
-    }
-  });
-}
-
-// ── Global char limits — stored in Supabase settings table ──
 async function loadGlobalCharLimits(){
   try {
-    const rows = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.char_limits&select=value`, {
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-    }).then(r=>r.json());
-    if(rows && rows.length && rows[0].value){
-      charLimits = JSON.parse(rows[0].value);
-      clInitAll();
-    }
-  } catch(e){ console.warn('Could not load char limits:', e); }
+    const rows=await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.char_limits&select=value`,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).then(r=>r.json());
+    if(rows&&rows.length&&rows[0].value){charLimits=JSON.parse(rows[0].value);clInitAll();}
+  }catch(e){console.warn('Could not load char limits:',e);}
 }
 
-let _saveLimitsTimer = null;
+let _saveLimitsTimer=null;
 function saveGlobalCharLimits(){
   clearTimeout(_saveLimitsTimer);
-  _saveLimitsTimer = setTimeout(async ()=>{
-    try {
-      const val = JSON.stringify(charLimits);
-      // Upsert — insert or update the single settings row
-      await fetch(`${SUPA_URL}/rest/v1/settings`, {
-        method:'POST',
-        headers:{
-          'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-          'Content-Type':'application/json',
-          'Prefer':'resolution=merge-duplicates'
-        },
-        body: JSON.stringify({key:'char_limits', value: val})
-      });
-    } catch(e){ console.warn('Could not save char limits:', e); }
-  }, 800);
+  _saveLimitsTimer=setTimeout(async()=>{
+    try{const val=JSON.stringify(charLimits);await fetch(`${SUPA_URL}/rest/v1/settings`,{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({key:'char_limits',value:val})});}catch(e){console.warn('Could not save char limits:',e);}
+  },800);
 }
 
-// ── Hook into collectState / applyState to include limits in project saves too ──
-const _origCollectState = collectState;
-collectState = function(){
-  const state = _origCollectState();
-  state.charLimits = {...charLimits};
-  return state;
-};
+const _origCollectState=collectState;
+collectState=function(){ const state=_origCollectState(); state.charLimits={...charLimits}; return state; };
+const _origApplyState=applyState;
+applyState=function(data,skipZoom=false){ const result=_origApplyState(data,skipZoom); if(data&&data.charLimits){charLimits={...data.charLimits};clInitAll();} return result; };
 
-const _origApplyState = applyState;
-applyState = function(data, skipZoom=false){
-  const result = _origApplyState(data, skipZoom);
-  if(data && data.charLimits){
-    charLimits = {...data.charLimits};
-    clInitAll();
-  }
-  return result;
-};
-
-
-// ════════════════════════════════════════
-// LIVE SYNC — polls Supabase every 5s and
-// applies changes made by other users
-// ════════════════════════════════════════
-let _liveSyncTimer = null;
-let _toastTimer = null;
-
-function showSyncToast(msg){
-  const t = document.getElementById('live-sync-toast');
-  if(!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(()=> t.classList.remove('show'), 3000);
-}
-
-function isUserBusy(){
-  const active = document.activeElement;
-  // Typing in a sidebar input or textarea
-  if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA') && active.closest('.sb')) return true;
-  // Editing text inline on the canvas
-  if(active && active.contentEditable==='true') return true;
-  // Their own save is still in flight
-  if(_persistTimer !== null) return true;
-  return false;
-}
+let _liveSyncTimer=null, _toastTimer=null;
+function showSyncToast(msg){ const t=document.getElementById('live-sync-toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(_toastTimer); _toastTimer=setTimeout(()=>t.classList.remove('show'),3000); }
+function isUserBusy(){ const active=document.activeElement; if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true; if(active&&active.contentEditable==='true')return true; if(_persistTimer!==null)return true; return false; }
 
 async function liveSyncTick(){
-  if(isUserBusy()) return;
-
-  try {
-    // Cheap check — fetch only updated_at
-    const checkUrl = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
-    const checkRes = await fetch(checkUrl, {
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-    });
-    if(!checkRes.ok) return;
-    const checkRows = await checkRes.json();
-    if(!checkRows || !checkRows.length) return;
-
-    const remoteTs = checkRows[0].updated_at;
-
-    // No change — timestamps match
-    if(remoteTs === _lastKnownUpdatedAt) return;
-
-    // If we've never set a local timestamp yet, just record and skip
-    // (this prevents a spurious sync on first load)
-    if(!_lastKnownUpdatedAt){
-      _lastKnownUpdatedAt = remoteTs;
-      return;
-    }
-
-    // Remote is newer — check user still not busy after the fetch
-    if(isUserBusy()) return;
-
-    // Load the full state
-    const result = await supabaseLoad();
-    if(!result) return;
-
-    // Final busy check before applying
-    if(isUserBusy()) return;
-
-    // Apply — preserve current user's tab and zoom
-    const prevTab = currentTab;
-    applyState(result.state, true); // skipZoom=true
-
-    // Keep the user on their current tab — just refresh its canvas
-    currentTab = prevTab;
-    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active', i===prevTab));
-    if(savedStates[prevTab]) restoreTab(prevTab);
-    else buildTemplate(prevTab);
-
-    // Re-apply char limits
+  if(isUserBusy())return;
+  try{
+    const checkUrl=`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
+    const checkRes=await fetch(checkUrl,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
+    if(!checkRes.ok)return;
+    const checkRows=await checkRes.json();
+    if(!checkRows||!checkRows.length)return;
+    const remoteTs=checkRows[0].updated_at;
+    if(remoteTs===_lastKnownUpdatedAt)return;
+    if(!_lastKnownUpdatedAt){_lastKnownUpdatedAt=remoteTs;return;}
+    if(isUserBusy())return;
+    const result=await supabaseLoad(); if(!result)return;
+    if(isUserBusy())return;
+    const prevTab=currentTab;
+    applyState(result.state,true);
+    currentTab=prevTab;
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
+    if(savedStates[prevTab])restoreTab(prevTab); else buildTemplate(prevTab);
     CL_FIELD_IDS.forEach(id=>clEnforce(id));
-
-    _lastKnownUpdatedAt = result.updatedAt || remoteTs;
+    _lastKnownUpdatedAt=result.updatedAt||remoteTs;
     setCdtStatus('saved','Saved ✓');
     showSyncToast('↻ Updated by another user');
-
-  } catch(e){
-    console.warn('[CBRE] Live sync error:', e);
-  }
+  }catch(e){console.warn('[CBRE] Live sync error:',e);}
 }
+function startLiveSync(){ _liveSyncTimer=setInterval(liveSyncTick,5000); }
+function stopLiveSync(){ clearInterval(_liveSyncTimer); }
+document.addEventListener('visibilitychange',()=>{ if(document.hidden)stopLiveSync(); else startLiveSync(); });
 
-function startLiveSync(){
-  // Poll every 5 seconds
-  _liveSyncTimer = setInterval(liveSyncTick, 5000);
-}
-
-function stopLiveSync(){
-  clearInterval(_liveSyncTimer);
-}
-
-// Pause live sync while the window is hidden (tab in background)
-// to avoid unnecessary network calls
-document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden) stopLiveSync();
-  else startLiveSync();
-});
-
-// ── Arrow key nudge ──────────────────────────────────────────────────────────
-document.addEventListener('keydown', function(e){
-  // Only act when an element is selected and we're not editing text inline
+// ── Layer ordering ───────────────────────────────────────────────────────────
+function layerMove(direction){
   if(!selectedEl) return;
-  if(document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.isContentEditable)) return;
-  if(selectedEl.dataset.locked==='1') return;
-
-  const arrows = {'ArrowLeft':'left','ArrowRight':'left','ArrowUp':'top','ArrowDown':'top'};
-  if(!arrows[e.key]) return;
-  e.preventDefault();
-
-  const step = e.shiftKey ? 10 : 1; // 10px with shift, 1px without
-  const prop = arrows[e.key];
-  const cur = parseFloat(selectedEl.style[prop]) || 0;
-  const delta = (e.key==='ArrowRight'||e.key==='ArrowDown') ? step : -step;
-
   undoSnapshot();
-  selectedEl.style[prop] = Math.round(cur + delta) + 'px';
+  const art  = document.getElementById('artwork');
+  const all  = [...art.querySelectorAll('.el')];
+  const curZ = parseInt(selectedEl.style.zIndex)||1;
 
-  // Update the position inputs in the props panel if visible
-  const xInp = document.getElementById('prop-x');
-  const yInp = document.getElementById('prop-y');
-  if(xInp) xInp.value = parseFloat(selectedEl.style.left)||0;
-  if(yInp) yInp.value = parseFloat(selectedEl.style.top)||0;
+  // Collect all OTHER z values
+  const others = all.filter(e=>e!==selectedEl).map(e=>parseInt(e.style.zIndex)||0);
+  const maxZ = others.length ? Math.max(...others) : curZ;
+  const minZ = others.length ? Math.min(...others) : curZ;
 
+  if(direction==='front'){
+    selectedEl.style.zIndex = maxZ + 1;
+  } else if(direction==='back'){
+    // Shift everything else up by 1, put selected at 1
+    all.forEach(e=>{ if(e!==selectedEl){ const z=parseInt(e.style.zIndex)||1; e.style.zIndex=z+1; }});
+    selectedEl.style.zIndex = 1;
+  } else if(direction==='forward'){
+    // Find the element directly above and swap z with it
+    const above = all.filter(e=>e!==selectedEl && (parseInt(e.style.zIndex)||0) > curZ);
+    if(above.length){
+      const next = above.reduce((a,b)=>(parseInt(a.style.zIndex)<parseInt(b.style.zIndex)?a:b));
+      const nextZ = parseInt(next.style.zIndex);
+      next.style.zIndex = curZ;
+      selectedEl.style.zIndex = nextZ;
+    } else {
+      selectedEl.style.zIndex = curZ + 1;
+    }
+  } else if(direction==='backward'){
+    // Find the element directly below and swap z with it
+    const below = all.filter(e=>e!==selectedEl && (parseInt(e.style.zIndex)||0) < curZ);
+    if(below.length){
+      const prev = below.reduce((a,b)=>(parseInt(a.style.zIndex)>parseInt(b.style.zIndex)?a:b));
+      const prevZ = parseInt(prev.style.zIndex);
+      prev.style.zIndex = curZ;
+      selectedEl.style.zIndex = prevZ;
+    } else {
+      selectedEl.style.zIndex = Math.max(1, curZ - 1);
+    }
+  }
+  debouncedPersist();
+}
+
+function addLogoElement(key){
+  if(!assets[key]){alert('Please upload '+key+' first.');return;}
+  undoSnapshot();
+  const art=document.getElementById('artwork');
+  const el=mkI(20,20,100,60,key,'Logo',{z:200});
+  art.appendChild(el);
+  savedStates[currentTab]=serializeTab();
+  debouncedPersist();
+  selectElement(el);
+}
+
+document.addEventListener('keydown',function(e){
+  if(!selectedEl)return;
+  if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.isContentEditable))return;
+  if(selectedEl.dataset.locked==='1')return;
+  const arrows={'ArrowLeft':'left','ArrowRight':'left','ArrowUp':'top','ArrowDown':'top'};
+  if(!arrows[e.key])return;
+  e.preventDefault();
+  const step=e.shiftKey?10:1;
+  const prop=arrows[e.key];
+  const cur=parseFloat(selectedEl.style[prop])||0;
+  const delta=(e.key==='ArrowRight'||e.key==='ArrowDown')?step:-step;
+  undoSnapshot();
+  selectedEl.style[prop]=Math.round(cur+delta)+'px';
+  const xInp=document.getElementById('prop-x'); const yInp=document.getElementById('prop-y');
+  if(xInp)xInp.value=parseFloat(selectedEl.style.left)||0;
+  if(yInp)yInp.value=parseFloat(selectedEl.style.top)||0;
   debouncedPersist();
 });
 
-init().then(async ()=>{
+async function downloadPDF(){
+  const btn = document.getElementById('dlb');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  deselectAll();
+  savedStates[currentTab] = serializeTab();
+  try {
+    const mm = PDF_MM[currentTab];
+    const {jsPDF} = window.jspdf;
+    const isLandscape = mm[0] > mm[1];
+    const pdf = new jsPDF({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: [mm[0], mm[1]]
+    });
+    await renderTabToPdf(pdf, currentTab, mm[0], mm[1], false);
+    const tabName = TAB_NAMES[currentTab] || 'artwork';
+    pdf.save(`CBRE_${tabName}.pdf`);
+  } catch(err){
+    console.error(err);
+    alert('PDF generation failed: ' + err.message);
+  }
+  btn.disabled = false; btn.textContent = '⬇ PDF';
+}
+
+init().then(async()=>{
   await loadGlobalCharLimits();
   await loadAgents();
   clAttachEnforcement();
   clInitAll();
-  // Start live sync after initial load is complete
   startLiveSync();
 });
 </script></body></html>
