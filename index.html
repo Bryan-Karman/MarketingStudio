@@ -894,11 +894,19 @@ async function renderProperties(){
   await Promise.all(props.map(async pr => {
     try {
       const rows = await fetch(
-        `${SUPABASE_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(pr.portfolioId)}&property_id=eq.${encodeURIComponent(pr.id)}&select=state_json`,
+        `${SUPABASE_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(pr.portfolioId)}&property_id=eq.${encodeURIComponent(pr.id)}&select=state_json,approval_status`,
         { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
       ).then(r => r.json());
 
-      if(!rows || !rows.length || !rows[0].state_json) return;
+      if(!rows || !rows.length) return;
+      // Show approval status dot
+      const approvalStatus = rows[0].approval_status || 'in_progress';
+      const dotEl = document.querySelector(`#pcard-${pr.id} .approval-dot`);
+      if(dotEl){
+        dotEl.style.background = approvalStatus === 'approved' ? '#1a7a3a' : '#b85c00';
+        dotEl.title = approvalStatus === 'approved' ? 'Approved' : 'In Progress';
+      }
+      if(!rows[0].state_json) return;
       const state = JSON.parse(rows[0].state_json);
       const heroImg = state?.assets?.img1;
       if(!heroImg) return;
