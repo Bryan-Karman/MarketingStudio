@@ -264,8 +264,11 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
       </div>
     </div>
-    <button class="tb-btn btn-tmpl" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard — paste into Claude to update the base template">⊙ Copy Layout</button>
+    <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard — paste into Claude to update the base template" style="display:none;">⊙ Copy Layout</button>
     <button class="tb-btn btn-dl" id="dlb" onclick="downloadPDF()">⬇ PDF</button>
+    <button class="tb-btn btn-dl" id="dl-all-tb-btn" onclick="downloadAllSelectedPDF()" title="Download PDF of all selected marketing items">⬇ All PDFs</button>
+    <button class="tb-btn btn-tmpl" id="view-all-tb-btn" onclick="showAllArtworks()" title="View all selected marketing items">⊞ View All</button>
+    <button class="tb-btn" id="approve-btn" onclick="toggleApproval()" style="background:#b85c00;color:#fff;border:none;border-radius:3px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.05em;">● IN PROGRESS</button>
     <div class="admin-badge" id="admin-badge" title="Admin mode — manage users from the Hub home page">⚙ ADMIN</div>
   </div>
 </div>
@@ -1233,6 +1236,7 @@ function showProps(el){
     selectedEl.dataset.bulletParaSpacing=v; \
     inner.dataset.bulletSpacing=v; \
     inner.style.setProperty('--bullet-spacing', v); \
+    savedStates[currentTab]=serializeTab(); debouncedPersist(); \
   } else { \
     el_inner_set('paddingBottom',v+'px'); \
   } \
@@ -2134,7 +2138,7 @@ function buildEDM(W,H){
   mkR(12,614,3,24,'rgb(23, 232, 143)',{z:4});
   mkT(27,613,179,16,gv('fa1'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:4});
   mkT(27,628,179,14,gv('fa2'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:4});
-  mkT(12,661,188,218,document.getElementById('fbc').value,{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bodycopy',z:3,bullets:'1'});
+  mkT(12,661,188,218,document.getElementById('fbc').value,{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'6'});
   mkI(0,872,212,130,'img3','Image',{z:2});
   mkT(12,1014,157,34,'For more information contact the sales team',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',z:3});
   mkI(12,1055,40,40,'agent1photo','Image',{z:3});
@@ -2151,15 +2155,15 @@ function buildEDM(W,H){
   mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3});
   mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3});
   mkT(21,1270,162,18,'Request Information Memorandum',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
-  (function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _m=document.createElement('img'); _m.src=SVG_ARROW_WHITE; _m.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.appendChild(_m); _i.style.background='transparent'; } })();
+  (function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
   mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3});
   mkT(21,1308,162,18,'View Listing',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
-  (function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _m=document.createElement('img'); _m.src=SVG_ARROW_WHITE; _m.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.appendChild(_m); _i.style.background='transparent'; } })();
+  (function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
   mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3});
   mkT(21,1346,162,18,'View Full Portfolio Line Up',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
-  (function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _m=document.createElement('img'); _m.src=SVG_ARROW_WHITE; _m.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.appendChild(_m); _i.style.background='transparent'; } })();
+  (function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
   mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3});
-  mkT(8,1431,196,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',z:3});
+  mkT(8,1431,196,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',z:3});
   mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
   mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
   mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201});
@@ -3092,6 +3096,9 @@ const CL_FIELD_IDS=['fh','fs','fa1','fa2','fb','fbull','fi','fbc','fm','fd'];
 let charLimits={};
 let _adminMode=(_userRole==='admin');
 if(_adminMode) document.body.classList.add('admin-mode');
+// Copy Layout only visible to admins
+const _copyBtn = document.getElementById('copy-layout-btn');
+if(_copyBtn) _copyBtn.style.display = _adminMode ? '' : 'none';
 const _adminBadge=document.getElementById('admin-badge');
 if(_adminBadge) _adminBadge.style.display=_adminMode?'flex':'none';
 if(_adminBadge) _adminBadge.onclick=()=>{alert('You are in Admin mode.\n\nTo manage users, return to the Marketing Hub home page.');};
@@ -3256,11 +3263,184 @@ async function downloadPDF(){
   btn.disabled = false; btn.textContent = '⬇ PDF';
 }
 
+// ── Approval status ──────────────────────────────────────────────────────────
+let _approvalStatus = 'in_progress'; // 'in_progress' | 'approved'
+
+function updateApproveBtn(){
+  const btn = document.getElementById('approve-btn');
+  if(!btn) return;
+  if(_approvalStatus === 'approved'){
+    btn.textContent = '✓ APPROVED';
+    btn.style.background = '#1a7a3a';
+  } else {
+    btn.textContent = '● IN PROGRESS';
+    btn.style.background = '#b85c00';
+  }
+}
+
+async function toggleApproval(){
+  const wasApproved = _approvalStatus === 'approved';
+  _approvalStatus = wasApproved ? 'in_progress' : 'approved';
+  updateApproveBtn();
+  // Save approval status to Supabase projects table
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}`, {
+      method: 'PATCH',
+      headers: {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({approval_status: _approvalStatus, updated_at: new Date().toISOString()})
+    });
+  } catch(e){ console.warn('Could not save approval status:', e); }
+  setCdtStatus('saved', _approvalStatus === 'approved' ? 'Approved ✓' : 'In Progress');
+}
+
+async function loadApprovalStatus(){
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=approval_status`, {
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    });
+    const rows = await res.json();
+    if(rows && rows.length && rows[0].approval_status){
+      _approvalStatus = rows[0].approval_status;
+    }
+  } catch(e){}
+  updateApproveBtn();
+}
+
+// ── Download all SELECTED PDFs (respects MI checkboxes) ──────────────────────
+function getSelectedTabIndices(){
+  // Returns tab indices that are currently visible (checked in MI toggles)
+  const tabs = document.querySelectorAll('.tab');
+  const selected = [];
+  tabs.forEach((tab, i) => {
+    if(tab.style.display !== 'none') selected.push(i);
+  });
+  return selected;
+}
+
+async function downloadAllSelectedPDF(){
+  const btn = document.getElementById('dl-all-tb-btn');
+  btn.disabled = true; btn.textContent = 'Building…';
+  deselectAll();
+  savedStates[currentTab] = serializeTab();
+  const indices = getSelectedTabIndices();
+  if(!indices.length){ btn.disabled=false; btn.textContent='⬇ All PDFs'; return; }
+  try {
+    const {jsPDF} = window.jspdf;
+    const first = indices[0];
+    const mm0 = PDF_MM[first];
+    const pdf = new jsPDF({
+      orientation: mm0[0]>mm0[1]?'landscape':'portrait',
+      unit:'mm', format:[mm0[0],mm0[1]]
+    });
+    for(let i=0; i<indices.length; i++){
+      const tabIdx = indices[i];
+      const mm = PDF_MM[tabIdx];
+      await renderTabToPdf(pdf, tabIdx, mm[0], mm[1], i > 0);
+    }
+    pdf.save('CBRE_All_Selected.pdf');
+  } catch(err){
+    alert('PDF error: '+err.message);
+  }
+  btn.disabled=false; btn.textContent='⬇ All PDFs';
+}
+
+// ── Also update showAllArtworks to only show selected tabs ────────────────────
+const _origShowAll = showAllArtworks;
+showAllArtworks = async function(){
+  // Only render selected (non-hidden) tabs
+  savedStates[currentTab] = serializeTab();
+  const selectedIndices = getSelectedTabIndices();
+  const overlay = document.getElementById('all-overlay');
+  const grid = document.getElementById('all-grid');
+  overlay.style.display = 'block';
+  grid.innerHTML = '<div style="color:#888;font-size:13px;padding:20px;">Rendering selected artworks…</div>';
+
+  const tabNames = ['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6'];
+  const origTab = currentTab;
+  const cards = [];
+
+  for(const i of selectedIndices){
+    try {
+      const [cw, ch] = SIZES[i];
+      const realArt = document.getElementById('artwork');
+      const canvasWrap = document.getElementById('canvas-wrap');
+      const prevHTML=realArt.innerHTML, prevW=realArt.style.width, prevH=realArt.style.height;
+      const prevBg=realArt.style.background, prevT=realArt.style.transform;
+      const prevNI=nextId;
+      realArt.style.width=cw+'px'; realArt.style.height=ch+'px';
+      realArt.style.background=i===4?DK:'#ffffff';
+      realArt.style.transform='none'; realArt.innerHTML=''; nextId=1;
+      const state=savedStates[i];
+      if(state&&state.length){
+        // Quick render from saved state
+        state.forEach(sv=>{
+          const el=document.createElement('div'); el.className='el';
+          el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';';
+          el.dataset.type=sv.type;
+          const inner=document.createElement('div'); inner.className='el-inner';
+          inner.style.cssText='position:absolute;inset:0;overflow:hidden;';
+          if(sv.innerStyle) inner.setAttribute('style',sv.innerStyle);
+          if(sv.type==='text'){
+            inner.style.overflow='hidden';
+            inner.textContent=sv.content||'';
+          } else if(sv.type==='img'){
+            const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
+            inner.style.background=isLogo?'transparent':'#c5ccc5';
+            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:sv.imgSrc;
+            if(src){
+              const imgEl=document.createElement('img'); imgEl.src=src;
+              imgEl.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:'+(isLogo?'contain':'cover')+';display:block;';
+              inner.appendChild(imgEl);
+            }
+          }
+          el.appendChild(inner); realArt.appendChild(el);
+        });
+      } else {
+        [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][i](cw,ch);
+      }
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const canvas=await html2canvas(realArt,{scale:1.5,useCORS:true,allowTaint:true,backgroundColor:i===4?DK:'#ffffff',logging:false,width:cw,height:ch,x:0,y:0});
+      realArt.innerHTML=prevHTML; nextId=prevNI;
+      realArt.style.width=prevW; realArt.style.height=prevH;
+      realArt.style.background=prevBg; realArt.style.transform=prevT;
+      cards.push({idx:i,name:tabNames[i],canvas,mm:PDF_MM[i]});
+    } catch(e){ cards.push({idx:i,name:tabNames[i],canvas:null,mm:PDF_MM[i]}); }
+  }
+
+  // Restore current tab
+  if(savedStates[origTab]&&savedStates[origTab].length) restoreTab(origTab);
+  else buildTemplate(origTab);
+  currentTab=origTab;
+
+  grid.innerHTML='';
+  cards.forEach(({idx,name,canvas})=>{
+    const card=document.createElement('div');
+    card.style.cssText='background:#2a2a2a;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;';
+    const label=document.createElement('div');
+    label.style.cssText='padding:8px 10px;display:flex;align-items:center;justify-content:space-between;';
+    label.innerHTML='<span style="font-size:11px;font-weight:700;color:#ccc;text-transform:uppercase;letter-spacing:.05em;">'+name+'</span>'+
+      '<button onclick="downloadSingleFromOverlay('+idx+')" style="padding:3px 9px;font-size:10px;font-weight:700;background:var(--gb);color:#fff;border:none;border-radius:2px;cursor:pointer;">⬇ PDF</button>';
+    card.appendChild(label);
+    if(canvas){
+      const img=document.createElement('img'); img.src=canvas.toDataURL('image/png');
+      img.style.cssText='width:100%;display:block;object-fit:contain;';
+      card.appendChild(img);
+    } else {
+      const ph=document.createElement('div');
+      ph.style.cssText='height:160px;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px;';
+      ph.textContent='Could not render'; card.appendChild(ph);
+    }
+    grid.appendChild(card);
+  });
+  window._allCards=cards;
+};
+
 init().then(async()=>{
   await loadGlobalCharLimits();
   await loadAgents();
   clAttachEnforcement();
   clInitAll();
   startLiveSync();
+  await loadApprovalStatus();
 });
 </script></body></html>
