@@ -272,15 +272,15 @@ body.admin-mode .cl-limit-wrap{display:flex;}
       <button class="btn-mi" onclick="toggleMIDD()">☰ Marketing Items</button>
       <div class="mi-dd" id="mi-dd">
         <div class="mi-dh">Show / Hide artwork types</div>
-        <div class="mi-di"><input type="checkbox" id="mi0" checked="" onchange="toggleMITab(0,this)"><label for="mi0">AFR 2 Mods</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi1" checked="" onchange="toggleMITab(1,this)"><label for="mi1">AFR 4 Mods</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi2" checked="" onchange="toggleMITab(2,this)"><label for="mi2">Auction Poster</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi3" checked="" onchange="toggleMITab(3,this)"><label for="mi3">Brochure (1 Page)</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi4" checked="" onchange="toggleMITab(4,this)"><label for="mi4">Brochure (2 Page)</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi5" checked="" onchange="toggleMITab(5,this)"><label for="mi5">EDM</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">LinkedIn</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi0" checked="" onchange="toggleMITab(0,this)"><label for="mi0">Brochure</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi1" checked="" onchange="toggleMITab(1,this)"><label for="mi1">Brochure 2-Page</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi2" checked="" onchange="toggleMITab(2,this)"><label for="mi2">EDM</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi3" checked="" onchange="toggleMITab(3,this)"><label for="mi3">EDM - Asian Desk</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi4" checked="" onchange="toggleMITab(4,this)"><label for="mi4">LinkedIn</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi5" checked="" onchange="toggleMITab(5,this)"><label for="mi5">AFR 2 Mods</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">AFR 4 Mods</label></div>
         <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">EDM - Asian Desk</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">Auction Poster</label></div>
       </div>
     </div>
     <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard" style="display:none;">⊙ Copy Layout</button>
@@ -291,15 +291,15 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <div class="admin-badge" id="admin-badge" title="Admin mode — manage users from the Hub home page">⚙ ADMIN</div>
   </div>
   <div class="topbar-row2" id="tabs">
-    <button class="tab active" onclick="switchTab(0,this)">AFR 2 Mods</button>
-    <button class="tab" onclick="switchTab(1,this)">AFR 4 Mods</button>
-    <button class="tab" onclick="switchTab(2,this)">Auction Poster</button>
-    <button class="tab" onclick="switchTab(3,this)">Brochure</button>
-    <button class="tab" onclick="switchTab(4,this)">Brochure 2-Page</button>
-    <button class="tab" onclick="switchTab(5,this)">EDM</button>
-    <button class="tab" onclick="switchTab(6,this)">LinkedIn</button>
+    <button class="tab active" onclick="switchTab(0,this)">Brochure</button>
+    <button class="tab" onclick="switchTab(1,this)">Brochure 2-Page</button>
+    <button class="tab" onclick="switchTab(2,this)">EDM</button>
+    <button class="tab" onclick="switchTab(3,this)">EDM - Asian Desk</button>
+    <button class="tab" onclick="switchTab(4,this)">LinkedIn</button>
+    <button class="tab" onclick="switchTab(5,this)">AFR 2 Mods</button>
+    <button class="tab" onclick="switchTab(6,this)">AFR 4 Mods</button>
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
-    <button class="tab" onclick="switchTab(8,this)">EDM - Asian Desk</button>
+    <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
   </div>
 </div>
 
@@ -437,9 +437,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[60.5,105.5],[123,105.5],[297,420],[210,297],[420,297],[75,546.8],[317.5,317.5],[240,180],[75,546.8]];
-const TAB_NAMES=['AFR2Mods','AFR4Mods','Auction','Brochure','Brochure2','EDM','LinkedIn','Signboard8x6','EDMAsianDesk'];
-const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800,800],[907,680],[212,1550]];
+const PDF_MM=[[210,297],[420,297],[75,546.8],[75,546.8],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420]];
+const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction'];
+const SIZES=[[595,842],[1191,842],[212,1550],[212,1550],[800,800],[228,398],[464,398],[907,680],[794,1123]];
 
 
 // ═══════════════════════════════════
@@ -1850,13 +1850,13 @@ function globalSync(){
           // Always hide standalone income box — income is merged into bullets/bodycopy
           el.style.display = 'none';
           return;
-        } else if(field === 'bullets' && [0,1,2].indexOf(currentTab) > -1){
+        } else if(field === 'bullets' && [5,6,8].indexOf(currentTab) > -1){
           // AFR2, AFR4, Auction: append income as plain last bullet line
           inner.textContent = _fi ? val + '\n' + _fi : val;
-        } else if(field === 'bullets' && [3,4].indexOf(currentTab) > -1){
+        } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
           inner.textContent = _fi ? val + '\n' + _fi : val;
-        } else if(field === 'bodycopy' && [5,8].indexOf(currentTab) > -1){
+        } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
           // EDM, Asian Desk: append income as last body copy line
           inner.textContent = _fi ? val + '\n' + _fi : val;
         } else {
@@ -1868,7 +1868,7 @@ function globalSync(){
         applyBullets(inner, true);
       }
       // Brochure tabs (3,4): bullets field uses plain spacing + bold income
-      if([3,4].indexOf(currentTab) > -1 && field === 'bullets'){
+      if([0,1].indexOf(currentTab) > -1 && field === 'bullets'){
         var _bps = parseFloat(el.dataset.bulletParaSpacing)||6;
         applyPlainParaSpacing(inner, _bps);
         // Make income line bold if present
@@ -2203,7 +2203,7 @@ function buildTemplate(idx){
   nextId=1;
   deselectAll();
   document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
-  [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard,buildEDMAsianDesk][idx](s[0],s[1]);
+  [buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction][idx](s[0],s[1]);
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
@@ -2624,7 +2624,7 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
         realArt.innerHTML=''; nextId=1;
         realArt.style.width=canvasW+'px'; realArt.style.height=canvasH+'px';
         realArt.style.background=tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
-        [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard,buildEDMAsianDesk][tabIdx](canvasW,canvasH);
+        [buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction][tabIdx](canvasW,canvasH);
         globalSync();
         offscreen.innerHTML=realArt.innerHTML;
         realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
@@ -2683,8 +2683,8 @@ function switchTab(idx,btn){
   deselectAll();
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
   fitZoomToTab();
-  if(idx===5||idx===8) setTimeout(repackEDMAgents,80);
-  if(idx===8) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
+  if(idx===2||idx===3) setTimeout(repackEDMAgents,80);
+  if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
 }
 
 // ════════════════════════════════════════
@@ -2743,7 +2743,7 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
-    delete savedStates[5]; delete savedStates[3]; delete savedStates[8];
+    delete savedStates[2]; delete savedStates[0]; delete savedStates[3];
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
@@ -2887,8 +2887,8 @@ const _origApplyState2=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i])agentSlots[i]={...s};});syncAllAgentSlots();renderAgentBlocks();}return result;};
 
 function copyLayoutToClipboard(){
-  const tabLabels=['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6','EDM - Asian Desk'];
-  const fnNames=['buildAFR2','buildAFR4','buildAuction','buildBrochure1','buildBrochure2','buildEDM','buildLinkedIn','buildSignboard','buildEDMAsianDesk'];
+  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
+  const fnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction'];
   const snapshot=serializeTab();
   const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:SIZES[currentTab],elements:snapshot};
   const json=JSON.stringify(output,null,2);
