@@ -21,10 +21,12 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;}
 body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:#1c1c1c;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 
 /* TOP BAR */
-.topbar{height:46px;background:#111;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 10px;gap:6px;flex-shrink:0;}
+.topbar{background:#111;border-bottom:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0;}
+.topbar-row1{height:46px;display:flex;align-items:center;padding:0 10px;gap:6px;border-bottom:1px solid #222;flex-wrap:nowrap;overflow-x:auto;}
+.topbar-row2{height:36px;background:#0a0a0a;border-bottom:2px solid #1a1a1a;display:flex;align-items:stretch;padding:0 6px;overflow-x:auto;flex-shrink:0;}
 .logo-txt{margin-right:8px;display:flex;align-items:center;}
 .tabs{display:flex;flex:1;overflow-x:auto;gap:0;}
-.tab{padding:0 11px;height:46px;font-size:10px;font-weight:700;cursor:pointer;color:rgba(255,255,255,.4);border:none;background:none;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0;}
+.tab{padding:0 11px;height:34px;font-size:10px;font-weight:700;cursor:pointer;color:rgba(255,255,255,.4);border:none;background:none;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0;}
 .tab.active{color:#fff;border-bottom-color:var(--gb);}
 .tab:hover:not(.active){color:rgba(255,255,255,.75);}
 .topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto;}
@@ -113,7 +115,7 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .props-del-btn:hover{background:#3a1818;color:#ff8888;}
 
 /* CANVAS */
-.canvas-area{flex:1;overflow:auto;padding:24px;background:#242424;position:relative;}
+.canvas-area{flex:1;overflow:auto;padding:24px;background:#242424;position:relative;cursor:default;}
 .canvas-wrap{position:relative;display:inline-block;}
 
 /* ARTWORK */
@@ -204,6 +206,23 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 /* (admin modal styles removed — auth is handled by index.html) */
 
 /* ── LIVE SYNC TOAST ── */
+/* ── Rich text toolbar ── */
+#rich-toolbar{
+  position:fixed;z-index:99997;display:none;
+  background:#1a1a1a;border:1px solid #444;border-radius:3px;
+  padding:3px 4px;gap:2px;align-items:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+#rich-toolbar.show{display:flex;}
+#rich-toolbar button{
+  padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;
+  border:1px solid #333;border-radius:2px;background:#242424;color:#ccc;
+  line-height:1.2;transition:all .1s;
+}
+#rich-toolbar button:hover{background:#3a3a3a;color:#fff;}
+#rich-toolbar button.active{background:#0d2b21;border-color:#5bbf7a;color:#5bbf7a;}
+#rich-toolbar .tb-sep{width:1px;height:16px;background:#333;margin:0 2px;}
+
 #live-sync-toast{
   position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);
   background:#0d2b21;color:#5bbf7a;font-size:11px;font-weight:700;
@@ -232,21 +251,19 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 <!-- LIVE SYNC TOAST -->
 <div id="live-sync-toast">↻ Updated by another user</div>
 
+<!-- RICH TEXT TOOLBAR -->
+<div id="rich-toolbar">
+  <button id="rtb-bold"   onclick="rtCmd('bold')"        title="Bold (Cmd+B)"><b>B</b></button>
+  <button id="rtb-italic" onclick="rtCmd('italic')"      title="Italic (Cmd+I)"><i>I</i></button>
+  <button id="rtb-under"  onclick="rtCmd('underline')"   title="Underline (Cmd+U)"><u>U</u></button>
+  <div class="tb-sep"></div>
+  <button id="rtb-clear"  onclick="rtCmd('removeFormat')" title="Clear formatting" style="font-size:10px;">✕ Clear</button>
+</div>
+
 <!-- TOP BAR -->
 <div class="topbar">
-  <span class="logo-txt" id="logo-txt" title="CBRE Marketing Studio"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:18px;width:auto;display:inline-block;vertical-align:middle;"></span>
-  <div class="tabs" id="tabs">
-    <button class="tab active" onclick="switchTab(0,this)">AFR 2 Mods</button>
-    <button class="tab" onclick="switchTab(1,this)">AFR 4 Mods</button>
-    <button class="tab" onclick="switchTab(2,this)">Auction Poster</button>
-    <button class="tab" onclick="switchTab(3,this)">Brochure</button>
-    <button class="tab" onclick="switchTab(4,this)">Brochure 2-Page</button>
-    <button class="tab" onclick="switchTab(5,this)">EDM</button>
-    <button class="tab" onclick="switchTab(6,this)">LinkedIn</button>
-    <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
-    <button class="tab" onclick="switchTab(8,this)">EDM - Asian Desk</button>
-  </div>
-  <div class="topbar-right">
+  <div class="topbar-row1">
+    <span class="logo-txt" id="logo-txt" title="CBRE Marketing Studio"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:18px;width:auto;display:inline-block;vertical-align:middle;"></span>
     <span class="zoom-lbl">Zoom</span>
     <input type="range" id="zoom-range" min="15" max="150" value="65" oninput="setZoom(+this.value)">
     <span class="zoom-pct" id="zoom-pct">65%</span>
@@ -266,12 +283,23 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">EDM - Asian Desk</label></div>
       </div>
     </div>
-    <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard — paste into Claude to update the base template" style="display:none;">⊙ Copy Layout</button>
+    <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard" style="display:none;">⊙ Copy Layout</button>
     <button class="tb-btn btn-dl" id="dlb" onclick="downloadPDF()">⬇ PDF</button>
     <button class="tb-btn btn-dl" id="dl-all-tb-btn" onclick="downloadAllSelectedPDF()" title="Download PDF of all selected marketing items">⬇ All PDFs</button>
     <button class="tb-btn btn-tmpl" id="view-all-tb-btn" onclick="showAllArtworks()" title="View all selected marketing items">⊞ View All</button>
     <button class="tb-btn" id="approve-btn" onclick="toggleApproval()" style="background:#b85c00;color:#fff;border:none;border-radius:3px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.05em;">● IN PROGRESS</button>
     <div class="admin-badge" id="admin-badge" title="Admin mode — manage users from the Hub home page">⚙ ADMIN</div>
+  </div>
+  <div class="topbar-row2" id="tabs">
+    <button class="tab active" onclick="switchTab(0,this)">AFR 2 Mods</button>
+    <button class="tab" onclick="switchTab(1,this)">AFR 4 Mods</button>
+    <button class="tab" onclick="switchTab(2,this)">Auction Poster</button>
+    <button class="tab" onclick="switchTab(3,this)">Brochure</button>
+    <button class="tab" onclick="switchTab(4,this)">Brochure 2-Page</button>
+    <button class="tab" onclick="switchTab(5,this)">EDM</button>
+    <button class="tab" onclick="switchTab(6,this)">LinkedIn</button>
+    <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
+    <button class="tab" onclick="switchTab(8,this)">EDM - Asian Desk</button>
   </div>
 </div>
 
@@ -492,12 +520,15 @@ document.addEventListener('keydown', function(e){
   if(active && active.contentEditable === 'true') return;
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const undoKey = isMac ? (e.metaKey && e.key === 'z') : (e.ctrlKey && e.key === 'z');
-  if(undoKey){
-    e.preventDefault();
-    undoStep();
-  }
-  // Delete / Backspace — remove the selected element
-  if((e.key === 'Delete' || e.key === 'Backspace') && selectedEl){
+  if(undoKey){ e.preventDefault(); undoStep(); }
+  // Copy — Cmd+C / Ctrl+C
+  const copyKey = isMac ? (e.metaKey && e.key === 'c') : (e.ctrlKey && e.key === 'c');
+  if(copyKey && (selectedEl || _selectedEls.length)){ e.preventDefault(); copySelected(); }
+  // Paste — Cmd+V / Ctrl+V
+  const pasteKey = isMac ? (e.metaKey && e.key === 'v') : (e.ctrlKey && e.key === 'v');
+  if(pasteKey){ e.preventDefault(); pasteSelected(); }
+  // Delete / Backspace
+  if((e.key === 'Delete' || e.key === 'Backspace') && (selectedEl || _selectedEls.length)){
     e.preventDefault();
     deleteSelected();
   }
@@ -591,9 +622,10 @@ function createElement(cfg){
       inner.contentEditable='true';
       inner.style.cursor='text';
       inner.focus();
-      // Enter key → insert \n at caret position (pre-wrap renders it as a new line)
+      showRtb(inner);
       inner.onkeydown=ev=>{
-        if(ev.key==='Enter'){
+        handleRtbKeydown(ev, inner);
+        if(ev.key==='Enter' && !ev.shiftKey && inner.style.whiteSpace==='pre-wrap'){
           ev.preventDefault();
           const sel=window.getSelection();
           if(!sel||!sel.rangeCount) return;
@@ -601,37 +633,50 @@ function createElement(cfg){
           range.deleteContents();
           const textNode=document.createTextNode('\n');
           range.insertNode(textNode);
-          // Move caret after the inserted \n
           range.setStartAfter(textNode);
           range.setEndAfter(textNode);
           sel.removeAllRanges();
           sel.addRange(range);
-          // Force a trailing space if at end so caret is visible on last line
-          const txt=inner.textContent;
-          if(txt[txt.length-1]==='\n') inner.textContent=txt+'\u200B';
         }
       };
-      inner.onblur=()=>{
-        inner.contentEditable='false';
-        inner.style.cursor='';
-        inner.onkeydown=null;
-        // Strip any zero-width spaces added as caret helpers
-        inner.textContent=inner.textContent.replace(/\u200B/g,'');
-        // Sync edited text back to the sidebar master field
-        const field=el.dataset.field;
-        if(field){
-          const sidebarId=fieldToSidebarId(field);
-          if(sidebarId){
-            const sidebarEl=document.getElementById(sidebarId);
-            if(sidebarEl){
-              let val=inner.textContent;
-              // income field used as-is (no prefix added)
-              sidebarEl.value=val;
-              globalSync();
+      inner.addEventListener('mouseup', saveSelectionRange);
+      inner.addEventListener('keyup',   saveSelectionRange);
+      inner.onblur=(blurEv)=>{
+        // Don't blur if clicking inside the rich toolbar
+        const tb = document.getElementById('rich-toolbar');
+        if(blurEv.relatedTarget && tb.contains(blurEv.relatedTarget)) return;
+        setTimeout(function(){
+          // Check again after a tick (toolbar buttons fire before blur settles)
+          if(document.activeElement && tb.contains(document.activeElement)) return;
+          inner.contentEditable='false';
+          inner.style.cursor='';
+          inner.onkeydown=null;
+          _savedRange = null;
+          hideRtb();
+          // Save rich HTML content (preserves <b>, <i> etc)
+          const field=el.dataset.field;
+          if(field){
+            const sidebarId=fieldToSidebarId(field);
+            if(sidebarId){
+              const sidebarEl=document.getElementById(sidebarId);
+              if(sidebarEl){
+                // Write plain text back to sidebar — strip appended income first
+                var _rawText = inner.innerText.replace(/\u200B/g,'');
+                var _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
+                if(_fiVal && _rawText.endsWith('\n'+_fiVal)){
+                  _rawText = _rawText.slice(0, _rawText.length - (_fiVal.length+1));
+                }
+                // Also strip if income appears as last line without newline
+                if(_fiVal && _rawText === _fiVal) _rawText = '';
+                sidebarEl.value = _rawText.trim();
+                // Don't call globalSync — it would wipe our rich HTML formatting
+              }
             }
           }
-        }
-        debouncedPersist();
+          // Store rich HTML in el dataset so serializeTab can save it
+          el.dataset.richHtml = inner.innerHTML;
+          debouncedPersist();
+        }, 80);
       };
     });
   }
@@ -678,18 +723,29 @@ function createElement(cfg){
       imgOy = parseFloat(img.style.top)||0;
     }
 
+    // Capture start positions of all selected elements for group move
+    const groupStarts = (_selectedEls.length > 1 && _selectedEls.includes(el))
+      ? _selectedEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
+      : null;
+
     function mv(e){
       let dx=e.clientX-sx, dy=e.clientY-sy;
       if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
       if(!committed){ committed=true; undoSnapshot(); }
 
-      // Shift key: constrain to axis with larger movement (horizontal or vertical)
+      // Shift key: constrain to axis
       if(e.shiftKey){
         if(Math.abs(dx) >= Math.abs(dy)){ dy=0; } else { dx=0; }
       }
 
-      if(shouldPan && img && img.dataset.cropW){
-        // Only pan if image is already in crop/positioned mode (has cropW)
+      if(groupStarts){
+        // Move ALL selected elements together
+        groupStarts.forEach(function(p){
+          p.el.style.left = Math.round(p.ox+dx/zoom)+'px';
+          p.el.style.top  = Math.round(p.oy+dy/zoom)+'px';
+        });
+        el.style.cursor='grabbing';
+      } else if(shouldPan && img && img.dataset.cropW){
         const rawX = imgOx + dx/zoom;
         const rawY = imgOy + dy/zoom;
         const iw=parseFloat(img.style.width), ih=parseFloat(img.style.height);
@@ -1186,14 +1242,21 @@ function showProps(el){
       <input type="number" value="${parseInt(fs)}" oninput="el_inner_set('fontSize',this.value+'px')">
     </div>
     <div class="pf"><label>Font Weight</label>
-      <select onchange="el_inner_set('fontWeight',this.value)">
-        <option ${fw==='300'?'selected':''} value="300">Light 300</option>
-        <option ${fw==='400'?'selected':''} value="400">Regular 400</option>
-        <option ${fw==='500'?'selected':''} value="500">Medium 500</option>
-        <option ${fw==='600'?'selected':''} value="600">Semibold 600</option>
-        <option ${fw==='700'?'selected':''} value="700">Bold 700</option>
-        <option ${fw==='900'?'selected':''} value="900">Black 900</option>
-      </select>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <select onchange="el_inner_set('fontWeight',this.value)" style="flex:1;">
+          <option ${fw==='300'?'selected':''} value="300">Light 300</option>
+          <option ${fw==='400'?'selected':''} value="400">Regular 400</option>
+          <option ${fw==='500'?'selected':''} value="500">Medium 500</option>
+          <option ${fw==='600'?'selected':''} value="600">Semibold 600</option>
+          <option ${fw==='700'?'selected':''} value="700">Bold 700</option>
+          <option ${fw==='900'?'selected':''} value="900">Black 900</option>
+        </select>
+        <span style="font-size:9px;color:#555;line-height:1.3;">Whole<br>box</span>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px;">
+        <button onclick="rtCmd('bold')" style="flex:1;padding:4px;font-size:11px;font-weight:700;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Bold selected text (Cmd+B)"><b>B</b> Selection</button>
+        <button onclick="rtCmd('italic')" style="flex:1;padding:4px;font-size:11px;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Italic selected text (Cmd+I)"><i>I</i> Selection</button>
+      </div>
     </div>
     <div class="pf"><label>Font Family</label>
       <select onchange="el_inner_set('fontFamily',this.value)">
@@ -1230,19 +1293,7 @@ function showProps(el){
     </div>
     <div class="pf"><label>Paragraph Spacing</label>
       <div class="pf-row">
-        <input type="number" step="1" min="0" max="60" value="${selectedEl&&selectedEl.dataset.bullets==='1'?(selectedEl.dataset.bulletParaSpacing||inner.dataset.bulletSpacing||0):parseInt(inner.style.paddingBottom)||0}" oninput="(function(v){ \
-  var inner=selectedEl&&selectedEl.querySelector('.el-inner'); \
-  if(!inner) return; \
-  if(selectedEl.dataset.bullets==='1'){ \
-    inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom=v+'px'; }); \
-    selectedEl.dataset.bulletParaSpacing=v; \
-    inner.dataset.bulletSpacing=v; \
-    inner.style.setProperty('--bullet-spacing', v); \
-    savedStates[currentTab]=serializeTab(); debouncedPersist(); \
-  } else { \
-    el_inner_set('paddingBottom',v+'px'); \
-  } \
-})(this.value)"  style="width:100%;">
+        <input type="number" id="para-spacing-input" step="1" min="0" max="60" value="${parseFloat(selectedEl&&selectedEl.dataset.bulletParaSpacing)||0}" oninput="setParaSpacing(this.value)" style="width:100%;">
         <span style="color:#666;font-size:9px;padding-top:6px;">px below</span>
       </div>
     </div>`;
@@ -1296,6 +1347,63 @@ function el_inner_set(prop, val){
   undoSnapshot();
   const inner=selectedEl.querySelector('.el-inner');
   if(inner) inner.style[prop]=val;
+}
+
+function setParaSpacing(v){
+  if(!selectedEl) return;
+  var val = parseFloat(v) || 0;
+  var inner = selectedEl.querySelector('.el-inner');
+  if(!inner) return;
+
+  // Store spacing on element (works for both bullet and plain text)
+  selectedEl.dataset.bulletParaSpacing = String(val);
+  inner.dataset.bulletSpacing = String(val);
+  inner.style.setProperty('--bullet-spacing', String(val));
+
+  if(selectedEl.dataset.bullets === '1'){
+    // Bullet mode: apply margin-bottom to each bullet div
+    inner.querySelectorAll('div').forEach(function(d){
+      d.style.marginBottom = val > 0 ? val + 'px' : '';
+    });
+  } else {
+    // Plain text mode: split into line divs with margin-bottom
+    applyPlainParaSpacing(inner, val);
+  }
+  debouncedPersist();
+}
+
+// Apply paragraph spacing to plain (non-bullet) text by wrapping lines in divs
+function applyPlainParaSpacing(inner, spacingPx){
+  // Get current lines - either from existing plain divs or from textContent
+  var lines;
+  var plainDivs = inner.querySelectorAll('div.plain-line');
+  if(plainDivs.length > 0){
+    lines = Array.from(plainDivs).map(function(d){ return d.textContent; });
+  } else {
+    // Check if inner has any divs at all (might be first time)
+    var anyDivs = inner.querySelectorAll('div');
+    if(anyDivs.length > 0){
+      lines = Array.from(anyDivs).map(function(d){ return d.textContent; });
+    } else {
+      lines = inner.textContent.split('\n');
+    }
+  }
+
+  if(spacingPx <= 0){
+    // Remove spacing — restore plain pre-wrap text
+    inner.textContent = lines.join('\n');
+    inner.style.whiteSpace = 'pre-wrap';
+    return;
+  }
+
+  // Wrap each line in a div with margin-bottom
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var mb = spacingPx + 'px';
+  inner.innerHTML = lines.map(function(l){
+    if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;margin-bottom:'+mb+'"></div>';
+    return '<div class="plain-line" style="margin-bottom:'+mb+'">' + esc(l) + '</div>';
+  }).join('');
+  inner.style.whiteSpace = 'normal';
 }
 function el_inner_txt(val){
   if(!selectedEl) return;
@@ -1406,11 +1514,12 @@ function applyBullets(inner, on){
     const _el = inner.closest('.el');
     // Read spacing from el.dataset (most reliable - survives textContent wipes)
     // Fall back to CSS custom property stored on inner, then inner.dataset
-    const _storedSpacing = inner.style.getPropertyValue('--bullet-spacing');
-    const _spacing = (_el && _el.dataset.bulletParaSpacing && _el.dataset.bulletParaSpacing !== '0')
-      ? _el.dataset.bulletParaSpacing
-      : (_storedSpacing || inner.dataset.bulletSpacing || '0');
-    const _mb = (parseFloat(_spacing)||0) > 0 ? ';margin-bottom:'+_spacing+'px' : '';
+    // Read spacing - check all storage locations in priority order
+    var _sp = 0;
+    if(_el && _el.dataset.bulletParaSpacing) _sp = parseFloat(_el.dataset.bulletParaSpacing)||0;
+    if(!_sp && inner.dataset.bulletSpacing) _sp = parseFloat(inner.dataset.bulletSpacing)||0;
+    if(!_sp){ var _css = inner.style.getPropertyValue('--bullet-spacing'); if(_css) _sp = parseFloat(_css)||0; }
+    const _mb = _sp > 0 ? ';margin-bottom:'+_sp+'px' : '';
     const divs = lines.map(function(l){
       const text = l.startsWith('\u2013 ') ? l.slice(2) : l;
       if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
@@ -1495,19 +1604,43 @@ function serializeTab(){
         if(el.dataset.bullets==='1'){
           // Bullet elements use flex div-per-line — read from .bt text spans
           const textSpans = inner.querySelectorAll('span.bt');
+          var _rawLines;
           if(textSpans.length > 0){
-            // Store with '– ' prefix so restoreTab can identify bullet lines
-            obj.content = Array.from(textSpans).map(function(s){
-              return '\u2013 ' + s.textContent;
-            }).join('\n');
+            _rawLines = Array.from(textSpans).map(function(s){ return s.textContent; });
           } else {
             const divs = inner.querySelectorAll('div');
-            obj.content = divs.length > 0
-              ? Array.from(divs).map(function(d){ return d.textContent; }).join('\n')
-              : inner.textContent;
+            _rawLines = divs.length > 0
+              ? Array.from(divs).map(function(d){
+                  var t = d.textContent;
+                  return t.startsWith('\u2013 ') ? t.slice(2) : t;
+                })
+              : (inner.textContent||'').split('\n');
           }
+          // Strip appended income from last line so it's never double-saved
+          var _fi_strip = ((document.getElementById('fi')||{}).value||'').trim();
+          if(_fi_strip && _rawLines.length > 0){
+            var _last = _rawLines[_rawLines.length-1];
+            if(_last === _fi_strip || _last === ('\u2013 ' + _fi_strip)){
+              _rawLines = _rawLines.slice(0, -1);
+            }
+          }
+          obj.content = _rawLines.map(function(l){
+            return (l.startsWith('\u2013 ') ? '' : '\u2013 ') + l;
+          }).join('\n');
         } else {
-          obj.content = inner.textContent;
+          // Save rich HTML if present (bold/italic/underline formatting)
+          // For plain-line spacing divs, save textContent as lines joined by \n
+          var plainDivs = inner.querySelectorAll('div.plain-line');
+          if(plainDivs.length > 0){
+            obj.content = Array.from(plainDivs).map(function(d){ return d.textContent; }).join('\n');
+          } else {
+            obj.content = inner.textContent;
+          }
+          if(el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
+            obj.richHtml = el.dataset.richHtml;
+          } else if(inner.innerHTML !== inner.textContent && !inner.querySelector('div.plain-line')){
+            obj.richHtml = inner.innerHTML;
+          }
         }
       }
       // Store img src: prefer assets store (always up to date), fall back to element src
@@ -1565,7 +1698,14 @@ function restoreTab(idx){
       inner.style.whiteSpace='pre-wrap';
       inner.style.wordBreak='break-word';
     }
-    if(sv.content!==undefined && inner && sv.type==='text') inner.textContent=sv.content;
+    if(sv.content!==undefined && inner && sv.type==='text'){
+      if(sv.richHtml && sv.bullets!=='1'){
+        inner.innerHTML = sv.richHtml;
+        el.dataset.richHtml = sv.richHtml;
+      } else {
+        inner.textContent = sv.content;
+      }
+    }
     // Apply bullets AFTER content is set so prefix isn't overwritten
     if(sv.bullets==='1'){
       el.dataset.bullets='1';
@@ -1576,6 +1716,12 @@ function restoreTab(idx){
         inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
       }
       applyBullets(inner, true);
+    } else if(sv.bulletParaSpacing && parseFloat(sv.bulletParaSpacing) > 0){
+      // Plain text with paragraph spacing — re-apply line divs
+      el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+      inner.dataset.bulletSpacing = sv.bulletParaSpacing;
+      inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
+      applyPlainParaSpacing(inner, parseFloat(sv.bulletParaSpacing));
     }
     // Apply images AFTER innerStyle (overrides any display:none from innerStyle)
     if(sv.type==='img'){
@@ -1665,10 +1811,40 @@ function globalSync(){
         const phone = gv(agentPhoneMap[field]) || '';
         inner.textContent = phone ? val+' '+phone : val;
       } else {
-        inner.textContent = val;
+        // Per-tab income behaviour
+        var _fi = ((document.getElementById('fi')||{}).value||'').trim();
+        if(field === 'income'){
+          // Always hide standalone income box — income is merged into bullets/bodycopy
+          el.style.display = 'none';
+          return;
+        } else if(field === 'bullets' && [0,1,2].indexOf(currentTab) > -1){
+          // AFR2, AFR4, Auction: append income as plain last bullet line
+          inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else if(field === 'bullets' && [3,4].indexOf(currentTab) > -1){
+          // Brochure1, Brochure2: append income as plain last line (bold applied below)
+          inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else if(field === 'bodycopy' && [5,8].indexOf(currentTab) > -1){
+          // EDM, Asian Desk: append income as last body copy line
+          inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else {
+          inner.textContent = val;
+        }
       }
       // Re-apply bullet prefix if this element has bullets enabled
-      if(el.dataset.bullets==='1') applyBullets(inner, true);
+      if(el.dataset.bullets==='1'){
+        applyBullets(inner, true);
+        // Brochure tabs: make last bullet (income) bold
+        if([3,4].indexOf(currentTab) > -1 && (field==='bullets'||field==='bodycopy')){
+          var _fi2 = ((document.getElementById('fi')||{}).value||'').trim();
+          if(_fi2){
+            var _rows = inner.querySelectorAll('div');
+            if(_rows.length > 0){
+              var _lastRow = _rows[_rows.length-1];
+              _lastRow.style.fontWeight = '700';
+            }
+          }
+        }
+      }
     }
   });
 
@@ -1690,6 +1866,17 @@ function globalSync(){
         const phoneField=phoneMap[sv.field];
         const phone = phoneField ? gv(phoneField) : '';
         sv.content = phone ? val+' '+phone : val;
+      } else if(sv.field === 'income'){
+        // Income folded into bullets/bodycopy — skip standalone
+        sv._hidden = true;
+      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1){
+        // AFR/Auction/Brochure: append income as last bullet
+        const _fi = gv('fi') || '';
+        sv.content = _fi ? val + '\n' + _fi : val;
+      } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
+        // EDM/Asian Desk: append income to bodycopy
+        const _fi = gv('fi') || '';
+        sv.content = _fi ? val + '\n' + _fi : val;
       } else {
         sv.content=val;
       }
@@ -1697,6 +1884,8 @@ function globalSync(){
   }
 
   debouncedPersist();
+  // Repack EDM agent slots to remove gaps from empty agents
+  repackEDMAgents();
 }
 
 // Called when switching to a tab — rebuilds if fields have changed since last visit
@@ -1995,8 +2184,8 @@ function buildAFR2(W,H){
   mkT(11,235,170,16,gv('fa1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
   mkT(11,249,161,18,gv('fa2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
   mkI(173,231,51,36,'logo','Image',{z:3});
-  mkT(11,265,212,64,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'});
-  mkT(11,330,211,14,gv('fi')||'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
+  (function(){ var _e=mkT(11,265,212,64,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(11,330,211,14,gv('fi')||'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkT(11,346,213,13,gv('fm'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
   mkT(11,361,105,13,gv('fn1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
   mkT(11,377,106,13,gv('fp1'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
@@ -2019,8 +2208,8 @@ function buildAFR4(W,H){
   mkT(11,236,340,14,gv('fa1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
   mkT(11,250,351,13,gv('fa2'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
   mkI(395,232,62,31,'logo','Image',{z:3});
-  mkT(10,267,212,72,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'});
-  mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'});
+  (function(){ var _e=mkT(10,267,212,72,document.getElementById('fbull').value,{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:3,bullets:'1'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkT(11,347,442,14,gv('fd'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
   mkT(12,363,103,13,gv('fn1'),{color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
   mkT(11,378,105,13,gv('fp1'),{color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
@@ -2065,32 +2254,30 @@ function buildBrochure1(W,H){
   mkI(29,377,264,196,'img2','Image',{z:1});
   mkI(304,377,265,196,'img3','Image',{z:1});
   mkR(439,545,130,28,'rgb(0, 63, 45)',{z:3});
-  mkT(389,552,171,17,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
-  mkT(31,588,498,28,gv('fh'),{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'heading',z:2});
-  mkT(31,614,358,26,gv('fs'),{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'subheading',z:2});
+  mkT(389,552,171,17,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
+  mkT(31,588,498,28,gv('fh')||'Heading',{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'heading',z:2});
+  mkT(31,614,358,26,gv('fs')||'Sub Heading',{color:'rgb(1, 42, 45)',fontSize:'22px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'subheading',z:2});
   mkI(505,581,64,54,'logo','Image',{z:2});
   mkR(32,654,3,27,'rgb(23, 232, 143)',{z:3});
-  mkT(44,653,163,16,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
-  mkT(45,669,163,15,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
-  mkT(33,693,170,99,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:3});
-  mkT(32,791,175,15,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'income',z:3});
+  mkT(44,653,163,16,gv('fa1')||'Suburb State',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:3});
+  mkT(45,669,163,15,gv('fa2')||'Address',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:3});
+  (function(){ var _e=mkT(33,693,170,99,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'6'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(32,791,175,15,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'income',z:3}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkR(426,655,1,145,'rgb(221, 221, 221)',{z:2});
-  mkT(214,655,201,143,document.getElementById('fbc').value,{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1'});
+  mkT(214,655,201,143,document.getElementById('fbc').value,{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'4'});
   mkT(442,656,126,14,'Contact',{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
-  mkT(443,672,140,12,gv('fn1'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3,combinedAgent:'1'});
-  mkT(443,685,140,12,gv('fn2'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3,combinedAgent:'1'});
-  mkT(443,698,140,12,gv('fn3'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3,combinedAgent:'1'});
-  mkT(443,711,140,12,gv('fn4'),{color:'rgb(1, 42, 45)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3,combinedAgent:'1'});
-  mkT(443,733,170,14,gv('fm'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
-  mkT(443,750,116,38,gv('fd'),{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:3});
+  mkT(443,672,140,12,gv('fn1')||'',{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',combinedAgent:'1',z:3});
+  mkT(443,685,140,12,gv('fn2')||'',{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',combinedAgent:'1',z:3});
+  mkT(443,698,140,12,gv('fn3')||'',{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',combinedAgent:'1',z:3});
+  mkT(443,711,140,12,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',combinedAgent:'1',z:3});
+  mkT(443,733,170,14,gv('fm')||'For Sale',{color:'rgb(77, 77, 79)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:3});
+  mkT(443,750,116,38,gv('fd')||'Day Date Month Year',{color:'rgb(77, 77, 79)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.35',field:'saledate',z:3});
   mkT(443,796,170,13,'*Approx',{color:'rgb(77, 77, 79)',fontSize:'6px',fontWeight:'300',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:3});
   mkR(30,813,539,1,'rgb(238, 238, 238)',{z:2});
   mkT(11,825,584,16,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(153, 153, 153)',fontSize:'7px',fontWeight:'300',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',padding:'0px 18px',z:2});
   mkSVGLogo(450,17,121,31,SVG_CBRE_GREEN,'cbre-green',{z:200});
   mkSVGLogo(28,13,137,39,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200});
 }
-
-// ─── BROCHURE 2-PAGE 1191×842 (all dark) ───
 function buildBrochure2(W,H){
   mkR(0,0,1191,842,'rgb(1, 42, 45)',{z:1});
   mkI(31,65,541,508,'img1','Image',{z:2});
@@ -2109,8 +2296,8 @@ function buildBrochure2(W,H){
   mkR(623,657,3,28,'rgb(23, 232, 143)',{z:5});
   mkT(635,654,178,11,gv('fa1'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:5});
   mkT(636,671,178,11,gv('fa2'),{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:5});
-  mkT(624,698,171,100,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:5});
-  mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:5});
+  mkT(624,698,171,100,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bullets',z:5,bullets:'1'});
+  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkT(808,657,201,151,document.getElementById('fbc').value,{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4'});
   mkT(1036,656,132,10,'Contact',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:5});
   mkT(1037,670,144,13,gv('fn1'),{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:5,combinedAgent:'1'});
@@ -2133,7 +2320,8 @@ function buildEDM(W,H){
   mkR(0,0,213,464,'rgb(1, 42, 45)',{z:1});
   mkR(12,209,3,127,'rgb(23, 232, 143)',{z:4});
   mkT(30,206,174,65,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'18px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'heading',z:4});
-  mkT(29,286,175,54,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:4});
+  (function(){ var _e=mkT(29,286,175,54,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:4,bullets:'1'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(29,342,175,14,gv('fi')||'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:4}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkI(51,359,110,46,'logo','Image',{z:4});
   mkT(12,424,188,16,gv('fm'),{color:'rgb(255, 255, 255)',fontSize:'13px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'salemethod',z:4});
   mkT(12,442,201,13,gv('fd'),{color:'rgb(255, 255, 255)',fontSize:'9px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'saledate',z:4});
@@ -2145,32 +2333,38 @@ function buildEDM(W,H){
   mkT(12,661,188,218,document.getElementById('fbc').value,{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'6'});
   mkI(0,872,212,130,'img3','Image',{z:2});
   mkT(12,1014,157,34,'For more information contact the sales team',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',z:3});
-  mkI(12,1055,40,40,'agent1photo','Image',{z:3});
-  mkT(65,1061,142,18,gv('fn1'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
-  mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
-  mkI(12,1103,40,40,'agent2photo','Image',{z:3});
-  mkT(65,1109,142,18,gv('fn2'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3});
-  mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3});
-  mkI(12,1151,40,40,'agent3photo','Image',{z:3});
-  mkT(65,1158,142,18,gv('fn3'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3});
-  mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3});
-  mkI(12,1199,40,40,'agent4photo','Image',{z:3});
-  mkT(65,1206,142,18,gv('fn4'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3});
-  mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3});
-  mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3});
-  mkT(21,1270,162,18,'Request Information Memorandum',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
-  (function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
-  mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3});
-  mkT(21,1308,162,18,'View Listing',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
-  (function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
-  mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3});
-  mkT(21,1346,162,18,'View Full Portfolio Line Up',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4});
-  (function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
-  mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3});
-  mkT(8,1431,196,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',z:3});
+  (function(){
+    // Agent rows — tagged with slot number and original Y for repacking
+    function tagAgent(el, slot, origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
+    tagAgent(mkI(12,1055,40,40,'agent1photo','Image',{z:3}), 1, 1055);
+    tagAgent(mkT(65,1061,142,18,gv('fn1'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3}), 1, 1061);
+    tagAgent(mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3}), 1, 1077);
+    tagAgent(mkI(12,1103,40,40,'agent2photo','Image',{z:3}), 2, 1103);
+    tagAgent(mkT(65,1109,142,18,gv('fn2'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3}), 2, 1109);
+    tagAgent(mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3}), 2, 1125);
+    tagAgent(mkI(12,1151,40,40,'agent3photo','Image',{z:3}), 3, 1151);
+    tagAgent(mkT(65,1158,142,18,gv('fn3'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3}), 3, 1158);
+    tagAgent(mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3}), 3, 1174);
+    tagAgent(mkI(12,1199,40,40,'agent4photo','Image',{z:3}), 4, 1199);
+    tagAgent(mkT(65,1206,142,18,gv('fn4'),{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3}), 4, 1206);
+    tagAgent(mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3}), 4, 1223);
+    // Elements below agents — tagged with base Y for shifting
+    function tagBelow(el, baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
+    tagBelow(mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3}), 1260);
+    tagBelow(mkT(21,1270,162,18,'Request Information Memorandum',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4}), 1270);
+    tagBelow((function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1266);
+    tagBelow(mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3}), 1298);
+    tagBelow(mkT(21,1308,162,18,'View Listing',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4}), 1308);
+    tagBelow((function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1305);
+    tagBelow(mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3}), 1336);
+    tagBelow(mkT(21,1346,162,18,'View Full Portfolio Line Up',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:4}), 1346);
+    tagBelow((function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1342);
+    tagBelow(mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3}), 1379);
+    tagBelow(mkT(8,1431,196,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',z:3}), 1431);
+    tagBelow(mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201}), 1390);
+  })(); // end agent/button block
   mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
   mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
-  mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 
 // ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
@@ -2195,32 +2389,36 @@ function buildEDMAsianDesk(W,H){
   mkT(12,661,188,218,'',{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'6'});
   mkI(0,872,212,130,'img3','Image',{z:2});
   mkT(12,1014,157,34,'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3});
-  mkI(12,1055,40,40,'agent1photo','Image',{z:3});
-  mkT(65,1061,142,18,gv('fn1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
-  mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
-  mkI(12,1103,40,40,'agent2photo','Image',{z:3});
-  mkT(65,1109,142,18,gv('fn2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3});
-  mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3});
-  mkI(12,1151,40,40,'agent3photo','Image',{z:3});
-  mkT(65,1158,142,18,gv('fn3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3});
-  mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3});
-  mkI(12,1199,40,40,'agent4photo','Image',{z:3});
-  mkT(65,1206,142,18,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3});
-  mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3});
-  mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3});
-  mkT(21,1270,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn1',z:4});
-  (function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
-  mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3});
-  mkT(21,1308,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn2',z:4});
-  (function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
-  mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3});
-  mkT(21,1346,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4});
-  (function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
-  mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3});
-  mkT(8,1431,196,60,'',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',field:'zh_disclaimer',z:3});
+  (function(){
+    function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
+    function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
+    tagAgent(mkI(12,1055,40,40,'agent1photo','Image',{z:3}), 1, 1055);
+    tagAgent(mkT(65,1061,142,18,gv('fn1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3}), 1, 1061);
+    tagAgent(mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3}), 1, 1077);
+    tagAgent(mkI(12,1103,40,40,'agent2photo','Image',{z:3}), 2, 1103);
+    tagAgent(mkT(65,1109,142,18,gv('fn2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3}), 2, 1109);
+    tagAgent(mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3}), 2, 1125);
+    tagAgent(mkI(12,1151,40,40,'agent3photo','Image',{z:3}), 3, 1151);
+    tagAgent(mkT(65,1158,142,18,gv('fn3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3}), 3, 1158);
+    tagAgent(mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3}), 3, 1174);
+    tagAgent(mkI(12,1199,40,40,'agent4photo','Image',{z:3}), 4, 1199);
+    tagAgent(mkT(65,1206,142,18,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3}), 4, 1206);
+    tagAgent(mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3}), 4, 1223);
+    tagBelow(mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3}), 1260);
+    tagBelow(mkT(21,1270,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn1',z:4}), 1270);
+    tagBelow((function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1266);
+    tagBelow(mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3}), 1298);
+    tagBelow(mkT(21,1308,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn2',z:4}), 1308);
+    tagBelow((function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1305);
+    tagBelow(mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3}), 1336);
+    tagBelow(mkT(21,1346,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4}), 1346);
+    tagBelow((function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1342);
+    tagBelow(mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3}), 1379);
+    tagBelow(mkT(8,1431,196,60,'',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',field:'zh_disclaimer',z:3}), 1431);
+    tagBelow(mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201}), 1390);
+  })(); // end agent/button block
   mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
   mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
-  mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 // ─── LINKEDIN 800×800 ───
 function buildLinkedIn(W,H){
@@ -2782,6 +2980,8 @@ function switchTab(idx, btn){
     buildTemplate(idx);
   }
   fitZoomToTab();
+  // Repack EDM agents when switching to EDM tabs
+  if(idx === 5 || idx === 8) setTimeout(repackEDMAgents, 80);
   // When switching to Asian Desk tab, sync translations after canvas is ready
   if(idx === 8) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
 }
@@ -3089,6 +3289,7 @@ function syncAgentSlot(i){
     if(ph) ph.style.display=photo?'none':'';
   });
   globalSync();
+  repackEDMAgents();
   const agentField=['agent1name','agent2name','agent3name','agent4name'][i];
   const phoneField=['fp1','fp2','fp3','fp4'][i];
   const agentNum=i+1;
@@ -3281,9 +3482,12 @@ async function init(){
   if(!loaded){ buildTemplate(0); setCdtStatus('saved','New project'); }
   fitZoomToTab();
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
+  // Re-sync bullets when income field changes (income appended as last bullet)
+  document.querySelectorAll('#fbull,#fi').forEach(function(el){ el.addEventListener('input', globalSync); });
   // Trigger Chinese translation when relevant English fields change
   document.querySelectorAll('#fh,#fs,#fb,#fa1,#fa2,#fm,#fd,#fbull,#fi,#fbc').forEach(el=>el.addEventListener('input', debouncedZhSync));
   document.getElementById('canvas-area').addEventListener('mouseup',debouncedPersist);
+  document.getElementById('canvas-area').addEventListener('mousedown', startMarquee);
   document.getElementById('zoom-range').addEventListener('input',debouncedPersist);
   window.addEventListener('beforeunload',()=>{ clearTimeout(_persistTimer); try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){} });
 }
@@ -3359,6 +3563,522 @@ async function liveSyncTick(){
 function startLiveSync(){ _liveSyncTimer=setInterval(liveSyncTick,5000); }
 function stopLiveSync(){ clearInterval(_liveSyncTimer); }
 document.addEventListener('visibilitychange',()=>{ if(document.hidden)stopLiveSync(); else startLiveSync(); });
+
+// ── Marquee (rubber-band) multi-select ──────────────────────────────────────
+let _marqueeActive = false;
+let _marqueeEl = null;
+let _selectedEls = []; // array of selected elements for multi-select
+
+function startMarquee(e){
+  if(e.target !== document.getElementById('canvas-area') &&
+     e.target !== document.getElementById('canvas-wrap') &&
+     e.target !== document.getElementById('artwork')) return;
+  if(e.button !== 0) return;
+
+  const canvasArea = document.getElementById('canvas-area');
+  const rect = canvasArea.getBoundingClientRect();
+  const startX = e.clientX - rect.left + canvasArea.scrollLeft;
+  const startY = e.clientY - rect.top  + canvasArea.scrollTop;
+  let marqueeStarted = false;
+
+
+
+  function mv(e){
+    const cx = e.clientX - rect.left + canvasArea.scrollLeft;
+    const cy = e.clientY - rect.top  + canvasArea.scrollTop;
+    const dx = cx - startX, dy = cy - startY;
+    // Only start marquee after moving 6px (allows normal scroll)
+    if(!marqueeStarted){
+      if(Math.sqrt(dx*dx+dy*dy) < 6) return;
+      marqueeStarted = true;
+      _marqueeActive = true;
+      // Clear selection now that we know it's a marquee drag
+      deselectAll(); _selectedEls = [];
+      // Create marquee div
+      const mq2 = document.createElement('div');
+      mq2.style.cssText = 'position:absolute;border:1.5px dashed #5bbf7a;background:rgba(91,191,122,.08);pointer-events:none;z-index:99998;';
+      canvasArea.appendChild(mq2);
+      _marqueeEl = mq2;
+    }
+    if(!_marqueeEl) return;
+    const x = Math.min(startX, cx), y = Math.min(startY, cy);
+    const w = Math.abs(cx - startX), h = Math.abs(cy - startY);
+    _marqueeEl.style.left = x+'px'; _marqueeEl.style.top = y+'px';
+    _marqueeEl.style.width = w+'px'; _marqueeEl.style.height = h+'px';
+  }
+
+  function up(e){
+    if(!_marqueeActive){ window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up); return; }
+    _marqueeActive = false;
+    if(_marqueeEl && _marqueeEl.parentNode) _marqueeEl.parentNode.removeChild(_marqueeEl);
+    _marqueeEl = null;
+
+    // Find elements intersecting the marquee
+    const cx = e.clientX - rect.left + canvasArea.scrollLeft;
+    const cy = e.clientY - rect.top  + canvasArea.scrollTop;
+    const mx = Math.min(startX, cx) / zoom;
+    const my = Math.min(startY, cy) / zoom;
+    const mw = Math.abs(cx - startX) / zoom;
+    const mh = Math.abs(cy - startY) / zoom;
+
+    if(mw < 4 && mh < 4){ window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up); return; }
+
+    const art = document.getElementById('artwork');
+    _selectedEls = [];
+    art.querySelectorAll('.el').forEach(function(el){
+      const ex = parseFloat(el.style.left)||0;
+      const ey = parseFloat(el.style.top)||0;
+      const ew = parseFloat(el.style.width)||0;
+      const eh = parseFloat(el.style.height)||0;
+      // Check intersection
+      if(ex < mx+mw && ex+ew > mx && ey < my+mh && ey+eh > my){
+        _selectedEls.push(el);
+        el.classList.add('selected');
+      }
+    });
+
+    if(_selectedEls.length === 1){
+      selectElement(_selectedEls[0]);
+      _selectedEls = [];
+    } else if(_selectedEls.length > 1){
+      // Show multi-select count in props
+      document.getElementById('props-content').innerHTML =
+        '<div class="props-empty">'+_selectedEls.length+' elements selected.<br><br>Drag to move together.<br>Press Delete to remove all.<br>Cmd+C to copy.</div>';
+      // Allow dragging the group
+      enableGroupDrag(_selectedEls);
+    }
+
+    window.removeEventListener('mousemove',mv);
+    window.removeEventListener('mouseup',up);
+  }
+
+  window.addEventListener('mousemove',mv);
+  window.addEventListener('mouseup',up);
+}
+
+function enableGroupDrag(els){
+  const art = document.getElementById('artwork');
+  const handler = function(e){
+    if(!_selectedEls.length) return;
+    if(e.target.classList.contains('rh')) return;
+    // Only start drag if clicking one of the selected elements
+    const clickedEl = e.target.closest('.el');
+    if(!clickedEl || !_selectedEls.includes(clickedEl)) return;
+    e.stopPropagation();
+
+    const sx = e.clientX, sy = e.clientY;
+    const startPositions = _selectedEls.map(function(el){
+      return {el:el, ox:parseFloat(el.style.left)||0, oy:parseFloat(el.style.top)||0};
+    });
+    let committed = false;
+
+    function mv(e){
+      const dx = (e.clientX-sx)/zoom, dy = (e.clientY-sy)/zoom;
+      if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
+      if(!committed){ committed=true; undoSnapshot(); }
+      startPositions.forEach(function(p){
+        p.el.style.left = Math.round(p.ox+dx)+'px';
+        p.el.style.top  = Math.round(p.oy+dy)+'px';
+      });
+    }
+    function up(){
+      if(committed) debouncedPersist();
+      window.removeEventListener('mousemove',mv);
+      window.removeEventListener('mouseup',up);
+    }
+    window.addEventListener('mousemove',mv);
+    window.addEventListener('mouseup',up);
+  };
+  art.addEventListener('mousedown', handler);
+  // Store handler so we can remove it on next deselect
+  art._groupDragHandler = handler;
+}
+
+// Override deselectAll to also clear multi-select
+const _origDeselectAll = deselectAll;
+deselectAll = function(){
+  _selectedEls.forEach(function(el){ el.classList.remove('selected'); });
+  _selectedEls = [];
+  const art = document.getElementById('artwork');
+  if(art && art._groupDragHandler){
+    art.removeEventListener('mousedown', art._groupDragHandler);
+    art._groupDragHandler = null;
+  }
+  _origDeselectAll();
+};
+
+// Override deleteSelected to also handle multi-select
+const _origDeleteSelected = deleteSelected;
+deleteSelected = function(){
+  if(_selectedEls.length > 1){
+    undoSnapshot();
+    _selectedEls.forEach(function(el){ el.remove(); });
+    _selectedEls = [];
+    document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+    debouncedPersist();
+  } else {
+    _origDeleteSelected();
+  }
+};
+
+// ── Copy / Paste ─────────────────────────────────────────────────────────────
+let _clipboard = []; // array of serialized element snapshots
+
+function copySelected(){
+  const toCopy = _selectedEls.length > 0 ? _selectedEls : (selectedEl ? [selectedEl] : []);
+  if(!toCopy.length) return;
+  _clipboard = toCopy.map(function(el){
+    const inner = el.querySelector('.el-inner');
+    const img   = el.querySelector('img');
+    const ak    = el.dataset.assetKey || '';
+    const obj   = {
+      type:el.dataset.type, field:el.dataset.field||'', assetKey:ak,
+      svgKey:el.dataset.svgKey||'', bullets:el.dataset.bullets||'0',
+      combinedAgent:el.dataset.combinedAgent||'0',
+      bulletParaSpacing:el.dataset.bulletParaSpacing||'0',
+      x:parseFloat(el.style.left)||0, y:parseFloat(el.style.top)||0,
+      w:parseFloat(el.style.width)||100, h:parseFloat(el.style.height)||40,
+      z:parseInt(el.style.zIndex)||2,
+      innerStyle: inner ? (inner.getAttribute('style')||'') : '',
+    };
+    if(el.dataset.type==='text') obj.content = inner ? inner.textContent : '';
+    if(el.dataset.type==='img'){
+      obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
+      if(img && img.dataset.cropW){ obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY; obj.cropW=img.dataset.cropW; obj.cropH=img.dataset.cropH; }
+    }
+    return obj;
+  });
+  // Show brief feedback
+  setCdtStatus('saved', 'Copied '+_clipboard.length+' element'+(toCopy.length>1?'s':''));
+}
+
+function pasteSelected(){
+  if(!_clipboard.length) return;
+  undoSnapshot();
+  deselectAll();
+  _selectedEls = [];
+  const OFFSET = 10; // paste offset so it's visible
+  _clipboard.forEach(function(sv){
+    const cfg = {
+      type:sv.type, field:sv.field, assetKey:sv.assetKey,
+      x:sv.x+OFFSET, y:sv.y+OFFSET, w:sv.w, h:sv.h, z:sv.z,
+      content:sv.content||'', bg:'#0d2b21',
+    };
+    // Extract bg from innerStyle for rects
+    if(sv.type==='rect' && sv.innerStyle){
+      var m = sv.innerStyle.match(/background:\s*([^;]+)/);
+      if(m) cfg.bg = m[1].trim();
+    }
+    var el = createElement(cfg);
+    if(sv.innerStyle && el.querySelector('.el-inner')) el.querySelector('.el-inner').setAttribute('style', sv.innerStyle);
+    if(sv.bullets==='1'){
+      el.dataset.bullets='1';
+      if(sv.bulletParaSpacing && sv.bulletParaSpacing!=='0') el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
+      var inner = el.querySelector('.el-inner');
+      if(inner) applyBullets(inner, true);
+    }
+    if(sv.svgKey){
+      var svgMap={'cbre-green':SVG_CBRE_GREEN,'cbre-white':SVG_CBRE_WHITE,'portfolio-green':SVG_PORTFOLIO_GREEN,'portfolio-white':SVG_PORTFOLIO_WHITE};
+      if(svgMap[sv.svgKey]){
+        var inner2=el.querySelector('.el-inner'); if(inner2){inner2.innerHTML=''; var im2=document.createElement('img'); im2.src=svgMap[sv.svgKey]; im2.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; inner2.appendChild(im2);}
+        el.dataset.svgKey=sv.svgKey;
+      }
+    } else if(sv.type==='img' && sv.imgSrc){
+      var inner3=el.querySelector('.el-inner'), img3=el.querySelector('img');
+      if(img3){ img3.src=sv.imgSrc; img3.style.display='';
+        if(sv.cropW && !String(sv.cropW).includes('%')){ img3.style.cssText='position:absolute;left:'+sv.cropX+';top:'+sv.cropY+';width:'+sv.cropW+';height:'+sv.cropH+';object-fit:fill;display:block;'; img3.dataset.cropW=sv.cropW; img3.dataset.cropH=sv.cropH; img3.dataset.cropX=sv.cropX; img3.dataset.cropY=sv.cropY; }
+        else { img3.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;'; }
+      }
+      var ph3=el.querySelector('.img-ph-txt'); if(ph3) ph3.style.display='none';
+      if(inner3) inner3.style.background=['logo','logo2','logo3','logo4'].includes(sv.assetKey)?'transparent':'#c5ccc5';
+    }
+    el.classList.add('selected');
+    _selectedEls.push(el);
+  });
+  if(_selectedEls.length===1){ selectElement(_selectedEls[0]); _selectedEls=[]; }
+  else if(_selectedEls.length>1){ enableGroupDrag(_selectedEls); document.getElementById('props-content').innerHTML='<div class="props-empty">'+_selectedEls.length+' elements pasted. Drag to move.</div>'; }
+  debouncedPersist();
+}
+
+// ── EDM Agent Repacking ──────────────────────────────────────────────────────
+function repackEDMAgents(){
+  if(currentTab !== 5 && currentTab !== 8) return;
+  const art = document.getElementById('artwork');
+  if(!art) return;
+
+  // Which slots have an active agent? Check hidden input values
+  const active = [1,2,3,4].map(function(n){
+    var nameEl = document.getElementById('fn'+n);
+    var name = nameEl ? (nameEl.value||'').trim() : '';
+    // Also check assets — agent might have photo but be unnamed
+    return name.length > 0;
+  });
+
+  const SLOT_TOP = [1055, 1103, 1151, 1199];
+  const SLOT_H   = 48;
+
+  // Build ordered list of active slot indices (0-based)
+  const activeSlots = [];
+  active.forEach(function(a, i){ if(a) activeSlots.push(i); });
+  const hiddenCount = 4 - activeSlots.length;
+
+  art.querySelectorAll('.el').forEach(function(el){
+    var slot  = parseInt(el.dataset.agentSlot||'0');
+    var origY = parseInt(el.dataset.agentOrigY||'0');
+
+    if(slot >= 1 && slot <= 4){
+      var slotIdx = slot - 1;
+      if(!active[slotIdx]){
+        // Hide entirely — also clear broken image src
+        el.style.display = 'none';
+        var img = el.querySelector('img');
+        if(img && el.dataset.type === 'img' && !img.src.startsWith('data:')){
+          img.src = '';
+          img.style.display = 'none';
+        }
+      } else {
+        // Show and reposition
+        el.style.display = '';
+        var activesBefore = activeSlots.indexOf(slotIdx);
+        var newY = SLOT_TOP[0] + (activesBefore * SLOT_H) + (origY - SLOT_TOP[slotIdx]);
+        el.style.top = newY + 'px';
+        // Restore agent photo if it was cleared
+        var assetKey = el.dataset.assetKey;
+        if(assetKey && assets[assetKey]){
+          var img2 = el.querySelector('img');
+          if(img2 && !img2.src){ img2.src = assets[assetKey]; img2.style.display = ''; }
+        }
+      }
+    } else if(el.dataset.agentBelow === '1'){
+      var baseY = parseInt(el.dataset.agentBelowY||'0');
+      el.style.top = (baseY - hiddenCount * SLOT_H) + 'px';
+    }
+  });
+}
+
+// ── Income Repacking — floats income below bullet points ────────────────────
+function repackIncome(){
+  const art = document.getElementById('artwork');
+  if(!art) return;
+
+  const bullEl   = art.querySelector('.el[data-income-anchor="1"]');
+  const incomeEl = art.querySelector('.el[data-income-el="1"]');
+  if(!bullEl || !incomeEl) return;
+
+  const fi = ((document.getElementById('fi')||{}).value||'').trim();
+  if(!fi){
+    incomeEl.style.display = 'none';
+    return;
+  }
+  incomeEl.style.display = '';
+
+  // Count actual bullet lines in the content
+  const bullInner = bullEl.querySelector('.el-inner');
+  if(!bullInner) return;
+
+  // Get line height and font size from the bullets inner style
+  const cs      = window.getComputedStyle(bullInner);
+  const lineH   = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.35);
+  const bps     = parseFloat(bullEl.dataset.bulletParaSpacing || '0') || 0;
+
+  // Count rendered lines — use the actual div children (bullet rows)
+  const rows = bullInner.querySelectorAll('div');
+  const numRows = rows.length || bullInner.textContent.split('\n').filter(function(l){ return l.trim(); }).length;
+
+  // Calculate total height: each row = lineHeight + paragraph spacing
+  // Use actual offsetHeight of each row if available, else estimate
+  let totalH = 0;
+  if(rows.length > 0){
+    rows.forEach(function(row){ totalH += row.offsetHeight || lineH; });
+    if(bps > 0) totalH += bps * (rows.length - 1);
+  } else {
+    totalH = numRows * lineH;
+  }
+
+  // Position income: bullTop + totalH + small gap matching bps
+  const bullTop = parseFloat(bullEl.style.top) || 0;
+  const gap     = bps > 0 ? bps : 2;
+  const newY    = Math.round(bullTop + totalH + gap);
+  incomeEl.style.top = newY + 'px';
+}
+
+
+// ── EDM Agent Repacking ──────────────────────────────────────────────────────
+function repackEDMAgents(){
+  if(currentTab !== 5 && currentTab !== 8) return;
+  const art = document.getElementById('artwork');
+  if(!art) return;
+
+  // Which slots have an active agent? Check hidden input values
+  const active = [1,2,3,4].map(function(n){
+    var nameEl = document.getElementById('fn'+n);
+    var name = nameEl ? (nameEl.value||'').trim() : '';
+    // Also check assets — agent might have photo but be unnamed
+    return name.length > 0;
+  });
+
+  const SLOT_TOP = [1055, 1103, 1151, 1199];
+  const SLOT_H   = 48;
+
+  // Build ordered list of active slot indices (0-based)
+  const activeSlots = [];
+  active.forEach(function(a, i){ if(a) activeSlots.push(i); });
+  const hiddenCount = 4 - activeSlots.length;
+
+  art.querySelectorAll('.el').forEach(function(el){
+    var slot  = parseInt(el.dataset.agentSlot||'0');
+    var origY = parseInt(el.dataset.agentOrigY||'0');
+
+    if(slot >= 1 && slot <= 4){
+      var slotIdx = slot - 1;
+      if(!active[slotIdx]){
+        // Hide entirely — also clear broken image src
+        el.style.display = 'none';
+        var img = el.querySelector('img');
+        if(img && el.dataset.type === 'img' && !img.src.startsWith('data:')){
+          img.src = '';
+          img.style.display = 'none';
+        }
+      } else {
+        // Show and reposition
+        el.style.display = '';
+        var activesBefore = activeSlots.indexOf(slotIdx);
+        var newY = SLOT_TOP[0] + (activesBefore * SLOT_H) + (origY - SLOT_TOP[slotIdx]);
+        el.style.top = newY + 'px';
+        // Restore agent photo if it was cleared
+        var assetKey = el.dataset.assetKey;
+        if(assetKey && assets[assetKey]){
+          var img2 = el.querySelector('img');
+          if(img2 && !img2.src){ img2.src = assets[assetKey]; img2.style.display = ''; }
+        }
+      }
+    } else if(el.dataset.agentBelow === '1'){
+      var baseY = parseInt(el.dataset.agentBelowY||'0');
+      el.style.top = (baseY - hiddenCount * SLOT_H) + 'px';
+    }
+  });
+}
+
+// ── Income Repacking — floats income below bullet points ────────────────────
+function repackIncome(){
+  const art = document.getElementById('artwork');
+  if(!art) return;
+
+  // Find the bullets element and income element on the current canvas
+  var bullEl   = art.querySelector('.el[data-income-anchor="1"]');
+  var incomeEl = art.querySelector('.el[data-income-el="1"]');
+  if(!bullEl || !incomeEl) return;
+
+  var fi = (document.getElementById('fi')||{}).value||'';
+  if(!fi.trim()){
+    // No income text — hide income element
+    incomeEl.style.display = 'none';
+    return;
+  }
+  incomeEl.style.display = '';
+
+  // Measure actual rendered height of bullets element
+  // The .el height is fixed but the inner content may overflow — use scrollHeight
+  var bullInner = bullEl.querySelector('.el-inner');
+  var renderedH = bullInner ? Math.max(bullInner.scrollHeight, parseFloat(bullEl.style.height)||0) : (parseFloat(bullEl.style.height)||0);
+
+  // Get bullet paragraph spacing to use as gap
+  var bps = parseFloat(bullEl.dataset.bulletParaSpacing||'0') || 2;
+
+  var bullTop = parseFloat(bullEl.style.top)||0;
+  var newIncomeY = Math.round(bullTop + renderedH + bps);
+  incomeEl.style.top = newIncomeY + 'px';
+}
+
+// ── Rich text inline formatting ──────────────────────────────────────────────
+let _rtbEl = null; // currently editing inner element
+
+function rtCmd(cmd){
+  // If we have a stored selection range, restore it first (for props panel buttons)
+  if(_rtbEl && _savedRange){
+    _rtbEl.focus();
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(_savedRange);
+  } else if(_rtbEl){
+    _rtbEl.focus();
+  }
+  if(!_rtbEl) return;
+  document.execCommand(cmd, false, null);
+  updateRtbState();
+  // Save the rich HTML back to el dataset
+  var elParent = _rtbEl.closest('.el');
+  if(elParent) elParent.dataset.richHtml = _rtbEl.innerHTML;
+  debouncedPersist();
+}
+
+function updateRtbState(){
+  document.getElementById('rtb-bold').classList.toggle('active', document.queryCommandState('bold'));
+  document.getElementById('rtb-italic').classList.toggle('active', document.queryCommandState('italic'));
+  document.getElementById('rtb-under').classList.toggle('active', document.queryCommandState('underline'));
+}
+
+let _savedRange = null;
+
+function showRtb(inner){
+  _rtbEl = inner;
+  const tb = document.getElementById('rich-toolbar');
+  tb.classList.add('show');
+  positionRtb();
+}
+
+function saveSelectionRange(){
+  const sel = window.getSelection();
+  if(sel && sel.rangeCount > 0 && _rtbEl && _rtbEl.contains(sel.anchorNode)){
+    _savedRange = sel.getRangeAt(0).cloneRange();
+  }
+}
+
+function positionRtb(){
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const rect  = range.getBoundingClientRect();
+  if(!rect || rect.width === 0) return;
+  const tb = document.getElementById('rich-toolbar');
+  const tbW = tb.offsetWidth || 160;
+  let left = rect.left + rect.width/2 - tbW/2;
+  let top  = rect.top - 40;
+  if(top < 8) top = rect.bottom + 6;
+  if(left < 8) left = 8;
+  if(left + tbW > window.innerWidth - 8) left = window.innerWidth - tbW - 8;
+  tb.style.left = left + 'px';
+  tb.style.top  = top  + 'px';
+  updateRtbState();
+}
+
+function hideRtb(){
+  _rtbEl = null;
+  document.getElementById('rich-toolbar').classList.remove('show');
+}
+
+// Listen for selection changes to reposition toolbar
+document.addEventListener('selectionchange', function(){
+  if(!_rtbEl) return;
+  const sel = window.getSelection();
+  if(sel && !sel.isCollapsed && _rtbEl.contains(sel.anchorNode)){
+    positionRtb();
+  } else if(sel && sel.isCollapsed){
+    // Collapsed selection (just cursor) — hide toolbar
+    document.getElementById('rich-toolbar').classList.remove('show');
+    updateRtbState();
+  }
+});
+
+// Keyboard shortcuts for bold/italic/underline while editing
+function handleRtbKeydown(ev, inner){
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const mod = isMac ? ev.metaKey : ev.ctrlKey;
+  if(!mod) return;
+  if(ev.key === 'b'){ ev.preventDefault(); rtCmd('bold'); }
+  if(ev.key === 'i'){ ev.preventDefault(); rtCmd('italic'); }
+  if(ev.key === 'u'){ ev.preventDefault(); rtCmd('underline'); }
+}
 
 // ── Layer ordering ───────────────────────────────────────────────────────────
 function layerMove(direction){
