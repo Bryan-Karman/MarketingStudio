@@ -244,6 +244,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(5,this)">EDM</button>
     <button class="tab" onclick="switchTab(6,this)">LinkedIn</button>
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
+    <button class="tab" onclick="switchTab(8,this)">EDM - Asian Desk</button>
   </div>
   <div class="topbar-right">
     <span class="zoom-lbl">Zoom</span>
@@ -262,6 +263,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi5" checked="" onchange="toggleMITab(5,this)"><label for="mi5">EDM</label></div>
         <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">LinkedIn</label></div>
         <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">EDM - Asian Desk</label></div>
       </div>
     </div>
     <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard — paste into Claude to update the base template" style="display:none;">⊙ Copy Layout</button>
@@ -407,9 +409,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[60.5,105.5],[123,105.5],[297,420],[210,297],[420,297],[75,546.8],[317.5,317.5],[240,180]];
-const TAB_NAMES=['AFR2Mods','AFR4Mods','Auction','Brochure','Brochure2','EDM','LinkedIn','Signboard8x6'];
-const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800,800],[907,680]];
+const PDF_MM=[[60.5,105.5],[123,105.5],[297,420],[210,297],[420,297],[75,546.8],[317.5,317.5],[240,180],[75,546.8]];
+const TAB_NAMES=['AFR2Mods','AFR4Mods','Auction','Brochure','Brochure2','EDM','LinkedIn','Signboard8x6','EDMAsianDesk'];
+const SIZES=[[228,398],[464,398],[794,1123],[595,842],[1191,842],[212,1550],[800,800],[907,680],[212,1550]];
 
 
 // ═══════════════════════════════════
@@ -1652,6 +1654,7 @@ function globalSync(){
   document.querySelectorAll('.el[data-field]').forEach(el=>{
     const field=el.dataset.field;
     if(!field) return;
+    if(field.startsWith('zh_')) return; // Chinese tab — handled by syncEDMAsianDesk
     const val=getFieldVal(field);
     if(val===null) return;
     const inner=el.querySelector('.el-inner');
@@ -1678,6 +1681,7 @@ function globalSync(){
     if(!state) continue;
     state.forEach(sv=>{
       if(sv.type!=='text' || !sv.field) return;
+      if(sv.field.startsWith('zh_')) return; // Chinese tab — skip
       const val=getFieldVal(sv.field);
       if(val===null) return;
       // For combined agent elements, store name+phone together
@@ -1975,7 +1979,7 @@ function buildTemplate(idx){
   nextId=1;
   deselectAll();
   document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
-  [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][idx](s[0],s[1]);
+  [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard,buildEDMAsianDesk][idx](s[0],s[1]);
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
@@ -2169,6 +2173,55 @@ function buildEDM(W,H){
   mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 
+// ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
+function buildEDMAsianDesk(W,H){
+  mkI(0,41,212,150,'img1','Image',{z:2});
+  mkR(125,169,87,22,'rgb(0, 63, 45)',{z:4});
+  mkT(119,176,84,11,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'700',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'zh_banner',z:5});
+  mkR(0,0,213,464,'rgb(1, 42, 45)',{z:1});
+  mkR(12,209,3,127,'rgb(23, 232, 143)',{z:4});
+  mkT(30,206,174,50,'',{color:'rgb(255, 255, 255)',fontSize:'16px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_heading',z:4});
+  mkT(30,258,174,22,'',{color:'rgb(255, 255, 255)',fontSize:'13px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_subheading',z:4});
+  mkT(29,284,175,54,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_bullets',z:4});
+  mkT(29,342,175,14,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_income',z:4});
+  mkI(51,359,110,46,'logo','Image',{z:4});
+  mkT(12,424,188,16,'',{color:'rgb(255, 255, 255)',fontSize:'13px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_salemethod',z:4});
+  mkT(12,442,201,13,'',{color:'rgb(255, 255, 255)',fontSize:'9px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_saledate',z:4});
+  mkI(0,464,212,140,'img2','Image',{z:2});
+  mkR(0,604,212,44,'rgb(13, 42, 45)',{z:3});
+  mkR(12,614,3,24,'rgb(23, 232, 143)',{z:4});
+  mkT(27,613,179,16,gv('fa1')||'省/州',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_address1',z:4});
+  mkT(27,628,179,14,gv('fa2')||'详细地址',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_address2',z:4});
+  mkT(12,661,188,218,'',{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'6'});
+  mkI(0,872,212,130,'img3','Image',{z:2});
+  mkT(12,1014,157,34,'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3});
+  mkI(12,1055,40,40,'agent1photo','Image',{z:3});
+  mkT(65,1061,142,18,gv('fn1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3});
+  mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3});
+  mkI(12,1103,40,40,'agent2photo','Image',{z:3});
+  mkT(65,1109,142,18,gv('fn2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3});
+  mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3});
+  mkI(12,1151,40,40,'agent3photo','Image',{z:3});
+  mkT(65,1158,142,18,gv('fn3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3});
+  mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3});
+  mkI(12,1199,40,40,'agent4photo','Image',{z:3});
+  mkT(65,1206,142,18,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3});
+  mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3});
+  mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3});
+  mkT(21,1270,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn1',z:4});
+  (function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
+  mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3});
+  mkT(21,1308,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn2',z:4});
+  (function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
+  mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3});
+  mkT(21,1346,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4});
+  (function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } })();
+  mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3});
+  mkT(8,1431,196,60,'',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',field:'zh_disclaimer',z:3});
+  mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
+  mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
+  mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201});
+}
 // ─── LINKEDIN 800×800 ───
 function buildLinkedIn(W,H){
   mkR(0,0,800,376,'rgb(1, 42, 45)',{z:1});
@@ -2324,11 +2377,9 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
       'overflow:hidden',
       'z-index:-99999',
       'pointer-events:none',
-      'visibility:visible',
       'background:'+(tabIdx===4?DK:'#ffffff'),
     ].join(';');
     document.body.appendChild(offscreen);
-
     const prevNextId = nextId;
     const prevTab    = currentTab;
     nextId    = 1;
@@ -2450,7 +2501,7 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
         realArt.innerHTML = ''; nextId = 1;
         realArt.style.width = canvasW+'px'; realArt.style.height = canvasH+'px';
         realArt.style.background = tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
-        [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][tabIdx](canvasW,canvasH);
+        [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard,buildEDMAsianDesk][tabIdx](canvasW,canvasH);
         globalSync();
         offscreen.innerHTML = realArt.innerHTML;
         realArt.innerHTML = ph; realArt.style.width=pw; realArt.style.height=phh;
@@ -2551,7 +2602,10 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
     } catch(err){
       reject(err);
     } finally {
-      if(offscreen.parentNode) document.body.removeChild(offscreen);
+      // Remove offscreen div
+      if(offscreen && offscreen.parentNode) document.body.removeChild(offscreen);
+      // Clean up any other stuck offscreen divs
+      document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
       nextId     = prevNextId;
       currentTab = prevTab;
     }
@@ -2728,6 +2782,8 @@ function switchTab(idx, btn){
     buildTemplate(idx);
   }
   fitZoomToTab();
+  // When switching to Asian Desk tab, sync translations after canvas is ready
+  if(idx === 8) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
 }
 
 // ════════════════════════════════════════
@@ -2830,6 +2886,10 @@ function applyState(data, skipZoom=false){
     // EDM tab (5): always rebuild fresh from buildEDM so template updates
     // (logo colours, arrow icons etc) always take effect
     delete savedStates[5];
+    // Brochure tab (3): always rebuild fresh so layout stays current
+    delete savedStates[3];
+    // EDM Asian Desk tab (8): always rebuild fresh
+    delete savedStates[8];
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{ const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
@@ -3070,7 +3130,141 @@ function copyLayoutToClipboard(){
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
+// ════════════════════════════════════════
+// EDM ASIAN DESK — TRANSLATION ENGINE
+// ════════════════════════════════════════
+
+// Cache to avoid re-translating identical text
+const _zhCache = {};
+
+// Translate an array of English strings to Simplified Chinese via Anthropic API
+// Returns array of translated strings in same order
+async function translateBatch(texts){
+  // Not used - translation handled field by field in syncEDMAsianDesk
+  return texts;
+}
+
+// Fields to translate for the Asian Desk EDM (field key → sidebar element id)
+const ZH_FIELDS = [
+  {zhField:'zh_heading',       srcId:'fh'},
+  {zhField:'zh_subheading',    srcId:'fs'},
+  {zhField:'zh_banner',        srcId:'fb'},
+  {zhField:'zh_address1',      srcId:'fa1'},
+  {zhField:'zh_address2',      srcId:'fa2'},
+  {zhField:'zh_salemethod',    srcId:'fm'},
+  {zhField:'zh_saledate',      srcId:'fd'},
+  {zhField:'zh_bullets',       srcId:'fbull'},
+  {zhField:'zh_income',        srcId:'fi'},
+  {zhField:'zh_bodycopy',      srcId:'fbc',   bps:'6'},
+  // Static labels — always translated from fixed English source
+  {zhField:'zh_contact_label', srcStatic:'For more information contact the sales team'},
+  {zhField:'zh_btn1',          srcStatic:'Request Information Memorandum'},
+  {zhField:'zh_btn2',          srcStatic:'View Listing'},
+  {zhField:'zh_btn3',          srcStatic:'View Full Portfolio Line Up'},
+  {zhField:'zh_disclaimer',    srcStatic:'*All areas and figures are approximate only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.'},
+];
+
+let _zhSyncing = false;
+let _zhPending = false;
+
+async function syncEDMAsianDesk(){
+  if(_zhSyncing){ _zhPending = true; return; }
+  _zhSyncing = true;
+  setCdtStatus('saving', '翻译中…');
+
+  // Translate one string using Google Translate (works from any browser, no key)
+  async function zhTranslate(text){
+    if(!text || !text.trim()) return '';
+    if(_zhCache[text] !== undefined) return _zhCache[text];
+    try {
+      var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=' + encodeURIComponent(text);
+      var r = await fetch(url);
+      var data = await r.json();
+      // Response format: [[["translated","original",...]], ...]
+      var result = '';
+      if(data && data[0]){
+        data[0].forEach(function(chunk){ if(chunk && chunk[0]) result += chunk[0]; });
+      }
+      _zhCache[text] = result || text;
+      return _zhCache[text];
+    } catch(e){
+      console.warn('[ZH] translate failed:', text.slice(0,30), e);
+      _zhCache[text] = text;
+      return text;
+    }
+  }
+
+  // Apply translated value to canvas elements with matching zh_ field
+  function applyZh(zhField, val){
+    var art = document.getElementById('artwork');
+    if(!art || currentTab !== 8) return;
+    art.querySelectorAll('.el').forEach(function(el){
+      if(el.dataset.field !== zhField) return;
+      var inner = el.querySelector('.el-inner');
+      if(!inner) return;
+      if(el.dataset.bullets === '1'){
+        inner.textContent = val;
+        applyBullets(inner, true);
+        var sp = el.dataset.bulletParaSpacing || '6';
+        inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom = sp + 'px'; });
+      } else {
+        inner.textContent = val;
+      }
+      // Update savedStates[8] for PDF
+      if(savedStates[8]) savedStates[8].forEach(function(sv){
+        if(sv.field === zhField) sv.content = val;
+      });
+    });
+  }
+
+  try {
+    for(var n = 0; n < ZH_FIELDS.length; n++){
+      var f = ZH_FIELDS[n];
+      var src = f.srcStatic || '';
+      if(!src){
+        var el = document.getElementById(f.srcId);
+        src = el ? (el.value || '').trim() : '';
+      }
+      if(!src){ applyZh(f.zhField, ''); continue; }
+
+      // For multiline fields (bullets, bodycopy) translate line by line
+      var lines = src.split('\n');
+      var zhLines = [];
+      for(var li = 0; li < lines.length; li++){
+        var line = lines[li];
+        var trimmed = line.trim();
+        if(!trimmed){ zhLines.push(''); continue; }
+        // Strip leading bullet dash, translate clean text, re-add dash
+        var dash = '';
+        if(trimmed.startsWith('– ')){ dash = '– '; trimmed = trimmed.slice(2); }
+        else if(trimmed.startsWith('- ')){ dash = '– '; trimmed = trimmed.slice(2); }
+        var zhLine = await zhTranslate(trimmed);
+        zhLines.push(dash + zhLine);
+      }
+      var zhVal = zhLines.join('\n');
+      applyZh(f.zhField, zhVal);
+    }
+    setCdtStatus('saved', '翻译完成 ✓');
+  } catch(e){
+    console.warn('[CBRE] syncEDMAsianDesk error:', e);
+    setCdtStatus('error', '翻译失败');
+  }
+
+  _zhSyncing = false;
+  if(_zhPending){ _zhPending = false; syncEDMAsianDesk(); }
+}
+
+
+// Debounced version for field change triggers
+let _zhTimer = null;
+function debouncedZhSync(){
+  clearTimeout(_zhTimer);
+  _zhTimer = setTimeout(syncEDMAsianDesk, 800);
+}
+
 async function init(){
+  // Clean up any stuck offscreen divs from previous renders
+  document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
   setCdtStatus('saving','Loading…');
   let loaded=false;
   const cloudResult=await supabaseLoad();
@@ -3087,6 +3281,8 @@ async function init(){
   if(!loaded){ buildTemplate(0); setCdtStatus('saved','New project'); }
   fitZoomToTab();
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
+  // Trigger Chinese translation when relevant English fields change
+  document.querySelectorAll('#fh,#fs,#fb,#fa1,#fa2,#fm,#fd,#fbull,#fi,#fbc').forEach(el=>el.addEventListener('input', debouncedZhSync));
   document.getElementById('canvas-area').addEventListener('mouseup',debouncedPersist);
   document.getElementById('zoom-range').addEventListener('input',debouncedPersist);
   window.addEventListener('beforeunload',()=>{ clearTimeout(_persistTimer); try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){} });
@@ -3347,93 +3543,37 @@ async function downloadAllSelectedPDF(){
 // ── Also update showAllArtworks to only show selected tabs ────────────────────
 const _origShowAll = showAllArtworks;
 showAllArtworks = async function(){
-  // Only render selected (non-hidden) tabs
   savedStates[currentTab] = serializeTab();
-  const selectedIndices = getSelectedTabIndices();
-  const overlay = document.getElementById('all-overlay');
-  const grid = document.getElementById('all-grid');
-  overlay.style.display = 'block';
-  grid.innerHTML = '<div style="color:#888;font-size:13px;padding:20px;">Rendering selected artworks…</div>';
+  const indices = getSelectedTabIndices();
+  if(!indices.length){ alert('No marketing items selected.'); return; }
 
-  const tabNames = ['AFR 2 Mods','AFR 4 Mods','Auction Poster','Brochure','Brochure 2-Page','EDM','LinkedIn','Signboard 8x6'];
-  const origTab = currentTab;
-  const cards = [];
+  const btn = document.getElementById('view-all-tb-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Building…'; }
 
-  for(const i of selectedIndices){
-    try {
-      const [cw, ch] = SIZES[i];
-      const realArt = document.getElementById('artwork');
-      const canvasWrap = document.getElementById('canvas-wrap');
-      const prevHTML=realArt.innerHTML, prevW=realArt.style.width, prevH=realArt.style.height;
-      const prevBg=realArt.style.background, prevT=realArt.style.transform;
-      const prevNI=nextId;
-      realArt.style.width=cw+'px'; realArt.style.height=ch+'px';
-      realArt.style.background=i===4?DK:'#ffffff';
-      realArt.style.transform='none'; realArt.innerHTML=''; nextId=1;
-      const state=savedStates[i];
-      if(state&&state.length){
-        // Quick render from saved state
-        state.forEach(sv=>{
-          const el=document.createElement('div'); el.className='el';
-          el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';';
-          el.dataset.type=sv.type;
-          const inner=document.createElement('div'); inner.className='el-inner';
-          inner.style.cssText='position:absolute;inset:0;overflow:hidden;';
-          if(sv.innerStyle) inner.setAttribute('style',sv.innerStyle);
-          if(sv.type==='text'){
-            inner.style.overflow='hidden';
-            inner.textContent=sv.content||'';
-          } else if(sv.type==='img'){
-            const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
-            inner.style.background=isLogo?'transparent':'#c5ccc5';
-            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:sv.imgSrc;
-            if(src){
-              const imgEl=document.createElement('img'); imgEl.src=src;
-              imgEl.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:'+(isLogo?'contain':'cover')+';display:block;';
-              inner.appendChild(imgEl);
-            }
-          }
-          el.appendChild(inner); realArt.appendChild(el);
-        });
-      } else {
-        [buildAFR2,buildAFR4,buildAuction,buildBrochure1,buildBrochure2,buildEDM,buildLinkedIn,buildSignboard][i](cw,ch);
-      }
-      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const canvas=await html2canvas(realArt,{scale:1.5,useCORS:true,allowTaint:true,backgroundColor:i===4?DK:'#ffffff',logging:false,width:cw,height:ch,x:0,y:0});
-      realArt.innerHTML=prevHTML; nextId=prevNI;
-      realArt.style.width=prevW; realArt.style.height=prevH;
-      realArt.style.background=prevBg; realArt.style.transform=prevT;
-      cards.push({idx:i,name:tabNames[i],canvas,mm:PDF_MM[i]});
-    } catch(e){ cards.push({idx:i,name:tabNames[i],canvas:null,mm:PDF_MM[i]}); }
+  try {
+    const {jsPDF} = window.jspdf;
+    const first = indices[0];
+    const mm0 = PDF_MM[first];
+    const pdf = new jsPDF({
+      orientation: mm0[0]>mm0[1]?'landscape':'portrait',
+      unit:'mm', format:[mm0[0],mm0[1]]
+    });
+    for(let i=0; i<indices.length; i++){
+      const tabIdx = indices[i];
+      const mm = PDF_MM[tabIdx];
+      await renderTabToPdf(pdf, tabIdx, mm[0], mm[1], i > 0);
+    }
+    // Open PDF in new tab so user can view all pages side by side
+    const blob = pdf.output('blob');
+    const url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } catch(err){
+    alert('Error: '+err.message);
   }
 
-  // Restore current tab
-  if(savedStates[origTab]&&savedStates[origTab].length) restoreTab(origTab);
-  else buildTemplate(origTab);
-  currentTab=origTab;
-
-  grid.innerHTML='';
-  cards.forEach(({idx,name,canvas})=>{
-    const card=document.createElement('div');
-    card.style.cssText='background:#2a2a2a;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;';
-    const label=document.createElement('div');
-    label.style.cssText='padding:8px 10px;display:flex;align-items:center;justify-content:space-between;';
-    label.innerHTML='<span style="font-size:11px;font-weight:700;color:#ccc;text-transform:uppercase;letter-spacing:.05em;">'+name+'</span>'+
-      '<button onclick="downloadSingleFromOverlay('+idx+')" style="padding:3px 9px;font-size:10px;font-weight:700;background:var(--gb);color:#fff;border:none;border-radius:2px;cursor:pointer;">⬇ PDF</button>';
-    card.appendChild(label);
-    if(canvas){
-      const img=document.createElement('img'); img.src=canvas.toDataURL('image/png');
-      img.style.cssText='width:100%;display:block;object-fit:contain;';
-      card.appendChild(img);
-    } else {
-      const ph=document.createElement('div');
-      ph.style.cssText='height:160px;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px;';
-      ph.textContent='Could not render'; card.appendChild(ph);
-    }
-    grid.appendChild(card);
-  });
-  window._allCards=cards;
+  if(btn){ btn.disabled=false; btn.textContent='⊞ View All'; }
 };
+
 
 init().then(async()=>{
   await loadGlobalCharLimits();
