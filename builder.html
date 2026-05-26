@@ -18,7 +18,8 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;}
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--dk:#0d2b21;--g:#4a9b6f;--gb:#5bbf7a;}
-body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:#1c1c1c;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+html,body{height:100%;}
+body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:#1c1c1c;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 
 /* TOP BAR */
 .topbar{background:#111;border-bottom:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0;overflow:visible;}
@@ -51,7 +52,7 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .btn-tmpl:hover{background:#354872;color:#fff;}
 
 /* LAYOUT */
-.app{display:flex;flex:1;overflow:hidden;}
+.app{display:flex;flex:1;overflow:hidden;min-height:0;}
 
 /* LEFT SIDEBAR */
 .sb{width:250px;min-width:230px;background:#191919;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
@@ -515,19 +516,19 @@ function undoStep(){
 // Listen for Cmd+Z / Ctrl+Z globally
 document.addEventListener('keydown', function(e){
   const active = document.activeElement;
-  // Don't intercept when typing in a sidebar input, textarea, or inline contenteditable
-  if(active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
-  if(active && active.contentEditable === 'true') return;
+  const inField = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.contentEditable === 'true');
+  // Always let native behaviour through when user is typing in a field
+  if(inField) return;
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const undoKey = isMac ? (e.metaKey && e.key === 'z') : (e.ctrlKey && e.key === 'z');
   if(undoKey){ e.preventDefault(); undoStep(); }
-  // Copy — Cmd+C / Ctrl+C
+  // Copy — Cmd+C / Ctrl+C (canvas elements only)
   const copyKey = isMac ? (e.metaKey && e.key === 'c') : (e.ctrlKey && e.key === 'c');
   if(copyKey && (selectedEl || _selectedEls.length)){ e.preventDefault(); copySelected(); }
-  // Paste — Cmd+V / Ctrl+V
+  // Paste — Cmd+V / Ctrl+V (canvas elements only)
   const pasteKey = isMac ? (e.metaKey && e.key === 'v') : (e.ctrlKey && e.key === 'v');
   if(pasteKey){ e.preventDefault(); pasteSelected(); }
-  // Delete / Backspace
+  // Delete / Backspace (canvas elements only)
   if((e.key === 'Delete' || e.key === 'Backspace') && (selectedEl || _selectedEls.length)){
     e.preventDefault();
     deleteSelected();
@@ -2734,12 +2735,14 @@ function toggleMITab(idx,cb){
   const tabs=document.querySelectorAll('.tab'); const tab=tabs[idx]; if(!tab) return;
   if(!cb.checked){ _miHidden.add(idx); tab.style.display='none'; if(currentTab===idx){ for(let i=0;i<9;i++){if(!_miHidden.has(i)&&tabs[i]){switchTab(i,tabs[i]);break;}} } }
   else { _miHidden.delete(idx); tab.style.display=''; }
+  debouncedPersist();
 }
 
 function collectState(){
   savedStates[currentTab]=serializeTab();
   return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
+    miHidden:[..._miHidden],
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
       fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd'),fn1:gv('fn1'),fp1:gv('fp1'),fn2:gv('fn2'),fp2:gv('fp2'),fn3:gv('fn3'),fp3:gv('fp3'),fn4:gv('fn4'),fp4:gv('fp4')} };
@@ -2763,6 +2766,16 @@ function applyState(data,skipZoom=false){
     }
     if(!skipZoom&&data.zoom){document.getElementById('zoom-range').value=data.zoom;setZoom(data.zoom);}
     if(data.currentTab!=null){ currentTab=parseInt(data.currentTab)||0; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab)); }
+    // Restore hidden marketing items
+    if(data.miHidden && Array.isArray(data.miHidden)){
+      _miHidden = new Set(data.miHidden);
+      const tabs = document.querySelectorAll('.tab');
+      const cbs  = document.querySelectorAll('.mi-di input[type="checkbox"]');
+      _miHidden.forEach(function(idx){
+        if(tabs[idx]) tabs[idx].style.display = 'none';
+        if(cbs[idx])  cbs[idx].checked = false;
+      });
+    }
     return true;
   }catch(e){console.error('applyState failed',e);return false;}
 }
@@ -2986,14 +2999,20 @@ async function init(){
   let loaded=false;
   const cloudResult=await supabaseLoad();
   if(cloudResult&&applyState(cloudResult.state)){
-    if(savedStates[currentTab]&&savedStates[currentTab].length){restoreTab(currentTab);}else{buildTemplate(currentTab);}
     setCdtStatus('saved','Loaded ✓');_lastKnownUpdatedAt=cloudResult.updatedAt;loaded=true;
   }
   if(!loaded){
-    try{const raw=localStorage.getItem(LS_KEY);if(raw){const d=JSON.parse(raw);if(applyState(d)){if(savedStates[currentTab]&&savedStates[currentTab].length){restoreTab(currentTab);}else{buildTemplate(currentTab);}loaded=true;setCdtStatus('saved','Loaded (local)');}}}catch(e){}
+    try{const raw=localStorage.getItem(LS_KEY);if(raw){const d=JSON.parse(raw);if(applyState(d)){loaded=true;setCdtStatus('saved','Loaded (local)');}}}catch(e){}
   }
-  if(!loaded){buildTemplate(0);setCdtStatus('saved','New project');}
-  fitZoomToTab();
+  if(!loaded){setCdtStatus('saved','New project');}
+  // Always start on tab 0 (Brochure) with a clean render
+  currentTab=0;
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  // Use rAF to ensure DOM has laid out before building (fixes blank canvas on first load)
+  requestAnimationFrame(function(){
+    buildTemplate(0);
+    fitZoomToTab();
+  });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
   document.querySelectorAll('#fh,#fs,#fb,#fa1,#fa2,#fm,#fd,#fbull,#fi,#fbc').forEach(el=>el.addEventListener('input',debouncedZhSync));
@@ -3058,19 +3077,7 @@ function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopLiveSync();else startLiveSync();});
 
-document.addEventListener('keydown',function(e){
-  const isMac=navigator.platform.toUpperCase().indexOf('MAC')>=0;
-  const undoKey=isMac?(e.metaKey&&e.key==='z'):(e.ctrlKey&&e.key==='z');
-  if(undoKey){e.preventDefault();undoStep();}
-  const copyKey=isMac?(e.metaKey&&e.key==='c'):(e.ctrlKey&&e.key==='c');
-  if(copyKey&&(selectedEl||_selectedEls.length)){e.preventDefault();copySelected();}
-  const pasteKey=isMac?(e.metaKey&&e.key==='v'):(e.ctrlKey&&e.key==='v');
-  if(pasteKey){e.preventDefault();pasteSelected();}
-  if((e.key==='Delete'||e.key==='Backspace')&&(selectedEl||_selectedEls.length)){
-    if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.isContentEditable))return;
-    e.preventDefault();deleteSelected();
-  }
-});
+// keydown handled by main listener above
 
 async function downloadPDF(){
   const btn=document.getElementById('dlb');btn.disabled=true;btn.textContent='Generating…';
