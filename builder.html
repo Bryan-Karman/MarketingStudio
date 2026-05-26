@@ -353,6 +353,8 @@ Line five</textarea>
       <div class="fl"><label>Sale Date &amp; Details</label><input id="fd" value="Day Date Month Year" oninput="clEnforce('fd');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fd"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fd" placeholder="∞" oninput="clSetLimit('fd',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Agents</div>
+      <button onclick="testAgentsFetch()" style="width:100%;margin-bottom:6px;padding:5px;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:3px;font-size:10px;cursor:pointer;">⟳ Test DB Connection</button>
+      <div id="agent-debug" style="font-size:9px;color:#888;padding:3px;word-break:break-all;display:none;"></div>
       <!-- Hidden inputs — populated by agent selector JS, consumed by globalSync -->
       <input type="hidden" id="fn1"><input type="hidden" id="fp1">
       <input type="hidden" id="fn2"><input type="hidden" id="fp2">
@@ -3178,7 +3180,8 @@ init().then(async()=>{
   startLiveSync();
   await loadApprovalStatus();
 });
-</script></body></html// ── EDM Agent Repacking ──────────────────────────────────────────────────
+
+// ── EDM Agent Repacking ──────────────────────────────────────────────────
 // Hides empty agent slots and shifts elements below up
 function repackEDMAgents(){
   if(currentTab !== 2 && currentTab !== 3) return;
@@ -3216,5 +3219,51 @@ function repackEDMAgents(){
     }
   });
 }
+async function testAgentsFetch(){
+  const _url = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+  const _key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
+  const dbg = document.getElementById('agent-debug');
+  if(!dbg){ alert('Debug div not found'); return; }
+  dbg.style.display = 'block';
+  dbg.style.color = '#aaa';
+  dbg.textContent = 'Testing...';
+  try {
+    const res = await fetch(_url + '/rest/v1/agents?select=*&limit=20', {
+      headers: { 'apikey': _key, 'Authorization': 'Bearer ' + _key, 'Accept': 'application/json' }
+    });
+    const text = await res.text();
+    dbg.textContent = 'HTTP ' + res.status + ': ' + text.slice(0, 400);
+    try {
+      const rows = JSON.parse(text);
+      if(Array.isArray(rows)){
+        if(rows.length === 0){
+          dbg.textContent = 'Table exists but is EMPTY. Add agents in Supabase.';
+          dbg.style.color = '#fa0';
+        } else {
+          // Map columns flexibly
+          agentList = rows.map(function(a){
+            var keys = Object.keys(a);
+            return {
+              id: a.id || a[keys[0]],
+              name: a.name || a.Name || a.full_name || a.agent_name || a[keys[1]] || '',
+              phone: a.phone || a.Phone || a.mobile || a.number || a[keys[2]] || '',
+              photo: a.photo || a.Photo || a.image || a.photo_url || a.avatar || ''
+            };
+          });
+          dbg.style.color = '#5bbf7a';
+          dbg.textContent = 'SUCCESS! ' + agentList.length + ' agents: ' + agentList.map(function(a){return a.name+'('+Object.keys(rows[0]).join(',')+')';}).slice(0,2).join(' | ');
+          renderAgentBlocks();
+          syncAllAgentSlots();
+        }
+      } else {
+        dbg.style.color = '#f88';
+        dbg.textContent = 'Error: ' + JSON.stringify(rows).slice(0,300);
+      }
+    } catch(pe){ dbg.textContent += ' | JSON parse error: ' + pe.message; }
+  } catch(e) {
+    dbg.style.color = '#f88';
+    dbg.textContent = 'Fetch failed: ' + e.message;
+  }
+}
 
->
+</script></body></html>
