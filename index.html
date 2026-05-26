@@ -184,6 +184,8 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .card-btn-open:hover{background:var(--gb);}
 .card-btn-del{background:transparent;color:#c0392b;border:1px solid #e8c0c0;padding:4px 10px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;}
 .card-btn-del:hover{background:#c0392b;color:#fff;border-color:#c0392b;}
+.card-status-wrap{display:flex;align-items:center;gap:5px;margin-left:auto;}
+.card-status-label{font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;}
 .card-btn-del.hidden{display:none;}
 
 /* ── PROPERTIES LIST (inside portfolio) ── */
@@ -208,7 +210,7 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .property-card-body{padding:12px 14px;}
 .property-card-name{font-size:13px;font-weight:700;color:var(--text);}
 .property-card-meta{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
-.property-card-actions{padding:0 14px 12px;display:flex;gap:7px;}
+.property-card-actions{padding:0 14px 12px;display:flex;gap:7px;align-items:center;}
 
 /* ── MODAL ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;}
@@ -885,6 +887,11 @@ async function renderProperties(){
       </div>
       <div class="property-card-actions">
         <button class="card-btn card-btn-open" onclick="openBuilder('${pr.portfolioId}','${pr.id}')">Open Builder →</button>
+        <div class="card-status-wrap">
+          <span class="card-status-label">Status</span>
+          <span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;" title="In Progress"></span>
+          <span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>
+        </div>
         ${isAdmin ? `<button class="card-btn-del" onclick="deleteProperty(event,'${pr.portfolioId}','${pr.id}')">Delete</button>` : ''}
       </div>
     </div>
@@ -902,9 +909,15 @@ async function renderProperties(){
       // Show approval status dot
       const approvalStatus = rows[0].approval_status || 'in_progress';
       const dotEl = document.querySelector(`#pcard-${pr.id} .approval-dot`);
+      const txtEl = document.querySelector(`#pcard-${pr.id} .approval-status-txt`);
+      const isApproved = approvalStatus === 'approved';
       if(dotEl){
-        dotEl.style.background = approvalStatus === 'approved' ? '#1a7a3a' : '#b85c00';
-        dotEl.title = approvalStatus === 'approved' ? 'Approved' : 'In Progress';
+        dotEl.style.background = isApproved ? '#1a7a3a' : '#b85c00';
+        dotEl.title = isApproved ? 'Approved' : 'In Progress';
+      }
+      if(txtEl){
+        txtEl.textContent = isApproved ? 'Approved' : 'In Progress';
+        txtEl.style.color = isApproved ? '#1a7a3a' : '#b85c00';
       }
       if(!rows[0].state_json) return;
       const state = JSON.parse(rows[0].state_json);
