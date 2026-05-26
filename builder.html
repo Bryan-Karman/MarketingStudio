@@ -2850,22 +2850,48 @@ function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
 
 let agentList=[];
-let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''}];
+let agentSlots=[{mode:'custom',agentId:'',customName:'',customPhone:''},{mode:'custom',agentId:'',customName:'',customPhone:''},{mode:'custom',agentId:'',customName:'',customPhone:''},{mode:'custom',agentId:'',customName:'',customPhone:''}];
 
 async function loadAgents(){
-  try{
-    const rows=await fetch(`${SUPA_URL}/rest/v1/agents?select=id,name,phone,photo&order=name.asc`,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).then(r=>r.json());
-    if(Array.isArray(rows)) agentList=rows;
-  }catch(e){console.warn('[CBRE] Could not load agents:',e);}
+  try {
+    const rows = await fetch(`${SUPA_URL}/rest/v1/agents?select=id,name,phone,photo&order=name.asc`, {
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    }).then(r=>r.json());
+    if(Array.isArray(rows)) agentList = rows;
+  } catch(e){ console.warn('[CBRE] Could not load agents:', e); }
   renderAgentBlocks();
 }
 
 function renderAgentBlocks(){
-  const wrap=document.getElementById('agent-blocks-wrap'); if(!wrap) return;
-  wrap.innerHTML=agentSlots.map((slot,i)=>{
-    const num=i+1,isDb=slot.mode==='db',agent=agentList.find(a=>a.id===slot.agentId);
-    const optionsHtml='<option value="">— None —</option>'+agentList.map(a=>`<option value="${a.id}" ${slot.agentId===a.id?'selected':''}>${escAgt(a.name)}</option>`).join('');
-    return `<div class="agent-block"><div class="agent-block-head"><span class="agent-block-label">Agent ${num}</span><div class="agent-mode-toggle"><button class="agent-mode-btn ${isDb?'active':''}" onclick="setAgentMode(${i},'db')">DB</button><button class="agent-mode-btn ${!isDb?'active':''}" onclick="setAgentMode(${i},'custom')">Custom</button></div></div>${isDb?`<select class="agent-select" onchange="selectAgent(${i},this.value)">${optionsHtml}</select>${agent?`<div class="agent-preview">${agent.photo?`<img class="agent-thumb" src="${agent.photo}">`:'<div class="agent-thumb"></div>'}<div class="agent-preview-info"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}</div></div>`:''}`:`<div class="agent-custom-fields"><input type="text" placeholder="Name" value="${escAgt(slot.customName)}" oninput="setCustomAgent(${i},'name',this.value)"><input type="text" placeholder="Phone" value="${escAgt(slot.customPhone)}" oninput="setCustomAgent(${i},'phone',this.value)"></div>`}</div>`;
+  const wrap = document.getElementById('agent-blocks-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = agentSlots.map((slot, i) => {
+    const num = i+1;
+    const isDb = slot.mode === 'db';
+    const agent = agentList.find(a => a.id === slot.agentId);
+    const optionsHtml = '<option value="">— None —</option>' +
+      agentList.map(a => `<option value="${a.id}" ${slot.agentId===a.id?'selected':''}>${escAgt(a.name)}</option>`).join('');
+    return `<div class="agent-block">
+      <div class="agent-block-head">
+        <span class="agent-block-label">Agent ${num}</span>
+        <div class="agent-mode-toggle">
+          <button class="agent-mode-btn ${isDb?'active':''}" onclick="setAgentMode(${i},'db')">DB</button>
+          <button class="agent-mode-btn ${!isDb?'active':''}" onclick="setAgentMode(${i},'custom')">Custom</button>
+        </div>
+      </div>
+      ${isDb ? `
+        <select class="agent-select" onchange="selectAgent(${i},this.value)">${optionsHtml}</select>
+        ${agent ? `<div class="agent-preview">
+          ${agent.photo ? `<img class="agent-thumb" src="${agent.photo}">` : '<div class="agent-thumb"></div>'}
+          <div class="agent-preview-info"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}</div>
+        </div>` : ''}
+      ` : `
+        <div class="agent-custom-fields">
+          <input type="text" placeholder="Name" value="${escAgt(slot.customName)}" oninput="setCustomAgent(${i},'name',this.value)">
+          <input type="text" placeholder="Phone" value="${escAgt(slot.customPhone)}" oninput="setCustomAgent(${i},'phone',this.value)">
+        </div>
+      `}
+    </div>`;
   }).join('');
   syncAllAgentSlots();
 }
@@ -2873,15 +2899,15 @@ function renderAgentBlocks(){
 function escAgt(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function setAgentMode(i,mode){agentSlots[i].mode=mode;if(mode==='db'){agentSlots[i].customName='';agentSlots[i].customPhone='';}else{agentSlots[i].agentId='';}syncAgentSlot(i);renderAgentBlocks();}
 function selectAgent(i,agentId){agentSlots[i].agentId=agentId;syncAgentSlot(i);renderAgentBlocks();}
-function setCustomAgent(i,field,val){if(field==='name')agentSlots[i].customName=val;else agentSlots[i].customPhone=val;syncAgentSlot(i);}
+function setCustomAgent(i,field,val){if(field==='name')agentSlots[i].customName=val;else agentSlots[i].customPhone=val;syncAgentSlot(i);debouncedPersist();}
 
 function syncAgentSlot(i){
   const slot=agentSlots[i],num=i+1;
   const nameEl=document.getElementById('fn'+num),phoneEl=document.getElementById('fp'+num);
   const photoKey='agent'+num+'photo';
   let name='',phone='',photo='';
-  if(slot.mode==='db'&&slot.agentId){const agent=agentList.find(a=>a.id===slot.agentId);if(agent){name=agent.name||'';phone=agent.phone||'';photo=agent.photo||'';}}
-  else if(slot.mode==='custom'){name=slot.customName||'';phone=slot.customPhone||'';}
+  if(slot.mode==='db'&&slot.agentId&&agentList.length){const agent=agentList.find(a=>a.id===slot.agentId);if(agent){name=agent.name||'';phone=agent.phone||'';photo=agent.photo||'';}}
+  else {name=slot.customName||'';phone=slot.customPhone||'';}
   if(nameEl)nameEl.value=name;if(phoneEl)phoneEl.value=phone;
   assets[photoKey]=photo;
   document.querySelectorAll(`.el[data-asset-key="${photoKey}"]`).forEach(el=>{
@@ -2907,7 +2933,7 @@ function syncAllAgentSlots(){agentSlots.forEach((_,i)=>syncAgentSlot(i));}
 const _origCollectState2=collectState;
 collectState=function(){const state=_origCollectState2();state.agentSlots=agentSlots.map(s=>({...s}));return state;};
 const _origApplyState2=applyState;
-applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i])agentSlots[i]={...s};});syncAllAgentSlots();renderAgentBlocks();}return result;};
+applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i]){const slot={...s};if(!agentList.length)slot.mode='custom';agentSlots[i]=slot;}});syncAllAgentSlots();renderAgentBlocks();}return result;};
 
 function copyLayoutToClipboard(){
   const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
