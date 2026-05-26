@@ -358,9 +358,7 @@ Line five</textarea>
       <input type="hidden" id="fn2"><input type="hidden" id="fp2">
       <input type="hidden" id="fn3"><input type="hidden" id="fp3">
       <input type="hidden" id="fn4"><input type="hidden" id="fp4">
-      <div id="agent-blocks-wrap" style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:10px;color:#555;padding:4px 0;">Loading agents…</div>
-      </div>
+      <div id="agent-blocks-wrap" style="display:flex;flex-direction:column;gap:6px;"></div>
       <div class="sec">Assets</div>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo 1</label>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo2')">+ Upload Logo 2</label>
@@ -2850,16 +2848,22 @@ function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
 
 let agentList=[];
-let agentSlots=[{mode:'custom',agentId:'',customName:'',customPhone:''},{mode:'custom',agentId:'',customName:'',customPhone:''},{mode:'custom',agentId:'',customName:'',customPhone:''},{mode:'custom',agentId:'',customName:'',customPhone:''}];
+let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''}];
 
 async function loadAgents(){
   try {
     const rows = await fetch(`${SUPA_URL}/rest/v1/agents?select=id,name,phone,photo&order=name.asc`, {
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     }).then(r=>r.json());
-    if(Array.isArray(rows)) agentList = rows;
+    if(Array.isArray(rows)){
+      agentList = rows;
+      console.log('[CBRE] Agents loaded:', agentList.length);
+    }
   } catch(e){ console.warn('[CBRE] Could not load agents:', e); }
+  // Re-render now that DB agents are available - dropdown will populate
   renderAgentBlocks();
+  // Also sync so canvas reflects any DB agent selections
+  syncAllAgentSlots();
 }
 
 function renderAgentBlocks(){
@@ -2933,7 +2937,7 @@ function syncAllAgentSlots(){agentSlots.forEach((_,i)=>syncAgentSlot(i));}
 const _origCollectState2=collectState;
 collectState=function(){const state=_origCollectState2();state.agentSlots=agentSlots.map(s=>({...s}));return state;};
 const _origApplyState2=applyState;
-applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i]){const slot={...s};if(!agentList.length)slot.mode='custom';agentSlots[i]=slot;}});syncAllAgentSlots();renderAgentBlocks();}return result;};
+applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i])agentSlots[i]={...s};});syncAllAgentSlots();renderAgentBlocks();}return result;};
 
 function copyLayoutToClipboard(){
   const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
@@ -3163,6 +3167,9 @@ showAllArtworks=async function(){
   if(btn){btn.disabled=false;btn.textContent='⊞ View All';}
 };
 
+// Render agent blocks immediately with custom inputs so UI is never blank
+renderAgentBlocks();
+
 init().then(async()=>{
   await loadGlobalCharLimits();
   await loadAgents();
@@ -3171,4 +3178,43 @@ init().then(async()=>{
   startLiveSync();
   await loadApprovalStatus();
 });
-</script></body></html>
+</script></body></html// ── EDM Agent Repacking ──────────────────────────────────────────────────
+// Hides empty agent slots and shifts elements below up
+function repackEDMAgents(){
+  if(currentTab !== 2 && currentTab !== 3) return;
+  const art = document.getElementById('artwork');
+  if(!art) return;
+  const agentActive = [1,2,3,4].map(function(n){
+    var v = (document.getElementById('fn'+n)||{}).value||'';
+    return v.trim().length > 0;
+  });
+  const SLOT_H = 48;
+  const AFTER_Y = 1260;
+  var hiddenCount = agentActive.filter(function(a){return !a;}).length;
+  var shift = hiddenCount * SLOT_H;
+  art.querySelectorAll('.el').forEach(function(el){
+    var ey = parseFloat(el.style.top)||0;
+    var field = el.dataset.field||'';
+    var ak = el.dataset.assetKey||'';
+    var slotNum = 0;
+    if(ak==='agent1photo'||field==='agent1name'||field==='agent1num') slotNum=1;
+    else if(ak==='agent2photo'||field==='agent2name'||field==='agent2num') slotNum=2;
+    else if(ak==='agent3photo'||field==='agent3name'||field==='agent3num') slotNum=3;
+    else if(ak==='agent4photo'||field==='agent4name'||field==='agent4num') slotNum=4;
+    if(slotNum > 0){
+      var isActive = agentActive[slotNum-1];
+      el.style.visibility = isActive ? '' : 'hidden';
+      el.style.pointerEvents = isActive ? '' : 'none';
+      if(isActive){
+        var activesBefore = agentActive.slice(0,slotNum-1).filter(Boolean).length;
+        var hiddenBefore = (slotNum-1) - activesBefore;
+        var baseY = [1055,1103,1151,1199][slotNum-1];
+        el.style.top = (baseY - hiddenBefore*SLOT_H) + 'px';
+      }
+    } else if(ey >= AFTER_Y - 5){
+      el.style.top = (ey - shift) + 'px';
+    }
+  });
+}
+
+>
