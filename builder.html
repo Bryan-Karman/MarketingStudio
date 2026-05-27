@@ -359,7 +359,9 @@ Line five</textarea>
       <input type="hidden" id="fn2"><input type="hidden" id="fp2">
       <input type="hidden" id="fn3"><input type="hidden" id="fp3">
       <input type="hidden" id="fn4"><input type="hidden" id="fp4">
-      <div id="agent-blocks-wrap" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="agent-blocks-wrap" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:10px;color:#666;padding:4px 0;">Loading agents…</div>
+      </div>
       <div class="sec">Assets</div>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo 1</label>
       <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo2')">+ Upload Logo 2</label>
@@ -2755,7 +2757,8 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
-    delete savedStates[2]; delete savedStates[3]; // EDM tabs always rebuild fresh
+    // Clear ALL tab layouts so old saved indices don't corrupt new tab order
+    savedStates = {};
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
@@ -2849,20 +2852,12 @@ function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
 
 let agentList=[];
+let _pendingAgentSlots=null;
 let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''}];
 
 async function loadAgents(){
-  try {
-    const rows = await fetch(`${SUPA_URL}/rest/v1/agents?select=id,name,phone,photo&order=name.asc`, {
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Accept':'application/json'}
-    }).then(r=>r.json());
-    if(Array.isArray(rows)){
-      agentList = rows;
-      console.log('[CBRE] Agents loaded:', agentList.length);
-    }
-  } catch(e){ console.warn('[CBRE] Could not load agents:', e); }
+  // Agents already fetched in init() - just re-render to ensure UI is current
   renderAgentBlocks();
-  syncAllAgentSlots();
 }
 
 function renderAgentBlocks(){
@@ -2872,7 +2867,7 @@ function renderAgentBlocks(){
     const num = i+1;
     const isDb = slot.mode === 'db';
     const agent = agentList.find(a => a.id === slot.agentId);
-    const optionsHtml = '<option value="">— None —</option>' +
+    const optionsHtml = '<option value="">\u2014 None \u2014</option>' +
       agentList.map(a => `<option value="${a.id}" ${slot.agentId===a.id?'selected':''}>${escAgt(a.name)}</option>`).join('');
     return `<div class="agent-block">
       <div class="agent-block-head">
@@ -2896,28 +2891,27 @@ function renderAgentBlocks(){
       `}
     </div>`;
   }).join('');
-  syncAllAgentSlots();
 }
 
-function escAgt(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
-function setAgentMode(i,mode){agentSlots[i].mode=mode;if(mode==='db'){agentSlots[i].customName='';agentSlots[i].customPhone='';}else{agentSlots[i].agentId='';}syncAgentSlot(i);renderAgentBlocks();}
-function selectAgent(i,agentId){agentSlots[i].agentId=agentId;syncAgentSlot(i);renderAgentBlocks();}
-function setCustomAgent(i,field,val){if(field==='name')agentSlots[i].customName=val;else agentSlots[i].customPhone=val;syncAgentSlot(i);debouncedPersist();}
+function escAgt(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function setAgentMode(i, mode){ agentSlots[i].mode=mode; if(mode==='db'){agentSlots[i].customName='';agentSlots[i].customPhone='';}else{agentSlots[i].agentId='';} syncAgentSlot(i); renderAgentBlocks(); }
+function selectAgent(i, agentId){ agentSlots[i].agentId=agentId; syncAgentSlot(i); renderAgentBlocks(); }
+function setCustomAgent(i, field, val){ if(field==='name') agentSlots[i].customName=val; else agentSlots[i].customPhone=val; syncAgentSlot(i); }
 
 function syncAgentSlot(i){
-  const slot=agentSlots[i],num=i+1;
-  const nameEl=document.getElementById('fn'+num),phoneEl=document.getElementById('fp'+num);
+  const slot=agentSlots[i]; const num=i+1;
+  const nameEl=document.getElementById('fn'+num); const phoneEl=document.getElementById('fp'+num);
   const photoKey='agent'+num+'photo';
   let name='',phone='',photo='';
-  if(slot.mode==='db'&&slot.agentId&&agentList.length){const agent=agentList.find(a=>a.id===slot.agentId);if(agent){name=agent.name||'';phone=agent.phone||'';photo=agent.photo||'';}}
-  else {name=slot.customName||'';phone=slot.customPhone||'';}
-  if(nameEl)nameEl.value=name;if(phoneEl)phoneEl.value=phone;
+  if(slot.mode==='db'&&slot.agentId){ const agent=agentList.find(a=>a.id===slot.agentId); if(agent){name=agent.name||'';phone=agent.phone||'';photo=agent.photo||'';} }
+  else if(slot.mode==='custom'){ name=slot.customName||''; phone=slot.customPhone||''; }
+  if(nameEl) nameEl.value=name; if(phoneEl) phoneEl.value=phone;
   assets[photoKey]=photo;
   document.querySelectorAll(`.el[data-asset-key="${photoKey}"]`).forEach(el=>{
-    const img=el.querySelector('img'),ph=el.querySelector('.img-ph-txt'),inner=el.querySelector('.el-inner');
-    if(inner)inner.style.background=photo?'transparent':'#c5ccc5';
+    const img=el.querySelector('img'); const ph=el.querySelector('.img-ph-txt'); const inner=el.querySelector('.el-inner');
+    if(inner) inner.style.background=photo?'transparent':'#c5ccc5';
     if(img){img.src=photo||'';img.style.display=photo?'':'none';img.style.objectFit='cover';}
-    if(ph)ph.style.display=photo?'none':'';
+    if(ph) ph.style.display=photo?'none':'';
   });
   globalSync();
   repackEDMAgents();
@@ -2925,18 +2919,18 @@ function syncAgentSlot(i){
   const phoneField=['fp1','fp2','fp3','fp4'][i];
   const agentNum=i+1;
   document.querySelectorAll('.el[data-combined-agent="1"][data-field="'+agentField+'"]').forEach(function(el){
-    const inner=el.querySelector('.el-inner');if(!inner)return;
-    const n=gv('fn'+agentNum),p=gv(phoneField);
+    const inner=el.querySelector('.el-inner'); if(!inner) return;
+    const n=gv('fn'+agentNum); const p=gv(phoneField);
     inner.textContent=(n&&p)?n+' '+p:(n||'');
   });
   debouncedPersist();
 }
-function syncAllAgentSlots(){agentSlots.forEach((_,i)=>syncAgentSlot(i));}
+function syncAllAgentSlots(){ agentSlots.forEach((_,i)=>syncAgentSlot(i)); }
 
 const _origCollectState2=collectState;
 collectState=function(){const state=_origCollectState2();state.agentSlots=agentSlots.map(s=>({...s}));return state;};
 const _origApplyState2=applyState;
-applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){data.agentSlots.forEach((s,i)=>{if(agentSlots[i])agentSlots[i]={...s};});syncAllAgentSlots();renderAgentBlocks();}return result;};
+applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){_pendingAgentSlots=data.agentSlots;}return result;};
 
 function copyLayoutToClipboard(){
   const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
@@ -3026,6 +3020,13 @@ async function init(){
   document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
   setCdtStatus('saving','Loading…');
   let loaded=false;
+  // Fetch agents FIRST so dropdown is populated when UI renders
+  try{
+    const _ar=await fetch(SUPA_URL+'/rest/v1/agents?select=id,name,phone,photo&order=name.asc',
+      {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).then(r=>r.json());
+    if(Array.isArray(_ar)) agentList=_ar;
+    console.log('[CBRE] Agents pre-loaded:',agentList.length);
+  }catch(_ae){console.warn('[CBRE] Agent pre-load failed:',_ae);}
   const cloudResult=await supabaseLoad();
   if(cloudResult&&applyState(cloudResult.state)){
     setCdtStatus('saved','Loaded ✓');_lastKnownUpdatedAt=cloudResult.updatedAt;loaded=true;
@@ -3034,6 +3035,11 @@ async function init(){
     try{const raw=localStorage.getItem(LS_KEY);if(raw){const d=JSON.parse(raw);if(applyState(d)){loaded=true;setCdtStatus('saved','Loaded (local)');}}}catch(e){}
   }
   if(!loaded){setCdtStatus('saved','New project');}
+  // Apply any pending agent slots now that agentList is populated
+  if(_pendingAgentSlots){
+    _pendingAgentSlots.forEach((s,i)=>{if(agentSlots[i])agentSlots[i]={...s};});
+    _pendingAgentSlots=null;
+  }
   // Restore saved tab, or default to tab 0
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab));
   requestAnimationFrame(function(){
@@ -3043,6 +3049,7 @@ async function init(){
       buildTemplate(currentTab);
     }
     fitZoomToTab();
+    renderAgentBlocks();
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
@@ -3167,9 +3174,6 @@ showAllArtworks=async function(){
   }catch(err){alert('Error: '+err.message);}
   if(btn){btn.disabled=false;btn.textContent='⊞ View All';}
 };
-
-// Render agent blocks immediately with custom inputs so UI is never blank
-renderAgentBlocks();
 
 init().then(async()=>{
   await loadGlobalCharLimits();
