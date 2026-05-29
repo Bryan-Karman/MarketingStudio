@@ -193,7 +193,7 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .breadcrumb a{color:var(--g);cursor:pointer;font-weight:700;text-decoration:none;}
 .breadcrumb a:hover{text-decoration:underline;}
 .breadcrumb-sep{color:var(--border);}
-.property-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.property-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}.property-list.list-view{display:flex;flex-direction:column;gap:0;width:100%;}
 .property-list.list-view{display:flex;flex-direction:column;gap:0;}
 .property-list.list-view .property-card{display:flex;flex-direction:row;align-items:center;border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border);box-shadow:none;gap:0;}
 .property-list.list-view .property-card:first-child{border-top:1px solid var(--border);}
@@ -941,7 +941,6 @@ async function deletePortfolio(e, id){
 // ═══════════════════════════════════════════════════════════════
 // PROPERTIES
 // ═══════════════════════════════════════════════════════════════
-async 
 let _viewMode = 'grid';
 
 function setViewMode(mode){
@@ -1014,7 +1013,7 @@ async function renderProperties(){
 
   // Render cards based on current view mode
   const _isList = _viewMode === 'list';
-  list.className = 'property-list'; // list-view handled via _isList inline styles
+  list.className = _isList ? 'property-list list-view' : 'property-list';
   function _pn(pr){ return escHtml(((portfolios||[]).find(function(p){return p.id===pr.portfolioId;})||{}).name||''); }
   function _sb(pr){ return pr.state ? '<span style="font-size:9px;font-weight:700;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:2px;padding:1px 5px;flex-shrink:0;">'+escHtml(pr.state)+'</span>' : ''; }
   function _pc(pr){ if(!isAdmin) return ''; return '<span data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" onclick="openRenameProperty(this)" style="cursor:pointer;color:#888;font-size:13px;padding:2px 3px;flex-shrink:0;" title="Rename">✎</span>'; }
@@ -1027,16 +1026,20 @@ async function renderProperties(){
     const metaRow = '<div class="property-card-meta">'+_pn(pr)+'</div>';
     const statusWrap = '<div class="card-status-wrap"><span class="card-status-label">Status</span>'+_dot+_stxt+'</div>';
     if(_isList){
-      return '<div class="property-card" id="pcard-'+pr.id+'" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="display:flex;flex-direction:row;align-items:center;padding:0;border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border);box-shadow:none;">'
-        +'<div class="prop-list-body" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex:1;padding:10px 14px;min-width:0;cursor:pointer;">'
-        +'<div style="font-size:13px;font-weight:600;color:var(--text);">'+nameRow+'</div>'
-        +'<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">'+_pn(pr)+'</div>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0;">'
-        +statusWrap
-        +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="font-size:10px;padding:4px 10px;">Open →</button>'
-        +_del(pr)
-        +'</div></div>';
+      var _listRow = '<div id="pcard-'+pr.id+'" style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--card);">';
+      _listRow += '<div style="flex:1;min-width:0;overflow:hidden;">';
+      _listRow += '<div style="display:flex;align-items:center;gap:6px;">';
+      _listRow += '<span style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(pr.name)+'</span>';
+      _listRow += _sb(pr)+_pc(pr);
+      _listRow += '</div>';
+      _listRow += '<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">'+_pn(pr)+'</div>';
+      _listRow += '</div>';
+      _listRow += '<span class="approval-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#b85c00;flex-shrink:0;"></span>';
+      _listRow += '<span class="approval-status-txt" style="font-size:10px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;">In Progress</span>';
+      _listRow += '<button class="prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex-shrink:0;padding:5px 14px;background:#003f2d;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Open →</button>';
+      _listRow += _del(pr);
+      _listRow += '</div>';
+      return _listRow;
     } else {
       return '<div class="property-card" id="pcard-'+pr.id+'">'
         +'<div class="property-card-thumb prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="cursor:pointer;">'
@@ -1054,7 +1057,7 @@ async function renderProperties(){
         +'</div></div>';
     }
   }).join('');
-  if(_isList){ const fc=list.querySelector('.property-card'); if(fc) fc.style.borderTop='1px solid var(--border)'; }
+  if(_isList){ list.style.borderTop='1px solid var(--border)'; } else { list.style.borderTop=''; }
 
   // Fetch hero images for each property in parallel
   await Promise.all(props.map(async pr => {
