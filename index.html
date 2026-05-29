@@ -1028,37 +1028,49 @@ async function renderProperties(){
   }
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  // Render cards immediately with placeholder thumbs, then load hero images async
-  list.innerHTML = props.map(pr => `
-    <div class="property-card" id="pcard-${pr.id}">
-      <div class="property-card-thumb" onclick="openBuilder('${pr.portfolioId}','${pr.id}')">
-        <div class="property-card-thumb-label" id="pthumb-label-${pr.id}">Marketing Studio</div>
-        <div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>
-        <div class="property-thumb-bar"></div>
-      </div>
-      <div class="property-card-body">
-        <div class="property-card-name" style="display:flex;align-items:center;gap:6px;">
-          <span>${escHtml(pr.name)}</span>
-          ${pr.state ? `<span style="font-size:9px;font-weight:700;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:2px;padding:1px 5px;flex-shrink:0;">${escHtml(pr.state)}</span>` : ''}
-          ${isAdmin ? `<span title="Rename" data-pid="${pr.portfolioId}" data-id="${pr.id}" onclick="openRenameProperty(this)" style="cursor:pointer;color:#555;font-size:13px;line-height:1;padding:2px 3px;border-radius:2px;flex-shrink:0;" onmouseover="this.style.color='#5bbf7a'" onmouseout="this.style.color='#555'">✎</span>` : ''}
-        </div>
-        <div class="property-card-meta">${escHtml(portfolios.find(p=>p.id===pr.portfolioId)?.name||'')}</div>
-      </div>
-      <div class="property-card-actions">
-        <button class="card-btn card-btn-open" onclick="openBuilder('${pr.portfolioId}','${pr.id}')">Open Builder →</button>
-        <div class="card-status-wrap">
-          <span class="card-status-label">Status</span>
-          <span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;" title="In Progress"></span>
-          <span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>
-        </div>
+  // Render cards based on current view mode
+  const _isList = _viewMode === 'list';
+  list.className = _isList ? 'property-list list-view' : 'property-list';
+  function _pn(pr){ return escHtml(((portfolios||[]).find(function(p){return p.id===pr.portfolioId;})||{}).name||''); }
+  function _sb(pr){ return pr.state ? '<span style="font-size:9px;font-weight:700;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:2px;padding:1px 5px;flex-shrink:0;">'+escHtml(pr.state)+'</span>' : ''; }
+  function _pc(pr){ if(!isAdmin) return ''; return '<span data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" onclick="openRenameProperty(this)" style="cursor:pointer;color:#888;font-size:13px;padding:2px 3px;flex-shrink:0;" title="Rename">✎</span>'; }
+  function _del(pr){ if(!isAdmin) return ''; return '<button class="card-btn-del" onclick="deleteProperty(event,\'' + pr.portfolioId + '\',\''+pr.id+'\')">Delete</button>'; }
+  var _dot = '<span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;"></span>';
+  var _stxt = '<span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>';
 
-        ${isAdmin ? `<button class="card-btn-del" onclick="deleteProperty(event,'${pr.portfolioId}','${pr.id}')">Delete</button>` : ''}
-      </div>
-    </div>
-  `).join('');
-
-  // Reapply current view mode
-  setViewMode(_viewMode);
+  list.innerHTML = props.map(pr => {
+    const nameRow = '<div style="display:flex;align-items:center;gap:6px;"><span>'+escHtml(pr.name)+'</span>'+_sb(pr)+_pc(pr)+'</div>';
+    const metaRow = '<div class="property-card-meta">'+_pn(pr)+'</div>';
+    const statusWrap = '<div class="card-status-wrap"><span class="card-status-label">Status</span>'+_dot+_stxt+'</div>';
+    if(_isList){
+      return '<div class="property-card" id="pcard-'+pr.id+'" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="display:flex;flex-direction:row;align-items:center;padding:0;border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border);box-shadow:none;">'
+        +'<div class="prop-list-body" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex:1;padding:10px 14px;min-width:0;cursor:pointer;">'
+        +'<div style="font-size:13px;font-weight:600;color:var(--text);">'+nameRow+'</div>'
+        +'<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">'+_pn(pr)+'</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0;">'
+        +statusWrap
+        +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="font-size:10px;padding:4px 10px;">Open →</button>'
+        +_del(pr)
+        +'</div></div>';
+    } else {
+      return '<div class="property-card" id="pcard-'+pr.id+'">'
+        +'<div class="property-card-thumb prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="cursor:pointer;">'
+        +'<div class="property-card-thumb-label" id="pthumb-label-'+pr.id+'">Marketing Studio</div>'
+        +'<div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>'
+        +'<div class="property-thumb-bar"></div>'
+        +'</div>'
+        +'<div class="property-card-body">'
+        +'<div class="property-card-name">'+nameRow+'</div>'
+        +metaRow
+        +'</div>'
+        +'<div class="property-card-actions">'
+        +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">Open Builder →</button>'
+        +statusWrap+_del(pr)
+        +'</div></div>';
+    }
+  }).join('');
+  if(_isList){ const fc=list.querySelector('.property-card'); if(fc) fc.style.borderTop='1px solid var(--border)'; }
 
   // Fetch hero images for each property in parallel
   await Promise.all(props.map(async pr => {
