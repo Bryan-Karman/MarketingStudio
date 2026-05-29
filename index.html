@@ -194,6 +194,17 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .breadcrumb a:hover{text-decoration:underline;}
 .breadcrumb-sep{color:var(--border);}
 .property-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.property-list.list-view{display:flex;flex-direction:column;gap:0;}
+.property-list.list-view .property-card{display:flex;flex-direction:row;align-items:center;border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border);box-shadow:none;gap:0;}
+.property-list.list-view .property-card:first-child{border-top:1px solid var(--border);}
+.property-list.list-view .property-card-thumb{display:none;}
+.property-list.list-view .property-card-body{flex:1;padding:9px 14px;min-width:0;}
+.property-list.list-view .property-card-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.property-list.list-view .property-card-meta{font-size:11px;}
+.property-list.list-view .property-card-actions{display:flex;flex-direction:row;align-items:center;gap:8px;padding:0 12px;border-top:none;flex-shrink:0;}
+.property-list.list-view .card-btn-open{white-space:nowrap;font-size:10px;padding:4px 10px;}
+.property-list.list-view .card-status-wrap{font-size:10px;}
+.property-list.list-view .card-btn-del{font-size:10px;padding:3px 8px;}
 .property-card{
   background:var(--card);border:1px solid var(--border);border-radius:4px;
   overflow:hidden;cursor:pointer;transition:all .2s;
@@ -415,6 +426,10 @@ body.is-admin .admin-only-inline{display:inline;}
     </div>
     <!-- Sort / Filter Bar -->
     <div id="prop-sort-bar" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="display:flex;border:1px solid #333;border-radius:3px;overflow:hidden;margin-left:auto;">
+        <button id="view-grid-btn" onclick="setViewMode('grid')" title="Grid view" style="padding:5px 10px;background:#2a3a2a;color:#5bbf7a;border:none;cursor:pointer;font-size:14px;line-height:1;">⊞</button>
+        <button id="view-list-btn" onclick="setViewMode('list')" title="List view" style="padding:5px 10px;background:#1e1e1e;color:#666;border:none;cursor:pointer;font-size:14px;line-height:1;border-left:1px solid #333;">☰</button>
+      </div>
       <select id="sort-state-filter" onchange="applyPropSort()" style="padding:5px 10px;background:#1e1e1e;border:1px solid #333;border-radius:3px;color:#ccc;font-size:12px;outline:none;">
         <option value="">All States</option>
         <option value="ACT">ACT</option>
@@ -936,6 +951,22 @@ async function deletePortfolio(e, id){
 // PROPERTIES
 // ═══════════════════════════════════════════════════════════════
 async 
+let _viewMode = 'grid';
+
+function setViewMode(mode){
+  _viewMode = mode;
+  const list = document.getElementById('property-list');
+  if(list){
+    if(mode === 'list') list.classList.add('list-view');
+    else list.classList.remove('list-view');
+  }
+  // Update button styles
+  const gb = document.getElementById('view-grid-btn');
+  const lb = document.getElementById('view-list-btn');
+  if(gb){ gb.style.background = mode==='grid' ? '#2a3a2a' : '#1e1e1e'; gb.style.color = mode==='grid' ? '#5bbf7a' : '#666'; }
+  if(lb){ lb.style.background = mode==='list' ? '#2a3a2a' : '#1e1e1e'; lb.style.color = mode==='list' ? '#5bbf7a' : '#666'; }
+}
+
 function applyPropSort(){
   renderProperties();
 }
@@ -1025,6 +1056,9 @@ async function renderProperties(){
       </div>
     </div>
   `).join('');
+
+  // Reapply current view mode
+  setViewMode(_viewMode);
 
   // Fetch hero images for each property in parallel
   await Promise.all(props.map(async pr => {
