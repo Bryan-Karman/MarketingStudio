@@ -1360,6 +1360,19 @@ document.addEventListener('keydown', e => {
 });
 
 function escHtml(str){ const d=document.createElement('div');d.textContent=str;return d.innerHTML; }
+
+// Delegated click handler for Open Builder buttons (grid + list view)
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.prop-open-btn');
+  if(btn && btn.dataset.pid && btn.dataset.id){
+    openBuilder(btn.dataset.pid, btn.dataset.id);
+    return;
+  }
+  const body = e.target.closest('.prop-list-body');
+  if(body && body.dataset.pid && body.dataset.id){
+    openBuilder(body.dataset.pid, body.dataset.id);
+  }
+});
 </script>
 
 <!-- ═══════════════════════════════════════
