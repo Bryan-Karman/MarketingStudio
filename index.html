@@ -1005,16 +1005,19 @@ async function saveRenameProperty(){
 
 function getSortedProps(portfolioId){
   const props = (properties[portfolioId] || []).slice();
-  const stateFilter  = (document.getElementById('sort-state-filter')||{}).value  || '';
-  const statusFilter = (document.getElementById('sort-status-filter')||{}).value || '';
-  const order        = (document.getElementById('sort-order')||{}).value          || 'recent';
+  const sfEl  = document.getElementById('sort-state-filter');
+  const stEl  = document.getElementById('sort-status-filter');
+  const soEl  = document.getElementById('sort-order');
+  const stateFilter  = sfEl  && sfEl.value  ? sfEl.value  : '';
+  const statusFilter = stEl  && stEl.value  ? stEl.value  : '';
+  const order        = soEl  && soEl.value  ? soEl.value  : 'recent';
   let filtered = props;
-  if(stateFilter)  filtered = filtered.filter(p => p.state === stateFilter);
-  if(statusFilter) filtered = filtered.filter(p => (p.approvalStatus || 'in_progress') === statusFilter);
-  if(order === 'alpha')      filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-  else if(order === 'alpha-desc') filtered.sort((a,b) => (b.name||'').localeCompare(a.name||''));
-  else if(order === 'state') filtered.sort((a,b) => (a.state||'ZZ').localeCompare(b.state||'ZZ') || (a.name||'').localeCompare(b.name||''));
-  else filtered.sort((a,b) => new Date(b.updatedAt||b.created_at||0) - new Date(a.updatedAt||a.created_at||0));
+  if(stateFilter)  filtered = filtered.filter(function(p){ return p.state === stateFilter; });
+  if(statusFilter) filtered = filtered.filter(function(p){ return (p.approvalStatus || 'in_progress') === statusFilter; });
+  if(order === 'alpha')       filtered.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  else if(order === 'alpha-desc') filtered.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
+  else if(order === 'state')  filtered.sort(function(a,b){ return (a.state||'ZZ').localeCompare(b.state||'ZZ') || (a.name||'').localeCompare(b.name||''); });
+  else filtered.sort(function(a,b){ return new Date(b.updatedAt||b.created_at||0) - new Date(a.updatedAt||a.created_at||0); });
   return filtered;
 }
 
