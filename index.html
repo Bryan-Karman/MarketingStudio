@@ -888,9 +888,13 @@ function applyPropSort(){
   renderProperties();
 }
 
-function openRenameProperty(portfolioId, propId, currentName, currentState){
-  document.getElementById('rename-property-name').value = currentName || '';
-  document.getElementById('rename-property-state').value = currentState || '';
+function openRenameProperty(btn){
+  const portfolioId = btn.dataset.pid;
+  const propId = btn.dataset.id;
+  const props = properties[portfolioId] || [];
+  const pr = props.find(p => p.id === propId);
+  document.getElementById('rename-property-name').value = pr ? pr.name : '';
+  document.getElementById('rename-property-state').value = pr ? (pr.state||'') : '';
   document.getElementById('rename-property-id').value = portfolioId + '||' + propId;
   document.getElementById('modal-rename-property').classList.add('open');
 }
@@ -928,7 +932,7 @@ function getSortedProps(portfolioId){
   return filtered;
 }
 
-function renderProperties(){
+async function renderProperties(){
   const list = document.getElementById('property-list');
   const props = getSortedProps(currentPortfolioId);
   if(!props.length){
@@ -960,7 +964,7 @@ function renderProperties(){
           <span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;" title="In Progress"></span>
           <span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>
         </div>
-        ${isAdmin ? `<button class="card-btn card-btn-rename" onclick="openRenameProperty('${pr.portfolioId}','${pr.id}','${(pr.name||'').replace(/'/g,'\\'')}',' ${pr.state||''}')" style="background:#1a2a3a;color:#6ab0e0;border:1px solid #2a4a6a;font-size:10px;padding:4px 10px;border-radius:2px;cursor:pointer;">Rename</button>` : ''}
+        ${isAdmin ? `<button class="card-btn card-btn-rename" data-pid="${pr.portfolioId}" data-id="${pr.id}" onclick="openRenameProperty(this)" style="background:#1a2a3a;color:#6ab0e0;border:1px solid #2a4a6a;font-size:10px;padding:4px 10px;border-radius:2px;cursor:pointer;">Rename</button>` : ''}
         ${isAdmin ? `<button class="card-btn-del" onclick="deleteProperty(event,'${pr.portfolioId}','${pr.id}')">Delete</button>` : ''}
       </div>
     </div>
