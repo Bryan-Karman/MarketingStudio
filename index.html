@@ -614,37 +614,24 @@ const SB = {
 };
 
 async function loadDemoData(){
+  // Load portfolios from Supabase
   try {
-    // Load portfolios from Supabase
     const pfs = await SB.get('portfolios', '?order=created_at.asc');
     if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id: p.id, name: p.name, createdAt: p.created_at}));
-
-    // Load properties from Supabase (try extended columns, fall back if not migrated yet)
-    let props = await SB.get('properties', '?select=id,name,state,portfolio_id,created_at,updated_at&order=created_at.asc');
-    if(!Array.isArray(props)){
-      // state/updated_at columns may not exist yet - fall back to basic columns
-      props = await SB.get('properties', '?select=id,name,portfolio_id,created_at&order=created_at.asc');
-    }
-    properties = {};
-    if(Array.isArray(props)){
-      props.forEach(p => {
-        if(!properties[p.portfolio_id]) properties[p.portfolio_id] = [];
-        properties[p.portfolio_id].push({id: p.id, name: p.name, state: p.state||'', portfolioId: p.portfolio_id, updatedAt: p.updated_at||p.created_at||''});
-      });
-    }
-
-    // Load users from Supabase (admin only — for the manage users panel)
-    if(currentUser && currentUser.role === 'admin'){
-      await loadUsers();
-    }
   } catch(e) {
-    console.warn('Supabase load failed, using localStorage fallback:', e);
-    try {
-      const lsPfs = JSON.parse(localStorage.getItem('cbre_hub_portfolios') || 'null');
-      const lsProps = JSON.parse(localStorage.getItem('cbre_hub_properties') || 'null');
-      if(lsPfs) portfolios = lsPfs;
-      if(lsProps) properties = lsProps;
-    } catch(e2) {}
+    console.warn('Portfolios load failed:', e);
+    try { const lsPfs = JSON.parse(localStorage.getItem('cbre_hub_portfolios')||'null'); if(lsPfs) portfolios=lsPfs; } catch(e2){}
+  }
+
+  // Properties stored in localStorage (no properties table in Supabase)
+  try {
+    const lsProps = JSON.parse(localStorage.getItem('cbre_hub_properties')||'null');
+    if(lsProps) properties = lsProps;
+  } catch(e) {}
+
+  // Load users from Supabase (admin only)
+  if(currentUser && currentUser.role === 'admin'){
+    try { await loadUsers(); } catch(e) { console.warn('Users load failed:', e); }
   }
 }
 
@@ -992,13 +979,6 @@ async function saveRenameProperty(){
   const props = properties[portfolioId] || [];
   const pr = props.find(p => p.id === propId);
   if(pr){ pr.name = newName; pr.state = newState; }
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/properties?id=eq.${encodeURIComponent(propId)}`, {
-      method:'PATCH',
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-      body: JSON.stringify({name: newName, state: newState})
-    });
-  } catch(e){ console.warn('Rename failed:', e); }
   saveDemoData();
   closeModal('modal-rename-property');
   renderProperties();
@@ -1132,9 +1112,6 @@ async function createProperty(){
   if(!name) return;
   const id = 'pr' + Date.now();
   const now = new Date().toISOString();
-  try {
-    await SB.post('properties', {id, name, state, portfolio_id: currentPortfolioId, created_at: now, updated_at: now});
-  } catch(e) { console.warn('Supabase property save failed:', e); }
   if(!properties[currentPortfolioId]) properties[currentPortfolioId] = [];
   properties[currentPortfolioId].push({id, name, state, portfolioId: currentPortfolioId, updatedAt: now});
   saveDemoData();
