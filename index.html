@@ -432,6 +432,11 @@ body.is-admin .admin-only-inline{display:inline;}
         <option value="alpha-desc">Alphabetical Z–A</option>
         <option value="state">By State</option>
       </select>
+      <select id="sort-status-filter" onchange="applyPropSort()" style="padding:5px 10px;background:#1e1e1e;border:1px solid #333;border-radius:3px;color:#ccc;font-size:12px;outline:none;">
+        <option value="">All Statuses</option>
+        <option value="in_progress">In Progress</option>
+        <option value="approved">Approved</option>
+      </select>
     </div>
     <div class="property-list" id="property-list"></div>
   </div>
@@ -969,10 +974,13 @@ async function saveRenameProperty(){
 
 function getSortedProps(portfolioId){
   const props = (properties[portfolioId] || []).slice();
-  const stateFilter = (document.getElementById('sort-state-filter')||{}).value || '';
-  const order = (document.getElementById('sort-order')||{}).value || 'recent';
-  let filtered = stateFilter ? props.filter(p => p.state === stateFilter) : props;
-  if(order === 'alpha') filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const stateFilter  = (document.getElementById('sort-state-filter')||{}).value  || '';
+  const statusFilter = (document.getElementById('sort-status-filter')||{}).value || '';
+  const order        = (document.getElementById('sort-order')||{}).value          || 'recent';
+  let filtered = props;
+  if(stateFilter)  filtered = filtered.filter(p => p.state === stateFilter);
+  if(statusFilter) filtered = filtered.filter(p => (p.approvalStatus || 'in_progress') === statusFilter);
+  if(order === 'alpha')      filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
   else if(order === 'alpha-desc') filtered.sort((a,b) => (b.name||'').localeCompare(a.name||''));
   else if(order === 'state') filtered.sort((a,b) => (a.state||'ZZ').localeCompare(b.state||'ZZ') || (a.name||'').localeCompare(b.name||''));
   else filtered.sort((a,b) => new Date(b.updatedAt||b.created_at||0) - new Date(a.updatedAt||a.created_at||0));
@@ -1029,6 +1037,8 @@ async function renderProperties(){
       if(!rows || !rows.length) return;
       // Show approval status dot
       const approvalStatus = rows[0].approval_status || 'in_progress';
+      // Cache on the property object for filtering
+      pr.approvalStatus = approvalStatus;
       const dotEl = document.querySelector(`#pcard-${pr.id} .approval-dot`);
       const txtEl = document.querySelector(`#pcard-${pr.id} .approval-status-txt`);
       const isApproved = approvalStatus === 'approved';
