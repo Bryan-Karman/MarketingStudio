@@ -413,6 +413,26 @@ body.is-admin .admin-only-inline{display:inline;}
         <button class="admin-btn primary" onclick="openNewPropertyModal()">+ Add Property</button>
       </div>
     </div>
+    <!-- Sort / Filter Bar -->
+    <div id="prop-sort-bar" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <select id="sort-state-filter" onchange="applyPropSort()" style="padding:5px 10px;background:#1e1e1e;border:1px solid #333;border-radius:3px;color:#ccc;font-size:12px;outline:none;">
+        <option value="">All States</option>
+        <option value="ACT">ACT</option>
+        <option value="NSW">NSW</option>
+        <option value="NT">NT</option>
+        <option value="QLD">QLD</option>
+        <option value="SA">SA</option>
+        <option value="TAS">TAS</option>
+        <option value="VIC">VIC</option>
+        <option value="WA">WA</option>
+      </select>
+      <select id="sort-order" onchange="applyPropSort()" style="padding:5px 10px;background:#1e1e1e;border:1px solid #333;border-radius:3px;color:#ccc;font-size:12px;outline:none;">
+        <option value="recent">Recently Updated</option>
+        <option value="alpha">Alphabetical A–Z</option>
+        <option value="alpha-desc">Alphabetical Z–A</option>
+        <option value="state">By State</option>
+      </select>
+    </div>
     <div class="property-list" id="property-list"></div>
   </div>
 </div>
@@ -533,12 +553,12 @@ async function loadDemoData(){
     if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id: p.id, name: p.name, createdAt: p.created_at}));
 
     // Load properties from Supabase
-    const props = await SB.get('properties', '?order=created_at.asc');
+    const props = await SB.get('properties', '?select=id,name,state,portfolio_id,created_at,updated_at&order=created_at.asc');
     properties = {};
     if(Array.isArray(props)){
       props.forEach(p => {
         if(!properties[p.portfolio_id]) properties[p.portfolio_id] = [];
-        properties[p.portfolio_id].push({id: p.id, name: p.name, portfolioId: p.portfolio_id});
+        properties[p.portfolio_id].push({id: p.id, name: p.name, state: p.state||'', portfolioId: p.portfolio_id, updatedAt: p.updated_at||p.created_at||''});
       });
     }
 
@@ -863,9 +883,54 @@ async function deletePortfolio(e, id){
 // ═══════════════════════════════════════════════════════════════
 // PROPERTIES
 // ═══════════════════════════════════════════════════════════════
-async function renderProperties(){
+async 
+function applyPropSort(){
+  renderProperties();
+}
+
+function openRenameProperty(portfolioId, propId, currentName, currentState){
+  document.getElementById('rename-property-name').value = currentName || '';
+  document.getElementById('rename-property-state').value = currentState || '';
+  document.getElementById('rename-property-id').value = portfolioId + '||' + propId;
+  document.getElementById('modal-rename-property').classList.add('open');
+}
+
+async function saveRenameProperty(){
+  const val = document.getElementById('rename-property-id').value;
+  const [portfolioId, propId] = val.split('||');
+  const newName = document.getElementById('rename-property-name').value.trim();
+  const newState = document.getElementById('rename-property-state').value;
+  if(!newName) return;
+  const props = properties[portfolioId] || [];
+  const pr = props.find(p => p.id === propId);
+  if(pr){ pr.name = newName; pr.state = newState; }
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/properties?id=eq.${encodeURIComponent(propId)}`, {
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({name: newName, state: newState})
+    });
+  } catch(e){ console.warn('Rename failed:', e); }
+  saveDemoData();
+  closeModal('modal-rename-property');
+  renderProperties();
+}
+
+function getSortedProps(portfolioId){
+  const props = (properties[portfolioId] || []).slice();
+  const stateFilter = (document.getElementById('sort-state-filter')||{}).value || '';
+  const order = (document.getElementById('sort-order')||{}).value || 'recent';
+  let filtered = stateFilter ? props.filter(p => p.state === stateFilter) : props;
+  if(order === 'alpha') filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  else if(order === 'alpha-desc') filtered.sort((a,b) => (b.name||'').localeCompare(a.name||''));
+  else if(order === 'state') filtered.sort((a,b) => (a.state||'ZZ').localeCompare(b.state||'ZZ') || (a.name||'').localeCompare(b.name||''));
+  else filtered.sort((a,b) => new Date(b.updatedAt||b.created_at||0) - new Date(a.updatedAt||a.created_at||0));
+  return filtered;
+}
+
+function renderProperties(){
   const list = document.getElementById('property-list');
-  const props = properties[currentPortfolioId] || [];
+  const props = getSortedProps(currentPortfolioId);
   if(!props.length){
     const isAdmin = currentUser && currentUser.role === 'admin';
     list.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">🏢</div><div class="empty-title">No properties yet</div><div class="empty-sub">${isAdmin ? 'Click "+ Add Property" to add the first property.' : 'No properties have been added to this portfolio yet.'}</div></div>`;
@@ -882,7 +947,10 @@ async function renderProperties(){
         <div class="property-thumb-bar"></div>
       </div>
       <div class="property-card-body">
-        <div class="property-card-name">${escHtml(pr.name)}</div>
+        <div class="property-card-name" style="display:flex;align-items:center;gap:6px;">
+          <span>${escHtml(pr.name)}</span>
+          ${pr.state ? `<span style="font-size:9px;font-weight:700;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:2px;padding:1px 5px;flex-shrink:0;">${escHtml(pr.state)}</span>` : ''}
+        </div>
         <div class="property-card-meta">${escHtml(portfolios.find(p=>p.id===pr.portfolioId)?.name||'')}</div>
       </div>
       <div class="property-card-actions">
@@ -892,6 +960,7 @@ async function renderProperties(){
           <span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;" title="In Progress"></span>
           <span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>
         </div>
+        ${isAdmin ? `<button class="card-btn card-btn-rename" onclick="openRenameProperty('${pr.portfolioId}','${pr.id}','${(pr.name||'').replace(/'/g,'\\'')}',' ${pr.state||''}')" style="background:#1a2a3a;color:#6ab0e0;border:1px solid #2a4a6a;font-size:10px;padding:4px 10px;border-radius:2px;cursor:pointer;">Rename</button>` : ''}
         ${isAdmin ? `<button class="card-btn-del" onclick="deleteProperty(event,'${pr.portfolioId}','${pr.id}')">Delete</button>` : ''}
       </div>
     </div>
@@ -947,15 +1016,19 @@ function openNewPropertyModal(){
 
 async function createProperty(){
   const name = document.getElementById('new-property-name').value.trim();
+  const state = document.getElementById('new-property-state').value;
   if(!name) return;
   const id = 'pr' + Date.now();
+  const now = new Date().toISOString();
   try {
-    await SB.post('properties', {id, name, portfolio_id: currentPortfolioId, created_at: new Date().toISOString()});
+    await SB.post('properties', {id, name, state, portfolio_id: currentPortfolioId, created_at: now, updated_at: now});
   } catch(e) { console.warn('Supabase property save failed:', e); }
   if(!properties[currentPortfolioId]) properties[currentPortfolioId] = [];
-  properties[currentPortfolioId].push({id, name, portfolioId: currentPortfolioId});
+  properties[currentPortfolioId].push({id, name, state, portfolioId: currentPortfolioId, updatedAt: now});
   saveDemoData();
   closeModal('modal-property');
+  document.getElementById('new-property-name').value = '';
+  document.getElementById('new-property-state').value = '';
   renderProperties();
 }
 
