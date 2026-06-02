@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CBRE Information Memorandums</title>
+<style>
+@font-face { font-family:'Calibre'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
+@font-face { font-family:'Calibre'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:'Calibre'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
+@font-face { font-family:'Calibre'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype'); font-weight:600; font-style:normal; font-display:swap; }
+@font-face { font-family:'Calibre'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
+@font-face { font-family:'FinancierDisplay'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:'FinancierDisplay'; src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Semibold.otf') format('opentype'); font-weight:600; font-style:normal; font-display:swap; }
+</style>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --dk:#0d2b21; --g:#006A4D; --gb:#00965E;
+  --light:#f5f5f0; --border:#d8d8d0;
+  --text:#1a1a1a; --muted:#666; --card:#ffffff;
+  --sidebar:#0d2b21;
+}
+body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:var(--light);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--dk);position:fixed;inset:0;z-index:1000;transition:opacity .4s ease;}
+.login-box{background:#fff;width:360px;border-radius:4px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.5);}
+.login-head{background:var(--dk);padding:32px;text-align:center;}
+.login-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.1em;}
+.login-body{padding:28px;}
+.lf{display:flex;flex-direction:column;gap:4px;margin-bottom:16px;}
+.lf label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.lf input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:3px;font-size:13px;font-family:inherit;outline:none;color:var(--text);transition:border-color .15s;}
+.lf input:focus{border-color:var(--g);}
+.login-btn{width:100%;padding:11px;background:var(--g);color:#fff;border:none;border-radius:3px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.03em;transition:background .15s;}
+.login-btn:hover{background:var(--gb);}
+.login-err{font-size:11px;color:#c0392b;margin-top:8px;text-align:center;min-height:16px;}
+
+/* ── MASTHEAD ── */
+.masthead{height:52px;background:var(--dk);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.25);}
+.mast-logo{display:flex;align-items:center;}
+.mast-divider{width:1px;height:22px;background:rgba(255,255,255,.15);}
+.mast-product{font-size:10px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.1em;}
+.mast-nav{display:flex;gap:0;flex:1;}
+.mast-nav a{padding:0 14px;height:52px;display:flex;align-items:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-decoration:none;text-transform:uppercase;letter-spacing:.07em;border-bottom:2px solid transparent;transition:color .15s;cursor:pointer;}
+.mast-nav a:hover,.mast-nav a.active{color:#fff;border-bottom-color:var(--gb);}
+.mast-right{display:flex;align-items:center;gap:12px;margin-left:auto;}
+.mast-user{font-size:11px;color:rgba(255,255,255,.5);}
+.mast-user span{color:#fff;font-weight:700;}
+.logout-btn{padding:5px 12px;font-size:10px;font-weight:700;background:transparent;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);border-radius:3px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;}
+.logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.5);}
+
+/* ── ADMIN BAR ── */
+.admin-bar{background:#fff;border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.admin-bar.hidden{display:none;}
+.admin-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-right:4px;}
+.admin-btn{padding:6px 14px;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text);transition:all .15s;}
+.admin-btn:hover{background:var(--g);color:#fff;border-color:var(--g);}
+.admin-btn.primary{background:var(--g);color:#fff;border-color:var(--g);}
+.admin-btn.primary:hover{background:var(--gb);}
+.admin-btn.danger{color:#c0392b;border-color:#e8c0c0;}
+.admin-btn.danger:hover{background:#c0392b;color:#fff;}
+
+/* ── PAGES ── */
+.page{display:none;flex:1;flex-direction:column;}
+.page.active{display:flex;}
+.page-content{padding:32px 24px;flex:1;}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
+.page-title{font-size:22px;font-weight:900;color:var(--dk);letter-spacing:-.02em;}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+
+/* ── PORTFOLIO GRID ── */
+.portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.portfolio-card{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+.portfolio-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px);border-color:var(--g);}
+.portfolio-card-head{background:var(--dk);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;}
+.portfolio-card-name{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
+.portfolio-card-badge{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:9px;font-weight:700;padding:3px 8px;border-radius:2px;text-transform:uppercase;letter-spacing:.07em;}
+.portfolio-card-body{padding:14px 20px;}
+.portfolio-card-count{font-size:12px;color:var(--muted);}
+.portfolio-card-count strong{color:var(--text);font-weight:700;}
+.portfolio-card-actions{padding:0 20px 14px;display:flex;gap:8px;align-items:center;}
+.card-btn{padding:5px 12px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;border:none;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;}
+.card-btn-open{background:var(--g);color:#fff;}
+.card-btn-open:hover{background:var(--gb);}
+.card-btn-del{background:transparent;color:#c0392b;border:1px solid #e8c0c0;padding:4px 10px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;}
+.card-btn-del:hover{background:#c0392b;color:#fff;border-color:#c0392b;}
+
+/* ── PROPERTY LIST ── */
+.breadcrumb{display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:11px;color:var(--muted);}
+.breadcrumb a{color:var(--g);cursor:pointer;font-weight:700;text-decoration:none;}
+.breadcrumb a:hover{text-decoration:underline;}
+.breadcrumb-sep{color:var(--border);}
+.property-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.property-list.list-view{display:flex;flex-direction:column;gap:0;}
+.property-list.list-view .property-card{display:flex;flex-direction:row;align-items:center;border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border);box-shadow:none;}
+.property-list.list-view .property-card:first-child{border-top:1px solid var(--border);}
+.property-list.list-view .property-card-thumb{display:none;}
+.property-list.list-view .property-card-body{flex:1;padding:9px 14px;min-width:0;}
+.property-list.list-view .property-card-actions{display:flex;flex-direction:row;align-items:center;gap:8px;padding:0 12px;border-top:none;flex-shrink:0;}
+.property-list.list-view .card-btn-open{white-space:nowrap;font-size:10px;padding:4px 10px;}
+.property-list.list-view .card-btn-del{font-size:10px;padding:3px 8px;}
+.property-card{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+.property-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px);border-color:var(--gb);}
+.property-card-thumb{height:100px;background:var(--dk);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;}
+.property-card-thumb:hover .property-thumb-overlay{opacity:1;}
+.property-thumb-overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
+.property-thumb-overlay-label{font-size:11px;font-weight:700;color:#fff;letter-spacing:.06em;text-transform:uppercase;}
+.property-card-thumb-label{font-size:11px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.07em;}
+.property-thumb-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gb);}
+.property-card-body{padding:12px 14px;}
+.property-card-name{font-size:13px;font-weight:700;color:var(--text);}
+.property-card-meta{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+.property-card-actions{padding:0 14px 12px;display:flex;gap:7px;align-items:center;}
+.card-status-wrap{display:flex;align-items:center;gap:5px;margin-left:auto;}
+.card-status-label{font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:4px;padding:24px;width:400px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.3);}
+.modal-title{font-size:14px;font-weight:900;color:var(--dk);margin-bottom:16px;letter-spacing:-.01em;}
+.modal-field{display:flex;flex-direction:column;gap:4px;margin-bottom:14px;}
+.modal-field label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.modal-field input,.modal-field select{padding:8px 10px;border:1px solid var(--border);border-radius:3px;font-size:12px;font-family:inherit;outline:none;color:var(--text);}
+.modal-field input:focus,.modal-field select:focus{border-color:var(--g);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+.modal-cancel{padding:8px 16px;font-size:11px;font-weight:700;background:#fff;color:var(--muted);border:1px solid var(--border);border-radius:3px;cursor:pointer;}
+.modal-cancel:hover{background:var(--light);}
+.modal-confirm{padding:8px 16px;font-size:11px;font-weight:700;background:var(--g);color:#fff;border:none;border-radius:3px;cursor:pointer;}
+.modal-confirm:hover{background:var(--gb);}
+
+/* ── EMPTY STATE ── */
+.empty{padding:48px;text-align:center;color:var(--muted);}
+.empty-icon{font-size:32px;margin-bottom:12px;}
+.empty-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.empty-sub{font-size:12px;line-height:1.6;}
+
+/* ── ADMIN ONLY ── */
+.admin-only{display:none;}
+body.is-admin .admin-only{display:flex;}
+
+/* ── VIEW TOGGLE / SORT BAR ── */
+#sort-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+#sort-bar select{padding:5px 10px;background:#1e1e1e;border:1px solid #333;border-radius:3px;color:#ccc;font-size:12px;outline:none;}
+#view-toggle{display:flex;border:1px solid #ccc;border-radius:4px;overflow:hidden;margin-left:auto;flex-shrink:0;}
+#view-toggle button{padding:6px 12px;border:none;cursor:pointer;font-size:15px;line-height:1;outline:none;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-head">
+      <div style="display:flex;align-items:center;justify-content:center;">
+        <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPGRlZnM+PHN0eWxlPi5zdDAge2ZpbGw6ICNmZmY7fTwvc3R5bGU+PC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik01OTMuNzQsMjg0LjU4aC0xMTUuODN2LTU4LjI2aDExOC45NWMxNC41NywxLjU2LDI1LjY2LDEzLjcsMjUuODQsMjguNDQsMCwxNi4xMy0xMi44MywyOS4zLTI4Ljk2LDI5LjgyTTQ3Ny45MSw5My44NWgxMjEuMzhjMTMuODcsMS45MSwyNC4xLDEzLjcsMjQuNDUsMjcuNTcsMCwxNC4zOS0xMC41OCwyNi43LTI0LjgsMjkuMTNoLTEyMS4zOHMuMzUtNTYuNy4zNS01Ni43Wk02NTAuMjcsMTg2Ljk2YzQ0LjM5LTE0Ljc0LDUyLjAyLTUyLjAyLDUyLjAyLTgyLjM2LDAtNDYuNDctMzIuNzctODYuNy0xMjkuNy04Ni43aC0xODAuNXYzNDcuODNoMTgwLjMzYzk4LjE0LDAsMTMyLjgyLTQ5Ljk0LDEzMi44Mi0xMDAuMDUsMC0zNS4zNy0yMi4xOS02Ni45My01NS4zMS03OS40MU0xMTEwLjQ2LDE3LjM4djM0OS4wNGgzMDUuN3YtNzkuNTloLTIyMC41NnYtNjEuMzhoMTk4Ljg4di03NS43N2gtMTk4Ljg4di01Ni4xOGgyMjAuNTZWMTcuMzhoLTMwNS43Wk05NzkuMDIsMTI1LjkzYy0yLjI1LDEzLjUyLTEzLjUyLDIzLjQxLTI3LjIyLDIzLjkzaC0xMTkuM3YtNTUuNjZoMTE5LjNjMTMuODcsMCwyNS42NiwxMC40LDI3LjIyLDI0LjI4djcuNDZoMFpNOTMyLjczLDE3LjM4aC0xODQuNjd2MzQ4LjUyaDg0Ljc5di0xNDAuNDVoOTMuNDZjMjYuNy41Miw0OC4wMywyMi43MSw0Ny41MSw0OS40MnY5MS4zOGg4My4wNnYtMTEyLjcxYy0uODctMzAuODYtMjAuOTgtNTcuOTEtNTAuMjgtNjcuNDUsMzIuNDItMTEuNDQsNTMuNTgtNDIuNjYsNTIuMDItNzYuOTktLjY5LTc1LjQzLTY1LjU0LTkxLjczLTEyNS44OC05MS43M00zMzYuOTQsMjgyLjE2Yy0xLjIxLDAtMTE2LDIuMjUtMTU2LjA2LTEuNTYtNDkuNDItMS41Ni04OC4wOC00Mi42Ni04Ni43LTkyLjA3LS42OS00Ny41MSwzNi4wNy04Ny4yMiw4My41OC05MC4xNywyNC4xLTMuMjksMTU2LjA2LTEuNzMsMTU3LjYyLTEuNzNoMi43N2wxLjIxLTc5LjI0aC0xNTIuNDFjLTI0LjguNjktNDkuMjQsNS43Mi03Mi40OCwxNC41Ny0yNi44OCwxMi4zMS01MC4yOCwzMS4yMS02OC4xNCw1NC43OS0yMi41NCwzMC0zNC42OCw2Ni41OC0zNC42OCwxMDQuMDQsMCwxMS42Mi44NywyMy4yMywyLjc3LDM0LjY4LDEwLjQsNTMuNDEsNDUuOTUsOTguNDksOTUuMTksMTIxLjM4LDMwLDEyLjMxLDYyLjI1LDE4LjksOTQuNjcsMTkuMjVoMTM1LjI1di04My45MmgtMi42di0uMDJaIi8+Cjwvc3ZnPg==" alt="CBRE" style="height:36px;width:auto;">
+      </div>
+      <div class="login-sub">Information Memorandums</div>
+    </div>
+    <div class="login-body">
+      <div class="lf"><label>Email Address</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="username"></div>
+      <div class="lf"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="login-btn" onclick="doLogin()">Sign In</button>
+      <div class="login-err" id="login-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MASTHEAD -->
+<div class="masthead" id="masthead" style="display:none;">
+  <div class="mast-logo">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPGRlZnM+PHN0eWxlPi5zdDAge2ZpbGw6ICNmZmY7fTwvc3R5bGU+PC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik01OTMuNzQsMjg0LjU4aC0xMTUuODN2LTU4LjI2aDExOC45NWMxNC41NywxLjU2LDI1LjY2LDEzLjcsMjUuODQsMjguNDQsMCwxNi4xMy0xMi44MywyOS4zLTI4Ljk2LDI5LjgyTTQ3Ny45MSw5My44NWgxMjEuMzhjMTMuODcsMS45MSwyNC4xLDEzLjcsMjQuNDUsMjcuNTcsMCwxNC4zOS0xMC41OCwyNi43LTI0LjgsMjkuMTNoLTEyMS4zOHMuMzUtNTYuNy4zNS01Ni43Wk02NTAuMjcsMTg2Ljk2YzQ0LjM5LTE0Ljc0LDUyLjAyLTUyLjAyLDUyLjAyLTgyLjM2LDAtNDYuNDctMzIuNzctODYuNy0xMjkuNy04Ni43aC0xODAuNXYzNDcuODNoMTgwLjMzYzk4LjE0LDAsMTMyLjgyLTQ5Ljk0LDEzMi44Mi0xMDAuMDUsMC0zNS4zNy0yMi4xOS02Ni45My01NS4zMS03OS40MU0xMTEwLjQ2LDE3LjM4djM0OS4wNGgzMDUuN3YtNzkuNTloLTIyMC41NnYtNjEuMzhoMTk4Ljg4di03NS43N2gtMTk4Ljg4di01Ni4xOGgyMjAuNTZWMTcuMzhoLTMwNS43Wk05NzkuMDIsMTI1LjkzYy0yLjI1LDEzLjUyLTEzLjUyLDIzLjQxLTI3LjIyLDIzLjkzaC0xMTkuM3YtNTUuNjZoMTE5LjNjMTMuODcsMCwyNS42NiwxMC40LDI3LjIyLDI0LjI4djcuNDZoMFpNOTMyLjczLDE3LjM4aC0xODQuNjd2MzQ4LjUyaDg0Ljc5di0xNDAuNDVoOTMuNDZjMjYuNy41Miw0OC4wMywyMi43MSw0Ny41MSw0OS40MnY5MS4zOGg4My4wNnYtMTEyLjcxYy0uODctMzAuODYtMjAuOTgtNTcuOTEtNTAuMjgtNjcuNDUsMzIuNDItMTEuNDQsNTMuNTgtNDIuNjYsNTIuMDItNzYuOTktLjY5LTc1LjQzLTY1LjU0LTkxLjczLTEyNS44OC05MS43M00zMzYuOTQsMjgyLjE2Yy0xLjIxLDAtMTE2LDIuMjUtMTU2LjA2LTEuNTYtNDkuNDItMS41Ni04OC4wOC00Mi42Ni04Ni43LTkyLjA3LS42OS00Ny41MSwzNi4wNy04Ny4yMiw4My41OC05MC4xNywyNC4xLTMuMjksMTU2LjA2LTEuNzMsMTU3LjYyLTEuNzNoMi43N2wxLjIxLTc5LjI0aC0xNTIuNDFjLTI0LjguNjktNDkuMjQsNS43Mi03Mi40OCwxNC41Ny0yNi44OCwxMi4zMS01MC4yOCwzMS4yMS02OC4xNCw1NC43OS0yMi41NCwzMC0zNC42OCw2Ni41OC0zNC42OCwxMDQuMDQsMCwxMS42Mi44NywyMy4yMywyLjc3LDM0LjY4LDEwLjQsNTMuNDEsNDUuOTUsOTguNDksOTUuMTksMTIxLjM4LDMwLDEyLjMxLDYyLjI1LDE4LjksOTQuNjcsMTkuMjVoMTM1LjI1di04My45MmgtMi42di0uMDJaIi8+Cjwvc3ZnPg==" alt="CBRE" style="height:22px;width:auto;display:block;">
+  </div>
+  <div class="mast-divider"></div>
+  <span class="mast-product">Information Memorandums</span>
+  <nav class="mast-nav">
+    <a onclick="window.location.href='index.html'" title="Back to Hub">← Hub</a>
+    <a onclick="showPage('portfolios')" id="nav-portfolios" class="active">Portfolios</a>
+  </nav>
+  <div class="mast-right">
+    <div class="mast-user">Signed in as <span id="mast-username"></span></div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- ADMIN BAR -->
+<div class="admin-bar hidden admin-only" id="admin-bar">
+  <span class="admin-label">Admin</span>
+  <button class="admin-btn primary" onclick="openNewPortfolioModal()">+ New Portfolio</button>
+</div>
+
+<!-- PAGE: PORTFOLIOS -->
+<div class="page active" id="page-portfolios">
+  <div class="page-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Portfolios</div>
+        <div class="page-sub">Select a portfolio to view its propertys</div>
+      </div>
+    </div>
+    <div class="portfolio-grid" id="portfolio-grid">
+      <div class="empty"><div class="empty-icon">📁</div><div class="empty-title">No portfolios yet</div><div class="empty-sub">An administrator will create portfolios here.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: PROPERTIES -->
+<div class="page" id="page-properties">
+  <div class="page-content">
+    <div class="breadcrumb">
+      <a onclick="showPage('portfolios')">Portfolios</a>
+      <span class="breadcrumb-sep">›</span>
+      <span id="breadcrumb-portfolio">Portfolio</span>
+    </div>
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="props-page-title">Portfolio</div>
+        <div class="page-sub">Select a property to open its builder</div>
+      </div>
+      <div class="admin-only" style="gap:8px;">
+        <button class="admin-btn primary" onclick="openNewPropertyModal()">+ Add Property</button>
+      </div>
+    </div>
+    <div id="sort-bar">
+      <div id="view-toggle">
+        <button id="view-grid-btn" onclick="setViewMode('grid')" title="Grid view" style="background:#003f2d;color:#fff;">&#9646;&#9646;</button>
+        <button id="view-list-btn" onclick="setViewMode('list')" title="List view" style="background:#fff;color:#666;border-left:1px solid #ccc;">&#9776;</button>
+      </div>
+      <select id="sort-state-filter" onchange="renderProperties()">
+        <option value="">All States</option>
+        <option>ACT</option><option>NSW</option><option>NT</option>
+        <option>QLD</option><option>SA</option><option>TAS</option>
+        <option>VIC</option><option>WA</option>
+      </select>
+      <select id="sort-order" onchange="renderProperties()">
+        <option value="recent">Recently Updated</option>
+        <option value="alpha">Alphabetical A–Z</option>
+        <option value="alpha-desc">Alphabetical Z–A</option>
+        <option value="state">By State</option>
+      </select>
+    </div>
+    <div class="property-list" id="property-list"></div>
+  </div>
+</div>
+
+<!-- MODAL: NEW PORTFOLIO -->
+<div class="modal-bg" id="modal-portfolio">
+  <div class="modal">
+    <div class="modal-title">New Portfolio</div>
+    <div class="modal-field">
+      <label>Portfolio Name</label>
+      <input type="text" id="new-portfolio-name" placeholder="e.g. Portfolio 187">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-portfolio')">Cancel</button>
+      <button class="modal-confirm" onclick="createPortfolio()">Create Portfolio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NEW PROPERTY -->
+<div class="modal-bg" id="modal-property">
+  <div class="modal">
+    <div class="modal-title">Add Property</div>
+    <div class="modal-field">
+      <label>Property Name</label>
+      <input type="text" id="new-property-name" placeholder="e.g. 123 Collins Street">
+    </div>
+    <div class="modal-field">
+      <label>State</label>
+      <select id="new-property-state">
+        <option value="">— Select State —</option>
+        <option>ACT</option><option>NSW</option><option>NT</option>
+        <option>QLD</option><option>SA</option><option>TAS</option>
+        <option>VIC</option><option>WA</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-property')">Cancel</button>
+      <button class="modal-confirm" onclick="createProperty()">Add Property</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: RENAME PROPERTY -->
+<div class="modal-bg" id="modal-rename-property">
+  <div class="modal">
+    <div class="modal-title">Rename Property</div>
+    <div class="modal-field">
+      <label>Property Name</label>
+      <input type="text" id="rename-property-name" placeholder="Property name">
+    </div>
+    <div class="modal-field">
+      <label>State</label>
+      <select id="rename-property-state">
+        <option value="">— Select State —</option>
+        <option>ACT</option><option>NSW</option><option>NT</option>
+        <option>QLD</option><option>SA</option><option>TAS</option>
+        <option>VIC</option><option>WA</option>
+      </select>
+    </div>
+    <input type="hidden" id="rename-property-id">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-rename-property')">Cancel</button>
+      <button class="modal-confirm" onclick="saveRenameProperty()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
+const PRODUCT_KEY = 'im';  // namespace for localStorage
+const BUILDER_FILE = 'im-builder.html';
+const PROPERTY_LABEL = 'Property';
+
+const FALLBACK_USERS = [
+  { id:'u1', email:'bryan.karman@cbre.com', password:'Surfing1987', role:'admin', name:'Bryan Karman' },
+  { email:'connie.duan@cbre.com', password:'Password123', role:'user', name:'Connie Duan' },
+];
+
+// ── localStorage helpers — namespaced per product ──
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem('cbre_'+PRODUCT_KEY+'_'+k)||'null'); }catch(e){return null;} }
+function lsSet(k,v){ try{ localStorage.setItem('cbre_'+PRODUCT_KEY+'_'+k, JSON.stringify(v)); }catch(e){} }
+// session is shared across products (same login)
+function sessGet(k){ try{ return JSON.parse(localStorage.getItem('cbre_hub_'+k)||'null'); }catch(e){return null;} }
+function sessSet(k,v){ try{ localStorage.setItem('cbre_hub_'+k, JSON.stringify(v)); }catch(e){} }
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let currentUser = null;
+let currentPortfolioId = null;
+let portfolios = [];
+let properties = {};
+let _viewMode = 'grid';
+
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE HELPERS
+// ═══════════════════════════════════════════════════════════════
+const SB = {
+  headers: {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  },
+  async get(table, query='') {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+      headers: {'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY}
+    });
+    if(!res.ok) throw new Error(`GET ${table} failed: ${res.status}`);
+    return res.json();
+  },
+  async post(table, body) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method:'POST', headers:this.headers, body:JSON.stringify(body)
+    });
+    if(!res.ok){ const t=await res.text(); throw new Error(`POST ${table} failed: ${res.status} ${t}`); }
+    return res;
+  },
+  async patch(table, query, body) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+      method:'PATCH', headers:this.headers, body:JSON.stringify(body)
+    });
+    if(!res.ok){ const t=await res.text(); throw new Error(`PATCH ${table} failed: ${res.status} ${t}`); }
+    return res;
+  },
+  async del(table, query) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+      method:'DELETE', headers:this.headers
+    });
+    if(!res.ok){ const t=await res.text(); throw new Error(`DELETE ${table} failed: ${res.status} ${t}`); }
+    return res;
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// DATA — portfolios/properties stored per product namespace
+// Table names: im_portfolios, im_properties (or localStorage fallback)
+// ═══════════════════════════════════════════════════════════════
+async function loadData() {
+  // Try Supabase table: named by product, e.g. aerials_portfolios
+  const pTable = PRODUCT_KEY + '_portfolios';
+  try {
+    const pfs = await SB.get(pTable, '?order=created_at.asc');
+    if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
+  } catch(e) {
+    console.warn(pTable + ' load failed — using localStorage:', e.message);
+    const saved = lsGet('portfolios');
+    if(saved) portfolios = saved;
+  }
+
+  // Properties always localStorage for now (same pattern as Marketing)
+  const savedProps = lsGet('properties');
+  if(savedProps) properties = savedProps;
+}
+
+function saveData() {
+  lsSet('portfolios', portfolios);
+  lsSet('properties', properties);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-err');
+  err.textContent = '';
+  if(!email||!pass){ err.textContent='Please enter your email and password.'; return; }
+
+  try {
+    const rows = await SB.get('users', `?email=eq.${encodeURIComponent(email)}&select=id,name,email,password,role`);
+    if(Array.isArray(rows) && rows.length) {
+      const match = rows.find(u => u.password === pass);
+      if(match) {
+        currentUser = {id:match.id, name:match.name, email:match.email, role:match.role};
+        sessSet('session', currentUser);
+        await onLoginSuccess(); return;
+      }
+    }
+  } catch(e) { console.warn('Supabase auth failed, trying fallback:', e); }
+
+  const fb = FALLBACK_USERS.find(u => u.email===email && u.password===pass);
+  if(fb) {
+    currentUser = {id:fb.id||'local', name:fb.name, email:fb.email, role:fb.role};
+    sessSet('session', currentUser);
+    await onLoginSuccess(); return;
+  }
+  err.textContent = 'Incorrect email or password.';
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Enter' && !currentUser) doLogin(); });
+
+function doLogout() {
+  currentUser = null;
+  sessSet('session', null);
+  location.reload();
+}
+
+async function onLoginSuccess() {
+  document.getElementById('login-screen').style.opacity = '0';
+  setTimeout(()=>{ document.getElementById('login-screen').style.display='none'; }, 400);
+  document.getElementById('masthead').style.display = 'flex';
+  document.getElementById('mast-username').textContent = currentUser.name;
+
+  if(currentUser.role === 'admin') {
+    document.body.classList.add('is-admin');
+    document.getElementById('admin-bar').classList.remove('hidden');
+  }
+
+  await loadData();
+  showPage('portfolios');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAGE ROUTING
+// ═══════════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mast-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const navEl = document.getElementById('nav-'+name);
+  if(navEl) navEl.classList.add('active');
+
+  const adminBar = document.getElementById('admin-bar');
+  if(adminBar) {
+    if(name==='portfolios') adminBar.classList.remove('hidden');
+    else adminBar.classList.add('hidden');
+  }
+
+  if(name==='portfolios') renderPortfolios();
+  if(name==='properties') renderProperties();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PORTFOLIOS
+// ═══════════════════════════════════════════════════════════════
+function renderPortfolios() {
+  const grid = document.getElementById('portfolio-grid');
+  if(!portfolios.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">📁</div><div class="empty-title">No portfolios yet</div><div class="empty-sub">'+(currentUser&&currentUser.role==='admin' ? 'Click "+ New Portfolio" above to get started.' : 'An administrator will create portfolios here.')+'</div></div>';
+    return;
+  }
+  const isAdmin = currentUser && currentUser.role==='admin';
+  grid.innerHTML = portfolios.map(p => {
+    const cnt = (properties[p.id]||[]).length;
+    return `<div class="portfolio-card">
+      <div class="portfolio-card-head">
+        <div class="portfolio-card-name">${escHtml(p.name)}</div>
+        <div class="portfolio-card-badge">${cnt} ${PROPERTY_LABEL.toLowerCase()}${cnt===1?'':'s'}</div>
+      </div>
+      <div class="portfolio-card-body">
+        <div class="portfolio-card-count"><strong>${cnt}</strong> ${PROPERTY_LABEL.toLowerCase()}${cnt===1?'':'s'} in this portfolio</div>
+      </div>
+      <div class="portfolio-card-actions">
+        <button class="card-btn card-btn-open" onclick="openPortfolio('${p.id}')">Open →</button>
+        ${isAdmin ? `<button class="card-btn-del" onclick="deletePortfolio(event,'${p.id}')">Delete</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openPortfolio(id) {
+  currentPortfolioId = id;
+  const p = portfolios.find(x => x.id===id);
+  document.getElementById('breadcrumb-portfolio').textContent = p.name;
+  document.getElementById('props-page-title').textContent = p.name;
+  showPage('properties');
+}
+
+function openNewPortfolioModal() {
+  document.getElementById('new-portfolio-name').value = '';
+  document.getElementById('modal-portfolio').classList.add('open');
+  setTimeout(()=>document.getElementById('new-portfolio-name').focus(), 50);
+}
+
+async function createPortfolio() {
+  const name = document.getElementById('new-portfolio-name').value.trim();
+  if(!name) return;
+  const id = 'p'+Date.now();
+  const pTable = PRODUCT_KEY+'_portfolios';
+  try { await SB.post(pTable, {id, name, created_at: new Date().toISOString()}); }
+  catch(e) { console.warn('Supabase portfolio save failed:', e.message); }
+  portfolios.unshift({id, name, createdAt:new Date().toISOString()});
+  saveData();
+  closeModal('modal-portfolio');
+  renderPortfolios();
+}
+
+async function deletePortfolio(e, id) {
+  e.stopPropagation();
+  if(!confirm('Delete this portfolio and all its contents? This cannot be undone.')) return;
+  const pTable = PRODUCT_KEY+'_portfolios';
+  try {
+    await SB.del(pTable, `?id=eq.${id}`);
+  } catch(e2) { console.warn('Supabase delete failed:', e2.message); }
+  portfolios = portfolios.filter(p => p.id!==id);
+  delete properties[id];
+  saveData();
+  renderPortfolios();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROPERTIES
+// ═══════════════════════════════════════════════════════════════
+function setViewMode(mode) {
+  _viewMode = mode;
+  document.getElementById('view-grid-btn').style.background = mode==='grid'?'#003f2d':'#fff';
+  document.getElementById('view-grid-btn').style.color      = mode==='grid'?'#fff':'#666';
+  document.getElementById('view-list-btn').style.background = mode==='list'?'#003f2d':'#fff';
+  document.getElementById('view-list-btn').style.color      = mode==='list'?'#fff':'#666';
+  renderProperties();
+}
+
+function getSortedProps() {
+  const props = (properties[currentPortfolioId]||[]).slice();
+  const sf = document.getElementById('sort-state-filter');
+  const so = document.getElementById('sort-order');
+  const stateFilter = sf && sf.value ? sf.value : '';
+  const order = so && so.value ? so.value : 'recent';
+  let filtered = stateFilter ? props.filter(p=>p.state===stateFilter) : props;
+  if(order==='alpha') filtered.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  else if(order==='alpha-desc') filtered.sort((a,b)=>(b.name||'').localeCompare(a.name||''));
+  else if(order==='state') filtered.sort((a,b)=>(a.state||'ZZ').localeCompare(b.state||'ZZ')||(a.name||'').localeCompare(b.name||''));
+  else filtered.sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
+  return filtered;
+}
+
+function renderProperties() {
+  const list = document.getElementById('property-list');
+  const props = getSortedProps();
+  const isAdmin = currentUser && currentUser.role==='admin';
+  if(!props.length) {
+    list.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">📋</div><div class="empty-title">No ${PROPERTY_LABEL.toLowerCase()}s yet</div><div class="empty-sub">${isAdmin ? 'Click "+ Add '+PROPERTY_LABEL+'" to get started.' : 'No '+PROPERTY_LABEL.toLowerCase()+'s have been added yet.'}</div></div>`;
+    return;
+  }
+  const isList = _viewMode==='list';
+  list.className = isList ? 'property-list list-view' : 'property-list';
+  list.style.borderTop = isList ? '1px solid var(--border)' : '';
+
+  function _sb(pr){ return pr.state ? '<span style="font-size:9px;font-weight:700;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:2px;padding:1px 5px;flex-shrink:0;">'+escHtml(pr.state)+'</span>' : ''; }
+  function _pc(pr){ return isAdmin ? '<span data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" onclick="openRenameProperty(this)" style="cursor:pointer;color:#888;font-size:13px;padding:2px 3px;flex-shrink:0;" title="Rename">✎</span>' : ''; }
+  function _del(pr){ return isAdmin ? '<button class="card-btn-del" onclick="deleteProperty(event,\''+pr.portfolioId+'\',\''+pr.id+'\')">Delete</button>' : ''; }
+
+  list.innerHTML = props.map(pr => {
+    if(isList) {
+      return '<div id="pcard-'+pr.id+'" style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--card);">'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="display:flex;align-items:center;gap:6px;">'
+        +'<span style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(pr.name)+'</span>'
+        +_sb(pr)+_pc(pr)
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:1px;">'+escHtml((portfolios.find(p=>p.id===pr.portfolioId)||{}).name||'')+'</div>'
+        +'</div>'
+        +'<button class="prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex-shrink:0;padding:5px 14px;background:#003f2d;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Open →</button>'
+        +_del(pr)
+        +'</div>';
+    } else {
+      return '<div class="property-card" id="pcard-'+pr.id+'">'
+        +'<div class="property-card-thumb prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">'
+        +'<div class="property-card-thumb-label">'+escHtml(PROPERTY_LABEL)+'</div>'
+        +'<div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>'
+        +'<div class="property-thumb-bar"></div>'
+        +'</div>'
+        +'<div class="property-card-body">'
+        +'<div class="property-card-name"><div style="display:flex;align-items:center;gap:6px;"><span>'+escHtml(pr.name)+'</span>'+_sb(pr)+_pc(pr)+'</div></div>'
+        +'<div class="property-card-meta">'+escHtml((portfolios.find(p=>p.id===pr.portfolioId)||{}).name||'')+'</div>'
+        +'</div>'
+        +'<div class="property-card-actions">'
+        +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">Open Builder →</button>'
+        +_del(pr)
+        +'</div></div>';
+    }
+  }).join('');
+}
+
+function openNewPropertyModal() {
+  document.getElementById('new-property-name').value = '';
+  document.getElementById('new-property-state').value = '';
+  document.getElementById('modal-property').classList.add('open');
+  setTimeout(()=>document.getElementById('new-property-name').focus(), 50);
+}
+
+function createProperty() {
+  const name  = document.getElementById('new-property-name').value.trim();
+  const state = document.getElementById('new-property-state').value;
+  if(!name) return;
+  const id = 'pr'+Date.now();
+  const now = new Date().toISOString();
+  if(!properties[currentPortfolioId]) properties[currentPortfolioId] = [];
+  properties[currentPortfolioId].push({id, name, state, portfolioId:currentPortfolioId, updatedAt:now});
+  saveData();
+  closeModal('modal-property');
+  renderProperties();
+}
+
+function deleteProperty(e, portfolioId, propId) {
+  e.stopPropagation();
+  if(!confirm('Delete this '+PROPERTY_LABEL.toLowerCase()+'? This cannot be undone.')) return;
+  properties[portfolioId] = (properties[portfolioId]||[]).filter(p => p.id!==propId);
+  saveData();
+  renderProperties();
+}
+
+function openRenameProperty(btn) {
+  const portfolioId = btn.dataset.pid;
+  const propId = btn.dataset.id;
+  const pr = (properties[portfolioId]||[]).find(p=>p.id===propId);
+  document.getElementById('rename-property-name').value  = pr ? pr.name  : '';
+  document.getElementById('rename-property-state').value = pr ? (pr.state||'') : '';
+  document.getElementById('rename-property-id').value = portfolioId+'||'+propId;
+  document.getElementById('modal-rename-property').classList.add('open');
+}
+
+function saveRenameProperty() {
+  const [portfolioId, propId] = document.getElementById('rename-property-id').value.split('||');
+  const newName  = document.getElementById('rename-property-name').value.trim();
+  const newState = document.getElementById('rename-property-state').value;
+  if(!newName) return;
+  const pr = (properties[portfolioId]||[]).find(p=>p.id===propId);
+  if(pr){ pr.name=newName; pr.state=newState; pr.updatedAt=new Date().toISOString(); }
+  saveData();
+  closeModal('modal-rename-property');
+  renderProperties();
+}
+
+function openBuilder(portfolioId, propertyId) {
+  const portfolio = portfolios.find(p=>p.id===portfolioId);
+  const pr = (properties[portfolioId]||[]).find(p=>p.id===propertyId);
+  const params = new URLSearchParams({
+    portfolioId, propertyId,
+    portfolioName: portfolio?.name||'',
+    propertyName:  pr?.name||'',
+    userRole: currentUser?.role||'user',
+    userName: currentUser?.name||'',
+  });
+  window.location.href = BUILDER_FILE+'?'+params.toString();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODALS & UTILITIES
+// ═══════════════════════════════════════════════════════════════
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') document.querySelectorAll('.modal-bg.open').forEach(m=>m.classList.remove('open'));
+  if(e.key==='Enter') {
+    if(document.getElementById('modal-portfolio').classList.contains('open')) createPortfolio();
+    if(document.getElementById('modal-property').classList.contains('open'))  createProperty();
+    if(document.getElementById('modal-rename-property').classList.contains('open')) saveRenameProperty();
+  }
+});
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.prop-open-btn');
+  if(btn && btn.dataset.pid && btn.dataset.id) openBuilder(btn.dataset.pid, btn.dataset.id);
+});
+function escHtml(str) { const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO-LOGIN (restore shared session)
+// ═══════════════════════════════════════════════════════════════
+(async function() {
+  const saved = sessGet('session');
+  if(saved && saved.email) {
+    try {
+      const rows = await SB.get('users', `?email=eq.${encodeURIComponent(saved.email)}&select=id,name,email,role`);
+      if(Array.isArray(rows) && rows.length) {
+        currentUser = {id:rows[0].id, name:rows[0].name, email:rows[0].email, role:rows[0].role};
+        sessSet('session', currentUser);
+        await onLoginSuccess(); return;
+      }
+    } catch(e) { /* Supabase unreachable — use saved */ }
+    currentUser = saved;
+    await onLoginSuccess();
+  }
+})();
+</script>
+</body>
+</html>
