@@ -756,15 +756,27 @@ async function loadDemoData(){
     const pfs = await SB.get('portfolios', '?order=created_at.asc');
     if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id: p.id, name: p.name, createdAt: p.created_at}));
   } catch(e) {
-    console.warn('Portfolios load failed:', e);
+    console.warn('Portfolios load failed — using localStorage:', e);
     try { const lsPfs = JSON.parse(localStorage.getItem('cbre_hub_portfolios')||'null'); if(lsPfs) portfolios=lsPfs; } catch(e2){}
   }
 
-  // Properties stored in localStorage (no properties table in Supabase)
+  // Load properties from Supabase so all users see the same data
   try {
-    const lsProps = JSON.parse(localStorage.getItem('cbre_hub_properties')||'null');
-    if(lsProps) properties = lsProps;
-  } catch(e) {}
+    const rows = await SB.get('properties', '?order=created_at.asc');
+    if(Array.isArray(rows)){
+      properties = {};
+      rows.forEach(r => {
+        if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
+        properties[r.portfolio_id].push({
+          id: r.id, name: r.name, state: r.state||'',
+          portfolioId: r.portfolio_id, updatedAt: r.updated_at
+        });
+      });
+    }
+  } catch(e) {
+    console.warn('Properties load failed — using localStorage:', e);
+    try { const lsProps = JSON.parse(localStorage.getItem('cbre_hub_properties')||'null'); if(lsProps) properties=lsProps; } catch(e2){}
+  }
 
   // Load users from Supabase (admin only)
   if(currentUser && currentUser.role === 'admin'){
@@ -778,6 +790,7 @@ async function saveDemoData(){
     localStorage.setItem('cbre_hub_properties', JSON.stringify(properties));
   } catch(e) {}
 }
+
 
 // ═══════════════════════════════════════════════════════════════
 // USER MANAGEMENT
@@ -1114,7 +1127,13 @@ async function saveRenameProperty(){
   if(!newName) return;
   const props = properties[portfolioId] || [];
   const pr = props.find(p => p.id === propId);
-  if(pr){ pr.name = newName; pr.state = newState; }
+  if(pr){
+    pr.name = newName; pr.state = newState; pr.updatedAt = new Date().toISOString();
+    // Update in Supabase so all users see the rename
+    try {
+      await SB.patch('properties', '?id=eq.'+propId, {name: newName, state: newState, updated_at: pr.updatedAt});
+    } catch(e){ console.warn('Property rename Supabase failed:', e); }
+  }
   saveDemoData();
   closeModal('modal-rename-property');
   renderProperties();
@@ -1254,6 +1273,10 @@ async function createProperty(){
   const now = new Date().toISOString();
   if(!properties[currentPortfolioId]) properties[currentPortfolioId] = [];
   properties[currentPortfolioId].push({id, name, state, portfolioId: currentPortfolioId, updatedAt: now});
+  // Write to Supabase so all users see the new property immediately
+  try {
+    await SB.post('properties', {id, name, state, portfolio_id: currentPortfolioId, created_at: now, updated_at: now});
+  } catch(e){ console.warn('Property Supabase save failed:', e); }
   saveDemoData();
   closeModal('modal-property');
   document.getElementById('new-property-name').value = '';
