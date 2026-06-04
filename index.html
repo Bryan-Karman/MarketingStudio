@@ -751,27 +751,31 @@ const SB = {
 };
 
 async function loadDemoData(){
-  // Load portfolios from Supabase
+  // Load portfolios — marketing only
   try {
-    const pfs = await SB.get('portfolios', '?order=created_at.asc');
+    const pfs = await SB.get('portfolios', '?product=eq.marketing&order=created_at.asc');
     if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id: p.id, name: p.name, createdAt: p.created_at}));
   } catch(e) {
     console.warn('Portfolios load failed — using localStorage:', e);
     try { const lsPfs = JSON.parse(localStorage.getItem('cbre_hub_portfolios')||'null'); if(lsPfs) portfolios=lsPfs; } catch(e2){}
   }
 
-  // Load properties from Supabase so all users see the same data
+  // Load properties for our marketing portfolios only
   try {
-    const rows = await SB.get('properties', '?order=created_at.asc');
-    if(Array.isArray(rows)){
-      properties = {};
-      rows.forEach(r => {
-        if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
-        properties[r.portfolio_id].push({
-          id: r.id, name: r.name, state: r.state||'',
-          portfolioId: r.portfolio_id, updatedAt: r.updated_at
+    const ourIds = portfolios.map(p => p.id);
+    if(ourIds.length > 0){
+      const rows = await SB.get('properties',
+        '?product=eq.marketing&portfolio_id=in.('+ourIds.join(',')+')'+'&order=created_at.asc');
+      if(Array.isArray(rows)){
+        properties = {};
+        rows.forEach(r => {
+          if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
+          properties[r.portfolio_id].push({
+            id: r.id, name: r.name, state: r.state||'',
+            portfolioId: r.portfolio_id, updatedAt: r.updated_at
+          });
         });
-      });
+      }
     }
   } catch(e) {
     console.warn('Properties load failed — using localStorage:', e);
@@ -1067,7 +1071,7 @@ async function createPortfolio(){
   if(!name) return;
   const id = 'p' + Date.now();
   try {
-    await SB.post('portfolios', {id, name, created_at: new Date().toISOString()});
+    await SB.post('portfolios', {id, name, product: 'marketing', created_at: new Date().toISOString()});
   } catch(e) { console.warn('Supabase portfolio save failed:', e); }
   portfolios.unshift({id, name, createdAt: new Date().toISOString()});
   saveDemoData();
@@ -1131,7 +1135,7 @@ async function saveRenameProperty(){
     pr.name = newName; pr.state = newState; pr.updatedAt = new Date().toISOString();
     // Update in Supabase so all users see the rename
     try {
-      await SB.patch('properties', '?id=eq.'+propId, {name: newName, state: newState, updated_at: pr.updatedAt});
+      await SB.patch('properties', '?id=eq.'+propId, {name: newName, state: newState, product: 'marketing', updated_at: pr.updatedAt});
     } catch(e){ console.warn('Property rename Supabase failed:', e); }
   }
   saveDemoData();
@@ -1275,7 +1279,7 @@ async function createProperty(){
   properties[currentPortfolioId].push({id, name, state, portfolioId: currentPortfolioId, updatedAt: now});
   // Write to Supabase so all users see the new property immediately
   try {
-    await SB.post('properties', {id, name, state, portfolio_id: currentPortfolioId, created_at: now, updated_at: now});
+    await SB.post('properties', {id, name, state, product: 'marketing', portfolio_id: currentPortfolioId, created_at: now, updated_at: now});
   } catch(e){ console.warn('Property Supabase save failed:', e); }
   saveDemoData();
   closeModal('modal-property');
