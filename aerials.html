@@ -385,63 +385,49 @@ const SB = {
 // Table names: aerials_portfolios, aerials_properties (or localStorage fallback)
 // ═══════════════════════════════════════════════════════════════
 async function loadData() {
-  // Use the same 'portfolios' table as Marketing, filtered by product='aerials'
-  // This avoids needing separate tables and reuses existing RLS policies
+  // Load portfolios — fetch rows tagged product='aerials' OR product is null
+  // (null = created before the product column was added)
+  // PostgREST OR syntax: use two conditions joined with comma in query
   try {
-    const pfs = await SB.get('portfolios', '?product=eq.aerials&order=created_at.asc');
+    const pfs = await SB.get('portfolios',
+      '?or=(product.eq.aerials,product.is.null)&order=created_at.asc');
     if(Array.isArray(pfs) && pfs.length > 0){
       portfolios = pfs.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
-    } else {
-      // Fallback: try aerials_portfolios table
-      try {
-        const pfs2 = await SB.get('aerials_portfolios', '?order=created_at.asc');
-        if(Array.isArray(pfs2)) portfolios = pfs2.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
-      } catch(e2) {
-        console.warn('aerials_portfolios load failed — using localStorage:', e2.message);
-        const saved = lsGet('portfolios');
-        if(saved) portfolios = saved;
-      }
+      // Silently tag any untagged rows so future queries find them cleanly
+      pfs.filter(p=>!p.product).forEach(p=>{
+        SB.patch('portfolios','?id=eq.'+p.id,{product:'aerials'}).catch(()=>{});
+      });
     }
   } catch(e) {
-    console.warn('portfolios load failed — using localStorage:', e.message);
+    console.warn('Portfolios load failed — using localStorage:', e.message);
     const saved = lsGet('portfolios');
     if(saved) portfolios = saved;
   }
 
-  // Load properties — same approach, product filter on shared table
+  // Load properties belonging to our portfolios
   try {
-    const rows = await SB.get('properties', '?product=eq.aerials&order=created_at.asc');
-    if(Array.isArray(rows) && rows.length > 0){
-      properties = {};
-      rows.forEach(r => {
-        if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
-        properties[r.portfolio_id].push({
-          id:r.id, name:r.name, state:r.state||'',
-          portfolioId:r.portfolio_id, updatedAt:r.updated_at
-        });
-      });
-    } else {
-      // Fallback: try aerials_properties table
-      try {
-        const rows2 = await SB.get('aerials_properties', '?order=created_at.asc');
-        if(Array.isArray(rows2) && rows2.length > 0){
-          properties = {};
-          rows2.forEach(r => {
-            if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
-            properties[r.portfolio_id].push({
-              id:r.id, name:r.name, state:r.state||'',
-              portfolioId:r.portfolio_id, updatedAt:r.updated_at
-            });
+    const ourIds = portfolios.map(p=>p.id);
+    if(ourIds.length > 0){
+      // Fetch properties for all our portfolio IDs
+      const rows = await SB.get('properties',
+        '?portfolio_id=in.('+ourIds.join(',')+')&order=created_at.asc');
+      if(Array.isArray(rows)){
+        properties = {};
+        rows.forEach(r => {
+          if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
+          properties[r.portfolio_id].push({
+            id:r.id, name:r.name, state:r.state||'',
+            portfolioId:r.portfolio_id, updatedAt:r.updated_at
           });
-        }
-      } catch(e2) {
-        console.warn('aerials_properties load failed — using localStorage:', e2.message);
-        const savedProps = lsGet('properties');
-        if(savedProps) properties = savedProps;
+          // Tag untagged property rows
+          if(!r.product){
+            SB.patch('properties','?id=eq.'+r.id,{product:'aerials'}).catch(()=>{});
+          }
+        });
       }
     }
   } catch(e) {
-    console.warn('properties load failed — using localStorage:', e.message);
+    console.warn('Properties load failed — using localStorage:', e.message);
     const savedProps = lsGet('properties');
     if(savedProps) properties = savedProps;
   }
