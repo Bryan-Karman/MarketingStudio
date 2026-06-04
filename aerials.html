@@ -406,6 +406,25 @@ function saveData() {
   lsSet('properties', properties);
 }
 
+async function savePropertyToSB(prop){
+  const prTable = PRODUCT_KEY + '_properties';
+  try {
+    const existing = await sbGet(prTable, '?id=eq.'+prop.id+'&select=id');
+    const payload = {id:prop.id, name:prop.name, state:prop.state||'', portfolio_id:prop.portfolioId, updated_at:new Date().toISOString()};
+    if(Array.isArray(existing)&&existing.length){
+      await sbPatch(prTable,'?id=eq.'+prop.id, payload);
+    } else {
+      await sbPost(prTable, {...payload, created_at:new Date().toISOString()});
+    }
+  } catch(e){ console.warn('Property SB save failed:', e.message); }
+}
+
+async function deletePropertyFromSB(propId){
+  const prTable = PRODUCT_KEY + '_properties';
+  try { await fetch(SUPABASE_URL+'/rest/v1/'+prTable+'?id=eq.'+propId,{method:'DELETE',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}); }
+  catch(e){ console.warn('Property SB delete failed:', e.message); }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════════
@@ -636,8 +655,10 @@ function createProperty() {
   const id = 'pr'+Date.now();
   const now = new Date().toISOString();
   if(!properties[currentPortfolioId]) properties[currentPortfolioId] = [];
-  properties[currentPortfolioId].push({id, name, state, portfolioId:currentPortfolioId, updatedAt:now});
+  const newProp = {id, name, state, portfolioId:currentPortfolioId, updatedAt:now};
+  properties[currentPortfolioId].push(newProp);
   saveData();
+  savePropertyToSB(newProp);
   closeModal('modal-property');
   renderProperties();
 }
@@ -646,6 +667,7 @@ function deleteProperty(e, portfolioId, propId) {
   e.stopPropagation();
   if(!confirm('Delete this '+PROPERTY_LABEL.toLowerCase()+'? This cannot be undone.')) return;
   properties[portfolioId] = (properties[portfolioId]||[]).filter(p => p.id!==propId);
+  deletePropertyFromSB(propId);
   saveData();
   renderProperties();
 }
@@ -666,7 +688,7 @@ function saveRenameProperty() {
   const newState = document.getElementById('rename-property-state').value;
   if(!newName) return;
   const pr = (properties[portfolioId]||[]).find(p=>p.id===propId);
-  if(pr){ pr.name=newName; pr.state=newState; pr.updatedAt=new Date().toISOString(); }
+  if(pr){ pr.name=newName; pr.state=newState; pr.updatedAt=new Date().toISOString(); savePropertyToSB(pr); }
   saveData();
   closeModal('modal-rename-property');
   renderProperties();
