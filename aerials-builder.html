@@ -2305,20 +2305,16 @@ async function handleImageUpload(input){
     setCld('saved','Saved ✓');
     scheduleSave();
   } catch(e){
-    console.warn('Supabase upload failed, using local URL:', e.message);
-    const url = URL.createObjectURL(file);
-    pages[currentPage].imageUrl          = url;
-    pages[currentPage].imagePos          = {x:0,y:0};
-    pages[currentPage].imageScale        = 1;
-    pages[currentPage].imageBrightness   = 1;
-    pages[currentPage].imageContrast     = 1;
-    pages[currentPage].imageSaturation   = 1;
-    pages[currentPage].imageUserAdjusted = false;
-    renderPage(currentPage);
-    attachArtboardEvents(pages[currentPage]);
-    attachStickerEvents();
-    setCld('error','Saved locally');
-    scheduleSave();
+    console.error('Supabase image upload failed:', e.message);
+    // Show the real error so we can diagnose
+    const errMsg = e.message.includes('bucket') ? 'Bucket missing in Supabase' :
+                   e.message.includes('policy') || e.message.includes('row') ? 'Storage policy error' :
+                   e.message.includes('401') || e.message.includes('403') ? 'Storage permission denied' :
+                   'Upload failed: '+e.message.substring(0,40);
+    alert('Image upload to Supabase failed:\n'+errMsg+'\n\nCheck browser console for details.');
+    setCld('error', 'Upload failed');
+    input.value='';
+    return; // Don't save a blob URL — it won't work for other users
   }
   input.value='';
 }
