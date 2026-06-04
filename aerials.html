@@ -396,9 +396,25 @@ async function loadData() {
     if(saved) portfolios = saved;
   }
 
-  // Properties always localStorage for now (same pattern as Marketing)
-  const savedProps = lsGet('properties');
-  if(savedProps) properties = savedProps;
+  // Load properties from Supabase so all users see the same data
+  const prTable = PRODUCT_KEY + '_properties';
+  try {
+    const rows = await sbGet(prTable, '?order=created_at.asc');
+    if(Array.isArray(rows)){
+      properties = {};
+      rows.forEach(r => {
+        if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
+        properties[r.portfolio_id].push({
+          id:r.id, name:r.name, state:r.state||'',
+          portfolioId:r.portfolio_id, updatedAt:r.updated_at
+        });
+      });
+    }
+  } catch(e) {
+    console.warn(prTable + ' load failed — using localStorage:', e.message);
+    const savedProps = lsGet('properties');
+    if(savedProps) properties = savedProps;
+  }
 }
 
 function saveData() {
