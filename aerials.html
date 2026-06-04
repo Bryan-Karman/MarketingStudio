@@ -385,18 +385,11 @@ const SB = {
 // Table names: aerials_portfolios, aerials_properties (or localStorage fallback)
 // ═══════════════════════════════════════════════════════════════
 async function loadData() {
-  // Load portfolios — fetch rows tagged product='aerials' OR product is null
-  // (null = created before the product column was added)
-  // PostgREST OR syntax: use two conditions joined with comma in query
+  // Strict product filter — only load rows explicitly tagged 'aerials'
   try {
-    const pfs = await SB.get('portfolios',
-      '?or=(product.eq.aerials,product.is.null)&order=created_at.asc');
-    if(Array.isArray(pfs) && pfs.length > 0){
+    const pfs = await SB.get('portfolios', '?product=eq.aerials&order=created_at.asc');
+    if(Array.isArray(pfs)){
       portfolios = pfs.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
-      // Silently tag any untagged rows so future queries find them cleanly
-      pfs.filter(p=>!p.product).forEach(p=>{
-        SB.patch('portfolios','?id=eq.'+p.id,{product:'aerials'}).catch(()=>{});
-      });
     }
   } catch(e) {
     console.warn('Portfolios load failed — using localStorage:', e.message);
@@ -404,13 +397,12 @@ async function loadData() {
     if(saved) portfolios = saved;
   }
 
-  // Load properties belonging to our portfolios
+  // Load properties for our portfolio IDs
   try {
-    const ourIds = portfolios.map(p=>p.id);
+    const ourIds = portfolios.map(p => p.id);
     if(ourIds.length > 0){
-      // Fetch properties for all our portfolio IDs
       const rows = await SB.get('properties',
-        '?portfolio_id=in.('+ourIds.join(',')+')&order=created_at.asc');
+        '?product=eq.aerials&portfolio_id=in.('+ourIds.join(',')+')&order=created_at.asc');
       if(Array.isArray(rows)){
         properties = {};
         rows.forEach(r => {
@@ -419,10 +411,6 @@ async function loadData() {
             id:r.id, name:r.name, state:r.state||'',
             portfolioId:r.portfolio_id, updatedAt:r.updated_at
           });
-          // Tag untagged property rows
-          if(!r.product){
-            SB.patch('properties','?id=eq.'+r.id,{product:'aerials'}).catch(()=>{});
-          }
         });
       }
     }
