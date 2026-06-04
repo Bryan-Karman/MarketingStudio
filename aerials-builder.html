@@ -2398,7 +2398,6 @@ async function doSave(){
     state_json:   JSON.stringify({pages, status}),
     updated_at:   new Date().toISOString()
   };
-  // Try Supabase upsert
   try {
     const existing = await sbGet('aerials_projects',`?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}&select=id`);
     if(Array.isArray(existing)&&existing.length){
@@ -2406,11 +2405,17 @@ async function doSave(){
     } else {
       await sbPost('aerials_projects',{...payload,id:'ap'+Date.now()});
     }
+    // Also save to localStorage as backup
+    localStorage.setItem(LS_KEY, JSON.stringify({pages,status}));
     setCld('saved','Saved ✓');
   } catch(e){
-    console.warn('Supabase save failed — localStorage fallback:', e.message);
+    console.error('Supabase save failed:', e.message);
+    // Show actual error so we can diagnose
+    setCld('error', e.message.includes('relation') ? 'Table missing — see console' :
+                    e.message.includes('42') ? 'DB error — see console' :
+                    'Save failed — check console');
+    // Still save locally so work isn't lost
     localStorage.setItem(LS_KEY, JSON.stringify({pages,status}));
-    setCld('saved','Saved locally');
   }
 }
 
