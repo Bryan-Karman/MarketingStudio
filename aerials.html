@@ -399,7 +399,7 @@ async function loadData() {
   // Load properties from Supabase so all users see the same data
   const prTable = PRODUCT_KEY + '_properties';
   try {
-    const rows = await sbGet(prTable, '?order=created_at.asc');
+    const rows = await SB.get(prTable, '?order=created_at.asc');
     if(Array.isArray(rows)){
       properties = {};
       rows.forEach(r => {
@@ -425,12 +425,12 @@ function saveData() {
 async function savePropertyToSB(prop){
   const prTable = PRODUCT_KEY + '_properties';
   try {
-    const existing = await sbGet(prTable, '?id=eq.'+prop.id+'&select=id');
+    const existing = await SB.get(prTable, '?id=eq.'+prop.id+'&select=id');
     const payload = {id:prop.id, name:prop.name, state:prop.state||'', portfolio_id:prop.portfolioId, updated_at:new Date().toISOString()};
     if(Array.isArray(existing)&&existing.length){
-      await sbPatch(prTable,'?id=eq.'+prop.id, payload);
+      await SB.patch(prTable,'?id=eq.'+prop.id, payload);
     } else {
-      await sbPost(prTable, {...payload, created_at:new Date().toISOString()});
+      await SB.post(prTable, {...payload, created_at:new Date().toISOString()});
     }
   } catch(e){ console.warn('Property SB save failed:', e.message); }
 }
