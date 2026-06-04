@@ -385,22 +385,33 @@ const SB = {
 // Table names: aerials_portfolios, aerials_properties (or localStorage fallback)
 // ═══════════════════════════════════════════════════════════════
 async function loadData() {
-  // Try Supabase table: named by product, e.g. aerials_portfolios
-  const pTable = PRODUCT_KEY + '_portfolios';
+  // Use the same 'portfolios' table as Marketing, filtered by product='aerials'
+  // This avoids needing separate tables and reuses existing RLS policies
   try {
-    const pfs = await SB.get(pTable, '?order=created_at.asc');
-    if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
+    const pfs = await SB.get('portfolios', '?product=eq.aerials&order=created_at.asc');
+    if(Array.isArray(pfs) && pfs.length > 0){
+      portfolios = pfs.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
+    } else {
+      // Fallback: try aerials_portfolios table
+      try {
+        const pfs2 = await SB.get('aerials_portfolios', '?order=created_at.asc');
+        if(Array.isArray(pfs2)) portfolios = pfs2.map(p => ({id:p.id, name:p.name, createdAt:p.created_at}));
+      } catch(e2) {
+        console.warn('aerials_portfolios load failed — using localStorage:', e2.message);
+        const saved = lsGet('portfolios');
+        if(saved) portfolios = saved;
+      }
+    }
   } catch(e) {
-    console.warn(pTable + ' load failed — using localStorage:', e.message);
+    console.warn('portfolios load failed — using localStorage:', e.message);
     const saved = lsGet('portfolios');
     if(saved) portfolios = saved;
   }
 
-  // Load properties from Supabase so all users see the same data
-  const prTable = PRODUCT_KEY + '_properties';
+  // Load properties — same approach, product filter on shared table
   try {
-    const rows = await SB.get(prTable, '?order=created_at.asc');
-    if(Array.isArray(rows)){
+    const rows = await SB.get('properties', '?product=eq.aerials&order=created_at.asc');
+    if(Array.isArray(rows) && rows.length > 0){
       properties = {};
       rows.forEach(r => {
         if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
@@ -409,9 +420,28 @@ async function loadData() {
           portfolioId:r.portfolio_id, updatedAt:r.updated_at
         });
       });
+    } else {
+      // Fallback: try aerials_properties table
+      try {
+        const rows2 = await SB.get('aerials_properties', '?order=created_at.asc');
+        if(Array.isArray(rows2) && rows2.length > 0){
+          properties = {};
+          rows2.forEach(r => {
+            if(!properties[r.portfolio_id]) properties[r.portfolio_id] = [];
+            properties[r.portfolio_id].push({
+              id:r.id, name:r.name, state:r.state||'',
+              portfolioId:r.portfolio_id, updatedAt:r.updated_at
+            });
+          });
+        }
+      } catch(e2) {
+        console.warn('aerials_properties load failed — using localStorage:', e2.message);
+        const savedProps = lsGet('properties');
+        if(savedProps) properties = savedProps;
+      }
     }
   } catch(e) {
-    console.warn(prTable + ' load failed — using localStorage:', e.message);
+    console.warn('properties load failed — using localStorage:', e.message);
     const savedProps = lsGet('properties');
     if(savedProps) properties = savedProps;
   }
@@ -423,22 +453,36 @@ function saveData() {
 }
 
 async function savePropertyToSB(prop){
-  const prTable = PRODUCT_KEY + '_properties';
   try {
-    const existing = await SB.get(prTable, '?id=eq.'+prop.id+'&select=id');
-    const payload = {id:prop.id, name:prop.name, state:prop.state||'', portfolio_id:prop.portfolioId, updated_at:new Date().toISOString()};
+    const existing = await SB.get('properties', '?id=eq.'+prop.id+'&select=id');
+    const payload = {id:prop.id, name:prop.name, state:prop.state||'',
+      portfolio_id:prop.portfolioId, product:'aerials', updated_at:new Date().toISOString()};
     if(Array.isArray(existing)&&existing.length){
-      await SB.patch(prTable,'?id=eq.'+prop.id, payload);
+      await SB.patch('properties','?id=eq.'+prop.id, payload);
     } else {
-      await SB.post(prTable, {...payload, created_at:new Date().toISOString()});
+      await SB.post('properties', {...payload, created_at:new Date().toISOString()});
     }
-  } catch(e){ console.warn('Property SB save failed:', e.message); }
+  } catch(e){
+    // Fallback: try aerials_properties table
+    try {
+      const payload2 = {id:prop.id, name:prop.name, state:prop.state||'',
+        portfolio_id:prop.portfolioId, updated_at:new Date().toISOString()};
+      const existing2 = await SB.get('aerials_properties', '?id=eq.'+prop.id+'&select=id');
+      if(Array.isArray(existing2)&&existing2.length){
+        await SB.patch('aerials_properties','?id=eq.'+prop.id, payload2);
+      } else {
+        await SB.post('aerials_properties', {...payload2, created_at:new Date().toISOString()});
+      }
+    } catch(e2){ console.warn('Property SB save failed:', e2.message); }
+  }
 }
 
 async function deletePropertyFromSB(propId){
-  const prTable = PRODUCT_KEY + '_properties';
-  try { await fetch(SUPABASE_URL+'/rest/v1/'+prTable+'?id=eq.'+propId,{method:'DELETE',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}); }
-  catch(e){ console.warn('Property SB delete failed:', e.message); }
+  try { await SB.del('properties','?id=eq.'+propId+'&product=eq.aerials'); }
+  catch(e){
+    try { await SB.del('aerials_properties','?id=eq.'+propId); }
+    catch(e2){ console.warn('Property SB delete failed:', e2.message); }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -561,9 +605,14 @@ async function createPortfolio() {
   const name = document.getElementById('new-portfolio-name').value.trim();
   if(!name) return;
   const id = 'p'+Date.now();
-  const pTable = PRODUCT_KEY+'_portfolios';
-  try { await SB.post(pTable, {id, name, created_at: new Date().toISOString()}); }
-  catch(e) { console.warn('Supabase portfolio save failed:', e.message); }
+  // Write to shared 'portfolios' table with product='aerials' tag
+  try {
+    await SB.post('portfolios', {id, name, product:'aerials', created_at: new Date().toISOString()});
+  } catch(e) {
+    // Fallback: try aerials_portfolios table
+    try { await SB.post('aerials_portfolios', {id, name, created_at: new Date().toISOString()}); }
+    catch(e2) { console.warn('Supabase portfolio save failed:', e2.message); }
+  }
   portfolios.unshift({id, name, createdAt:new Date().toISOString()});
   saveData();
   closeModal('modal-portfolio');
@@ -575,8 +624,10 @@ async function deletePortfolio(e, id) {
   if(!confirm('Delete this portfolio and all its contents? This cannot be undone.')) return;
   const pTable = PRODUCT_KEY+'_portfolios';
   try {
-    await SB.del(pTable, `?id=eq.${id}`);
-  } catch(e2) { console.warn('Supabase delete failed:', e2.message); }
+    await SB.del('portfolios', `?id=eq.${id}&product=eq.aerials`);
+  } catch(e2) {
+    try { await SB.del('aerials_portfolios', `?id=eq.${id}`); } catch(e3){}
+  }
   portfolios = portfolios.filter(p => p.id!==id);
   delete properties[id];
   saveData();
