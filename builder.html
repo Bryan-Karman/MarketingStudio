@@ -1242,11 +1242,22 @@ function deselectAll(){
   selectedEl=null;
   _selectedEls.forEach(function(el){ el.classList.remove('selected'); });
   _selectedEls = [];
-  document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+  document.getElementById('props-content').innerHTML=emptyPropsHTML();
 }
 
 function bgClick(e){
   if(e.target===document.getElementById('canvas-area')||e.target===document.getElementById('canvas-wrap')||e.target===document.getElementById('artwork')) deselectAll();
+}
+
+function emptyPropsHTML(){
+  if(_adminMode){
+    const mm=PDF_MM[currentTab];
+    return `<div style="background:#0d1f17;border:1px solid #1e4a2e;border-radius:3px;padding:7px 10px;margin-bottom:2px;">
+      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">&#9881; Artboard Size</div>
+      <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
+    </div><div class="props-empty">Select an element on the canvas to edit its properties here.</div>`;
+  }
+  return emptyPropsHTML();
 }
 
 function showProps(el){
@@ -1254,7 +1265,16 @@ function showProps(el){
   const inner=el.querySelector('.el-inner');
   const pc=document.getElementById('props-content');
 
-  let html=`
+  let html='';
+  if(_adminMode){
+    const mm=PDF_MM[currentTab];
+    html+=`<div style="background:#0d1f17;border:1px solid #1e4a2e;border-radius:3px;padding:7px 10px;margin-bottom:2px;">
+      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">&#9881; Artboard Size</div>
+      <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
+    </div>`;
+  }
+
+  html+=`
   <div class="pf"><label>Position X / Y</label>
     <div class="pf-row">
       <div class="pf"><input type="number" value="${Math.round(parseFloat(el.style.left))}" oninput="el_set('left',this.value+'px')" style="width:100%;"></div>
@@ -1584,7 +1604,7 @@ function deleteSelected(){
   }
   selectedEl.remove();
   selectedEl=null;
-  document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+  document.getElementById('props-content').innerHTML=emptyPropsHTML();
   debouncedPersist();
 }
 
@@ -1703,7 +1723,7 @@ function serializeTab(){
     const obj={
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
-      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0',
+      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'',
     };
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
@@ -1800,6 +1820,22 @@ function restoreTab(idx){
       el.style.cursor='not-allowed';
     }
     if(sv.combinedAgent==='1') el.dataset.combinedAgent='1';
+    if(sv.banner==='1'){
+      el.dataset.banner='1';
+      if(sv.bannerPad) el.dataset.bannerPad=sv.bannerPad;
+      el.style.display='flex';
+      el.style.alignItems='center';
+      // Force-reapply banner inner styles so stale saved padding never wins
+      const _bi=el.querySelector('.el-inner');
+      if(_bi){
+        _bi.style.width='fit-content';
+        _bi.style.minWidth='0';
+        _bi.style.marginLeft='auto';
+        _bi.style.position='relative';
+        _bi.style.lineHeight='1';
+        if(sv.bannerPad) _bi.style.padding=sv.bannerPad;
+      }
+    }
     const inner=el.querySelector('.el-inner');
     // Apply saved style FIRST
     if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
@@ -1888,6 +1924,23 @@ function restoreTab(idx){
   });
   // Sync all field values so combined agents, bullets etc all populate correctly
   globalSync();
+  // Patch any banner elements missing bannerPad (old saves before this was tracked)
+  document.querySelectorAll('.el[data-banner="1"]').forEach(function(bel){
+    if(!bel.dataset.bannerPad){
+      bel.dataset.bannerPad='5px 8px 4px';
+    }
+    const _bi=bel.querySelector('.el-inner');
+    if(_bi){
+      _bi.style.padding=bel.dataset.bannerPad;
+      _bi.style.width='fit-content';
+      _bi.style.minWidth='0';
+      _bi.style.marginLeft='auto';
+      _bi.style.position='relative';
+      _bi.style.lineHeight='1';
+      bel.style.display='flex';
+      bel.style.alignItems='center';
+    }
+  });
   return true;
 }
 
@@ -1939,6 +1992,17 @@ function globalSync(){
         } else {
           inner.textContent = val;
         }
+      }
+      // Re-apply banner inner styles after text update so pill stays fitted
+      if(el.dataset.banner==='1'){
+        inner.style.width='fit-content';
+        inner.style.minWidth='0';
+        inner.style.marginLeft='auto';
+        inner.style.position='relative';
+        inner.style.lineHeight='1';
+        if(el.dataset.bannerPad) inner.style.padding=el.dataset.bannerPad;
+        el.style.display='flex';
+        el.style.alignItems='center';
       }
       // Re-apply bullet prefix if this element has bullets enabled
       if(el.dataset.bullets==='1'){
@@ -2089,6 +2153,24 @@ function mkT(x,y,w,h,content,cfg){
   if(cfg && cfg.combinedAgent){
     el.dataset.combinedAgent = '1';
   }
+  return el;
+}
+function mkBanner(x,y,w,h,content,cfg){
+  // Right-anchored auto-width banner pill.
+  // The .el wrapper spans the full available width so it's draggable.
+  // The .el-inner has a coloured background, padding, and width:fit-content
+  // with margin-left:auto so the pill hugs its text and grows leftward.
+  const bannerBg = (cfg && cfg.bannerBg) ? cfg.bannerBg : 'rgb(0,63,45)';
+  const bannerPad = (cfg && cfg.bannerPad) ? cfg.bannerPad : '5px 10px';
+  const el = mkT(x,y,w,h,content,{...cfg, extraStyle:
+    'background:'+bannerBg+';padding:'+bannerPad+';width:fit-content;min-width:0;'+
+    'margin-left:auto;box-sizing:border-box;position:relative;line-height:1;'
+  });
+  el.dataset.banner='1';
+  el.dataset.bannerPad=bannerPad;
+  // Make the wrapper a flex container so the pill centres vertically
+  el.style.display='flex';
+  el.style.alignItems='center';
   return el;
 }
 function mkR(x,y,w,h,bg,cfg){
@@ -2279,7 +2361,7 @@ function buildTemplate(idx){
   selectedEl=null;
   nextId=1;
   deselectAll();
-  document.getElementById('props-content').innerHTML='<div class="props-empty">Select an element on the canvas to edit its properties here.</div>';
+  document.getElementById('props-content').innerHTML=emptyPropsHTML();
   [buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction][idx](s[0],s[1]);
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
@@ -2288,8 +2370,7 @@ function buildTemplate(idx){
 // ─── AFR 2-AGENT 228×398 ───
 function buildAFR2(W,H){
   mkI(0,0,228,172,'img1','Image',{z:1});
-  mkR(128,144,100,26,'rgb(0, 63, 45)',{z:3});
-  mkT(79,151,140,15,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4});
+  mkBanner(79,144,140,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
   mkR(0,170,228,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,214,46,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:3});
   mkR(0,219,228,179,'rgb(255, 255, 255)',{z:1});
@@ -2306,8 +2387,7 @@ function buildAFR2(W,H){
 }
 function buildAFR4(W,H){
   mkI(0,0,464,172,'img1','Image',{z:1});
-  mkR(353,143,111,27,'rgb(0, 63, 45)',{z:3});
-  mkT(309,150,145,15,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4});
+  mkBanner(309,143,145,27,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
   mkR(0,170,464,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,446,27,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'heading',z:3});
   mkT(11,198,444,25,gv('fs')||'Sub Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'subheading',z:3});
@@ -2334,8 +2414,7 @@ function buildAuction(W,H){
   mkT(52,127,715,42,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'heading',z:3});
   mkT(52,165,713,36,gv('fs'),{color:'rgb(255, 255, 255)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'subheading',z:3});
   mkI(30,218,736,456,'img1','Image',{z:1});
-  mkR(545,623,221,51,'rgb(0, 63, 45)',{z:3});
-  mkT(417,636,336,27,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4});
+  mkBanner(417,623,336,51,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'15px 14px 8px'});
   mkT(30,705,518,45,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.2',field:'address1',z:2});
   mkT(30,743,516,48,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',field:'address2',z:2});
   mkI(637,690,128,93,'logo','Image',{z:2});
@@ -2357,8 +2436,7 @@ function buildBrochure1(W,H){
   mkI(28,65,539,300,'img1','Image',{z:1});
   mkI(28,377,264,194,'img2','Image',{z:1});
   mkI(304,377,264,194,'img3','Image',{z:1});
-  mkR(439,545,129,26,'rgb(0, 63, 45)',{z:3});
-  mkT(389,551,169,18,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4});
+  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
   mkT(31,584,498,32,gv('fh')||'Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:2});
   mkT(31,611,446,33,gv('fs')||'Sub Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'subheading',z:2});
   mkI(505,581,64,54,'logo','Image',{z:2});
@@ -2390,8 +2468,7 @@ function buildBrochure2(W,H){
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
   mkI(900,377,264,194,'img1','Image',{z:2});
-  mkR(1057,545,107,26,'rgb(0,63,45)',{z:4});
-  mkT(1046,552,106,16,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5});
+  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'12px 8px 5px'});
   mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkI(1101,575,59,64,'logo','Image',{z:4});
@@ -2877,8 +2954,6 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
-    // Clear ALL tab layouts so old saved indices don't corrupt new tab order
-    savedStates = {};
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
@@ -3170,6 +3245,7 @@ async function init(){
     }
     fitZoomToTab();
     renderAgentBlocks();
+    document.getElementById('props-content').innerHTML=emptyPropsHTML();
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
