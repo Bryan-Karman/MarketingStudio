@@ -5,14 +5,14 @@
 <title>CBRE Marketing Studio</title>
 <style>
 /* Fonts served from Supabase Storage */
-@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype');font-weight:300;font-style:normal;}
-@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
-@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
-@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-style:normal;}
-@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Bold.otf') format('opentype');font-weight:700;font-style:normal;}
-@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
-@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
-@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Semibold.otf') format('opentype');font-weight:600;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.ttf') format('truetype');font-weight:300;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.ttf') format('truetype');font-weight:400;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.ttf') format('truetype');font-weight:500;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.ttf') format('truetype');font-weight:600;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Bold.ttf') format('truetype');font-weight:700;font-style:normal;}
+@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.ttf') format('truetype');font-weight:400;font-style:normal;}
+@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Medium.ttf') format('truetype');font-weight:500;font-style:normal;}
+@font-face{font-family:'Financier Display';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Semibold.ttf') format('truetype');font-weight:600;font-style:normal;}
 body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;}
 </style>
 <style>
@@ -325,13 +325,13 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <div class="sb-scroll">
       <div style="font-size:10px;color:#555;line-height:1.5;padding:6px 4px;">Click element to select. Drag to move. Drag handles to resize. Double-click text to edit inline. Properties panel on right.</div>
       <div class="sec">Content</div>
-      <div class="fl"><label>Heading / Tenant</label><input id="fh" value="Heading xx" oninput="clEnforce('fh');globalSync()">
+      <div class="fl"><label>Heading</label><input id="fh" value="Heading xx" oninput="clEnforce('fh');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fh"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fh" placeholder="∞" oninput="clSetLimit('fh',this.value)" title="Max characters (leave blank for no limit)"></span></div></div>
       <div class="fl"><label>Sub Heading</label><input id="fs" value="Sub Heading xx" oninput="clEnforce('fs');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fs"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fs" placeholder="∞" oninput="clSetLimit('fs',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Address Line 1</label><input id="fa1" value="Suburb State" oninput="clEnforce('fa1');globalSync()">
+      <div class="fl"><label>Address (Suburb State)</label><input id="fa1" value="Suburb State" oninput="clEnforce('fa1');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fa1"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fa1" placeholder="∞" oninput="clSetLimit('fa1',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Address Line 2</label><input id="fa2" value="Address" oninput="clEnforce('fa2');globalSync()">
+      <div class="fl"><label>Address (Street Address)</label><input id="fa2" value="Address" oninput="clEnforce('fa2');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fa2"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fa2" placeholder="∞" oninput="clSetLimit('fa2',this.value)" title="Max characters"></span></div></div>
       <div class="fl"><label>Banner Point</label><input id="fb" value="Banner Point" oninput="clEnforce('fb');globalSync()">
         <div class="cl-row"><span class="cl-count" id="cl-fb"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fb" placeholder="∞" oninput="clSetLimit('fb',this.value)" title="Max characters"></span></div></div>
@@ -355,6 +355,9 @@ Line five</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fd"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fd" placeholder="∞" oninput="clSetLimit('fd',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Agents</div>
       
+      <!-- Hidden EDM meta inputs — always present so JS can read/write regardless of tab -->
+      <input type="hidden" id="fedm-subject">
+      <input type="hidden" id="fedm-preview">
       <!-- Hidden inputs — populated by agent selector JS, consumed by globalSync -->
       <input type="hidden" id="fn1"><input type="hidden" id="fp1">
       <input type="hidden" id="fn2"><input type="hidden" id="fp2">
@@ -479,6 +482,7 @@ const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wI
 // STATE
 // ════════════════════════════════════════
 let currentTab=0, zoom=0.65, selectedEl=null;
+let _layoutVariants={1:0}; // tabIdx -> chosen variant index (0=default)
 let _selectedEls = [];  // multi-select array
 let _marqueeEl = null;
 let assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:'',img5:'',img6:'',img7:'',img8:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
@@ -1249,15 +1253,38 @@ function bgClick(e){
   if(e.target===document.getElementById('canvas-area')||e.target===document.getElementById('canvas-wrap')||e.target===document.getElementById('artwork')) deselectAll();
 }
 
+// Tab layouts: tabIdx -> [{label, buildFn}]
+const TAB_LAYOUTS = {
+  1: [
+    {label:'Default',     fn: ()=>buildBrochure2},
+    {label:'3 Images',    fn: ()=>buildBrochure2_v2},
+  ]
+};
+
 function emptyPropsHTML(){
+  let html='';
   if(_adminMode){
     const mm=PDF_MM[currentTab];
-    return `<div style="background:#0d1f17;border:1px solid #1e4a2e;border-radius:3px;padding:7px 10px;margin-bottom:2px;">
+    html+=`<div style="background:#0d1f17;border:1px solid #1e4a2e;border-radius:3px;padding:7px 10px;margin-bottom:2px;">
       <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">&#9881; Artboard Size</div>
       <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
-    </div><div class="props-empty">Select an element on the canvas to edit its properties here.</div>`;
+    </div>`;
   }
-  return emptyPropsHTML();
+  // Layout variant selector — show for any tab that has multiple layouts
+  if(TAB_LAYOUTS[currentTab] && TAB_LAYOUTS[currentTab].length > 1){
+    const variants=TAB_LAYOUTS[currentTab];
+    const current=_layoutVariants[currentTab]||0;
+    const opts=variants.map((v,i)=>`<option value="${i}" ${i===current?'selected':''}>${v.label}</option>`).join('');
+    html+=`<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:3px;padding:8px 10px;margin-bottom:2px;">
+      <div style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Layout</div>
+      <select onchange="switchLayoutVariant(parseInt(this.value))" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;">
+        ${opts}
+      </select>
+    </div>`;
+  }
+  html+=edmMetaHTML();
+  html+=`<div class="props-empty">Select an element on the canvas to edit its properties here.</div>`;
+  return html;
 }
 
 function showProps(el){
@@ -1265,6 +1292,7 @@ function showProps(el){
   const inner=el.querySelector('.el-inner');
   const pc=document.getElementById('props-content');
 
+  // EDM Email section is shown via emptyPropsHTML only (not when element selected)
   let html='';
   if(_adminMode){
     const mm=PDF_MM[currentTab];
@@ -1290,6 +1318,29 @@ function showProps(el){
   <div class="pf"><label>Z-Index (layer)</label>
     <input type="number" value="${el.style.zIndex||2}" oninput="el_set('zIndex',this.value)" style="width:100%;">
   </div>`;
+
+  // For text elements: inject Break Link button + Content Field Link near the top
+  if(type==='text'){
+    const _cf = el.dataset.field||'';
+    const _fieldOptions=[
+      {v:'',l:'\u2014 None (manual text) \u2014'},
+      {v:'heading',l:'Heading'},{v:'subheading',l:'Sub Heading'},
+      {v:'address1',l:'Address Line 1'},{v:'address2',l:'Address Line 2'},
+      {v:'banner',l:'Banner Point'},{v:'bullets',l:'Highlight Points'},
+      {v:'bodycopy',l:'Body Copy'},{v:'income',l:'Net Income'},
+      {v:'salemethod',l:'Sale Method'},{v:'saledate',l:'Sale Date & Details'},
+      {v:'agent1name',l:'Agent 1 Name'},{v:'agent1num',l:'Agent 1 Number'},
+      {v:'agent2name',l:'Agent 2 Name'},{v:'agent2num',l:'Agent 2 Number'},
+      {v:'agent3name',l:'Agent 3 Name'},{v:'agent3num',l:'Agent 3 Number'},
+    ];
+    const _fOpts=_fieldOptions.map(function(o){ return '<option value="'+o.v+'" '+((_cf===o.v)?'selected':'')+'>'+o.l+'</option>'; }).join('');
+    html+=`<div style="border:1px solid ${_cf?'var(--gb)':'#2a2a2a'};border-radius:3px;padding:8px 10px;margin-bottom:2px;background:#141414;">
+      <div style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Content Field Link</div>
+      <select onchange="el_set_field(this.value)" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid ${_cf?'var(--gb)':'#333'};border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;margin-bottom:4px;">${_fOpts}</select>
+      <div style="font-size:9px;color:${_cf?'#5bbf7a':'#555'};line-height:1.4;${_cf?'margin-bottom:6px;':''}">${_cf?'&#10003; Linked \u2014 updates automatically':'Not linked \u2014 manual only'}</div>
+      ${_cf?'<button onclick="breakFieldLink()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break the link so this element can be edited independently">&#9986; Break Text Link</button>':''}
+    </div>`;
+  }
 
   if(type==='rect'){
     const bg=inner.style.background||DK;
@@ -1328,7 +1379,7 @@ function showProps(el){
     const curField=el.dataset.field||'';
     const fieldOptions=[
       {v:'',l:'— None (manual text) —'},
-      {v:'heading',      l:'Heading / Tenant'},
+      {v:'heading',      l:'Heading'},
       {v:'subheading',   l:'Sub Heading'},
       {v:'address1',     l:'Address Line 1'},
       {v:'address2',     l:'Address Line 2'},
@@ -1347,12 +1398,6 @@ function showProps(el){
     ];
     const fieldOpts=fieldOptions.map(o=>`<option value="${o.v}" ${curField===o.v?'selected':''}>${o.l}</option>`).join('');
     html+=`
-    <div class="pf"><label>Content Field Link</label>
-      <select onchange="el_set_field(this.value)" style="border-color:${curField?'var(--gb)':'#333'};">
-        ${fieldOpts}
-      </select>
-      <div style="font-size:9px;color:#666;margin-top:3px;line-height:1.4;">${curField?'✓ Linked — updates automatically when sidebar field changes':'Not linked — text is manual only'}</div>
-    </div>
     <div class="pf"><label>Text Content</label>
       <textarea rows="4" oninput="el_inner_txt(this.value)">${content}</textarea>
     </div>
@@ -1568,6 +1613,32 @@ function el_set_field(fieldKey){
     }
   }
   // Refresh props panel so the status hint and border colour update
+  showProps(selectedEl);
+}
+
+function breakFieldLink(){
+  if(!selectedEl || selectedEl.dataset.type!=='text') return;
+  const curField = selectedEl.dataset.field;
+  if(!curField){ alert('This element has no field link.'); return; }
+  undoSnapshot();
+  // Snapshot current text content before unlinking
+  const inner = selectedEl.querySelector('.el-inner');
+  const currentText = inner ? inner.textContent : '';
+  // Clear the field link on the live element
+  selectedEl.dataset.field = '';
+  // Update savedStates for the CURRENT TAB ONLY — eids are not unique across tabs
+  // so updating all tabs would break same-numbered elements on other pages
+  const tabState = savedStates[currentTab];
+  if(tabState){
+    tabState.forEach(function(sv){
+      if(sv.eid === selectedEl.dataset.eid){
+        sv.field = '';
+        // Lock in the current text so globalSync doesn't overwrite it
+        sv.content = currentText;
+      }
+    });
+  }
+  debouncedPersist();
   showProps(selectedEl);
 }
 
@@ -2140,15 +2211,15 @@ function addBanner(){
   undoSnapshot();
   // Use tab-specific defaults for position and padding
   const tabDefaults=[
-    {x:389,y:545,w:169,h:26,pad:'8px 11px 5px'}, // Brochure1
-    {x:1046,y:545,w:106,h:26,pad:'8px 11px 6px'}, // Brochure2
+    {x:324,y:545,w:244,h:26,pad:'8px 11px 5px'}, // Brochure1
+    {x:936,y:545,w:228,h:26,pad:'8px 11px 6px'}, // Brochure2
     {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDM
     {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDMAsianDesk
     {x:400,y:400,w:200,h:40,pad:'10px 12px'},      // LinkedIn
-    {x:79,y:144,w:140,h:26,pad:'5px 8px 4px'},    // AFR2
-    {x:309,y:143,w:145,h:27,pad:'5px 8px 4px'},   // AFR4
+    {x:18,y:149,w:210,h:22,pad:'5px 8px 4px'},    // AFR2
+    {x:319,y:149,w:145,h:22,pad:'5px 8px 4px'},   // AFR4
     {x:400,y:400,w:200,h:40,pad:'10px 12px'},      // Signboard
-    {x:417,y:623,w:336,h:51,pad:'15px 14px 8px'}, // Auction
+    {x:430,y:625,w:336,h:51,pad:'15px 14px 8px'}, // Auction
   ];
   const d=tabDefaults[currentTab]||{x:100,y:100,w:160,h:30,pad:'5px 8px 4px'};
   const el=mkBanner(d.x,d.y,d.w,d.h,gv('fb')||'Banner Point',{
@@ -2367,6 +2438,19 @@ function mkLine(x,y,w,h,bg){
   return mkR(x,y,w,h,bg,{z:10});
 }
 
+function switchLayoutVariant(variantIdx){
+  const variants=TAB_LAYOUTS[currentTab];
+  if(!variants||!variants[variantIdx]) return;
+  if((_layoutVariants[currentTab]||0)===variantIdx) return; // already on this variant
+  if(!confirm('Switch to layout "'+variants[variantIdx].label+'"? Your current edits on this tab will be reset.')) return;
+  undoSnapshot();
+  _layoutVariants[currentTab]=variantIdx;
+  delete savedStates[currentTab];
+  buildTemplate(currentTab);
+  document.getElementById('props-content').innerHTML=emptyPropsHTML();
+  debouncedPersist();
+}
+
 function buildTemplate(idx){
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
@@ -2388,7 +2472,15 @@ function buildTemplate(idx){
   nextId=1;
   deselectAll();
   document.getElementById('props-content').innerHTML=emptyPropsHTML();
-  [buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction][idx](s[0],s[1]);
+  // For tabs with layout variants, call the selected variant's builder
+  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
+  var _variantFn=null;
+  if(TAB_LAYOUTS[idx]){
+    var _vi=_layoutVariants[idx]||0;
+    var _vdef=TAB_LAYOUTS[idx][_vi];
+    if(_vdef) _variantFn=_vdef.fn();
+  }
+  (_variantFn||_buildFns[idx])(s[0],s[1]);
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
@@ -2396,7 +2488,7 @@ function buildTemplate(idx){
 // ─── AFR 2-AGENT 228×398 ───
 function buildAFR2(W,H){
   mkI(0,0,228,172,'img1','Image',{z:1});
-  mkBanner(79,144,140,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
+  mkBanner(18,149,210,22,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
   mkR(0,170,228,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,214,46,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:3});
   mkR(0,219,228,179,'rgb(255, 255, 255)',{z:1});
@@ -2413,7 +2505,7 @@ function buildAFR2(W,H){
 }
 function buildAFR4(W,H){
   mkI(0,0,464,172,'img1','Image',{z:1});
-  mkBanner(309,143,145,27,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
+  mkBanner(319,149,145,22,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
   mkR(0,170,464,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,446,27,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'heading',z:3});
   mkT(11,198,444,25,gv('fs')||'Sub Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'subheading',z:3});
@@ -2437,10 +2529,10 @@ function buildAFR4(W,H){
 // ─── AUCTION POSTER 794×1123 ───
 function buildAuction(W,H){
   mkR(30,109,736,110,'rgb(1, 42, 45)',{z:2});
-  mkT(52,127,715,42,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'heading',z:3});
-  mkT(52,165,713,36,gv('fs'),{color:'rgb(255, 255, 255)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'subheading',z:3});
+  mkT(52,121,715,48,gv('fh'),{color:'rgb(255, 255, 255)',fontSize:'37px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'heading',z:3});
+  mkT(52,162,713,44,gv('fs'),{color:'rgb(255, 255, 255)',fontSize:'37px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.25',field:'subheading',z:3});
   mkI(30,218,736,456,'img1','Image',{z:1});
-  mkBanner(417,623,336,51,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'15px 14px 8px'});
+  mkBanner(430,625,336,51,gv('fb'),{color:'rgb(255, 255, 255)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'15px 14px 8px'});
   mkT(30,705,518,45,gv('fa1'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.2',field:'address1',z:2});
   mkT(30,743,516,48,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',field:'address2',z:2});
   mkI(637,690,128,93,'logo','Image',{z:2});
@@ -2449,23 +2541,23 @@ function buildAuction(W,H){
   mkT(31,974,424,48,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2});
   mkR(498,840,2,200,'rgb(203, 205, 203)',{z:2});
   mkT(534,837,210,27,'CBRE',{color:'rgb(127, 132, 128)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:2});
-  mkT(534,867,234,30,gv('fn1'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:2});
-  mkT(534,900,241,28,gv('fn2'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:2});
-  mkT(534,932,244,28,gv('fn3'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:2});
-  mkT(534,963,236,26,gv('fn4'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:2});
+  mkT(534,869,234,30,gv('fn1'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:2});
+  mkT(534,902,241,28,gv('fn2'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:2});
+  mkT(534,934,244,28,gv('fn3'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:2});
+  mkT(534,965,236,26,gv('fn4'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:2});
   mkSVGLogo(600,36,160,43,SVG_CBRE_GREEN,'cbre-green',{z:200});
   mkSVGLogo(33,38,160,39,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200});
 }
 
 // ─── BROCHURE 595×842 ───
 function buildBrochure1(W,H){
-  mkI(28,65,539,300,'img1','Image',{z:1});
+  mkI(28,65,540,300,'img1','Image',{z:1});
   mkI(28,377,264,194,'img2','Image',{z:1});
   mkI(304,377,264,194,'img3','Image',{z:1});
-  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'8px 11px 5px'});
+  mkBanner(324,545,244,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:10,bannerPad:'8px 11px 5px'});
   mkT(31,584,498,32,gv('fh')||'Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:2});
   mkT(31,611,446,33,gv('fs')||'Sub Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'subheading',z:2});
-  mkI(505,581,64,54,'logo','Image',{z:2});
+  mkI(480,574,89,75,'logo','Image',{z:2});
   mkR(28,654,3,27,'rgb(23,232,143)',{z:3});
   mkT(42,653,165,16,gv('fa1')||'Suburb State',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:3});
   mkT(42,669,167,15,gv('fa2')||'Address',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3});
@@ -2494,7 +2586,7 @@ function buildBrochure2(W,H){
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
   mkI(900,377,264,194,'img1','Image',{z:2});
-  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
+  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
   mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkI(1101,575,59,64,'logo','Image',{z:4});
@@ -2519,6 +2611,40 @@ function buildBrochure2(W,H){
   mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200});
   mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
 }
+function buildBrochure2_v2(W,H){
+  // Layout: "3 Images"
+  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
+  mkI(28,65,539,505,'img1','Image',{z:2});
+  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3});
+  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3});
+  mkI(624,66,539,300,'img2','Image',{z:2});
+  mkI(624,377,540,194,'img3','Image',{z:2});
+  mkBanner(855,545,309,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:10,bannerPad:'8px 11px 6px'});
+  mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
+  mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
+  mkI(1101,575,59,64,'logo','Image',{z:4});
+  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
+  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
+  mkR(624,657,3,28,'rgb(23,232,143)',{z:5});
+  mkT(639,657,176,11,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:5});
+  mkT(638,673,176,14,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:5});
+  (function(){ var _e=mkT(626,699,169,125,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',field:'bullets',z:5,bulletParaSpacing:'6'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
+  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
+  mkT(808,655,201,169,document.getElementById('fbc').value,{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4'});
+  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
+  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5});
+  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5});
+  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5});
+  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5});
+  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5});
+  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5});
+  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5});
+  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4});
+  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
+  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
+}
+
 function buildEDM(W,H){
   mkR(0,0,213,464,'rgb(1, 42, 45)',{z:1});
   mkI(0,41,212,150,'img1','Image',{z:2});
@@ -2731,7 +2857,7 @@ function _rgb(str){
   }catch(e){return null;}
 }
 
-async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
+async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
   const [canvasW, canvasH] = SIZES[tabIdx];
   return new Promise(async (resolve, reject) => {
@@ -2849,12 +2975,38 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
         realArt.innerHTML=''; nextId=1;
         realArt.style.width=canvasW+'px'; realArt.style.height=canvasH+'px';
         realArt.style.background=tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
-        [buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction][tabIdx](canvasW,canvasH);
+        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
+        var _vFn=null;
+        if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
+        (_vFn||_allFns[tabIdx])(canvasW,canvasH);
         globalSync();
         offscreen.innerHTML=realArt.innerHTML;
         realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
         realArt.style.background=pbg; realArt.style.transform=pt;
       }
+      // Pre-convert SVG images to PNG canvas so html2canvas can render them
+      await Promise.all([...offscreen.querySelectorAll('.el[data-type="img"] img')].map(img=>new Promise(resolve=>{
+        if(!img.src||!img.src.startsWith('data:image/svg')){resolve();return;}
+        const el=img.closest('.el');
+        const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
+        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const svgImg=new Image();
+        svgImg.onload=function(){
+          const c=document.createElement('canvas');c.width=cw;c.height=ch;
+          const ctx=c.getContext('2d');
+          // Use contain fit for SVG logos
+          const nw=svgImg.naturalWidth||cw,nh=svgImg.naturalHeight||ch;
+          const s=Math.min(cw/nw,ch/nh);
+          const dw=nw*s,dh=nh*s,dx=(cw-dw)/2,dy=(ch-dh)/2;
+          ctx.drawImage(svgImg,dx,dy,dw,dh);
+          c.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
+          img.closest('.el-inner').style.background='transparent';
+          img.replaceWith(c);
+          resolve();
+        };
+        svgImg.onerror=function(){resolve();};
+        svgImg.src=img.src;
+      })));
       const allImgEls=[...offscreen.querySelectorAll('.el[data-type="img"] .el-inner')];
       await Promise.all(allImgEls.map(inner=>new Promise(resolve=>{
         const img=inner.querySelector('img');
@@ -2897,8 +3049,415 @@ async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
 }
 
 // ════════════════════════════════════════
+// NATIVE VECTOR PDF RENDERER
+// ════════════════════════════════════════
+
+// Font cache — loaded once per export session
+let _pdfFontCache = null;
+
+async function loadPdfFonts(){
+  if(_pdfFontCache) return _pdfFontCache;
+  const BASE = 'https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/';
+  const fonts = [
+    {file:'Calibre-Light.ttf',    name:'Calibre', style:'normal', weight:'300'},
+    {file:'Calibre-Regular.ttf',  name:'Calibre', style:'normal', weight:'400'},
+    {file:'Calibre-Medium.ttf',   name:'Calibre', style:'normal', weight:'500'},
+    {file:'Calibre-Semibold.ttf', name:'Calibre', style:'normal', weight:'600'},
+    {file:'Calibre-Bold.ttf',     name:'Calibre', style:'normal', weight:'700'},
+    {file:'FinancierDisplay-Regular.ttf',  name:'FinancierDisplay', style:'normal', weight:'400'},
+    {file:'FinancierDisplay-Medium.ttf',   name:'FinancierDisplay', style:'normal', weight:'500'},
+    {file:'FinancierDisplay-Semibold.ttf', name:'FinancierDisplay', style:'normal', weight:'600'},
+  ];
+  const results = await Promise.all(fonts.map(async f => {
+    try {
+      const res = await fetch(BASE + f.file);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const buf = await res.arrayBuffer();
+      // Convert to base64
+      const bytes = new Uint8Array(buf);
+      let b64 = '';
+      const chunk = 8192;
+      for(let i=0;i<bytes.length;i+=chunk){
+        b64 += String.fromCharCode(...bytes.subarray(i, i+chunk));
+      }
+      return {...f, b64: btoa(b64)};
+    } catch(e) {
+      console.warn('Font load failed:', f.file, e);
+      return null;
+    }
+  }));
+  _pdfFontCache = results.filter(Boolean);
+  return _pdfFontCache;
+}
+
+function registerPdfFonts(pdf, fonts){
+  fonts.forEach(f => {
+    try {
+      const jsPdfName = f.name + '_' + f.weight;
+      pdf.addFileToVFS(f.file, f.b64);
+      pdf.addFont(f.file, jsPdfName, f.style === 'italic' ? 'italic' : 'normal');
+    } catch(e) { console.warn('Font register failed:', f.name, e); }
+  });
+}
+
+function pdfFontName(fontFamily, fontWeight){
+  const fw = String(fontWeight || '400').replace('px','').trim();
+  const isFinancier = fontFamily && (fontFamily.includes('Financier') || fontFamily.includes('FinancierDisplay'));
+  const baseName = isFinancier ? 'FinancierDisplay' : 'Calibre';
+  // Map weight to nearest available
+  const wmap = isFinancier
+    ? {'400':'400','500':'500','600':'600','700':'600','300':'400','900':'600'}
+    : {'300':'300','400':'400','500':'500','600':'600','700':'700','900':'700'};
+  const w = wmap[fw] || '400';
+  return baseName + '_' + w;
+}
+
+function parseRgb(str){
+  if(!str) return [0,0,0];
+  if(str.startsWith('#')){
+    const hex = str.replace('#','');
+    const full = hex.length===3 ? hex.split('').map(c=>c+c).join('') : hex;
+    return [parseInt(full.slice(0,2),16), parseInt(full.slice(2,4),16), parseInt(full.slice(4,6),16)];
+  }
+  const m = str.match(/[\d.]+/g);
+  if(m && m.length>=3) return [parseFloat(m[0]),parseFloat(m[1]),parseFloat(m[2])];
+  return [0,0,0];
+}
+
+function parseInlineStyle(styleStr){
+  const obj = {};
+  if(!styleStr) return obj;
+  styleStr.split(';').forEach(part => {
+    const idx = part.indexOf(':');
+    if(idx<0) return;
+    const k = part.slice(0,idx).trim().replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+    const v = part.slice(idx+1).trim();
+    if(k && v) obj[k] = v;
+  });
+  return obj;
+}
+
+async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){
+      const SCALE = 2;
+      const cw = Math.round(fw * SCALE), ch = Math.round(fh * SCALE);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      const ctx = canvas.getContext('2d');
+      const nw = img.naturalWidth || cw, nh = img.naturalHeight || ch;
+      let dx, dy, dw, dh;
+      if(cropW && !String(cropW).includes('%') && parseFloat(cropW) > 0){
+        const il=parseFloat(cropX)||0, it=parseFloat(cropY)||0;
+        const iw=parseFloat(cropW)||fw, ih=parseFloat(cropH)||fh;
+        dw=iw*SCALE; dh=ih*SCALE; dx=il*SCALE; dy=it*SCALE;
+      } else if(objectFit==='contain'){
+        const s=Math.min(cw/nw,ch/nh); dw=nw*s; dh=nh*s; dx=(cw-dw)/2; dy=(ch-dh)/2;
+      } else {
+        const s=Math.max(cw/nw,ch/nh); dw=nw*s; dh=nh*s; dx=(cw-dw)/2; dy=(ch-dh)/2;
+      }
+      ctx.save(); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
+      try { ctx.drawImage(img,dx,dy,dw,dh); } catch(e){}
+      ctx.restore();
+      resolve(canvas.toDataURL('image/jpeg',0.92));
+    };
+    img.onerror = () => resolve(null);
+    setTimeout(() => resolve(null), 10000);
+    img.src = src;
+  });
+}
+
+async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
+  if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
+
+  let fonts = [];
+  try { fonts = await loadPdfFonts(); } catch(e){ console.warn('Font load error',e); }
+  if(fonts.length > 0) registerPdfFonts(pdf, fonts);
+  const hasFonts = fonts.length > 0;
+
+  const [pxW, pxH] = SIZES[tabIdx];
+  const scaleX = pageW / pxW;
+  const scaleY = pageH / pxH;
+
+  let state = savedStates[tabIdx];
+  if(!state || !state.length){
+    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
+  }
+
+  const fieldMap={heading:'fh',subheading:'fs',address1:'fa1',address2:'fa2',banner:'fb',
+    income:'fi',salemethod:'fm',saledate:'fd',bullets:'fbull',bodycopy:'fbc',
+    agent1name:'fn1',agent2name:'fn2',agent3name:'fn3',agent4name:'fn4',
+    agent1num:'fp1',agent2num:'fp2',agent3num:'fp3',agent4num:'fp4'};
+  const phoneMap={agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
+
+  function resolveText(sv){
+    const field = sv.field||'';
+    let text = sv.content||'';
+    if(field && fieldMap[field]){
+      const fid = fieldMap[field];
+      const val = (document.getElementById(fid)||{}).value||'';
+      if(sv.combinedAgent==='1' && phoneMap[field]){
+        const phone = (document.getElementById(phoneMap[field])||{}).value||'';
+        text = phone ? val+' '+phone : val;
+      } else { text = val; }
+    }
+    const fi = ((document.getElementById('fi')||{}).value||'').trim();
+    if(field==='bullets' && fi){
+      if([5,6,8].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n\u2013 '+fi : '\u2013 '+fi; }
+      else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n'+fi : fi; }
+    }
+    return text;
+  }
+
+  function parseRgbStr(str){
+    if(!str) return [0,0,0];
+    if(str.startsWith('#')){ const h=str.replace('#',''); const f=h.length===3?h.split('').map(c=>c+c).join(''):h; return [parseInt(f.slice(0,2),16),parseInt(f.slice(2,4),16),parseInt(f.slice(4,6),16)]; }
+    const m=str.match(/[\d.]+/g); if(m&&m.length>=3) return [parseFloat(m[0]),parseFloat(m[1]),parseFloat(m[2])]; return [0,0,0];
+  }
+
+  function parseStyle(s){ const o={}; if(!s) return o; s.split(';').forEach(p=>{ const i=p.indexOf(':'); if(i<0) return; const k=p.slice(0,i).trim().replace(/-([a-z])/g,(_,c)=>c.toUpperCase()); const v=p.slice(i+1).trim(); if(k&&v) o[k]=v; }); return o; }
+
+  function getFontName(ff, fw){
+    const w=String(fw||'400').replace('px','');
+    const isF=ff&&(ff.includes('Financier')||ff.includes('FinancierDisplay'));
+    const base=isF?'FinancierDisplay':'Calibre';
+    const wm=isF?{'400':'400','500':'500','600':'600','700':'600','300':'400','900':'600'}:{'300':'300','400':'400','500':'500','600':'600','700':'700','900':'700'};
+    return base+'_'+(wm[w]||'400');
+  }
+
+  function setFont(pdf, ff, fw, hasFonts){
+    try {
+      if(hasFonts){ pdf.setFont(getFontName(ff,fw),'normal'); return; }
+      const bold=parseInt(fw||400)>=600;
+      const isF=ff&&ff.includes('Financier');
+      pdf.setFont(isF?'times':'helvetica', bold?'bold':'normal');
+    } catch(e){ try{ pdf.setFont('helvetica','normal'); }catch(e2){} }
+  }
+
+  const sorted=[...state].sort((a,b)=>(parseInt(a.z)||0)-(parseInt(b.z)||0));
+
+  // Pre-rasterise images in parallel
+  const imgJobs=sorted.filter(sv=>sv.type==='img').map(async sv=>{
+    const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
+    if(!src) return {eid:sv.eid,dataUrl:null};
+    const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
+    const isSvg=sv.svgKey||src.startsWith('data:image/svg');
+    const fw2=parseFloat(sv.w)||0, fh2=parseFloat(sv.h)||0;
+    const fit=(isLogo||isSvg)?'contain':'cover';
+    return new Promise(resolve=>{
+      const SCALE=2, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
+      const img=new Image(); img.crossOrigin='anonymous';
+      img.onload=function(){
+        const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+        const ctx=c.getContext('2d');
+        const nw=img.naturalWidth||cw, nh=img.naturalHeight||ch;
+        let dx,dy,dw,dh;
+        if(sv.cropW&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0){
+          dx=parseFloat(sv.cropX||0)*SCALE; dy=parseFloat(sv.cropY||0)*SCALE;
+          dw=parseFloat(sv.cropW)*SCALE; dh=parseFloat(sv.cropH)*SCALE;
+        } else if(fit==='contain'){ const s=Math.min(cw/nw,ch/nh); dw=nw*s; dh=nh*s; dx=(cw-dw)/2; dy=(ch-dh)/2; }
+        else { const s=Math.max(cw/nw,ch/nh); dw=nw*s; dh=nh*s; dx=(cw-dw)/2; dy=(ch-dh)/2; }
+        ctx.save(); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
+        try{ ctx.drawImage(img,dx,dy,dw,dh); }catch(e){}
+        ctx.restore();
+        resolve({eid:sv.eid, dataUrl:c.toDataURL('image/png')});
+      };
+      img.onerror=()=>resolve({eid:sv.eid,dataUrl:null});
+      setTimeout(()=>resolve({eid:sv.eid,dataUrl:null}),10000);
+      img.src=src;
+    });
+  });
+  const imgResults=await Promise.all(imgJobs);
+  const imgMap={};
+  imgResults.forEach(r=>{ if(r) imgMap[r.eid]=r.dataUrl; });
+
+  // Draw background
+  const bgSv=sorted.find(sv=>sv.type==='rect'&&parseFloat(sv.x)===0&&parseFloat(sv.y)===0&&parseFloat(sv.w)>=pxW*0.9);
+  if(bgSv){ const ist=parseStyle(bgSv.innerStyle||''); const [r,g,b]=parseRgbStr(ist.background||'#fff'); pdf.setFillColor(r,g,b); }
+  else { pdf.setFillColor(255,255,255); }
+  pdf.rect(0,0,pageW,pageH,'F');
+
+  // Render each element
+  for(const sv of sorted){
+    if(sv.field==='income') continue;
+    const ex=parseFloat(sv.x)*scaleX, ey=parseFloat(sv.y)*scaleY;
+    const ew=parseFloat(sv.w)*scaleX, eh=parseFloat(sv.h)*scaleY;
+    if(ew<=0||eh<=0) continue;
+
+    if(sv.type==='rect'){
+      const ist=parseStyle(sv.innerStyle||'');
+      const [r,g,b]=parseRgbStr(ist.background||'#000');
+      pdf.setFillColor(r,g,b); pdf.rect(ex,ey,ew,eh,'F');
+
+    } else if(sv.type==='img'){
+      const du=imgMap[sv.eid];
+      if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','FAST'); }catch(e){ console.warn('addImage fail',e); } }
+
+    } else if(sv.type==='text'){
+      const ist=parseStyle(sv.innerStyle||'');
+      const fsPx=parseFloat(ist.fontSize)||12;
+      const fsMm=fsPx*scaleX;
+      const fsPt=fsMm*2.835;
+      const [cr,cg,cb]=parseRgbStr(ist.color||'#000');
+      const ta=ist.textAlign||'left';
+      const lh=parseFloat(ist.lineHeight)||1.35;
+      const lineH=fsMm*lh;
+      const bsp=parseFloat(sv.bulletParaSpacing||'0')*scaleY;
+      const isBullets=sv.bullets==='1';
+
+      // Banner background pill — measure text, draw pill, centre text within it
+      let pillX=ex, pillW2=ew; // defaults
+      if(sv.banner==='1'&&ist.background){
+        const [br,bg2,bb]=parseRgbStr(ist.background);
+        const padParts=(sv.bannerPad||'5 8 5 8').split(' ').map(p=>parseFloat(p)||0);
+        const pr2=(padParts[1]||8)*scaleX;
+        setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts);
+        pdf.setFontSize(fsPt);
+        const txt=resolveText(sv)||'';
+        const tw=pdf.getTextWidth(txt);
+        pillW2=tw+pr2*2;
+        pillX=ex+ew-pillW2;
+        pdf.setFillColor(br,bg2,bb);
+        pdf.rect(pillX,ey,pillW2,eh,'F');
+      }
+
+      pdf.setTextColor(cr,cg,cb);
+      setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts);
+      pdf.setFontSize(fsPt);
+
+      const rawText=resolveText(sv);
+      const lines=rawText.split('\n');
+      const maxW=ew*1.01; // jsPDF measures text slightly narrower than browser, so give extra room
+
+      // Starting Y — vertically centre single-line text, or start near top for multi-line
+      let curY=ey+fsMm*0.85;
+
+      // For banner: centre text vertically in the pill and horizontally in the pill
+      let textX, jsPdfAlign;
+      if(sv.banner==='1'){
+        textX=pillX+pillW2/2;
+        jsPdfAlign='center';
+        curY=ey+(eh/2)+(fsMm*0.35); // vertically centred
+      } else {
+        textX = ta==='right' ? ex+ew : ta==='center' ? ex+ew/2 : ex;
+        jsPdfAlign = ta==='right'?'right':ta==='center'?'center':'left';
+      }
+
+      lines.forEach((line,li)=>{
+        if(curY>ey+eh+2) return;
+        // Bold income line on brochure tabs
+        const isBoldLine=sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&li===lines.length-1&&((document.getElementById('fi')||{}).value||'').trim();
+        if(isBoldLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
+
+        if(isBullets){
+          // Render dash + indented text separately so wrapped lines indent correctly
+          const rawLine=line.startsWith('\u2013 ')?line.slice(2):line.replace(/^[\u2013\-] ?/,'');
+          if(!rawLine.trim()){ curY+=lineH*0.5; return; }
+          const dash='\u2013';
+          const dashW=pdf.getTextWidth(dash+'  ');
+          const indentX=ex+dashW;
+          const textMaxW=maxW-dashW;
+          const wrappedText=pdf.splitTextToSize(rawLine,textMaxW);
+          wrappedText.forEach((wl,wi)=>{
+            if(curY>ey+eh+2) return;
+            if(wi===0) pdf.text(dash,ex,curY,{align:'left',baseline:'alphabetic'});
+            pdf.text(wl,indentX,curY,{align:'left',baseline:'alphabetic'});
+            curY+=lineH;
+          });
+        } else {
+          const wrapped=pdf.splitTextToSize(line,maxW);
+          wrapped.forEach(wl=>{
+            if(curY>ey+eh+2) return;
+            pdf.text(wl,textX,curY,{align:jsPdfAlign,baseline:'alphabetic'});
+            curY+=lineH;
+          });
+        }
+        if(bsp>0) curY+=bsp;
+        if(isBoldLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
+      });
+    }
+  }
+}
+
+async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
+  return renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage);
+}
+// ════════════════════════════════════════
 // TAB SWITCHING
 // ════════════════════════════════════════
+function edmMetaHTML(){
+  if(currentTab!==2 && currentTab!==3) return '';
+  const subj = (document.getElementById('fedm-subject')||{}).value||'';
+  const prev  = (document.getElementById('fedm-preview')||{}).value||'';
+  const subjCount = subj.length ? subj.length+' chars' : '';
+  const prevCount  = prev.length ? prev.length+' chars' : '';
+  return `<div style="background:#141414;border:1px solid #2a2a2a;border-radius:3px;padding:8px 10px;margin-bottom:2px;">
+    <div style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">EDM Email</div>
+    <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px;">
+      <label style="font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;">Subject Line</label>
+      <input id="edm-subject-display" value="${subj.replace(/"/g,'&quot;')}" placeholder="e.g. Heading | Sub Heading"
+        oninput="document.getElementById('fedm-subject').value=this.value;updateEdmCharCounts();debouncedPersist();"
+        style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-family:inherit;outline:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+        <span style="font-size:9px;color:#555;" id="edm-subject-display-count">${subjCount}</span>
+        <button onclick="copyEdmField('edm-subject-display')" style="font-size:9px;padding:1px 7px;background:#2a2a2a;border:1px solid #444;border-radius:2px;color:#aaa;cursor:pointer;">Copy</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:3px;">
+      <label style="font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;">Preview Text</label>
+      <textarea id="edm-preview-display" rows="3" placeholder="e.g. Rare freestanding 2,670sqm* Coles in the heart of Warrnambool CBD…"
+        oninput="document.getElementById('fedm-preview').value=this.value;updateEdmCharCounts();debouncedPersist();"
+        style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-family:inherit;resize:vertical;outline:none;min-height:56px;">${prev.replace(/</g,'&lt;')}</textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+        <span style="font-size:9px;color:#555;" id="edm-preview-display-count">${prevCount}</span>
+        <button onclick="copyEdmField('edm-preview-display')" style="font-size:9px;padding:1px 7px;background:#2a2a2a;border:1px solid #444;border-radius:2px;color:#aaa;cursor:pointer;">Copy</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateEdmMetaVisibility(){
+  // Refresh the right panel empty state so EDM block appears/disappears with tab switch
+  if(!selectedEl){
+    document.getElementById('props-content').innerHTML=emptyPropsHTML();
+  }
+}
+
+function updateEdmCharCounts(){
+  const subj = document.getElementById('fedm-subject');
+  const prev = document.getElementById('fedm-preview');
+  // Update count labels in the right panel (rendered by edmMetaHTML)
+  const sc = document.getElementById('edm-subject-display-count');
+  const pc = document.getElementById('edm-preview-display-count');
+  if(subj && sc) sc.textContent = subj.value.length ? subj.value.length+' chars' : '';
+  if(prev && pc) pc.textContent = prev.value.length ? prev.value.length+' chars' : '';
+  // Keep display inputs in sync when restored from saved state
+  const sd = document.getElementById('edm-subject-display');
+  const pd = document.getElementById('edm-preview-display');
+  if(subj && sd && sd.value !== subj.value) sd.value = subj.value;
+  if(prev && pd && pd.value !== prev.value) pd.value = prev.value;
+}
+
+function saveEdmMeta(){
+  updateEdmCharCounts();
+  debouncedPersist();
+}
+
+function copyEdmField(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const val = el.value;
+  if(!val){ el.focus(); return; }
+  navigator.clipboard.writeText(val).then(function(){
+    const btn = el.parentElement.querySelector('button');
+    if(btn){ const orig=btn.textContent; btn.textContent='Copied!'; btn.style.color='#5bbf7a'; setTimeout(()=>{ btn.textContent=orig; btn.style.color=''; },1500); }
+  }).catch(function(){
+    el.select(); document.execCommand('copy');
+  });
+}
+
 function switchTab(idx,btn){
   savedStates[currentTab]=serializeTab();
   persistAll();
@@ -2908,6 +3467,7 @@ function switchTab(idx,btn){
   deselectAll();
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
   fitZoomToTab();
+  updateEdmMetaVisibility();
   if(idx===2||idx===3) setTimeout(repackEDMAgents,80);
   if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
 }
@@ -2964,7 +3524,9 @@ function toggleMITab(idx,cb){
 
 function collectState(){
   savedStates[currentTab]=serializeTab();
-  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),
+  const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
+  const _edmPrev=(document.getElementById('fedm-preview')||{}).value||'';
+  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmPreview:_edmPrev,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
@@ -2977,6 +3539,10 @@ function applyState(data,skipZoom=false){
   try{
     if(data.assets) assets=data.assets;
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
+    if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
+    if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
+    if(data.edmPreview!=null){ const p=document.getElementById('fedm-preview'); if(p) p.value=data.edmPreview; }
+    updateEdmCharCounts();
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
@@ -3034,16 +3600,28 @@ function renderImgUploadSlots(){
   const container = document.getElementById('img-upload-slots');
   if(!container) return;
   const labels = ['Hero Image','2nd Image','3rd Image','4th Image','5th Image','6th Image','7th Image','8th Image'];
-  // Find highest loaded slot
   var highestLoaded = 0;
   for(var i=1;i<=8;i++){ if(assets['img'+i]) highestLoaded=i; }
-  // Show up to highestLoaded+1, minimum 1, max 8
   var showCount = Math.min(8, Math.max(1, highestLoaded+1));
   var html='';
   for(var n=1;n<=showCount;n++){
     var loaded = !!assets['img'+n];
-    var lbl = loaded ? '↺ Replace '+(labels[n-1]||'Image '+n) : '+ Upload '+(labels[n-1]||'Image '+n);
-    html+='<label class="uz" style="'+(loaded?'border-color:#5bbf7a;color:#5bbf7a;':'')+'"><input type="file" accept="image/*" onchange="loadAsset(event,&quot;img'+n+'&quot;)">'+lbl+'</label>';
+    var src = assets['img'+n]||'';
+    // Extract filename from URL or base64 label
+    var fname = '';
+    if(loaded){
+      if(src.startsWith('data:')){ fname='Uploaded'; }
+      else { fname=src.split('/').pop().split('?')[0]; fname=decodeURIComponent(fname); if(fname.length>28) fname=fname.slice(0,25)+'…'; }
+    }
+    var slotLabel = labels[n-1]||'Image '+n;
+    if(loaded){
+      html+='<label class="uz" style="border-color:#5bbf7a;display:flex;flex-direction:column;gap:2px;padding:6px 8px;cursor:pointer;">'
+          +'<span style="color:#5bbf7a;font-size:11px;font-weight:700;">↺ Replace '+slotLabel+'</span>'
+          +'<span style="color:#666;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+fname+'</span>'
+          +'<input type="file" accept="image/*" onchange="loadAsset(event,&quot;img'+n+'&quot;)" style="display:none;"></label>';
+    } else {
+      html+='<label class="uz" style="cursor:pointer;">+ Upload '+slotLabel+'<input type="file" accept="image/*" onchange="loadAsset(event,&quot;img'+n+'&quot;)" style="display:none;"></label>';
+    }
   }
   container.innerHTML=html;
 }
@@ -3292,6 +3870,14 @@ async function init(){
     renderAgentBlocks();
     document.getElementById('props-content').innerHTML=emptyPropsHTML();
     renderImgUploadSlots();
+    updateEdmMetaVisibility();
+    // Pre-populate EDM subject with "Heading | Sub Heading" if still empty
+    const _edmS = document.getElementById('fedm-subject');
+    if(_edmS && !_edmS.value){
+      const _h = gv('heading')||''; const _s = gv('subheading')||'';
+      if(_h || _s) _edmS.value = _h && _s ? _h+' | '+_s : (_h||_s);
+    }
+    updateEdmCharCounts();
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
@@ -3360,15 +3946,17 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)stopLiveSyn
 // keydown handled by main listener above
 
 async function downloadPDF(){
-  const btn=document.getElementById('dlb');btn.disabled=true;btn.textContent='Generating…';
+  const btn=document.getElementById('dlb');btn.disabled=true;btn.textContent='Loading fonts…';
   deselectAll();savedStates[currentTab]=serializeTab();
+  _pdfFontCache=null;
   try{
     const mm=PDF_MM[currentTab];const{jsPDF}=window.jspdf;
     const isLandscape=mm[0]>mm[1];
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
+    btn.textContent='Generating…';
     await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false);
     pdf.save(`CBRE_${TAB_NAMES[currentTab]}.pdf`);
-  }catch(err){alert('PDF generation failed: '+err.message);}
+  }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
 
