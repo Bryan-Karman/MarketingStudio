@@ -1927,7 +1927,7 @@ function restoreTab(idx){
   // Patch any banner elements missing bannerPad (old saves before this was tracked)
   document.querySelectorAll('.el[data-banner="1"]').forEach(function(bel){
     if(!bel.dataset.bannerPad){
-      bel.dataset.bannerPad='5px 8px 4px';
+      bel.dataset.bannerPad='7px 8px 4px';
     }
     const _bi=bel.querySelector('.el-inner');
     if(_bi){
@@ -2370,7 +2370,7 @@ function buildTemplate(idx){
 // ─── AFR 2-AGENT 228×398 ───
 function buildAFR2(W,H){
   mkI(0,0,228,172,'img1','Image',{z:1});
-  mkBanner(79,144,140,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
+  mkBanner(79,144,140,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
   mkR(0,170,228,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,214,46,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:3});
   mkR(0,219,228,179,'rgb(255, 255, 255)',{z:1});
@@ -2387,7 +2387,7 @@ function buildAFR2(W,H){
 }
 function buildAFR4(W,H){
   mkI(0,0,464,172,'img1','Image',{z:1});
-  mkBanner(309,143,145,27,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
+  mkBanner(309,143,145,27,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
   mkR(0,170,464,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,446,27,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'heading',z:3});
   mkT(11,198,444,25,gv('fs')||'Sub Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'subheading',z:3});
@@ -2436,7 +2436,7 @@ function buildBrochure1(W,H){
   mkI(28,65,539,300,'img1','Image',{z:1});
   mkI(28,377,264,194,'img2','Image',{z:1});
   mkI(304,377,264,194,'img3','Image',{z:1});
-  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
+  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'10px 8px 4px'});
   mkT(31,584,498,32,gv('fh')||'Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:2});
   mkT(31,611,446,33,gv('fs')||'Sub Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'subheading',z:2});
   mkI(505,581,64,54,'logo','Image',{z:2});
@@ -2468,7 +2468,7 @@ function buildBrochure2(W,H){
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
   mkI(900,377,264,194,'img1','Image',{z:2});
-  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'12px 8px 5px'});
+  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'10px 8px 5px'});
   mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkI(1101,575,59,64,'logo','Image',{z:4});
