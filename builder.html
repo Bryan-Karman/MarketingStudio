@@ -2140,8 +2140,8 @@ function addBanner(){
   undoSnapshot();
   // Use tab-specific defaults for position and padding
   const tabDefaults=[
-    {x:389,y:545,w:169,h:26,pad:'5px 8px 4px'}, // Brochure1
-    {x:1046,y:545,w:106,h:26,pad:'5px 8px 5px'}, // Brochure2
+    {x:389,y:545,w:169,h:26,pad:'8px 11px 5px'}, // Brochure1
+    {x:1046,y:545,w:106,h:26,pad:'8px 11px 6px'}, // Brochure2
     {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDM
     {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDMAsianDesk
     {x:400,y:400,w:200,h:40,pad:'10px 12px'},      // LinkedIn
@@ -2462,7 +2462,7 @@ function buildBrochure1(W,H){
   mkI(28,65,539,300,'img1','Image',{z:1});
   mkI(28,377,264,194,'img2','Image',{z:1});
   mkI(304,377,264,194,'img3','Image',{z:1});
-  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
+  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'8px 11px 5px'});
   mkT(31,584,498,32,gv('fh')||'Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:2});
   mkT(31,611,446,33,gv('fs')||'Sub Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'subheading',z:2});
   mkI(505,581,64,54,'logo','Image',{z:2});
@@ -2494,7 +2494,7 @@ function buildBrochure2(W,H){
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
   mkI(900,377,264,194,'img1','Image',{z:2});
-  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'5px 8px 5px'});
+  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
   mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkI(1101,575,59,64,'logo','Image',{z:4});
