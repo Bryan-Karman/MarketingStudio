@@ -374,14 +374,14 @@ Line five</textarea>
         <button class="btn-sm" onclick="addLogoElement('logo3')" title="Place Logo 3 on canvas">Place L3</button>
         <button class="btn-sm" onclick="addLogoElement('logo4')" title="Place Logo 4 on canvas">Place L4</button>
       </div>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img1')">+ Upload Hero Image</label>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img2')">+ Upload 2nd Image</label>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img3')">+ Upload 3rd Image</label>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img4')">+ Upload 4th Image</label>
+      <div id="img-upload-slots">
+        <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img1')">+ Upload Hero Image</label>
+      </div>
       <div class="sec">Add Elements</div>
       <button class="add-btn" onclick="addEl('text')">+ Text Box</button>
       <button class="add-btn" onclick="addEl('rect')">+ Colour Block</button>
       <button class="add-btn" onclick="addEl('img')">+ Image Placeholder</button>
+      <button class="add-btn" onclick="addBanner()">+ Banner Point</button>
     </div>
   </div>
 
@@ -481,7 +481,7 @@ const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wI
 let currentTab=0, zoom=0.65, selectedEl=null;
 let _selectedEls = [];  // multi-select array
 let _marqueeEl = null;
-let assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
+let assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:'',img5:'',img6:'',img7:'',img8:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
 let savedStates={};
 let nextId=1;
 let _lastKnownUpdatedAt=null; // tracks the Supabase updated_at we last loaded/saved
@@ -1723,7 +1723,7 @@ function serializeTab(){
     const obj={
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
-      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'',
+      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'',
     };
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
@@ -1820,6 +1820,8 @@ function restoreTab(idx){
       el.style.cursor='not-allowed';
     }
     if(sv.combinedAgent==='1') el.dataset.combinedAgent='1';
+    if(sv.agentOrigY) el.dataset.agentOrigY=sv.agentOrigY;
+    if(sv.agentBelow==='1'){ el.dataset.agentBelow='1'; if(sv.agentBelowY) el.dataset.agentBelowY=sv.agentBelowY; }
     if(sv.banner==='1'){
       el.dataset.banner='1';
       if(sv.bannerPad) el.dataset.bannerPad=sv.bannerPad;
@@ -2134,6 +2136,30 @@ function addEl(type){
   selectElement(el);
 }
 
+function addBanner(){
+  undoSnapshot();
+  // Use tab-specific defaults for position and padding
+  const tabDefaults=[
+    {x:389,y:545,w:169,h:26,pad:'5px 8px 4px'}, // Brochure1
+    {x:1046,y:545,w:106,h:26,pad:'5px 8px 5px'}, // Brochure2
+    {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDM
+    {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDMAsianDesk
+    {x:400,y:400,w:200,h:40,pad:'10px 12px'},      // LinkedIn
+    {x:79,y:144,w:140,h:26,pad:'5px 8px 4px'},    // AFR2
+    {x:309,y:143,w:145,h:27,pad:'5px 8px 4px'},   // AFR4
+    {x:400,y:400,w:200,h:40,pad:'10px 12px'},      // Signboard
+    {x:417,y:623,w:336,h:51,pad:'15px 14px 8px'}, // Auction
+  ];
+  const d=tabDefaults[currentTab]||{x:100,y:100,w:160,h:30,pad:'5px 8px 4px'};
+  const el=mkBanner(d.x,d.y,d.w,d.h,gv('fb')||'Banner Point',{
+    color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',
+    fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',
+    textAlign:'right',field:'banner',z:10,bannerPad:d.pad
+  });
+  selectElement(el);
+  debouncedPersist();
+}
+
 // ════════════════════════════════════════
 // TEMPLATE BUILDERS
 // ════════════════════════════════════════
@@ -2436,7 +2462,7 @@ function buildBrochure1(W,H){
   mkI(28,65,539,300,'img1','Image',{z:1});
   mkI(28,377,264,194,'img2','Image',{z:1});
   mkI(304,377,264,194,'img3','Image',{z:1});
-  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'10px 8px 4px'});
+  mkBanner(389,545,169,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'5px 8px 4px'});
   mkT(31,584,498,32,gv('fh')||'Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:2});
   mkT(31,611,446,33,gv('fs')||'Sub Heading',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'subheading',z:2});
   mkI(505,581,64,54,'logo','Image',{z:2});
@@ -2468,7 +2494,7 @@ function buildBrochure2(W,H){
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
   mkI(900,377,264,194,'img1','Image',{z:2});
-  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'10px 8px 5px'});
+  mkBanner(1046,545,106,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'5px 8px 5px'});
   mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4});
   mkI(1101,575,59,64,'logo','Image',{z:4});
@@ -3004,6 +3030,24 @@ async function supabaseLoad(){
   return null;
 }
 
+function renderImgUploadSlots(){
+  const container = document.getElementById('img-upload-slots');
+  if(!container) return;
+  const labels = ['Hero Image','2nd Image','3rd Image','4th Image','5th Image','6th Image','7th Image','8th Image'];
+  // Find highest loaded slot
+  var highestLoaded = 0;
+  for(var i=1;i<=8;i++){ if(assets['img'+i]) highestLoaded=i; }
+  // Show up to highestLoaded+1, minimum 1, max 8
+  var showCount = Math.min(8, Math.max(1, highestLoaded+1));
+  var html='';
+  for(var n=1;n<=showCount;n++){
+    var loaded = !!assets['img'+n];
+    var lbl = loaded ? '↺ Replace '+(labels[n-1]||'Image '+n) : '+ Upload '+(labels[n-1]||'Image '+n);
+    html+='<label class="uz" style="'+(loaded?'border-color:#5bbf7a;color:#5bbf7a;':'')+'"><input type="file" accept="image/*" onchange="loadAsset(event,&quot;img'+n+'&quot;)">'+lbl+'</label>';
+  }
+  container.innerHTML=html;
+}
+
 function loadAsset(e,key){
   const f=e.target.files[0]; if(!f) return;
   const isLogo=['logo','logo2','logo3','logo4'].includes(key);
@@ -3025,6 +3069,7 @@ function loadAsset(e,key){
       if(ph) ph.style.display='none';
     });
     Object.keys(savedStates).forEach(ti=>{(savedStates[ti]||[]).forEach(sv=>{if(sv.assetKey===key)sv.imgSrc=finalSrc;});});
+    renderImgUploadSlots();
     persistAll();
   };
   reader.readAsDataURL(f);
@@ -3246,6 +3291,7 @@ async function init(){
     fitZoomToTab();
     renderAgentBlocks();
     document.getElementById('props-content').innerHTML=emptyPropsHTML();
+    renderImgUploadSlots();
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
@@ -3386,15 +3432,32 @@ function repackEDMAgents(){
   if(currentTab !== 2 && currentTab !== 3) return;
   const art = document.getElementById('artwork');
   if(!art) return;
-  const agentActive = [1,2,3,4].map(function(n){
-    var v = (document.getElementById('fn'+n)||{}).value||'';
-    return v.trim().length > 0;
+
+  // An agent is "active" if their name field has a value OR their slot has an agent selected
+  const agentActive = [0,1,2,3].map(function(i){
+    var nameVal = (document.getElementById('fn'+(i+1))||{}).value||'';
+    var slotHasAgent = agentSlots[i] && (
+      (agentSlots[i].mode==='db' && agentSlots[i].agentId) ||
+      (agentSlots[i].mode==='custom' && agentSlots[i].customName)
+    );
+    return nameVal.trim().length > 0 || !!slotHasAgent;
   });
-  // Slot base Y positions for each agent (top of photo)
-  const SLOT_BASE = [1062, 1112, 1162, 1212];
-  const SLOT_H = 50; // gap between agent slots
-  const AFTER_Y = 1260;
-  var hiddenCount = agentActive.filter(function(a){return !a;}).length;
+
+  // Slot base Y positions differ between EDM (tab 2) and Asian Desk (tab 3)
+  const SLOT_BASE = currentTab === 3
+    ? [1055, 1103, 1151, 1199]   // Asian Desk
+    : [1062, 1112, 1162, 1212];  // Standard EDM
+  const SLOT_H = currentTab === 3 ? 48 : 50;
+
+  // Build packed Y positions — active slots stack from SLOT_BASE[0] down
+  var packedY = [];
+  var nextY = SLOT_BASE[0];
+  for(var s=0;s<4;s++){
+    if(agentActive[s]){ packedY[s]=nextY; nextY+=SLOT_H; }
+    else { packedY[s]=null; }
+  }
+  var activeCount = agentActive.filter(Boolean).length;
+  var hiddenCount = 4 - activeCount;
   var shift = hiddenCount * SLOT_H;
 
   art.querySelectorAll('.el').forEach(function(el){
@@ -3415,19 +3478,24 @@ function repackEDMAgents(){
       el.style.visibility = isActive ? '' : 'hidden';
       el.style.pointerEvents = isActive ? '' : 'none';
       if(isActive){
-        // How many slots before this one are hidden?
-        var hiddenBefore = agentActive.slice(0, slotNum-1).filter(function(a){return !a;}).length;
-        var slotTop = SLOT_BASE[slotNum-1] - hiddenBefore * SLOT_H;
-        // Use original Y to calculate offset within the slot
-        var origY = parseFloat(el.dataset.agentOrigY || el.style.top) || slotTop;
-        var origBase = SLOT_BASE[slotNum-1];
-        var offsetInSlot = origY - origBase;
-        el.style.top = (slotTop + offsetInSlot) + 'px';
+        // Always position from agentOrigY — never from current top (prevents compounding)
+        var origY = parseFloat(el.dataset.agentOrigY);
+        if(isNaN(origY)){
+          // Old save without agentOrigY — infer from slot base + field type offset
+          var inferOffset = 0;
+          if(field.endsWith('num')) inferOffset = currentTab===3 ? 18 : 17;
+          else if(field.endsWith('name')) inferOffset = currentTab===3 ? 6 : 1;
+          origY = SLOT_BASE[slotNum-1] + inferOffset;
+          el.dataset.agentOrigY = origY;
+        }
+        var offsetInSlot = origY - SLOT_BASE[slotNum-1];
+        el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
-    } else {
-      var ey = parseFloat(el.style.top)||0;
-      if(ey >= AFTER_Y - 5){
-        el.style.top = (ey - shift) + 'px';
+    } else if(el.dataset.agentBelow === '1'){
+      // Always reposition from original Y — never current top
+      var belowOrigY = parseFloat(el.dataset.agentBelowY);
+      if(!isNaN(belowOrigY)){
+        el.style.top = (belowOrigY - shift) + 'px';
       }
     }
   });
