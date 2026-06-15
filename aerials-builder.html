@@ -658,55 +658,9 @@ const LS_KEY   = `cbre_aerials_proj_${portfolioId}_${propertyId}`;
 // Pre-loaded database of common businesses / POIs.
 // Each has: id, name, category, colour (background), icon (emoji or SVG data-url)
 // Admins can add custom entries (future: loaded from Supabase table).
-const LIBRARY = [
-  // Fast Food
-  {id:'mcd',   name:"McDonald's",    cat:'Fast Food',    emoji:'🍟', colour:'#FFC72C'},
-  {id:'kfc',   name:"KFC",           cat:'Fast Food',    emoji:'🍗', colour:'#E4002B'},
-  {id:'sub',   name:"Subway",        cat:'Fast Food',    emoji:'🥖', colour:'#008C15'},
-  {id:'hj',    name:"Hungry Jack's", cat:'Fast Food',    emoji:'🍔', colour:'#D62300'},
-  {id:'dmc',   name:"Domino's",      cat:'Fast Food',    emoji:'🍕', colour:'#006491'},
-  // Supermarkets
-  {id:'ww',    name:"Woolworths",    cat:'Supermarket',  emoji:'🛒', colour:'#007837'},
-  {id:'col',   name:"Coles",         cat:'Supermarket',  emoji:'🛒', colour:'#E31837'},
-  {id:'aldi',  name:"ALDI",          cat:'Supermarket',  emoji:'🛒', colour:'#00539B'},
-  {id:'iga',   name:"IGA",           cat:'Supermarket',  emoji:'🛒', colour:'#E31837'},
-  // Fuel
-  {id:'bp',    name:"BP",            cat:'Fuel',         emoji:'⛽', colour:'#009900'},
-  {id:'shell', name:"Shell",         cat:'Fuel',         emoji:'⛽', colour:'#FBCE07'},
-  {id:'ampol', name:"Ampol",         cat:'Fuel',         emoji:'⛽', colour:'#003087'},
-  {id:'7e',    name:"7-Eleven",      cat:'Fuel',         emoji:'⛽', colour:'#F7941D'},
-  // Banks
-  {id:'anz',   name:"ANZ",           cat:'Bank',         emoji:'🏦', colour:'#007DBA'},
-  {id:'cba',   name:"Commonwealth",  cat:'Bank',         emoji:'🏦', colour:'#FFD200'},
-  {id:'nab',   name:"NAB",           cat:'Bank',         emoji:'🏦', colour:'#E41B17'},
-  {id:'wbc',   name:"Westpac",       cat:'Bank',         emoji:'🏦', colour:'#DA1710'},
-  // Retail
-  {id:'jb',    name:"JB Hi-Fi",      cat:'Retail',       emoji:'🛍', colour:'#FFD200'},
-  {id:'big4',  name:"Big W",         cat:'Retail',       emoji:'🛍', colour:'#007DC5'},
-  {id:'kmart', name:"Kmart",         cat:'Retail',       emoji:'🛍', colour:'#E31837'},
-  {id:'tar',   name:"Target",        cat:'Retail',       emoji:'🛍', colour:'#CC0000'},
-  {id:'hm',    name:"Harvey Norman", cat:'Retail',       emoji:'🛍', colour:'#E31837'},
-  // Health
-  {id:'priceline',name:"Priceline",  cat:'Health',       emoji:'💊', colour:'#E91E8C'},
-  {id:'chem',  name:"Chemist Wareh.",cat:'Health',       emoji:'💊', colour:'#00853E'},
-  {id:'ter',   name:"Terry White",   cat:'Health',       emoji:'💊', colour:'#005BAA'},
-  // Hospitality
-  {id:'maccas_cafe',name:"McCafé",   cat:'Café',         emoji:'☕', colour:'#FFC72C'},
-  {id:'grilld',name:"Grill'd",       cat:'Restaurant',   emoji:'🍔', colour:'#2B5E0E'},
-  {id:'noodlebox',name:"Noodle Box", cat:'Restaurant',   emoji:'🍜', colour:'#E31837'},
-  // Services
-  {id:'aust',  name:"Australia Post",cat:'Services',     emoji:'📮', colour:'#E4002B'},
-  {id:'news',  name:"Newsagent",     cat:'Services',     emoji:'📰', colour:'#005BAA'},
-  {id:'gym',   name:"Gym / Fitness", cat:'Services',     emoji:'🏋', colour:'#00539B'},
-  // Transport
-  {id:'tbus',  name:"Bus Stop",      cat:'Transport',    emoji:'🚌', colour:'#F7941D'},
-  {id:'ttrain',name:"Train Station", cat:'Transport',    emoji:'🚆', colour:'#003087'},
-  // Generic
-  {id:'anchor',name:"Major Tenant",  cat:'Generic',      emoji:'⭐', colour:'#003f2d'},
-  {id:'vacant',name:"Vacant",        cat:'Generic',      emoji:'□',  colour:'#555'},
-  {id:'car',   name:"Car Park",      cat:'Generic',      emoji:'🅿', colour:'#2a2a2a'},
-  {id:'atm',   name:"ATM",           cat:'Generic',      emoji:'💳', colour:'#007DBA'},
-];
+// LIBRARY is populated from Supabase markup_icons table on boot.
+// Admins upload icons via the icon picker modal.
+const LIBRARY = [];
 
 let filteredLib = [...LIBRARY];
 
@@ -744,13 +698,24 @@ async function loadIconDB(){
 }
 
 async function saveIconToDB(iconData){
-  // iconData: { id, name, cat, emoji, icon_url }
+  // Use return=minimal so Supabase doesn't need SELECT RLS permission on the inserted row.
+  // INSERT RLS policy must exist: allow anon to insert (or use service role key for stricter setups).
+  const headers = {
+    'apikey': SUPABASE_ANON,
+    'Authorization': 'Bearer ' + SUPABASE_ANON,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal'
+  };
   try {
-    const existing = await sbGet('markup_icons', `?id=eq.${iconData.id}&select=id`);
-    if(Array.isArray(existing) && existing.length){
-      await sbPatch('markup_icons', `?id=eq.${iconData.id}`, iconData);
-    } else {
-      await sbPost('markup_icons', iconData);
+    // Try upsert (insert or update by primary key)
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/markup_icons?on_conflict=id`, {
+      method: 'POST',
+      headers: {...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates'},
+      body: JSON.stringify(iconData)
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throw new Error(errText);
     }
   } catch(e){
     console.error('Failed to save icon to DB:', e.message);
@@ -762,7 +727,7 @@ async function deleteIconFromDB(iconId){
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/markup_icons?id=eq.${iconId}`,{
       method:'DELETE',
-      headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}
+      headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Prefer':'return=minimal'}
     });
   } catch(e){ console.error('Failed to delete icon:', e.message); }
 }
@@ -779,9 +744,18 @@ function filterLibrary(q){
 function renderLibrary(){
   const el = document.getElementById('lib-list');
   const countEl = document.getElementById('lib-count');
-  if(countEl) countEl.textContent = filteredLib.length + ' of ' + LIBRARY.length;
-  if(!filteredLib.length){ el.innerHTML='<div class="no-results">No results — try a different search</div>'; return; }
-  // Flat list — category shown as subtitle on each item
+  if(countEl) countEl.textContent = filteredLib.length + ' icon' + (filteredLib.length===1?'':'s');
+  if(!filteredLib.length){
+    el.innerHTML = `<div class="no-results" style="padding:16px 8px;text-align:center;line-height:1.7;">
+      ${LIBRARY.length===0
+        ? `<span style="color:#555;">No icons in database yet.</span><br>
+           ${isAdmin
+             ? `<span style="color:#4a8a5a;font-size:10px;">Open any markup's properties and use<br><strong>Choose Icons</strong> to upload the first icon.</span>`
+             : `<span style="color:#444;font-size:10px;">Ask an admin to upload icons to the database.</span>`}`
+        : `<span style="color:#555;">No results — try a different search</span>`}
+    </div>`;
+    return;
+  }
   el.innerHTML = filteredLib.map(m=>`
     <div class="markup-item" onclick="placeMarkup('${m.id}')" title="Click to place on image">
       <div class="markup-thumb">${makeStickerThumb(m)}</div>
