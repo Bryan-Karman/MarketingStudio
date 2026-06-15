@@ -8,14 +8,15 @@
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype');font-weight:300;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.ttf') format('truetype');font-weight:500;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Bold.otf') format('opentype');font-weight:700;font-style:normal;}
 </style>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-:root{--dk:#0d2b21;--g:#4a9b6f;--gb:#5bbf7a;--accent:#17E88F;}
+:root{--dk:#003f2d;--g:#4a9b6f;--gb:#5bbf7a;--accent:#17E88F;}
 html,body{height:100%;overflow:hidden;}
-body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:#1c1c1c;color:#ccc;}
+body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;font-weight:500;background:#1c1c1c;color:#ccc;}
 
 /* ── MASTHEAD ── */
 .masthead{height:38px;background:#060606;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;z-index:200;}
@@ -50,10 +51,10 @@ body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic M
 .btn-undo:hover{background:#3a3a4e;color:#fff;}
 .btn-pen{background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;}
 .btn-pen:hover{background:#243e2e;}
-.btn-pen.active{background:#0d2b21;border-color:#5bbf7a;color:#fff;}
+.btn-pen.active{background:#003f2d;border-color:#5bbf7a;color:#fff;}
 .btn-select{background:#2a2a3a;color:#aab;border:1px solid #445;}
 .btn-select:hover{background:#3a3a4e;color:#fff;}
-.btn-select.active{background:#0d2b21;border-color:#5bbf7a;color:#fff;}
+.btn-select.active{background:#003f2d;border-color:#5bbf7a;color:#fff;}
 .btn-dl{background:var(--gb);color:#fff;}
 .btn-dl:hover{background:#4aaa65;}
 .btn-dl:disabled{background:#444;cursor:wait;}
@@ -115,7 +116,7 @@ body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic M
 .sec-lbl:first-child{border-top:none;margin-top:0;padding-top:2px;}
 .markup-item{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:2px;cursor:pointer;background:#1e1e1e;border:1px solid #2a2a2a;transition:all .15s;}
 .markup-item:hover{background:#252525;border-color:#3a5a3a;}
-.markup-item:active{background:#0d2b21;border-color:#5bbf7a;}
+.markup-item:active{background:#003f2d;border-color:#5bbf7a;}
 .markup-thumb{width:36px;height:24px;border-radius:2px;border:1px solid #333;object-fit:contain;background:#111;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .markup-thumb svg{width:32px;height:20px;}
 .markup-info{min-width:0;}
@@ -179,67 +180,198 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 #path-hit-overlay.has-path-under{cursor:pointer;}
 
 /* Markup sticker layer */
-.ab-markups{position:absolute;inset:0;z-index:20;}
+.ab-markups{position:absolute;inset:0;z-index:35;}
 .ab-markups.pen-mode{pointer-events:none;}
 
-/* Individual markup sticker */
+/* ── MARKUP STICKER ──
+   Icon-left default:  [WHITE BOX][GREEN LABEL] — stem drops from left edge of green bar
+   Flipped icon-right: [GREEN LABEL][WHITE BOX] — stem drops from right edge of green bar
+   No-icon:            [GREEN LABEL]             — stem drops from centre of label
+*/
 .markup-sticker{
   position:absolute;
   cursor:move;
   user-select:none;
-  display:flex;flex-direction:column;align-items:flex-start;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
 }
-.markup-sticker.selected .sticker-inner{outline:2px solid #5bbf7a;outline-offset:2px;}
-.markup-sticker.multi-selected .sticker-inner{outline:2px solid #17E88F;outline-offset:2px;}
-.markup-sticker.multi-selected .sticker-del{display:block;}
-.sticker-inner{display:flex;align-items:stretch;border-radius:1px;overflow:visible;pointer-events:none;}
+/* pointer-events MUST be all on the sticker so drag works */
+.markup-sticker .sticker-body{ pointer-events:all; }
+
+/* Selection outlines */
+.markup-sticker.selected   .sticker-body{ outline:2px solid #5bbf7a; outline-offset:3px; }
+.markup-sticker.multi-selected .sticker-body{ outline:2px solid #17E88F; outline-offset:3px; }
+.markup-sticker.multi-selected .sticker-del{ display:block; }
+
+/* Horizontal flag row — children stretch to tallest */
+.sticker-body{
+  display:flex;
+  align-items:stretch;
+  position:relative;
+}
+
+/* White icon box — auto-width for multiple icons */
 .sticker-icon-box{
-  width:38px;height:34px;
+  min-width:52px;
+  min-height:44px;
   background:#fff;
-  border:2px solid var(--dk);
-  border-radius:2px 0 0 2px;
+  border:none;
   display:flex;align-items:center;justify-content:center;
+  flex-wrap:nowrap;
+  gap:4px;
+  padding:0 6px;
   flex-shrink:0;
+  align-self:stretch;
 }
-.sticker-icon-box img{width:26px;height:26px;object-fit:contain;}
+.sticker-icon-box img{ width:32px;height:32px;object-fit:contain;display:block;flex-shrink:0; }
+.sticker-icon-box .st-emoji{ font-size:24px;line-height:1;display:block;flex-shrink:0; }
+
+/* Green label bar — auto-height for multi-line */
 .sticker-label{
   background:var(--dk);
   color:#fff;
-  font-size:11px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.08em;
-  padding:0 10px;
-  display:flex;align-items:center;
-  white-space:nowrap;
-  min-width:80px;
-  height:34px;
-}
-.sticker-stem{
-  position:absolute;
-  left:19px; /* centre of icon box */
-  top:34px;
-  width:2px;
-  height:18px;
-  background:var(--dk);
-}
-.sticker-dot{
-  position:absolute;
-  left:14px;
-  top:52px;
-  width:10px;height:10px;
-  border-radius:50%;
-  border:2px solid var(--dk);
-  background:#fff;
+  font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;
+  font-weight:500;
+  font-size:17px;
+  line-height:1.25;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  padding:12px 16px 10px;
+  display:flex;align-items:center;justify-content:center;
+  white-space:pre-wrap;
+  word-break:break-word;
+  min-width:100px;
+  min-height:44px;
+  flex-shrink:0;
+  text-align:center;
 }
 
-/* selection ring delete button */
+/* ICON-LEFT (default) */
+.markup-sticker:not(.flipped) .sticker-icon-box{ border-radius:0; }
+.markup-sticker:not(.flipped) .sticker-label{ border-radius:0; }
+
+/* ICON-RIGHT (flipped) */
+.markup-sticker.flipped .sticker-body{ flex-direction:row-reverse; }
+.markup-sticker.flipped .sticker-icon-box{ border-radius:0; }
+.markup-sticker.flipped .sticker-label{ border-radius:0; }
+
+/* NO-ICON */
+.markup-sticker.no-icon .sticker-icon-box{ display:none; }
+.markup-sticker.no-icon .sticker-label{ border-radius:0; min-width:120px; }
+
+/* ── Stem & dot ── */
+.sticker-tail{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  pointer-events:none;
+  position:relative;
+}
+.sticker-stem{
+  width:3px;
+  background:var(--dk);
+  flex-shrink:0;
+  /* height controlled by inline style */
+}
+.sticker-dot{
+  width:11px;height:11px;
+  border-radius:50%;
+  background:var(--dk);
+  flex-shrink:0;
+}
+/* Stem drag handle — shown on selected sticker */
+.stem-drag-handle{
+  position:absolute;
+  bottom:0px;
+  left:50%;
+  transform:translateX(-50%);
+  width:20px;height:20px;
+  border-radius:50%;
+  background:var(--dk);
+  border:3px solid #fff;
+  cursor:ns-resize;
+  pointer-events:all;
+  display:none;
+  z-index:50;
+  box-shadow:0 1px 6px rgba(0,0,0,.6);
+}
+.markup-sticker.selected .stem-drag-handle{ display:block; }
+
+/* Delete button */
 .sticker-del{
   position:absolute;top:-10px;right:-10px;
   width:18px;height:18px;border-radius:50%;
   background:#c0392b;color:#fff;border:none;cursor:pointer;
   font-size:11px;line-height:18px;text-align:center;
-  display:none;z-index:100;
+  display:none;z-index:100;pointer-events:all;
 }
-.markup-sticker.selected .sticker-del{display:block;}
+.markup-sticker.selected .sticker-del{ display:block; }
+
+/* ── ICON DATABASE MODAL ── */
+.icon-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-modal{
+  background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;
+  width:520px;max-height:82vh;display:flex;flex-direction:column;
+  box-shadow:0 8px 40px rgba(0,0,0,.7);font-family:inherit;
+}
+.icon-modal-head{
+  padding:12px 16px;border-bottom:1px solid #2a2a2a;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.icon-modal-head h3{font-size:13px;font-weight:700;color:#ccc;margin:0;flex:1;}
+.icon-modal-close{background:none;border:none;color:#666;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;}
+.icon-modal-close:hover{color:#fff;}
+.icon-modal-body{flex:1;overflow-y:auto;padding:14px 16px;}
+.icon-modal-foot{padding:10px 16px;border-top:1px solid #2a2a2a;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;}
+.icon-modal-foot button{
+  padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;border-radius:2px;font-family:inherit;
+}
+.btn-modal-cancel{background:#242424;border:1px solid #444;color:#aaa;}
+.btn-modal-cancel:hover{color:#fff;}
+.btn-modal-ok{background:var(--dk);border:1px solid #5bbf7a;color:#5bbf7a;}
+.btn-modal-ok:hover{background:#005a3d;}
+.icon-search{
+  width:100%;padding:6px 8px;font-size:11px;background:#242424;
+  border:1px solid #333;border-radius:2px;color:#ddd;outline:none;font-family:inherit;margin-bottom:10px;
+}
+.icon-search:focus{border-color:var(--gb);}
+.icon-cat-label{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 5px;}
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;margin-bottom:4px;}
+.ig-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:7px 4px;border-radius:3px;border:2px solid transparent;
+  cursor:pointer;background:#242424;transition:all .12s;position:relative;
+}
+.ig-item:hover{border-color:#3a5a3a;background:#2a2a2a;}
+.ig-item.ig-sel{border-color:#5bbf7a;background:#003f2d;}
+.ig-item img,.ig-item .ig-emoji{width:34px;height:34px;object-fit:contain;display:block;}
+.ig-item .ig-emoji{font-size:26px;line-height:34px;text-align:center;}
+.ig-item .ig-name{font-size:8px;color:#777;text-align:center;line-height:1.2;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ig-item.ig-sel .ig-name{color:#5bbf7a;}
+.ig-item .ig-del{
+  position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;
+  background:#c0392b;color:#fff;border:none;cursor:pointer;font-size:9px;
+  line-height:14px;text-align:center;display:none;
+}
+.ig-item:hover .ig-del{ display:block; }
+.icon-upload-zone{
+  border:2px dashed #444;border-radius:3px;padding:14px;margin-top:8px;
+  text-align:center;cursor:pointer;background:#1a1a1a;transition:all .15s;
+}
+.icon-upload-zone:hover{border-color:#5bbf7a;background:#1a2a1a;}
+.icon-upload-zone input{display:none;}
+.icon-upload-zone p{font-size:11px;color:#777;margin:4px 0 0;}
+.icon-upload-zone .uz-hint{font-size:9px;color:#555;}
+.admin-only-section{margin-top:12px;padding:10px;border:1px solid #2a3a2a;border-radius:3px;background:#161e16;}
+.admin-only-label{font-size:9px;font-weight:700;color:#4a8a5a;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.admin-badge{
+  padding:2px 6px;border-radius:10px;background:#1a2a3a;
+  border:1px solid #2a4a6a;font-size:8px;color:#7ab8e8;font-weight:700;
+}
 
 /* ── RIGHT PANEL ── */
 .props{width:220px;min-width:200px;background:#191919;border-left:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
@@ -262,7 +394,7 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 body.exporting .img-rh{display:none!important;}
 body.exporting .sticker-del{display:none!important;}
 body.exporting .img-ghost{display:none!important;}
-body.exporting .markup-sticker.selected .sticker-inner{outline:none!important;}
+body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
 /* ── PATH EDIT MODE handles — HTML div layer, NOT SVG ── */
 .artboard.path-edit-mode{cursor:default;}
@@ -289,7 +421,7 @@ body.exporting .markup-sticker.selected .sticker-inner{outline:none!important;}
 .ae-cp{
   width:10px;height:10px;
   background:#17E88F;
-  border:1.5px solid #0d2b21;
+  border:1.5px solid #003f2d;
 }
 /* Control-point lines drawn on a fixed canvas overlay */
 #path-edit-canvas{
@@ -304,6 +436,24 @@ body.exporting .markup-sticker.selected .sticker-inner{outline:none!important;}
 ::-webkit-scrollbar-track{background:#111;}
 ::-webkit-scrollbar-thumb{background:#333;border-radius:3px;}
 ::-webkit-scrollbar-thumb:hover{background:#555;}
+
+/* ── Markup list items ── */
+.ml-item{display:flex;align-items:center;gap:6px;padding:4px 5px;border-radius:2px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;}
+.ml-item:hover{background:#242424;border-color:#333;}
+.ml-item.highlighted{background:#003f2d;border-color:#5bbf7a;}
+.ml-label-input{flex:1;background:none;border:none;color:#ccc;font-size:10px;font-weight:600;font-family:inherit;outline:none;cursor:pointer;min-width:0;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ml-label-input:focus{background:#1a2a1a;border-radius:2px;padding:0 3px;cursor:text;color:#fff;}
+.ml-del-btn{background:none;border:none;color:#555;cursor:pointer;font-size:11px;padding:0 2px;flex-shrink:0;}
+.ml-del-btn:hover{color:#e06060;}
+.ml-empty{font-size:10px;color:#444;padding:10px 6px;text-align:center;font-style:italic;}
+
+/* ── Context menu ── */
+.ctx-menu{position:fixed;background:#1e1e1e;border:1px solid #3a3a3a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,.6);z-index:9999;min-width:160px;padding:4px 0;font-family:inherit;}
+.ctx-item{padding:6px 14px;font-size:11px;color:#ccc;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.ctx-item:hover{background:#2a3a2a;color:#fff;}
+.ctx-item.ctx-disabled{color:#555;cursor:default;}
+.ctx-item.ctx-disabled:hover{background:none;color:#555;}
+.ctx-sep{height:1px;background:#2a2a2a;margin:3px 0;}
 </style>
 <!-- html2canvas for export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -401,6 +551,13 @@ body.exporting .markup-sticker.selected .sticker-inner{outline:none!important;}
 
     <!-- Search BELOW upload -->
     <div style="padding:0 10px 8px;flex-shrink:0;border-bottom:1px solid #2a2a2a;">
+      <button onclick="placeCustomMarkup()"
+        style="width:100%;margin-bottom:8px;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;
+               background:#003f2d;color:#5bbf7a;font-family:inherit;letter-spacing:.04em;
+               text-align:left;">
+        + Custom Label&nbsp;&nbsp;<span style="color:#4a8a5a;font-weight:400;font-size:9px;">text-only marker</span>
+      </button>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
         <span style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;">Search Markups</span>
         <span id="lib-count" style="font-size:9px;color:#555;"></span>
@@ -429,7 +586,6 @@ body.exporting .markup-sticker.selected .sticker-inner{outline:none!important;}
         Draw Boundary: click to place anchor points, drag to curve. Click the first anchor to close the loop. Esc to cancel.<br><br>
         Click a business in the library to place it on the image.
       </div>
-      <!-- selection props injected by JS -->
     </div>
   </div>
 
@@ -546,13 +702,70 @@ const LIBRARY = [
   {id:'tbus',  name:"Bus Stop",      cat:'Transport',    emoji:'🚌', colour:'#F7941D'},
   {id:'ttrain',name:"Train Station", cat:'Transport',    emoji:'🚆', colour:'#003087'},
   // Generic
-  {id:'anchor',name:"Major Tenant",  cat:'Generic',      emoji:'⭐', colour:'#0d2b21'},
+  {id:'anchor',name:"Major Tenant",  cat:'Generic',      emoji:'⭐', colour:'#003f2d'},
   {id:'vacant',name:"Vacant",        cat:'Generic',      emoji:'□',  colour:'#555'},
   {id:'car',   name:"Car Park",      cat:'Generic',      emoji:'🅿', colour:'#2a2a2a'},
   {id:'atm',   name:"ATM",           cat:'Generic',      emoji:'💳', colour:'#007DBA'},
 ];
 
 let filteredLib = [...LIBRARY];
+
+// ═══════════════════════════════════════════════════════════════
+// ICON DATABASE — loaded from Supabase + merged with LIBRARY
+// ═══════════════════════════════════════════════════════════════
+// DB row shape: { id, name, cat, emoji, icon_url, created_by }
+let DB_ICONS = []; // custom icons loaded from Supabase
+
+async function loadIconDB(){
+  try {
+    const rows = await sbGet('markup_icons', '?order=name.asc');
+    if(Array.isArray(rows)){
+      DB_ICONS = rows.map(r=>({
+        id:    r.id,
+        name:  r.name,
+        cat:   r.cat   || 'Custom',
+        emoji: r.emoji || '',
+        iconUrl: r.icon_url || null,
+        fromDB: true
+      }));
+      // Merge into LIBRARY (replace any with same id, append new ones)
+      DB_ICONS.forEach(di=>{
+        const idx = LIBRARY.findIndex(x=>x.id===di.id);
+        if(idx>=0) LIBRARY[idx] = {...LIBRARY[idx], ...di};
+        else LIBRARY.push(di);
+      });
+      filteredLib = [...LIBRARY];
+      renderLibrary();
+    }
+  } catch(e){
+    // Table may not exist yet — that's ok, fall back to static LIBRARY
+    console.log('markup_icons table not available:', e.message);
+  }
+}
+
+async function saveIconToDB(iconData){
+  // iconData: { id, name, cat, emoji, icon_url }
+  try {
+    const existing = await sbGet('markup_icons', `?id=eq.${iconData.id}&select=id`);
+    if(Array.isArray(existing) && existing.length){
+      await sbPatch('markup_icons', `?id=eq.${iconData.id}`, iconData);
+    } else {
+      await sbPost('markup_icons', iconData);
+    }
+  } catch(e){
+    console.error('Failed to save icon to DB:', e.message);
+    throw e;
+  }
+}
+
+async function deleteIconFromDB(iconId){
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/markup_icons?id=eq.${iconId}`,{
+      method:'DELETE',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}
+    });
+  } catch(e){ console.error('Failed to delete icon:', e.message); }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // RENDER LIBRARY
@@ -578,9 +791,9 @@ function renderLibrary(){
 
 function makeStickerThumb(m){
   return `<svg viewBox="0 0 36 24" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="0" width="14" height="18" fill="#fff" stroke="#0d2b21" stroke-width="1.5" rx="1"/>
+    <rect x="0" y="0" width="14" height="18" fill="#fff" stroke="#003f2d" stroke-width="1.5" rx="1"/>
     <text x="7" y="13" font-size="9" text-anchor="middle" dominant-baseline="middle">${m.emoji||'■'}</text>
-    <rect x="14" y="0" width="22" height="18" fill="#0d2b21" rx="0"/>
+    <rect x="14" y="0" width="22" height="18" fill="#003f2d" rx="0"/>
     <text x="25" y="9" font-size="5" fill="#fff" font-weight="bold" text-anchor="middle" dominant-baseline="middle" font-family="Arial">${m.name.substring(0,7).toUpperCase()}</text>
   </svg>`;
 }
@@ -754,6 +967,7 @@ function renderPage(i){
   attachStickerEvents();
   // Sync brightness slider to this page's saved value
   syncBrightnessSlider();
+  refreshMarkupList();
 }
 
 function renderPaths(p){
@@ -885,21 +1099,77 @@ function anchorsToPathEl(path, _pathIdx=0){
 }
 
 function renderStickers(p){
-  return (p.stickers||[]).map(s=>{
-    const m = LIBRARY.find(x=>x.id===s.markupId) || {name:s.label||'?',emoji:'□',colour:'#333'};
-    return `<div class="markup-sticker${selectedSticker===s.id?' selected':''}" id="ms-${s.id}" 
-        data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
-      <div class="sticker-inner">
-        <div class="sticker-icon-box" style="border-color:${m.colour};">
-          <span style="font-size:18px;line-height:1;">${m.emoji||'□'}</span>
-        </div>
-        <div class="sticker-label" style="background:${m.colour};">${s.label||m.name}</div>
-      </div>
-      <div class="sticker-stem" style="background:${m.colour};"></div>
-      <div class="sticker-dot" style="border-color:${m.colour};"></div>
+  return (p.stickers||[]).map(s=>_buildStickerHTML(s, selectedSticker===s.id, selectedStickers.has(s.id))).join('');
+}
+
+function _buildStickerHTML(s, isSelected, isMulti){
+  const m       = LIBRARY.find(x=>x.id===s.markupId) || {name:s.label||'?',emoji:'',colour:'#003f2d'};
+  const noIcon  = !!s.noIcon;
+  const flipped = !!s.flipped;
+  const label   = s.label || m.name || 'Location';
+  const stemH   = s.stemHeight || 26;
+
+  // Build icon content — supports multiple icons via s.iconIds[]
+  let iconContent = '';
+  if(!noIcon){
+    const iconIds = (s.iconIds && s.iconIds.length) ? s.iconIds : [s.markupId];
+    iconContent = iconIds.map(iid=>{
+      const lib = LIBRARY.find(x=>x.id===iid) || (iid==='_custom'&&s.customIconUrl ? null : null);
+      if(iid==='_custom' && s.customIconUrl){
+        return `<img src="${escHtml(s.customIconUrl)}" alt="">`;
+      }
+      if(lib){
+        if(lib.iconUrl) return `<img src="${escHtml(lib.iconUrl)}" alt="${escHtml(lib.name)}">`;
+        if(lib.emoji && lib.emoji!=='□' && lib.emoji!=='■')
+          return `<span class="st-emoji">${lib.emoji}</span>`;
+      }
+      return `<span class="st-emoji" style="font-size:13px;color:#aaa;">□</span>`;
+    }).join('');
+  }
+
+  const selClass    = isSelected ? ' selected' : (isMulti ? ' multi-selected' : '');
+  const flipClass   = flipped  ? ' flipped'  : '';
+  const noIconClass = noIcon   ? ' no-icon'  : '';
+
+  return `<div class="markup-sticker${selClass}${flipClass}${noIconClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
+    <div class="sticker-body">
+      ${noIcon ? '' : `<div class="sticker-icon-box">${iconContent}</div>`}
+      <div class="sticker-label">${escHtml(label)}</div>
       <button class="sticker-del" onclick="deleteSticker('${s.id}')">✕</button>
-    </div>`;
-  }).join('');
+    </div>
+    <div class="sticker-tail">
+      <div class="sticker-stem" style="height:${stemH}px;"></div>
+      <div class="sticker-dot"></div>
+      <div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>
+    </div>
+  </div>`;
+}
+
+// Position tail so stem sits flush at the seam (left edge of green bar for icon-left,
+// right edge of green bar for icon-right), pushed 2px into green so it looks anchored.
+function _positionStickerTail(el){
+  const body    = el.querySelector('.sticker-body');
+  const tail    = el.querySelector('.sticker-tail');
+  const iconBox = el.querySelector('.sticker-icon-box');
+  if(!body || !tail) return;
+
+  const noIcon  = el.classList.contains('no-icon');
+  const flipped = el.classList.contains('flipped');
+  const iconW   = iconBox ? iconBox.offsetWidth : 0;
+  const totalW  = body.offsetWidth;
+  const halfStem = 1; // half of 3px stem width
+
+  let offsetLeft;
+  if(noIcon){
+    offsetLeft = totalW / 2 - halfStem;
+  } else if(flipped){
+    // Icon on right — green bar ends at totalW-iconW, stem anchors at that point + 2px into green
+    offsetLeft = (totalW - iconW) - 2 - halfStem;
+  } else {
+    // Icon on left — green bar starts at iconW, stem anchors 2px into green from that edge
+    offsetLeft = iconW + 2 - halfStem;
+  }
+  tail.style.marginLeft = Math.round(offsetLeft) + 'px';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1483,29 +1753,9 @@ function _attachPathOverlayEvents(){
     }
   });
 
-  // ── MOUSEDOWN: pass sticker clicks through; start path drag ──
+  // ── MOUSEDOWN: handle path clicks only (stickers are z-index above this overlay) ──
   overlay.addEventListener('mousedown', e=>{
     if(tool !== 'select') return;
-
-    // If clicking on a sticker markup, remove the overlay from the event path
-    // so the sticker layer handles it properly
-    const stickerEl = document.elementFromPoint
-      ? _elementBelowOverlay(e.clientX, e.clientY, overlay)
-      : null;
-    if(stickerEl && stickerEl.closest('.markup-sticker')){
-      // Temporarily hide overlay, re-dispatch the event, restore overlay
-      overlay.style.pointerEvents = 'none';
-      const target = document.elementFromPoint(e.clientX, e.clientY);
-      overlay.style.pointerEvents = '';
-      if(target && target.closest('.markup-sticker')){
-        target.dispatchEvent(new MouseEvent('mousedown', {
-          bubbles:true, cancelable:true,
-          clientX:e.clientX, clientY:e.clientY,
-          shiftKey:e.shiftKey
-        }));
-        return;
-      }
-    }
 
     const pt  = artboardPt(e);
     const hit = _hitTestPaths(pt);
@@ -2012,8 +2262,13 @@ function artboardPt(e){
 // STICKER DRAG
 // ═══════════════════════════════════════════════════════════════
 function attachStickerEvents(){
+  // Position tails after layout is settled
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.markup-sticker').forEach(_positionStickerTail);
+  });
+
   document.querySelectorAll('.markup-sticker').forEach(originalEl=>{
-    // Clone to strip any previously attached listeners (prevents duplicate onMove handlers)
+    // Clone to strip previously attached listeners
     const el = originalEl.cloneNode(true);
     originalEl.parentNode.replaceChild(el, originalEl);
 
@@ -2024,30 +2279,15 @@ function attachStickerEvents(){
       const id = el.dataset.id;
       const alreadyInSet = selectedStickers.has(id);
 
-      // Snapshot the FULL current set BEFORE any selection change,
-      // so we can drag the whole group even if selectSticker would have changed things.
-      // We do this before calling selectSticker below.
       const preSnapSet = alreadyInSet && !e.shiftKey && selectedStickers.size > 1
-        ? [...selectedStickers]   // keep existing group for this drag
-        : null;                   // will be determined after selectSticker
+        ? [...selectedStickers] : null;
 
-      if(!alreadyInSet){
-        // Clicking a new item — apply normal/shift selection
-        selectSticker(id, e.shiftKey);
-      } else if(e.shiftKey){
-        // Shift on already-selected = toggle off
-        selectSticker(id, true);
-      }
-      // alreadyInSet + no shift: DON'T call selectSticker yet.
-      // If no drag happens we'll reduce to single on mouseup (standard click-to-isolate).
-      // If drag happens we keep the group.
+      if(!alreadyInSet){ selectSticker(id, e.shiftKey); }
+      else if(e.shiftKey){ selectSticker(id, true); }
 
       const startX = e.clientX, startY = e.clientY;
-
-      // Determine drag group: use pre-snapped set if clicking within existing group
       const dragGroup = preSnapSet || (selectedStickers.size > 0 ? [...selectedStickers] : [id]);
 
-      // Snapshot positions
       const origins = {};
       dragGroup.forEach(sid=>{
         const ss = pages[currentPage].stickers.find(x=>x.id===sid);
@@ -2056,6 +2296,7 @@ function attachStickerEvents(){
 
       let moved = false;
       const startPtAB = artboardPt({clientX:startX, clientY:startY});
+
       const onMove = ev=>{
         moved = true;
         const nowPtAB = artboardPt(ev);
@@ -2071,51 +2312,76 @@ function attachStickerEvents(){
         });
       };
       const onUp = ()=>{
-        document.removeEventListener('mousemove',onMove);
-        document.removeEventListener('mouseup',onUp);
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
         if(moved){
           scheduleSave();
         } else {
-          // Pure click (no drag): if this item was already in a multi-group
-          // and shift wasn't held, reduce to single selection now.
           if(alreadyInSet && !e.shiftKey && selectedStickers.size > 1){
             selectSticker(id, false);
-          } else if(alreadyInSet && !e.shiftKey){
-            // Single item was already selected — just keep it selected (no change)
           }
         }
       };
-      document.addEventListener('mousemove',onMove);
-      document.addEventListener('mouseup',onUp);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
     });
 
-    // click fires after mouseup — selectSticker already handled in mousedown/mouseup
-    // Only use click for sticker-del pass-through check
-    el.addEventListener('click', e=>{
-      if(e.target.classList.contains('sticker-del')) return;
-      // selectSticker already handled in mousedown; nothing more needed here
+    el.addEventListener('contextmenu', e=>{
+      e.preventDefault(); e.stopPropagation();
+      showContextMenu(e, el.dataset.id);
     });
   });
 
-  // Click on canvas background = deselect stickers (only if not shift-clicking)
+  // ── Stem drag handles (double-click or drag to resize stem height) ──
+  document.querySelectorAll('.stem-drag-handle').forEach(handle=>{
+    handle.addEventListener('mousedown', e=>{
+      e.preventDefault(); e.stopPropagation();
+      const id = handle.dataset.id;
+      const s  = pages[currentPage].stickers.find(x=>x.id===id);
+      if(!s) return;
+      const startY   = e.clientY;
+      const origH    = s.stemHeight || 26;
+      const stemEl   = document.querySelector(`#ms-${id} .sticker-stem`);
+      const onMove   = ev=>{
+        const dy  = (ev.clientY - startY) / _zoom;
+        const newH = Math.max(10, Math.round(origH + dy));
+        s.stemHeight = newH;
+        if(stemEl) stemEl.style.height = newH + 'px';
+      };
+      const onUp = ()=>{
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+        scheduleSave();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
+    });
+  });
+
+  // Click on canvas background = deselect
   const ab = document.getElementById('artboard');
-  if(ab) ab.addEventListener('click', e=>{
-    if(e.shiftKey) return;
-    if(e.target.closest('.markup-sticker')) return;
-    if(e.target.closest('#path-edit-html-layer')) return;
-    if(e.target.tagName==='path' && e.target.closest('#ab-svg')) return;
-    if(tool==='select'){
-      deselectSticker();
-      // Also exit path edit mode and deselect path when clicking background
-      if(_editPath.active) exitPathEditMode();
-      if(selectedPath >= 0) deselectPath();
-    }
-  });
+  if(ab){
+    ab.addEventListener('click', e=>{
+      if(e.shiftKey) return;
+      if(e.target.closest('.markup-sticker')) return;
+      if(e.target.closest('#path-edit-html-layer')) return;
+      if(e.target.tagName==='path' && e.target.closest('#ab-svg')) return;
+      if(tool==='select'){
+        deselectSticker();
+        if(_editPath.active) exitPathEditMode();
+        if(selectedPath >= 0) deselectPath();
+      }
+    });
+    ab.addEventListener('contextmenu', e=>{
+      if(e.target.closest('.markup-sticker')) return;
+      e.preventDefault();
+      showContextMenu(e, null);
+    });
+  }
 }
 
 function selectSticker(id, shiftHeld){
   if(shiftHeld){
-    // Toggle this sticker in/out of multi-selection
     if(selectedStickers.has(id)){
       selectedStickers.delete(id);
       document.getElementById('ms-'+id)?.classList.remove('multi-selected','selected');
@@ -2123,21 +2389,16 @@ function selectSticker(id, shiftHeld){
       selectedStickers.add(id);
       document.getElementById('ms-'+id)?.classList.add('multi-selected');
     }
-    // If we had a single selection before, include it in the set
     if(selectedSticker && !selectedStickers.has(selectedSticker)){
       selectedStickers.add(selectedSticker);
       document.getElementById('ms-'+selectedSticker)?.classList.add('multi-selected');
     }
     selectedSticker = id;
-    if(selectedStickers.size > 1){
-      showPropsMulti();
-    } else {
-      const s = pages[currentPage].stickers.find(x=>x.id===id);
-      showProps(s);
-    }
+    if(selectedStickers.size > 1){ showPropsMulti(); }
+    else { const s=pages[currentPage].stickers.find(x=>x.id===id); showProps(s); }
+    refreshMarkupList();
     return;
   }
-  // Normal single-select — deselect any path first
   if(selectedPath >= 0) deselectPath();
   selectedStickers.clear();
   selectedSticker = id;
@@ -2148,6 +2409,7 @@ function selectSticker(id, shiftHeld){
   });
   const s = pages[currentPage].stickers.find(x=>x.id===id);
   showProps(s);
+  refreshMarkupList();
 }
 
 function deselectSticker(){
@@ -2155,6 +2417,7 @@ function deselectSticker(){
   selectedStickers.clear();
   document.querySelectorAll('.markup-sticker').forEach(el=>el.classList.remove('selected','multi-selected'));
   showProps(null);
+  refreshMarkupList();
 }
 
 function deselectAll(){
@@ -2164,7 +2427,6 @@ function deselectAll(){
 
 function deleteSticker(id){
   pushUndo();
-  // If multi-selected, delete all; otherwise delete just this one
   const toDelete = selectedStickers.size > 1 ? new Set(selectedStickers) : new Set([id]);
   pages[currentPage].stickers = pages[currentPage].stickers.filter(s=>!toDelete.has(s.id));
   selectedSticker = null;
@@ -2173,6 +2435,7 @@ function deleteSticker(id){
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
   attachStickerEvents();
+  refreshMarkupList();
   scheduleSave();
 }
 
@@ -2185,7 +2448,7 @@ function showPropsMulti(){
   scroll.innerHTML = `
     <div style="font-size:11px;color:#aaa;margin-bottom:8px;">${ids.length} markups selected</div>
     <div style="font-size:10px;color:#555;line-height:1.7;">
-      Hold <kbd style="background:#333;color:#ccc;padding:1px 5px;border-radius:2px;font-size:9px;">Shift</kbd> and click to add/remove from selection.<br><br>
+      Hold <kbd style="background:#333;color:#ccc;padding:1px 5px;border-radius:2px;font-size:9px;">Shift</kbd> and click to add/remove.<br><br>
       Drag any selected markup to move all together.<br><br>
       Press <kbd style="background:#333;color:#ccc;padding:1px 5px;border-radius:2px;font-size:9px;">Delete</kbd> to remove all selected.
     </div>
@@ -2195,35 +2458,110 @@ function showPropsMulti(){
 
 function showProps(s){
   const scroll = document.getElementById('props-scroll');
-  const empty  = document.getElementById('props-empty');
-  if(!s){ 
-    scroll.innerHTML = '<div class="props-empty" id="props-empty">Select a markup to edit its label.<br><br>Use the pen tool to draw a boundary.<br><br>Click a business in the library to place it.</div>';
-    return; 
+  if(!s){
+    scroll.innerHTML = `
+      <div class="props-empty">Select a markup to edit its label.<br><br>Use the pen tool to draw a boundary.<br><br>Click a business in the library to place it.</div>
+      <div class="sec" style="margin-top:0;border-top:none;">Page Markups</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:9px;color:#555;">Markups on this page</span>
+        <span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0 / 15</span>
+      </div>
+      <div id="markup-list-scroll" style="display:flex;flex-direction:column;gap:2px;"></div>
+    `;
+    refreshMarkupList();
+    return;
   }
-  const m = LIBRARY.find(x=>x.id===s.markupId)||{name:s.label,emoji:'□',colour:'#333'};
+  const m = LIBRARY.find(x=>x.id===s.markupId)||{name:s.label||'',emoji:'',colour:'#003f2d'};
+  const isFlipped = !!s.flipped;
+  const isNoIcon  = !!s.noIcon;
+
   scroll.innerHTML = `
     <div class="pf">
       <label>Label</label>
-      <input type="text" id="prop-label" value="${escHtml(s.label||m.name)}" oninput="updateStickerLabel(this.value)">
+      <textarea id="prop-label" rows="2"
+        oninput="updateStickerLabel(this.value)"
+        onkeydown="handleLabelKeydown(event)"
+        placeholder="Enter label text…"
+        style="resize:vertical;min-height:36px;">${escHtml(s.label||m.name||'')}</textarea>
+      <div style="font-size:9px;color:#555;margin-top:2px;">Press Enter for a new line in the markup.</div>
     </div>
-    <div style="font-size:10px;color:#555;margin-top:4px;">Type to override the business name shown on the markup.</div>
-    <div class="sec">Markup</div>
-    <div style="font-size:11px;color:#888;">${m.name} — ${m.emoji}</div>
+
+    <div class="sec">Icon Position</div>
+    <div style="display:flex;gap:6px;margin-top:2px;">
+      <button onclick="setStickerFlip(false)"
+        style="flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
+               border:1px solid ${!isFlipped?'#5bbf7a':'#333'};
+               background:${!isFlipped?'#003f2d':'#242424'};
+               color:${!isFlipped?'#5bbf7a':'#888'};font-family:inherit;">
+        ◧ Icon Left${!isFlipped?' ✓':''}
+      </button>
+      <button onclick="setStickerFlip(true)"
+        style="flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
+               border:1px solid ${isFlipped?'#5bbf7a':'#333'};
+               background:${isFlipped?'#003f2d':'#242424'};
+               color:${isFlipped?'#5bbf7a':'#888'};font-family:inherit;">
+        ◨ Icon Right${isFlipped?' ✓':''}
+      </button>
+    </div>
+
+    <div style="margin-top:6px;">
+      <button onclick="toggleStickerNoIcon()"
+        style="width:100%;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
+               border:1px solid ${isNoIcon?'#5bbf7a':'#333'};
+               background:${isNoIcon?'#003f2d':'#242424'};
+               color:${isNoIcon?'#5bbf7a':'#888'};font-family:inherit;text-align:left;padding-left:10px;">
+        ${isNoIcon?'☑':'□'} Text Only (no icon box)
+      </button>
+    </div>
+
+    <div class="sec">Icon</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;min-height:20px;" id="prop-icon-preview">
+      ${_buildIconPreview(s)}
+    </div>
+    <button onclick="openIconPicker('${s.id}')"
+      style="width:100%;padding:7px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
+             border:1px solid #3a5a3a;background:#1a2a1a;color:#5bbf7a;font-family:inherit;">
+      🖼 Choose Icons from Database${isAdmin?' · Upload New':''}
+    </button>
+    <div style="font-size:9px;color:#555;margin-top:3px;">Shift+click in picker to add multiple icons to one box.</div>
+
     <div class="sec">Position</div>
     <div style="display:flex;gap:6px;">
       <div class="pf" style="flex:1;"><label>X</label><input type="number" value="${Math.round(s.x)}" oninput="updateStickerPos('x',+this.value)"></div>
       <div class="pf" style="flex:1;"><label>Y</label><input type="number" value="${Math.round(s.y)}" oninput="updateStickerPos('y',+this.value)"></div>
     </div>
+
     <button class="props-del-btn" onclick="deleteSticker('${s.id}')">🗑 Delete Markup</button>
+
+    <div class="sec" style="margin-top:10px;">Page Markups</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <span style="font-size:9px;color:#555;">All markups on this page</span>
+      <span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0 / 15</span>
+    </div>
+    <div id="markup-list-scroll" style="display:flex;flex-direction:column;gap:2px;"></div>
   `;
+  refreshMarkupList();
+}
+
+// Enter = new line in label (don't submit)
+function handleLabelKeydown(e){
+  if(e.key==='Enter'){
+    // Allow the newline to be inserted naturally in textarea — just don't close/submit
+    e.stopPropagation(); // prevent global keydown from firing Delete etc.
+  }
+  if(e.key==='Escape') e.target.blur();
 }
 
 function updateStickerLabel(val){
   const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
   if(!s) return;
   s.label = val;
-  const el = document.querySelector(`#ms-${s.id} .sticker-label`);
-  if(el) el.textContent = val;
+  const labelEl = document.querySelector(`#ms-${s.id} .sticker-label`);
+  if(labelEl) labelEl.textContent = val; // textContent preserves \n with white-space:pre-wrap
+  const stickerEl = document.getElementById('ms-'+s.id);
+  if(stickerEl) requestAnimationFrame(()=>_positionStickerTail(stickerEl));
+  const mlInput = document.querySelector(`#markup-list-scroll .ml-label-input[data-id="${s.id}"]`);
+  if(mlInput) mlInput.value = val.replace(/\n/g,' ');
   scheduleSave();
 }
 
@@ -2233,6 +2571,463 @@ function updateStickerPos(axis, val){
   s[axis] = val;
   const el = document.getElementById('ms-'+s.id);
   if(el){ el.style.left=s.x+'px'; el.style.top=s.y+'px'; }
+  scheduleSave();
+}
+
+// Set flip directly (Icon Left = false, Icon Right = true)
+function setStickerFlip(val){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s || s.flipped===val) return;
+  pushUndo();
+  s.flipped = val;
+  _rerenderSticker(s); showProps(s); refreshMarkupList(); scheduleSave();
+}
+// Keep backward compat for any old toggle calls
+function toggleStickerFlip(){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  setStickerFlip(!s.flipped);
+}
+
+function toggleStickerNoIcon(){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  pushUndo();
+  s.noIcon = !s.noIcon;
+  _rerenderSticker(s); showProps(s); refreshMarkupList(); scheduleSave();
+}
+
+// Switch to a different library icon
+function setStickerIcon(markupId){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  pushUndo();
+  s.markupId = markupId;
+  // If switching to a real library item, clear any custom icon and re-default the label
+  if(markupId !== '_custom'){
+    const m = LIBRARY.find(x=>x.id===markupId);
+    if(m && s.label === (LIBRARY.find(x=>x.id===s.markupId)||{}).name){
+      s.label = m.name; // auto-update label if it wasn't manually changed
+    }
+    s.customIconUrl = null;
+    s.noIcon = false;
+  }
+  _rerenderSticker(s); showProps(s); refreshMarkupList(); scheduleSave();
+}
+
+// Upload a custom icon image for a sticker
+async function uploadStickerIcon(input, stickerId){
+  const file = input.files[0];
+  if(!file) return;
+  const s = pages[currentPage].stickers.find(x=>x.id===stickerId);
+  if(!s) return;
+  // Read as data URL for immediate preview and export (no Supabase needed for icon)
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    pushUndo();
+    s.customIconUrl = ev.target.result;
+    s.markupId = '_custom';
+    s.noIcon = false;
+    _rerenderSticker(s); showProps(s); scheduleSave();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// Remove custom icon from a sticker
+function clearCustomIcon(stickerId){
+  const s = pages[currentPage].stickers.find(x=>x.id===stickerId);
+  if(!s) return;
+  pushUndo();
+  s.customIconUrl = null;
+  _rerenderSticker(s); showProps(s); scheduleSave();
+}
+
+function _rerenderSticker(s){
+  const old = document.getElementById('ms-'+s.id);
+  if(!old) return;
+  const html = _buildStickerHTML(s, selectedSticker===s.id, selectedStickers.has(s.id));
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const newEl = tmp.firstElementChild;
+  old.parentNode.replaceChild(newEl, old);
+  // Re-attach drag/context events
+  newEl.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('sticker-del')) return;
+    if(tool!=='select') return;
+    e.preventDefault(); e.stopPropagation();
+    const id = newEl.dataset.id;
+    selectSticker(id, e.shiftKey);
+    const startPtAB = artboardPt({clientX:e.clientX, clientY:e.clientY});
+    const ss = pages[currentPage].stickers.find(x=>x.id===id);
+    if(!ss) return;
+    const origX=ss.x, origY=ss.y;
+    let moved=false;
+    const onMove=ev=>{ moved=true; const n=artboardPt(ev); ss.x=origX+(n.x-startPtAB.x); ss.y=origY+(n.y-startPtAB.y); newEl.style.left=ss.x+'px'; newEl.style.top=ss.y+'px'; };
+    const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); if(moved) scheduleSave(); };
+    document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
+  });
+  newEl.addEventListener('contextmenu', e=>{ e.preventDefault(); e.stopPropagation(); showContextMenu(e, newEl.dataset.id); });
+  requestAnimationFrame(()=>_positionStickerTail(newEl));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARKUP LIST PANEL
+// ═══════════════════════════════════════════════════════════════
+const MAX_MARKUPS = 15;
+
+function refreshMarkupList(){
+  const scroll = document.getElementById('markup-list-scroll');
+  const badge  = document.getElementById('markup-count-badge');
+  if(!scroll) return;
+  const stickers = (pages[currentPage]&&pages[currentPage].stickers)||[];
+  const count = stickers.length;
+  if(badge){
+    badge.textContent = `${count} / ${MAX_MARKUPS}`;
+    badge.style.background = count>=MAX_MARKUPS ? '#3a1515' : '#242424';
+    badge.style.borderColor = count>=MAX_MARKUPS ? '#7a2222' : '#333';
+    badge.style.color       = count>=MAX_MARKUPS ? '#e06060' : '#777';
+  }
+  if(!count){ scroll.innerHTML='<div class="ml-empty">No markups on this page</div>'; return; }
+  scroll.innerHTML = stickers.map(s=>{
+    const m = LIBRARY.find(x=>x.id===s.markupId)||{emoji:'□'};
+    const hl = selectedStickers.has(s.id)||selectedSticker===s.id;
+    return `<div class="ml-item${hl?' highlighted':''}" data-id="${s.id}">
+      <span style="font-size:13px;flex-shrink:0;width:18px;text-align:center;">${m.emoji||'□'}</span>
+      <input class="ml-label-input" type="text" value="${escHtml(s.label||m.name||'')}"
+        data-id="${s.id}"
+        onclick="event.stopPropagation()"
+        onfocus="selectSticker('${s.id}',false)"
+        oninput="mlUpdateLabel('${s.id}',this.value)"
+        onblur="mlSaveLabel('${s.id}',this.value)"
+        onkeydown="if(event.key==='Enter'||event.key==='Escape')this.blur()">
+      <button class="ml-del-btn" onclick="event.stopPropagation();deleteSticker('${s.id}')" title="Delete">✕</button>
+    </div>`;
+  }).join('');
+  // Row click selects on canvas
+  scroll.querySelectorAll('.ml-item').forEach(row=>{
+    row.addEventListener('mousedown', e=>{
+      if(e.target.classList.contains('ml-label-input')||e.target.classList.contains('ml-del-btn')) return;
+      selectSticker(row.dataset.id, false);
+    });
+  });
+}
+
+function mlUpdateLabel(id, val){
+  const s = pages[currentPage].stickers.find(x=>x.id===id);
+  if(!s) return;
+  s.label = val;
+  const el = document.querySelector(`#ms-${id} .sticker-label`);
+  if(el) el.textContent = val;
+  const stickerEl = document.getElementById('ms-'+id);
+  if(stickerEl) requestAnimationFrame(()=>_positionStickerTail(stickerEl));
+  const propInput = document.getElementById('prop-label');
+  if(propInput && selectedSticker===id) propInput.value = val;
+}
+function mlSaveLabel(id, val){
+  const s = pages[currentPage].stickers.find(x=>x.id===id);
+  if(s){ s.label=val; scheduleSave(); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COPY / PASTE
+// ═══════════════════════════════════════════════════════════════
+let _clipboard = [];
+
+function copySelectedStickers(){
+  const ids = selectedStickers.size>0 ? [...selectedStickers] : selectedSticker ? [selectedSticker] : [];
+  if(!ids.length) return;
+  _clipboard = ids.map(id=>{
+    const s = pages[currentPage].stickers.find(x=>x.id===id);
+    return s ? {...s} : null;
+  }).filter(Boolean);
+}
+
+function pasteStickers(targetPageIdx){
+  if(!_clipboard.length) return;
+  const tpi = targetPageIdx!==undefined ? targetPageIdx : currentPage;
+  const target = pages[tpi];
+  if(!target) return;
+  const spaceLeft = MAX_MARKUPS - target.stickers.length;
+  if(spaceLeft<=0){ alert(`Page ${tpi+1} already has the maximum of ${MAX_MARKUPS} markups.`); return; }
+  pushUndo();
+  const toPaste = _clipboard.slice(0,spaceLeft);
+  const offset = tpi===currentPage ? 30 : 0;
+  const newIds = [];
+  toPaste.forEach(orig=>{
+    const newS = {...orig, id:'ms'+Date.now()+Math.random().toString(36).slice(2,5), x:orig.x+offset, y:orig.y+offset};
+    target.stickers.push(newS);
+    newIds.push(newS.id);
+  });
+  if(tpi!==currentPage){ switchPage(tpi); }
+  else { renderPage(currentPage); attachArtboardEvents(pages[currentPage]); attachStickerEvents(); }
+  selectedStickers.clear();
+  newIds.forEach(id=>selectedStickers.add(id));
+  selectedSticker = newIds[newIds.length-1];
+  document.querySelectorAll('.markup-sticker').forEach(el=>{
+    el.classList.remove('selected','multi-selected');
+    if(selectedStickers.has(el.dataset.id)) el.classList.add(selectedStickers.size>1?'multi-selected':'selected');
+  });
+  refreshMarkupList();
+  scheduleSave();
+  if(spaceLeft<_clipboard.length) alert(`Only ${spaceLeft} markup${spaceLeft===1?'':'s'} pasted — page limit reached.`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════════════════════════
+let _ctxMenu = null;
+function _removeCtxMenu(){ if(_ctxMenu){ _ctxMenu.remove(); _ctxMenu=null; } }
+
+function showContextMenu(e, stickerId){
+  e.preventDefault();
+  _removeCtxMenu();
+  if(stickerId && !selectedStickers.has(stickerId)) selectSticker(stickerId, false);
+  const hasSelection = selectedStickers.size>0||!!selectedSticker;
+  const selCount = selectedStickers.size||(selectedSticker?1:0);
+  const canPaste = _clipboard.length>0;
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  menu.innerHTML = `
+    <div class="ctx-item${!hasSelection?' ctx-disabled':''}" id="ctx-copy">📋 Copy${selCount>1?' ('+selCount+')':''}<span style="margin-left:auto;font-size:9px;color:#555;">⌘C</span></div>
+    <div class="ctx-item${!canPaste?' ctx-disabled':''}" id="ctx-paste">📌 Paste here<span style="margin-left:auto;font-size:9px;color:#555;">⌘V</span></div>
+    ${pages.length>1&&canPaste ? pages.map((p,i)=>i===currentPage?'':
+      `<div class="ctx-item" data-paste-page="${i}">  → ${escHtml(p.label)}</div>`).join('') : ''}
+    <div class="ctx-sep"></div>
+    <div class="ctx-item${!hasSelection?' ctx-disabled':''}" id="ctx-del" style="color:#e06060;">🗑 Delete${selCount>1?' ('+selCount+')':''}<span style="margin-left:auto;font-size:9px;color:#555;">Del</span></div>
+  `;
+  menu.style.left=e.clientX+'px'; menu.style.top=e.clientY+'px';
+  document.body.appendChild(menu); _ctxMenu=menu;
+  requestAnimationFrame(()=>{
+    const r=menu.getBoundingClientRect();
+    if(r.right>window.innerWidth)  menu.style.left=(window.innerWidth-r.width-4)+'px';
+    if(r.bottom>window.innerHeight) menu.style.top=(window.innerHeight-r.height-4)+'px';
+  });
+  menu.querySelector('#ctx-copy')?.addEventListener('click',()=>{ if(hasSelection){ copySelectedStickers(); } _removeCtxMenu(); });
+  menu.querySelector('#ctx-paste')?.addEventListener('click',()=>{ if(canPaste){ pasteStickers(currentPage); } _removeCtxMenu(); });
+  menu.querySelector('#ctx-del')?.addEventListener('click',()=>{ if(hasSelection){ deleteSticker(selectedSticker||[...selectedStickers][0]); } _removeCtxMenu(); });
+  menu.querySelectorAll('[data-paste-page]').forEach(el=>{ el.addEventListener('click',()=>{ pasteStickers(+el.dataset.pastePage); _removeCtxMenu(); }); });
+  setTimeout(()=>{ document.addEventListener('mousedown',_removeCtxMenu,{once:true}); document.addEventListener('keydown',_removeCtxMenu,{once:true}); },0);
+}
+
+function _buildIconPreview(s){
+  const ids = (s.iconIds && s.iconIds.length) ? s.iconIds : (s.markupId && s.markupId!=='_custom'?[s.markupId]:[]);
+  if(!ids.length) return '<span style="font-size:9px;color:#555;font-style:italic;">No icon selected</span>';
+  return ids.map(iid=>{
+    const lib = LIBRARY.find(x=>x.id===iid);
+    if(!lib) return '';
+    const thumb = lib.iconUrl
+      ? `<img src="${escHtml(lib.iconUrl)}" style="width:24px;height:24px;object-fit:contain;">`
+      : `<span style="font-size:18px;line-height:1;">${lib.emoji||'□'}</span>`;
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;background:#242424;border:1px solid #333;border-radius:2px;" title="${escHtml(lib.name)}">
+      ${thumb}
+      <span style="font-size:8px;color:#666;">${escHtml(lib.name.substring(0,8))}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ICON PICKER MODAL
+// ─────────────────────────────────────────────────────────────────
+let _iconPickerStickerId = null;
+let _iconPickerSelected  = [];  // array of selected icon ids
+
+function openIconPicker(stickerId){
+  _iconPickerStickerId = stickerId;
+  const s = pages[currentPage].stickers.find(x=>x.id===stickerId);
+  _iconPickerSelected  = s ? [...(s.iconIds||[s.markupId]).filter(x=>x&&x!=='_custom')] : [];
+
+  const overlay = document.createElement('div');
+  overlay.className = 'icon-modal-overlay';
+  overlay.id = 'icon-modal-overlay';
+  overlay.innerHTML = `
+    <div class="icon-modal" onclick="event.stopPropagation()">
+      <div class="icon-modal-head">
+        <h3>Choose Icons ${_iconPickerSelected.length>0?'('+_iconPickerSelected.length+' selected)':''}</h3>
+        ${isAdmin?'<span class="admin-badge">ADMIN</span>':''}
+        <button class="icon-modal-close" onclick="closeIconPicker()">✕</button>
+      </div>
+      <div class="icon-modal-body" id="icon-modal-body">
+        <input class="icon-search" type="text" placeholder="Search icons…" id="icon-modal-search"
+          oninput="_filterIconModal(this.value)" autocomplete="off">
+        <div style="font-size:9px;color:#555;margin-bottom:8px;">
+          Click to select. <strong style="color:#aaa;">Shift+click</strong> to select multiple icons in one box.
+        </div>
+        <div id="icon-modal-grid"></div>
+        ${isAdmin ? `
+        <div class="admin-only-section">
+          <div class="admin-only-label">⬆ Upload New Icon <span class="admin-badge">ADMIN ONLY</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <input type="text" id="icon-upload-name" placeholder="Name (e.g. Bunnings)" class="icon-search" style="margin-bottom:0;">
+            <input type="text" id="icon-upload-cat" placeholder="Category (e.g. Retail)" class="icon-search" style="margin-bottom:0;">
+            <label class="icon-upload-zone">
+              <input type="file" accept="image/*,image/svg+xml" id="icon-upload-file">
+              <div>📁 Click to choose image file</div>
+              <p class="uz-hint">PNG, SVG, JPG — will be stored in icon database</p>
+            </label>
+            <button onclick="_adminUploadIcon()"
+              style="padding:7px;font-size:11px;font-weight:700;cursor:pointer;border-radius:2px;
+                     border:1px solid #5bbf7a;background:#003f2d;color:#5bbf7a;font-family:inherit;">
+              ⬆ Upload & Add to Database
+            </button>
+          </div>
+        </div>` : ''}
+      </div>
+      <div class="icon-modal-foot">
+        <button class="btn-modal-cancel" onclick="closeIconPicker()">Cancel</button>
+        <button class="btn-modal-ok" onclick="confirmIconPicker()">Apply Icons</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) closeIconPicker(); });
+  _renderIconModalGrid('');
+}
+
+function _renderIconModalGrid(query){
+  const grid = document.getElementById('icon-modal-grid');
+  if(!grid) return;
+  const q = query.toLowerCase();
+  // Group all library items by category
+  const allIcons = LIBRARY.filter(m=> !q || m.name.toLowerCase().includes(q) || (m.cat||'').toLowerCase().includes(q));
+  const cats = {};
+  allIcons.forEach(m=>{ (cats[m.cat||'Other'] = cats[m.cat||'Other']||[]).push(m); });
+
+  let html = '';
+  Object.keys(cats).sort().forEach(cat=>{
+    html += `<div class="icon-cat-label">${cat}</div><div class="icon-grid">`;
+    cats[cat].forEach(m=>{
+      const isSel = _iconPickerSelected.includes(m.id);
+      const thumb = m.iconUrl
+        ? `<img src="${escHtml(m.iconUrl)}" alt="${escHtml(m.name)}">`
+        : `<span class="ig-emoji">${m.emoji||'□'}</span>`;
+      html += `<div class="ig-item${isSel?' ig-sel':''}" data-id="${m.id}" onclick="_iconModalClick(event,'${m.id}')">
+        ${thumb}
+        <span class="ig-name">${escHtml(m.name)}</span>
+        ${isAdmin && m.fromDB ? `<button class="ig-del" onclick="_adminDeleteIcon(event,'${m.id}')">✕</button>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+  });
+  if(!html) html = '<div style="color:#555;font-size:11px;padding:10px 0;">No icons found</div>';
+  grid.innerHTML = html;
+
+  // Update count in header
+  const head = document.querySelector('.icon-modal-head h3');
+  if(head) head.textContent = `Choose Icons${_iconPickerSelected.length>0?' ('+_iconPickerSelected.length+' selected)':''}`;
+}
+
+function _filterIconModal(q){ _renderIconModalGrid(q); }
+
+function _iconModalClick(e, iconId){
+  if(e.shiftKey || _iconPickerSelected.length > 0){
+    // Multi-select with shift, or if already have selections keep adding
+    const idx = _iconPickerSelected.indexOf(iconId);
+    if(idx>=0){ _iconPickerSelected.splice(idx,1); }
+    else { _iconPickerSelected.push(iconId); }
+  } else {
+    // Single select
+    _iconPickerSelected = [iconId];
+  }
+  _renderIconModalGrid(document.getElementById('icon-modal-search')?.value||'');
+}
+
+function closeIconPicker(){
+  const ov = document.getElementById('icon-modal-overlay');
+  if(ov) ov.remove();
+}
+
+function confirmIconPicker(){
+  const s = pages[currentPage].stickers.find(x=>x.id===_iconPickerStickerId);
+  if(!s){ closeIconPicker(); return; }
+  pushUndo();
+  if(_iconPickerSelected.length === 0){
+    s.iconIds   = [];
+    s.markupId  = '_custom';
+  } else {
+    s.iconIds  = [..._iconPickerSelected];
+    s.markupId = s.iconIds[0]; // primary for backwards compat
+  }
+  _rerenderSticker(s);
+  showProps(s);
+  refreshMarkupList();
+  scheduleSave();
+  closeIconPicker();
+}
+
+// Admin: upload icon file → Supabase Storage → save to markup_icons table
+async function _adminUploadIcon(){
+  const name = document.getElementById('icon-upload-name')?.value.trim();
+  const cat  = document.getElementById('icon-upload-cat')?.value.trim() || 'Custom';
+  const fileInput = document.getElementById('icon-upload-file');
+  const file = fileInput?.files[0];
+  if(!name){ alert('Please enter a name for this icon.'); return; }
+  if(!file){ alert('Please select an image file.'); return; }
+
+  const btn = document.querySelector('.admin-only-section button');
+  if(btn){ btn.textContent = 'Uploading…'; btn.disabled=true; }
+
+  try {
+    const ext  = file.name.split('.').pop().toLowerCase()||'png';
+    const iconId = 'ic_'+name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now();
+    const path = `icons/${iconId}.${ext}`;
+
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':file.type||'image/png','x-upsert':'true'},
+      body: file
+    });
+    if(!res.ok) throw new Error(await res.text());
+    const iconUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+
+    const newIcon = { id:iconId, name, cat, emoji:'', icon_url:iconUrl };
+    await saveIconToDB(newIcon);
+
+    // Add to local LIBRARY
+    LIBRARY.push({ id:iconId, name, cat, emoji:'', iconUrl, fromDB:true });
+    filteredLib = [...LIBRARY];
+    renderLibrary();
+
+    // Refresh the modal grid
+    _renderIconModalGrid(document.getElementById('icon-modal-search')?.value||'');
+    if(fileInput) fileInput.value='';
+    if(document.getElementById('icon-upload-name')) document.getElementById('icon-upload-name').value='';
+    alert(`"${name}" uploaded and added to the icon database.`);
+  } catch(e){
+    alert('Upload failed: ' + e.message);
+  } finally {
+    if(btn){ btn.textContent='⬆ Upload & Add to Database'; btn.disabled=false; }
+  }
+}
+
+async function _adminDeleteIcon(e, iconId){
+  e.stopPropagation();
+  if(!confirm('Remove this icon from the database?')) return;
+  await deleteIconFromDB(iconId);
+  const idx = LIBRARY.findIndex(x=>x.id===iconId);
+  if(idx>=0) LIBRARY.splice(idx,1);
+  filteredLib = [...LIBRARY];
+  renderLibrary();
+  _renderIconModalGrid(document.getElementById('icon-modal-search')?.value||'');
+}
+function placeCustomMarkup(){
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
+    alert(`Maximum ${MAX_MARKUPS} markups per page.`);
+    return;
+  }
+  pushUndo();
+  const s = {
+    id:'ms'+Date.now()+Math.random().toString(36).slice(2,5),
+    markupId:'_custom', x:620, y:420,
+    label:'LOCATION', noIcon:true, flipped:false
+  };
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  selectSticker(s.id, false);
+  setTimeout(()=>{ const inp=document.getElementById('prop-label'); if(inp){ inp.focus(); inp.select(); } }, 120);
+  refreshMarkupList();
   scheduleSave();
 }
 
@@ -2246,18 +3041,27 @@ function placeMarkup(markupId){
     alert('Please upload an aerial image first.');
     return;
   }
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
+    alert(`Maximum ${MAX_MARKUPS} markups per page.`);
+    return;
+  }
   pushUndo();
   const s = {
     id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
     markupId,
-    x: 600, y: 400,   // centre-ish of artboard
-    label: m.name
+    x: 600, y: 400,
+    label: m.name,
+    flipped: false,
+    noIcon: false,
+    iconIds: [markupId],
+    stemHeight: 26
   };
   pages[currentPage].stickers.push(s);
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
   attachStickerEvents();
-  selectSticker(s.id);
+  selectSticker(s.id, false);
+  refreshMarkupList();
   scheduleSave();
 }
 
@@ -2367,12 +3171,22 @@ document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); undoStep(); return; }
   if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='z'){ e.preventDefault(); redoStep(); return; }
   if((e.metaKey||e.ctrlKey)&&e.key==='y'){ e.preventDefault(); redoStep(); return; }
+  if((e.metaKey||e.ctrlKey)&&e.key==='c'){
+    const tag=document.activeElement&&document.activeElement.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA') return;
+    e.preventDefault(); copySelectedStickers(); return;
+  }
+  if((e.metaKey||e.ctrlKey)&&e.key==='v'){
+    const tag=document.activeElement&&document.activeElement.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA') return;
+    e.preventDefault(); pasteStickers(currentPage); return;
+  }
   if(e.key==='Delete'||e.key==='Backspace'){
     const tag = document.activeElement && document.activeElement.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA') return;
     e.preventDefault();
     if(selectedStickers.size > 0){
-      deleteSticker(selectedSticker); // handles multi via selectedStickers Set
+      deleteSticker(selectedSticker);
     } else if(selectedPath >= 0){
       deleteSelectedPath();
     }
@@ -2584,6 +3398,7 @@ setZoom(55);
 renderLibrary();
 setTool('select');
 loadProject();
+loadIconDB();
 </script>
 </body>
 </html>
