@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CBRE Aerials Studio</title>
 <style>
+@font-face{font-family:'Financier';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
+@font-face{font-family:'Financier';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype');font-weight:300;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-style:normal;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.otf') format('opentype');font-weight:500;font-style:normal;}
@@ -138,9 +140,10 @@ body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic M
   overflow:hidden;  /* crop anything outside — the ghost div sits OUTSIDE this clip */
   cursor:default;
 }
-.artboard.pen-mode{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2732%27%20height%3D%2732%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M6%2026%20L10%2022%20L22%2010%20Q26%206%2028%208%20Q30%2010%2026%2014%20L14%2026%20Z%27%20fill%3D%27white%27%20stroke%3D%27%2523333%27%20stroke-width%3D%271.5%27/%3E%3Cpath%20d%3D%27M10%2022%20L6%2026%20L8%2028%20L12%2024%27%20fill%3D%27%2523333%27/%3E%3Ccircle%20cx%3D%2724%27%20cy%3D%2710%27%20r%3D%272%27%20fill%3D%27%25235bbf7a%27/%3E%3C/svg%3E") 4 28, crosshair;}
+.artboard.pen-mode{cursor:url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCA2NDUuNzYgNjUwIj4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuNS4xLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjQgQnVpbGQgMykgIC0tPgogIDxwYXRoIGZpbGw9IndoaXRlIiBkPSJNNjQuNiw2NDUuMjhjLTcuNDUsNi4zOS0xNS41Myw2LjE2LTIyLjU4LjA2bC0zNy45NC0zMi44MmMtNi43Ny01Ljg2LTQuMDgtMTUuMjYuNjctMjEuMzgsNTcuMi03My44NCw2NS4xNC0yMDcuOTYsNTguNy0yOTkuMDUtLjUxLTcuMTcsMS44Mi0xMi43OSw4LjQyLTE2LjIybDI1OC4xNS0xMzMuODUtMTQuNzctMTIuNzdjLTYuMzQtNS40OC03LjcyLTE0LjIxLTIuMzUtMjEuMTNMMzkwLjg5LDcuNDRjNi4wNC03Ljc5LDE1Ljc1LTEwLjMyLDIzLjgzLTMuNDFsMjI2LjY2LDE5My44N2M2LjMxLDUuNCw1LjQ4LDE2LjM1LS40OCwyMS40NmwtMTAwLjU1LDg2LjI0Yy01LjkyLDUuMDgtMTQuMiwzLjkzLTE5LjY3LS43NWwtMTYuMy0xMy45NS0xMTQuOTIsMjU4LjY0Yy0zLjE5LDcuMTgtOS42Nyw4LjgtMTYuNzgsOS4wNi05NC4xNywzLjMyLTIzNS4wMiwyNC4wMS0zMDguMDgsODYuNjlaTTUzMC45NSwyODAuNzVsODQuMy03Mi4zM0w0MDUuNzIsMjkuMjVsLTY3LjM2LDg2Ljg1LDE5Mi41OSwxNjQuNjVaTTIwMy42LDQ1OS4xM2wtMTUyLjU0LDE2MC4wOWMuMS42NCwxLjI2LDIuNzUsMi4wMywyLjQ3LjYyLS4yMywyLjA0LTEuMDIsMi43MS0xLjU1LDIxLjUxLTE2Ljc5LDQ1LjE0LTI4Ljk3LDcwLjQzLTM5LjYxLDMzLjk1LTEzLjg3LDY4LjM5LTIzLjM1LDEwNC41MS0zMC42Miw0NS43My05LjIsOTEuODEtMTQuMzYsMTM4LjQ3LTE2LjM1bDExNS4zMi0yNTkuNTgtMTMzLjkxLTExNC40N0w4OC43NywyOTUuMjhjMy4yMyw1MS45NywxLjYsMTAyLjQ3LTUuNzUsMTUyLjg3LTQuNjMsMzEuNzItMTEuNzUsNjEuNjQtMjIuNjIsOTEuNTUtOC4wNSwyMC45OS0xNy4yOSw0MC41OC0zMC4xNyw1OC45Ni0uOTgsMS40MS0xLjI2LDIuNzMtLjMzLDMuNTIuODguNzQsMi40OC4zOSwzLjQ3LS42NWwxNTIuMTktMTU5LjdjLTEwLjMzLTE2LjUxLTEyLjA1LTM2LjYzLTIuOTgtNTQuNjEsNy43OC0xNS40NSwyMy4zOS0yNy4wMSw0Mi4yLTI5LjIzLDIzLjc2LTIuOCw0Ni4yLDEwLjI0LDU1Ljc1LDMxLjAxLDEwLjE2LDIyLjA5LDQuNyw0Ny41OS0xMi41LDYzLjI5LTE3Ljc0LDE2LjItNDMuNjQsMTkuMDktNjQuNDMsNi44M1pNMjIzLjU4LDM4My42NmMtMTYuNzcsNC40LTI1LjE4LDIxLjI1LTIwLjg2LDM2LjY5czIwLjM5LDI0LjE1LDM1LjQyLDIwLjQ3YzE2LjE5LTMuOTcsMjUuNjEtMjAuMjgsMjEuNTktMzUuOS00LjA0LTE1LjcxLTE5LjU1LTI1LjYxLTM2LjE1LTIxLjI2WiIvPgo8L3N2Zz4=") 4 28, crosshair;}
 /* background image layer — fills artboard, pannable/zoomable */
 .ab-img-layer{position:absolute;inset:0;overflow:visible;cursor:grab;z-index:5;}
+.artboard.pen-mode .ab-img-layer{cursor:inherit !important;}
 /* Ghost outline — shows real image boundary OUTSIDE the artboard crop; editor-only */
 .img-ghost{
   position:absolute;
@@ -157,6 +160,7 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 .ab-img-layer.panning{cursor:grabbing;}
 .ab-bg{position:absolute;transform-origin:0 0;user-select:none;}
 .ab-bg img{display:block;max-width:none;pointer-events:all;user-select:none;cursor:grab;}
+.artboard.pen-mode .ab-bg img{cursor:inherit !important;}
 
 /* resize handles — fixed to artboard corners, z-index above SVG and markups */
 .img-rh{position:absolute;width:16px;height:16px;background:var(--gb);border:2px solid #fff;border-radius:2px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.6);}
@@ -180,7 +184,8 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 #path-hit-overlay.has-path-under{cursor:pointer;}
 
 /* Markup sticker layer */
-.ab-markups{position:absolute;inset:0;z-index:35;}
+.ab-markups{position:absolute;inset:0;z-index:35;pointer-events:none;}
+.ab-markups .markup-sticker{pointer-events:all;}
 .ab-markups.pen-mode{pointer-events:none;}
 
 /* ── MARKUP STICKER ──
@@ -209,6 +214,7 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
   display:flex;
   align-items:stretch;
   position:relative;
+  filter:drop-shadow(0 0 8px rgba(255,255,255,0.5)) drop-shadow(0 0 3px rgba(255,255,255,0.4));
 }
 
 /* White icon box — auto-width for multiple icons */
@@ -229,15 +235,16 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 
 /* Green label bar — auto-height for multi-line */
 .sticker-label{
+  position:relative;
   background:var(--dk);
   color:#fff;
   font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;
   font-weight:500;
-  font-size:17px;
+  font-size:20px;
   line-height:1.25;
   text-transform:uppercase;
   letter-spacing:.1em;
-  padding:12px 16px 10px;
+  padding:10px 16px 6px;
   display:flex;align-items:center;justify-content:center;
   white-space:pre-wrap;
   word-break:break-word;
@@ -283,10 +290,7 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 /* Stem drag handle — shown on selected sticker */
 .stem-drag-handle{
   position:absolute;
-  bottom:0px;
-  left:50%;
-  transform:translateX(-50%);
-  width:20px;height:20px;
+  width:18px;height:18px;
   border-radius:50%;
   background:var(--dk);
   border:3px solid #fff;
@@ -294,6 +298,7 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
   pointer-events:all;
   display:none;
   z-index:50;
+  transform:translate(-50%,-50%);
   box-shadow:0 1px 6px rgba(0,0,0,.6);
 }
 .markup-sticker.selected .stem-drag-handle{ display:block; }
@@ -307,6 +312,94 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
   display:none;z-index:100;pointer-events:all;
 }
 .markup-sticker.selected .sticker-del{ display:block; }
+
+/* ── ROAD LABEL ── */
+.markup-sticker.road-label .sticker-label,
+.markup-sticker.road-label .sticker-label-main,
+.markup-sticker.road-label .sticker-label-sub{ background:#80BBad; color:#fff; }
+.markup-sticker.road-label .sticker-tail{ display:none; }
+.markup-sticker.road-label .stem-drag-handle{ display:none!important; }
+.markup-sticker.multi-label{ align-items:flex-start; }
+.markup-sticker.multi-label .sticker-body{ flex-direction:column; align-items:stretch; filter:drop-shadow(0 0 8px rgba(255,255,255,0.5)); }
+.markup-sticker.multi-label .sticker-icon-box{ display:none !important; }
+.markup-sticker.multi-label .sticker-label{ width:100%; min-width:300px; text-align:center; padding:10px 18px 8px; font-size:20px; border-radius:0; flex-shrink:0; white-space:pre-wrap; }
+.markup-sticker.multi-label .sticker-stem{ background:#fff; }
+.markup-sticker.multi-label .sticker-dot{ background:#fff; border:2px solid #aaa; }
+.mt-icons-row{ background:#fff; display:flex; align-items:center; justify-content:center; gap:16px; padding:7px 20px; min-height:45px; width:100%; box-sizing:border-box; }
+.mt-icons-row img{ height:55px; width:auto; max-width:100px; object-fit:contain; display:block; }
+.mt-icons-row .st-emoji{ font-size:40px; line-height:1; }
+.mt-placeholder{ color:#ccc; font-size:11px; font-family:inherit; }
+/* Inline label editor */
+.sticker-label-editor{
+  position:absolute; inset:0;
+  background:rgba(0,40,20,0.95);
+  color:#fff; border:2px solid #5bbf7a;
+  font-family:inherit; font-weight:500; font-size:inherit;
+  letter-spacing:inherit; text-transform:inherit; text-align:center;
+  resize:none; outline:none; padding:8px 12px;
+  z-index:200; box-sizing:border-box;
+  line-height:1.25; white-space:pre-wrap;
+}
+/* ── PROPERTY ADDRESS LABEL ── */
+.markup-sticker.prop-label{ align-items:flex-start; }
+.markup-sticker.prop-label .sticker-body{
+  filter:drop-shadow(0 0 8px rgba(255,255,255,0.5)) drop-shadow(0 0 3px rgba(255,255,255,0.4));
+}
+.markup-sticker.prop-label .sticker-tail{ display:flex; }
+.markup-sticker.prop-label.selected .stem-drag-handle{ display:block; }
+.prop-label-wrap{
+  background:#003f2d;
+  display:flex;
+  align-items:stretch;
+  min-width:220px;
+  position:relative;
+}
+/* Accent bar — left side by default */
+.prop-accent-bar{
+  width:5px;
+  background:#17E88F;
+  flex-shrink:0;
+  margin:7px 0 10px 0;
+  border-radius:2px;
+}
+.prop-text-block{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:14px 20px 14px 16px;
+  gap:2px;
+  text-align:left;
+}
+.prop-line1{
+  font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;
+  font-weight:500;
+  font-size:20px;
+  line-height:1.1;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:#fff;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.prop-line2{
+  font-family:'Financier','Georgia',serif;
+  font-weight:400;
+  font-size:45px;
+  line-height:1.0;
+  text-transform:none;
+  letter-spacing:.04em;
+  color:#fff;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+/* Flipped: accent bar on right */
+.markup-sticker.prop-label.flipped .prop-label-wrap{ flex-direction:row-reverse; }
+.markup-sticker.prop-label.flipped .prop-text-block{ padding:14px 16px 14px 20px; text-align:right; }
+
+/* ── SUB-LABEL ── */
+.sticker-label-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; }
+.sticker-label-main{ padding:6px 16px 0px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:500; font-size:20px; line-height:1.1; text-transform:uppercase; letter-spacing:.1em; white-space:pre-wrap; word-break:break-word; text-align:center; }
+.sticker-label-sub{ padding:0 16px 4px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:400; font-size:13px; line-height:1.1; text-transform:uppercase; letter-spacing:.07em; white-space:pre-wrap; word-break:break-word; text-align:center; opacity:0.85; }
 
 /* ── ICON DATABASE MODAL ── */
 .icon-modal-overlay{
@@ -549,24 +642,53 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
       <button class="bright-reset" onclick="resetAllFilters()" style="margin-top:10px;">Reset All</button>
     </div>
 
-    <!-- Search BELOW upload -->
+    <!-- Label type buttons -->
     <div style="padding:0 10px 8px;flex-shrink:0;border-bottom:1px solid #2a2a2a;">
-      <button onclick="placeCustomMarkup()"
-        style="width:100%;margin-bottom:8px;padding:7px 10px;font-size:10px;font-weight:700;
-               cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;
+      <button onclick="openTenantPicker()"
+        style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #5bbf7a;
                background:#003f2d;color:#5bbf7a;font-family:inherit;letter-spacing:.04em;
-               text-align:left;">
-        + Custom Label&nbsp;&nbsp;<span style="color:#4a8a5a;font-weight:400;font-size:9px;">text-only marker</span>
-      </button>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-        <span style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;">Search Markups</span>
-        <span id="lib-count" style="font-size:9px;color:#555;"></span>
-      </div>
-      <input class="sb-search" type="text" id="lib-search" placeholder="Search all markups…" oninput="filterLibrary(this.value)" autocomplete="off">
+               text-align:left;">+ Tenant Label</button>
+      <button onclick="placeCustomMarkup()"
+        style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;
+               background:#002a1e;color:#4a9a6a;font-family:inherit;letter-spacing:.04em;
+               text-align:left;">+ Custom Label (No Logo)</button>
+      <button onclick="placeRoadLabel()"
+        style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #4a7a72;
+               background:#1a3530;color:#80BBad;font-family:inherit;letter-spacing:.04em;
+               text-align:left;">+ Road Label</button>
+      <button onclick="placeMultiLabel()"
+        style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #4a6a5a;
+               background:#0d1f18;color:#aaddcc;font-family:inherit;letter-spacing:.04em;
+               text-align:left;">+ Multi Tenanted</button>
+      <button onclick="placePropLabel()"
+        style="width:100%;margin-bottom:0;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #17E88F;
+               background:#0a1a12;color:#17E88F;font-family:inherit;letter-spacing:.04em;
+               text-align:left;">+ Property Address</button>
     </div>
 
-    <div class="sb-scroll" id="lib-list">
-      <!-- populated by JS -->
+    <!-- Tenant picker modal (hidden) -->
+    <div id="tenant-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;">
+      <div style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;width:340px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.7);">
+        <div style="padding:12px 16px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;">
+          <span style="font-size:13px;font-weight:700;color:#ccc;flex:1;">Tenant Label</span>
+          <button onclick="closeTenantPicker()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;">&#x2715;</button>
+        </div>
+        <div style="padding:10px 12px;border-bottom:1px solid #2a2a2a;">
+          <input class="sb-search" type="text" id="tenant-search" placeholder="Search markups…" oninput="filterTenantPicker(this.value)" autocomplete="off" style="width:100%;">
+        </div>
+        <div id="tenant-list" style="flex:1;overflow-y:auto;padding:8px 0;">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-scroll" id="lib-list" style="display:none;">
+      <!-- kept for JS compatibility -->
     </div>
   </div>
 
@@ -601,7 +723,7 @@ const BUCKET        = 'assets'; // same bucket as marketing
 const ARTBOARD_W    = 1500;
 const ARTBOARD_H    = 1129;
 const PEN_COLOUR    = '#17E88F';   // R23 G232 B143 — as hex
-const PEN_WIDTH     = 5;
+const PEN_WIDTH     = 10;
 
 // ═══════════════════════════════════════════════════════════════
 // URL PARAMS
@@ -690,6 +812,12 @@ async function loadIconDB(){
       });
       filteredLib = [...LIBRARY];
       renderLibrary();
+      // Re-inject multi-label icons now that DB icons are loaded
+      (pages[currentPage].stickers||[]).forEach(function(s){
+        if(!s.multiLabel) return;
+        var el = document.getElementById('ms-'+s.id);
+        if(el) _injectMultiIcons(el, s);
+      });
     }
   } catch(e){
     // Table may not exist yet — that's ok, fall back to static LIBRARY
@@ -746,14 +874,14 @@ function renderLibrary(){
   const countEl = document.getElementById('lib-count');
   if(countEl) countEl.textContent = filteredLib.length + ' icon' + (filteredLib.length===1?'':'s');
   if(!filteredLib.length){
-    el.innerHTML = `<div class="no-results" style="padding:16px 8px;text-align:center;line-height:1.7;">
-      ${LIBRARY.length===0
-        ? `<span style="color:#555;">No icons in database yet.</span><br>
-           ${isAdmin
-             ? `<span style="color:#4a8a5a;font-size:10px;">Open any markup's properties and use<br><strong>Choose Icons</strong> to upload the first icon.</span>`
-             : `<span style="color:#444;font-size:10px;">Ask an admin to upload icons to the database.</span>`}`
-        : `<span style="color:#555;">No results — try a different search</span>`}
-    </div>`;
+    el.innerHTML = '<div class="no-results" style="padding:16px 8px;text-align:center;line-height:1.7;">'
+      + (LIBRARY.length===0
+          ? '<span style="color:#555;">No icons in database yet.</span><br>'
+            + (isAdmin
+                ? '<span style="color:#4a8a5a;font-size:10px;">Open any markup\'s properties and use <strong>Choose Icons</strong> to upload.</span>'
+                : '<span style="color:#444;font-size:10px;">Ask an admin to upload icons to the database.</span>')
+          : '<span style="color:#555;">No results — try a different search</span>')
+      + '</div>';
     return;
   }
   el.innerHTML = filteredLib.map(m=>`
@@ -889,7 +1017,7 @@ function renderPage(i){
 
         <div class="ab-bg" id="ab-bg" style="transform:translate(${p.imagePos.x}px,${p.imagePos.y}px) scale(${p.imageScale});">
           ${p.imageUrl
-            ? `<img id="bg-img" src="${p.imageUrl}" draggable="false" onload="fitImageToArtboard()" style="filter:brightness(${p.imageBrightness||1}) contrast(${p.imageContrast||1}) saturate(${p.imageSaturation||1});">`
+            ? `<img id="bg-img" src="${p.imageUrl}" crossorigin="anonymous" draggable="false" onload="fitImageToArtboard()" style="filter:brightness(${p.imageBrightness||1}) contrast(${p.imageContrast||1}) saturate(${p.imageSaturation||1});">`
             : '<div style="width:1500px;height:1129px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px;font-weight:600;letter-spacing:.05em;">Upload an aerial image to get started</div>'}
         </div>
       </div>
@@ -939,6 +1067,17 @@ function renderPage(i){
 
   attachArtboardEvents(p);
   attachStickerEvents();
+  // Inject multi-label icon rows immediately and retry after DB loads
+  function _reinjectAllMulti(){
+    (p.stickers||[]).forEach(function(s){
+      if(!s.multiLabel) return;
+      var el=document.getElementById('ms-'+s.id);
+      if(el) _injectMultiIcons(el,s);
+    });
+  }
+  _reinjectAllMulti();
+  setTimeout(_reinjectAllMulti, 500);
+  setTimeout(_reinjectAllMulti, 1500);
   // Sync brightness slider to this page's saved value
   syncBrightnessSlider();
   refreshMarkupList();
@@ -1080,42 +1219,62 @@ function _buildStickerHTML(s, isSelected, isMulti){
   const m       = LIBRARY.find(x=>x.id===s.markupId) || {name:s.label||'?',emoji:'',colour:'#003f2d'};
   const noIcon  = !!s.noIcon;
   const flipped = !!s.flipped;
+  const isRoad  = !!s.roadLabel;
   const label   = s.label || m.name || 'Location';
+  const subLabel= s.subLabel || '';
   const stemH   = s.stemHeight || 26;
 
-  // Build icon content — supports multiple icons via s.iconIds[]
   let iconContent = '';
-  if(!noIcon){
+  let hasRealIcon = false;
+  if(!noIcon && !isRoad){
     const iconIds = (s.iconIds && s.iconIds.length) ? s.iconIds : [s.markupId];
     iconContent = iconIds.map(iid=>{
-      const lib = LIBRARY.find(x=>x.id===iid) || (iid==='_custom'&&s.customIconUrl ? null : null);
-      if(iid==='_custom' && s.customIconUrl){
-        return `<img src="${escHtml(s.customIconUrl)}" alt="">`;
-      }
+      const lib = LIBRARY.find(x=>x.id===iid);
+      if(iid==='_custom' && s.customIconUrl){ hasRealIcon=true; return `<img src="${escHtml(s.customIconUrl)}" crossorigin="anonymous" alt="">`; }
       if(lib){
-        if(lib.iconUrl) return `<img src="${escHtml(lib.iconUrl)}" alt="${escHtml(lib.name)}">`;
-        if(lib.emoji && lib.emoji!=='□' && lib.emoji!=='■')
-          return `<span class="st-emoji">${lib.emoji}</span>`;
+        if(lib.iconUrl){ hasRealIcon=true; return `<img src="${escHtml(lib.iconUrl)}" crossorigin="anonymous" alt="${escHtml(lib.name)}">` ; }
+        if(lib.emoji && lib.emoji!=='□' && lib.emoji!=='■'){ hasRealIcon=true; return `<span class="st-emoji">${lib.emoji}</span>`; }
       }
-      return `<span class="st-emoji" style="font-size:13px;color:#aaa;">□</span>`;
+      return '';
     }).join('');
   }
 
-  const selClass    = isSelected ? ' selected' : (isMulti ? ' multi-selected' : '');
-  const flipClass   = flipped  ? ' flipped'  : '';
-  const noIconClass = noIcon   ? ' no-icon'  : '';
+  const isProp   = !!s.propLabel;
+  const effNoIcon = isRoad || isProp || noIcon || !hasRealIcon;
+  const selClass  = isSelected ? ' selected' : (isMulti ? ' multi-selected' : '');
+  const flipClass = flipped ? ' flipped'    : '';
+  const noIcClass = effNoIcon ? ' no-icon'  : '';
+  const roadClass = isRoad   ? ' road-label': '';
+  const propClass = isProp   ? ' prop-label' : '';
 
-  return `<div class="markup-sticker${selClass}${flipClass}${noIconClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
-    <div class="sticker-body">
-      ${noIcon ? '' : `<div class="sticker-icon-box">${iconContent}</div>`}
-      <div class="sticker-label">${escHtml(label)}</div>
-      <button class="sticker-del" onclick="deleteSticker('${s.id}')">✕</button>
-    </div>
-    <div class="sticker-tail">
+  let labelInner;
+  if(isProp){
+    const line1 = s.propLine1 || 'STREET NAME';
+    const line2 = s.propLine2 || 'ADDRESS';
+    labelInner = '<div class="prop-label-wrap">'
+      + '<div class="prop-accent-bar"></div>'
+      + '<div class="prop-text-block">'
+      + '<div class="prop-line1">'+escHtml(line1)+'</div>'
+      + '<div class="prop-line2">'+escHtml(line2)+'</div>'
+      + '</div></div>';
+  } else if(subLabel){
+    labelInner = '<div class="sticker-label-wrap"><div class="sticker-label-main">'+escHtml(label)+'</div><div class="sticker-label-sub">'+escHtml(subLabel)+'</div></div>';
+  } else {
+    labelInner = escHtml(label);
+  }
+
+  const tailHtml = isRoad ? '' : `<div class="sticker-tail">
       <div class="sticker-stem" style="height:${stemH}px;"></div>
       <div class="sticker-dot"></div>
-      <div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>
+    </div><div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>`;
+
+  return `<div class="markup-sticker${selClass}${flipClass}${noIcClass}${roadClass}${propClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
+    <div class="sticker-body">
+      ${effNoIcon ? '' : '<div class="sticker-icon-box">'+iconContent+'</div>'}
+      <div class="sticker-label">${labelInner}</div>
+      <button class="sticker-del" onclick="deleteSticker('${s.id}')">✕</button>
     </div>
+    ${tailHtml}
   </div>`;
 }
 
@@ -1125,25 +1284,50 @@ function _positionStickerTail(el){
   const body    = el.querySelector('.sticker-body');
   const tail    = el.querySelector('.sticker-tail');
   const iconBox = el.querySelector('.sticker-icon-box');
+  const label   = el.querySelector('.sticker-label');
+  const handle  = el.querySelector('.stem-drag-handle');
   if(!body || !tail) return;
 
   const noIcon  = el.classList.contains('no-icon');
   const flipped = el.classList.contains('flipped');
   const iconW   = iconBox ? iconBox.offsetWidth : 0;
   const totalW  = body.offsetWidth;
-  const halfStem = 1; // half of 3px stem width
+  const halfStem = 1;
+  const nudge    = 5;   // global left-shift for icon variants
 
   let offsetLeft;
-  if(noIcon){
-    offsetLeft = totalW / 2 - halfStem;
+  if(noIcon || !iconBox){
+    const isMulti = el.classList.contains('multi-label');
+    if(isMulti){
+      // Multi-label: always align to full body width (icons row, not text width)
+      if(flipped){ offsetLeft = totalW - 6 - halfStem; }
+      else        { offsetLeft = 0     - 3 - halfStem; }
+    } else {
+      const labelLeft  = label ? label.offsetLeft : 0;
+      const labelRight = label ? (label.offsetLeft + label.offsetWidth) : totalW;
+      if(flipped){ offsetLeft = labelRight - 6 - halfStem; }
+      else        { offsetLeft = labelLeft  - 3 - halfStem; }
+    }
   } else if(flipped){
-    // Icon on right — green bar ends at totalW-iconW, stem anchors at that point + 2px into green
-    offsetLeft = (totalW - iconW) - 2 - halfStem;
+    // Icon on right
+    offsetLeft = (totalW - iconW) - 1 - halfStem - nudge;
   } else {
-    // Icon on left — green bar starts at iconW, stem anchors 2px into green from that edge
-    offsetLeft = iconW + 2 - halfStem;
+    // Icon on left
+    offsetLeft = iconW + 2 - halfStem - nudge;
   }
-  tail.style.marginLeft = Math.round(offsetLeft) + 'px';
+
+  const clamped = Math.round(offsetLeft);
+  tail.style.marginLeft = clamped + 'px';
+
+  // Position stem drag handle
+  if(handle){
+    const bodyH = body.offsetHeight;
+    const stemH = parseInt(el.querySelector('.sticker-stem')?.style.height||'26', 10);
+    const dotH  = 11; // sticker-dot height
+    // Place handle at the very bottom of the dot
+    handle.style.left = (clamped + halfStem) + 'px';
+    handle.style.top  = (bodyH + stemH + dotH) + 'px';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1342,7 +1526,7 @@ function attachArtboardEvents(pageObj){
       _imgDrag.active=false;
       pages[currentPage].imageUserAdjusted = true;
       const ab2=document.getElementById('artboard');
-      if(ab2) ab2.style.cursor = tool==='pen' ? 'crosshair' : 'default';
+      if(ab2) ab2.style.cursor = '';
       scheduleSave();
     }
     if(_imgResize.active){
@@ -1851,12 +2035,10 @@ function _attachPathOverlayEvents(){
 
     const hit = _hitTestPaths(artboardPt(e));
     if(hit >= 0){
-      // Second click on already-selected path = deselect
-      if(!_editPath.active && selectedPath === hit){
-        deselectPath();
-      }
+      // Click on path — keep it selected (double-click enters edit mode)
+      if(selectedPath !== hit) selectPath(hit);
     } else {
-      // Clicked empty space
+      // Clicked empty space — deselect
       if(_editPath.active) exitPathEditMode();
       if(selectedPath >= 0) deselectPath();
     }
@@ -2235,10 +2417,43 @@ function artboardPt(e){
 // ═══════════════════════════════════════════════════════════════
 // STICKER DRAG
 // ═══════════════════════════════════════════════════════════════
+function _attachStemDrag(handle){
+  handle.addEventListener('mousedown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    const id = handle.dataset.id;
+    const s  = pages[currentPage].stickers.find(x=>x.id===id);
+    if(!s) return;
+    const startY  = e.clientY;
+    const origH   = s.stemHeight || 26;
+    const stemEl  = document.querySelector('#ms-'+id+' .sticker-stem');
+    const stickerEl = document.getElementById('ms-'+id);
+    const onMove = ev=>{
+      const dy   = (ev.clientY - startY) / _zoom;
+      const newH = Math.max(10, Math.round(origH + dy));
+      s.stemHeight = newH;
+      if(stemEl) stemEl.style.height = newH + 'px';
+      if(stickerEl) _positionStickerTail(stickerEl);
+    };
+    const onUp = ()=>{
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      scheduleSave();
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+}
+
 function attachStickerEvents(){
   // Position tails after layout is settled
   requestAnimationFrame(()=>{
-    document.querySelectorAll('.markup-sticker').forEach(_positionStickerTail);
+    document.querySelectorAll('.markup-sticker').forEach(function(el){
+      _positionStickerTail(el);
+      // Attach inline edit after layout (multi-label header now exists)
+      var id=el.dataset.id;
+      var s=pages[currentPage].stickers.find(function(x){return x.id===id;});
+      if(s) _attachInlineEdit(el,s);
+    });
   });
 
   document.querySelectorAll('.markup-sticker').forEach(originalEl=>{
@@ -2306,31 +2521,8 @@ function attachStickerEvents(){
     });
   });
 
-  // ── Stem drag handles (double-click or drag to resize stem height) ──
-  document.querySelectorAll('.stem-drag-handle').forEach(handle=>{
-    handle.addEventListener('mousedown', e=>{
-      e.preventDefault(); e.stopPropagation();
-      const id = handle.dataset.id;
-      const s  = pages[currentPage].stickers.find(x=>x.id===id);
-      if(!s) return;
-      const startY   = e.clientY;
-      const origH    = s.stemHeight || 26;
-      const stemEl   = document.querySelector(`#ms-${id} .sticker-stem`);
-      const onMove   = ev=>{
-        const dy  = (ev.clientY - startY) / _zoom;
-        const newH = Math.max(10, Math.round(origH + dy));
-        s.stemHeight = newH;
-        if(stemEl) stemEl.style.height = newH + 'px';
-      };
-      const onUp = ()=>{
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup',   onUp);
-        scheduleSave();
-      };
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup',   onUp);
-    });
-  });
+  // ── Stem drag handles ──
+  document.querySelectorAll('.stem-drag-handle').forEach(handle=> _attachStemDrag(handle));
 
   // Click on canvas background = deselect
   const ab = document.getElementById('artboard');
@@ -2382,7 +2574,7 @@ function selectSticker(id, shiftHeld){
     if(el.dataset.id===id) el.classList.add('selected');
   });
   const s = pages[currentPage].stickers.find(x=>x.id===id);
-  showProps(s);
+  if(s&&s.multiLabel){showMultiProps(s);}else{showProps(s);}
   refreshMarkupList();
 }
 
@@ -2448,35 +2640,29 @@ function showProps(s){
   const m = LIBRARY.find(x=>x.id===s.markupId)||{name:s.label||'',emoji:'',colour:'#003f2d'};
   const isFlipped = !!s.flipped;
   const isNoIcon  = !!s.noIcon;
+  const isRoad    = !!s.roadLabel;
+  const isProp    = !!s.propLabel;
 
   scroll.innerHTML = `
-    <div class="pf">
-      <label>Label</label>
-      <textarea id="prop-label" rows="2"
-        oninput="updateStickerLabel(this.value)"
-        onkeydown="handleLabelKeydown(event)"
-        placeholder="Enter label text…"
-        style="resize:vertical;min-height:36px;">${escHtml(s.label||m.name||'')}</textarea>
-      <div style="font-size:9px;color:#555;margin-top:2px;">Press Enter for a new line in the markup.</div>
-    </div>
+    ${!isProp ? '<div class=\"pf\"><label>Label</label>'
+      + '<textarea id=\"prop-label\" rows=\"2\" oninput=\"updateStickerLabel(this.value)\" onkeydown=\"handleLabelKeydown(event)\" placeholder=\"Enter label text...\" style=\"resize:vertical;min-height:36px;\">' + escHtml(s.label||m.name||'') + '</textarea>'
+      + '<div style=\"font-size:9px;color:#555;margin-top:2px;\">Press Enter for a new line.</div></div>'
+      : ''}
+    ${!isProp ? '<div class=\"pf\" style=\"margin-top:4px;\"><label>Sub-Label <span style=\"color:#555;font-weight:400;text-transform:none;\">(smaller text below)</span></label>'
+      + '<textarea id=\"prop-sublabel\" rows=\"2\" oninput=\"updateStickerSubLabel(this.value)\" onkeydown=\"handleLabelKeydown(event)\" placeholder=\"Optional smaller text...\" style=\"resize:vertical;min-height:30px;\">' + escHtml(s.subLabel||'') + '</textarea></div>'
+      : ''}
 
-    <div class="sec">Icon Position</div>
-    <div style="display:flex;gap:6px;margin-top:2px;">
-      <button onclick="setStickerFlip(false)"
-        style="flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
-               border:1px solid ${!isFlipped?'#5bbf7a':'#333'};
-               background:${!isFlipped?'#003f2d':'#242424'};
-               color:${!isFlipped?'#5bbf7a':'#888'};font-family:inherit;">
-        ◧ Icon Left${!isFlipped?' ✓':''}
-      </button>
-      <button onclick="setStickerFlip(true)"
-        style="flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
-               border:1px solid ${isFlipped?'#5bbf7a':'#333'};
-               background:${isFlipped?'#003f2d':'#242424'};
-               color:${isFlipped?'#5bbf7a':'#888'};font-family:inherit;">
-        ◨ Icon Right${isFlipped?' ✓':''}
-      </button>
-    </div>
+    ${isProp ? '<div style="margin-top:6px;padding:6px 8px;background:#0a1a12;border:1px solid #17E88F;border-radius:2px;font-size:9px;color:#17E88F;">Property Address Label</div>'
+      + '<div class="pf" style="margin-top:6px;"><label>Street Address</label><input id="prop-line1-input" type="text" value="'+escHtml(s.propLine1||'')+'" oninput="updatePropLine(1,this.value)" placeholder="Street name..."></div>'
+      + '<div class="pf" style="margin-top:4px;"><label>Suburb</label><input type="text" value="'+escHtml(s.propLine2||'')+'" oninput="updatePropLine(2,this.value)" placeholder="Address..."></div>'
+      : ''}
+    ${!isProp && isRoad
+      ? '<div style="margin-top:6px;padding:6px 8px;background:#1a3530;border:1px solid #4a7a72;border-radius:2px;font-size:9px;color:#80BBad;">Road Label — teal, no pin</div>'
+      : '<div class="sec">Icon Position</div>'
+        + '<div style="display:flex;gap:6px;margin-top:2px;">'
+        + '<button onclick="setStickerFlip(false)" style="flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid '+(!isFlipped?'#5bbf7a':'#333')+';background:'+(!isFlipped?'#003f2d':'#242424')+';color:'+(!isFlipped?'#5bbf7a':'#888')+';font-family:inherit;">▧ Icon Left'+(!isFlipped?' ✓':'')+' </button>'
+        + '<button onclick="setStickerFlip(true)" style="flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid '+(isFlipped?'#5bbf7a':'#333')+';background:'+(isFlipped?'#003f2d':'#242424')+';color:'+(isFlipped?'#5bbf7a':'#888')+';font-family:inherit;">▨ Icon Right'+(isFlipped?' ✓':'')+' </button>'
+        + '</div>'}
 
     <div style="margin-top:6px;">
       <button onclick="toggleStickerNoIcon()"
@@ -2530,12 +2716,35 @@ function updateStickerLabel(val){
   const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
   if(!s) return;
   s.label = val;
-  const labelEl = document.querySelector(`#ms-${s.id} .sticker-label`);
-  if(labelEl) labelEl.textContent = val; // textContent preserves \n with white-space:pre-wrap
+  if(s.multiLabel){
+    // Update the header text directly for multi-label
+    const hdr = document.querySelector('#ms-'+s.id+' .multi-label-header');
+    if(hdr) hdr.textContent = val;
+  } else {
+    const labelEl = document.querySelector(`#ms-${s.id} .sticker-label`);
+    if(labelEl) labelEl.textContent = val;
+  }
   const stickerEl = document.getElementById('ms-'+s.id);
   if(stickerEl) requestAnimationFrame(()=>_positionStickerTail(stickerEl));
   const mlInput = document.querySelector(`#markup-list-scroll .ml-label-input[data-id="${s.id}"]`);
   if(mlInput) mlInput.value = val.replace(/\n/g,' ');
+  scheduleSave();
+}
+
+function updatePropLine(lineNum, val){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  if(lineNum===1) s.propLine1 = val;
+  else s.propLine2 = val;
+  _rerenderSticker(s);
+  scheduleSave();
+}
+
+function updateStickerSubLabel(val){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  s.subLabel = val;
+  _rerenderSticker(s);
   scheduleSave();
 }
 
@@ -2628,6 +2837,7 @@ function _rerenderSticker(s){
   // Re-attach drag/context events
   newEl.addEventListener('mousedown', e=>{
     if(e.target.classList.contains('sticker-del')) return;
+    if(el._editingInline) return;
     if(tool!=='select') return;
     e.preventDefault(); e.stopPropagation();
     const id = newEl.dataset.id;
@@ -2642,7 +2852,15 @@ function _rerenderSticker(s){
     document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
   });
   newEl.addEventListener('contextmenu', e=>{ e.preventDefault(); e.stopPropagation(); showContextMenu(e, newEl.dataset.id); });
-  requestAnimationFrame(()=>_positionStickerTail(newEl));
+  // Reattach stem drag handle
+  const hndl = newEl.querySelector('.stem-drag-handle');
+  if(hndl) _attachStemDrag(hndl);
+  requestAnimationFrame(()=>{
+    _positionStickerTail(newEl);
+    if(s.multiLabel) _injectMultiIcons(newEl,s);
+    // Re-attach inline editing on new element
+    _attachInlineEdit(newEl, s);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2766,7 +2984,7 @@ function showContextMenu(e, stickerId){
     <div class="ctx-item${!hasSelection?' ctx-disabled':''}" id="ctx-copy">📋 Copy${selCount>1?' ('+selCount+')':''}<span style="margin-left:auto;font-size:9px;color:#555;">⌘C</span></div>
     <div class="ctx-item${!canPaste?' ctx-disabled':''}" id="ctx-paste">📌 Paste here<span style="margin-left:auto;font-size:9px;color:#555;">⌘V</span></div>
     ${pages.length>1&&canPaste ? pages.map((p,i)=>i===currentPage?'':
-      `<div class="ctx-item" data-paste-page="${i}">  → ${escHtml(p.label)}</div>`).join('') : ''}
+      '<div class="ctx-item" data-paste-page="'+i+'">  → '+escHtml(p.label)+'</div>').join('') : ''}
     <div class="ctx-sep"></div>
     <div class="ctx-item${!hasSelection?' ctx-disabled':''}" id="ctx-del" style="color:#e06060;">🗑 Delete${selCount>1?' ('+selCount+')':''}<span style="margin-left:auto;font-size:9px;color:#555;">Del</span></div>
   `;
@@ -3039,7 +3257,217 @@ function placeMarkup(markupId){
   scheduleSave();
 }
 
+function placeRoadLabel(){
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
+    alert('Maximum '+MAX_MARKUPS+' markups per page.');
+    return;
+  }
+  pushUndo();
+  const s = {
+    id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
+    markupId: '_road',
+    x: 640, y: 440,
+    label: 'ROAD NAME',
+    subLabel: '',
+    noIcon: true,
+    flipped: false,
+    roadLabel: true,
+    stemHeight: 26
+  };
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  selectSticker(s.id, false);
+  setTimeout(()=>{ const i=document.getElementById('prop-label'); if(i){i.focus();i.select();} }, 120);
+  refreshMarkupList();
+  scheduleSave();
+}
+
+function placePropLabel(){
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
+    alert('Maximum '+MAX_MARKUPS+' markups per page.');
+    return;
+  }
+  pushUndo();
+  const s = {
+    id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
+    markupId: '_prop',
+    x: 600, y: 380,
+    label: 'PROPERTY ADDRESS',
+    propLine1: 'STREET ADDRESS',
+    propLine2: 'Suburb',
+    subLabel: '',
+    noIcon: true,
+    flipped: false,
+    propLabel: true,
+    stemHeight: 26
+  };
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  selectSticker(s.id, false);
+  setTimeout(()=>{ const i=document.getElementById('prop-line1-input'); if(i){i.focus();i.select();} }, 120);
+  refreshMarkupList();
+  scheduleSave();
+}
+
 // ═══════════════════════════════════════════════════════════════
+function placeMultiLabel(){
+  if((pages[currentPage].stickers||[]).length>=MAX_MARKUPS){alert('Maximum '+MAX_MARKUPS+' markups per page.');return;}
+  pushUndo();
+  var s={id:'ms'+Date.now()+Math.random().toString(36).slice(2,5),markupId:'_multi',x:580,y:360,label:'MULTI TENANTED',subLabel:'',noIcon:false,flipped:false,multiLabel:true,iconIds:[],stemHeight:26};
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);attachArtboardEvents(pages[currentPage]);attachStickerEvents();
+  selectSticker(s.id,false);refreshMarkupList();scheduleSave();
+}
+
+function _injectMultiIcons(el, s){
+  if(!el||!s||!s.multiLabel) return;
+  el.classList.add('multi-label');
+  var ex=el.querySelector('.mt-icons-row'); if(ex) ex.remove();
+  var mIds=(s.iconIds&&s.iconIds.length)?s.iconIds:[];
+  var html='';
+  mIds.forEach(function(iid){
+    var lib=LIBRARY.find(function(x){return x.id===iid;});
+    if(lib&&lib.iconUrl) html+='<img src="'+escHtml(lib.iconUrl)+'" crossorigin="anonymous" alt="">';
+    else if(lib&&lib.emoji&&lib.emoji!=='\u25A1') html+='<span class="st-emoji">'+lib.emoji+'</span>';
+  });
+  if(!html) html='<span class="mt-placeholder">+ Choose Icons</span>';
+  var body=el.querySelector('.sticker-body');
+  if(!body) return;
+  var row=document.createElement('div'); row.className='mt-icons-row'; row.innerHTML=html;
+  body.appendChild(row);
+  // Reposition tail after icons change layout width - double rAF ensures layout is settled
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ _positionStickerTail(el); });
+  });
+}
+
+function showMultiProps(s){
+  const scroll=document.getElementById('props-scroll');
+  if(!scroll) return;
+  const iF=!!s.flipped;
+  const badge='<span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0/15</span>';
+  // Build orientation buttons
+  const selStyle='flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;font-family:inherit;border:1px solid #5bbf7a;background:#003f2d;color:#5bbf7a;';
+  const unselStyle='flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;font-family:inherit;border:1px solid #333;background:#242424;color:#888;';
+  scroll.innerHTML=''
+    +'<div style="padding:6px 8px;background:#0d1f18;border:1px solid #4a6a5a;border-radius:2px;font-size:9px;color:#aaddcc;margin-bottom:8px;">Multi Tenanted Label</div>'
+    +'<div class="pf"><label>Title</label><input type="text" id="mt-title" value="'+escHtml(s.label||'')+'" oninput="updateStickerLabel(this.value)" placeholder="Multi Tenanted..."></div>'
+    +'<div class="sec">Orientation</div>'
+    +'<div style="display:flex;gap:6px;margin-top:2px;">'
+    +'<button style="'+(iF?unselStyle:selStyle)+'" onclick="setStickerFlip(false)">Left'+(!iF?' \u2713':'')+'</button>'
+    +'<button style="'+(iF?selStyle:unselStyle)+'" onclick="setStickerFlip(true)">Right'+(iF?' \u2713':'')+'</button>'
+    +'</div>'
+    +'<div class="sec">Icons</div>'
+    +'<div id="prop-icon-preview" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;min-height:20px;">'+_buildIconPreview(s)+'</div>'
+    +'<button id="mt-icon-btn" style="width:100%;padding:7px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;background:#1a2a1a;color:#5bbf7a;font-family:inherit;">Choose Icons from Database</button>'
+    +'<div style="font-size:9px;color:#555;margin-top:3px;">Shift+click to select multiple logos.</div>'
+    +'<button id="mt-del-btn" class="props-del-btn" style="margin-top:12px;">Delete Markup</button>'
+    +'<div class="sec" style="margin-top:10px;">Page Markups</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:#555;">All markups</span>'+badge+'</div>'
+    +'<div id="markup-list-scroll" style="display:flex;flex-direction:column;gap:2px;"></div>';
+  var ib=document.getElementById('mt-icon-btn');
+  var db=document.getElementById('mt-del-btn');
+  if(ib) ib.onclick=function(){openIconPicker(s.id);};
+  if(db) db.onclick=function(){deleteSticker(s.id);};
+  refreshMarkupList();
+}
+
+
+function _attachInlineEdit(el, s){
+  const labelEl = s.multiLabel
+    ? el.querySelector('.multi-label-header')
+    : el.querySelector('.sticker-label');
+  if(!labelEl) return;
+  labelEl.style.cursor = 'text';
+  labelEl.addEventListener('dblclick', function(e){
+    e.stopPropagation();
+    if(labelEl.contentEditable === 'true') return;
+    selectSticker(s.id, false);
+    // Enable contenteditable directly on the label element
+    labelEl.contentEditable = 'true';
+    labelEl.style.outline = '2px solid #5bbf7a';
+    labelEl.style.caretColor = '#fff';
+    labelEl.focus();
+    // Place cursor at click position naturally
+    // Suppress sticker drag while editing
+    el._editingInline = true;
+    function onInput(){
+      s.label = labelEl.innerText.replace(/\n$/, '');
+      _positionStickerTail(el);
+      scheduleSave();
+    }
+    function onKeydown(ke){
+      ke.stopPropagation();
+      if(ke.key==='Escape') labelEl.blur();
+      // Allow Enter for line breaks - do not preventDefault
+    }
+    function onBlur(){
+      labelEl.contentEditable = 'false';
+      labelEl.style.outline = '';
+      labelEl.style.caretColor = '';
+      el._editingInline = false;
+      s.label = labelEl.innerText.replace(/\n$/, '');
+      labelEl.textContent = s.label;
+      _positionStickerTail(el);
+      scheduleSave();
+      labelEl.removeEventListener('input', onInput);
+      labelEl.removeEventListener('keydown', onKeydown);
+      labelEl.removeEventListener('blur', onBlur);
+    }
+    labelEl.addEventListener('input', onInput);
+    labelEl.addEventListener('keydown', onKeydown);
+    labelEl.addEventListener('blur', onBlur);
+  });
+}
+
+
+function openTenantPicker(){
+  var picker = document.getElementById('tenant-picker');
+  picker.style.display = 'flex';
+  filterTenantPicker('');
+  setTimeout(function(){ document.getElementById('tenant-search').focus(); }, 50);
+}
+
+function closeTenantPicker(){
+  document.getElementById('tenant-picker').style.display = 'none';
+}
+
+function filterTenantPicker(q){
+  var list = document.getElementById('tenant-list');
+  if(!list) return;
+  var lq = q.toLowerCase();
+  var items = LIBRARY.filter(function(m){ return !q || m.name.toLowerCase().indexOf(lq)>=0 || (m.cat||'').toLowerCase().indexOf(lq)>=0; });
+  if(!items.length){
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:#555;font-size:11px;">No results</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(m){
+    var thumb = m.iconUrl
+      ? '<img src="'+escHtml(m.iconUrl)+'" style="width:28px;height:28px;object-fit:contain;border-radius:2px;">'
+      : '<span style="font-size:20px;line-height:28px;width:28px;display:inline-block;text-align:center;">'+(m.emoji||'□')+'</span>';
+    return '<div data-mid="'+escHtml(m.id)+'" class="tp-item" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-bottom:1px solid #222;">'
+      + '<div style="width:32px;height:32px;background:#fff;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+thumb+'</div>'
+      + '<div><div style="font-size:11px;font-weight:600;color:#ccc;">'+escHtml(m.name)+'</div>'
+      + '<div style="font-size:9px;color:#555;">'+escHtml(m.cat||'')+'</div></div>'
+      + '</div>';
+  }).join('');
+  // Wire clicks via event delegation
+  list.querySelectorAll('.tp-item').forEach(function(el){
+    el.addEventListener('mouseover', function(){ el.style.background='#1a2a1a'; });
+    el.addEventListener('mouseout',  function(){ el.style.background=''; });
+    el.addEventListener('click', function(){ tenantPickerSelect(el.dataset.mid); });
+  });
+}
+
+function tenantPickerSelect(markupId){
+  closeTenantPicker();
+  placeMarkup(markupId);
+}
+
 // CLEAR LINES
 // ═══════════════════════════════════════════════════════════════
 function clearAllPaths(){
@@ -3302,7 +3730,7 @@ async function captureArtboard(){
     const canvas = await html2canvas(artboard,{
       scale:1,
       useCORS:true,
-      allowTaint:true,
+      allowTaint:false,
       width:ARTBOARD_W,
       height:ARTBOARD_H,
       x:0, y:0,
