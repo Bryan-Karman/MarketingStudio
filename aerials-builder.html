@@ -598,7 +598,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
     <button class="tb-btn btn-pen" id="btn-pen" onclick="setTool('pen')" title="Draw a boundary around the property">✏ Draw Boundary</button>
     <button class="tb-btn btn-pen" onclick="clearAllPaths()" style="background:#3a1515;color:#e06060;border:1px solid #5a2222;" title="Clear all drawn lines">✕ Clear Lines</button>
     <button class="tb-btn btn-dl" id="btn-export-page" onclick="exportCurrentPage()" title="Download current page as JPG">⬇ Download Aerial</button>
-    <button class="tb-btn btn-all" onclick="exportAllPages()" title="Download all pages as JPGs">⬇ Download All Aerials</button>
+    <button class="tb-btn btn-all" id="btn-export-all" onclick="exportAllPages()" title="Download all pages as JPGs">⬇ Download All Aerials</button>
     <button class="tb-btn btn-status" id="btn-status" onclick="toggleStatus()">● IN PROGRESS</button>
   </div>
   <div class="topbar-row2" id="page-tabs">
@@ -3826,31 +3826,53 @@ async function captureArtboard(){
 
 async function exportCurrentPage(){
   const btn = document.getElementById('btn-export-page');
-  btn.disabled=true; btn.textContent='Exporting…';
+  if(btn){ btn.disabled=true; btn.textContent='Exporting…'; }
   try {
+    // Wait for image to be fully loaded
+    const bgImg = document.getElementById('bg-img');
+    if(bgImg && !bgImg.complete){
+      await new Promise(r=>{ bgImg.onload=r; bgImg.onerror=r; setTimeout(r,3000); });
+    }
+    await new Promise(r=>setTimeout(r,100));
     const canvas = await captureArtboard();
-    if(!canvas){btn.disabled=false;btn.textContent='⬇ Download Aerial';return;}
+    if(!canvas){ if(btn){btn.disabled=false;btn.textContent='⬇ Download Aerial';} return; }
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/jpeg',0.95);
-    a.download = `${propertyName.replace(/\s+/g,'_')}_Page${currentPage+1}.jpg`;
+    a.download = (propertyName||'Aerial').replace(/\s+/g,'_')+'_Page'+(currentPage+1)+'.jpg';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   } catch(e){ alert('Export failed: '+e.message); }
-  btn.disabled=false; btn.textContent='⬇ Download Aerial';
+  if(btn){ btn.disabled=false; btn.textContent='⬇ Download Aerial'; }
 }
 
 async function exportAllPages(){
-  const btn = document.getElementById('btn-export-page'); // reuse indicator
+  const btn = document.getElementById('btn-export-all');
+  if(btn){ btn.disabled=true; btn.textContent='Exporting…'; }
+  const origPage = currentPage;
   for(let i=0;i<pages.length;i++){
+    if(!pages[i].imageUrl) continue; // skip pages with no image
     switchPage(i);
-    await new Promise(r=>setTimeout(r,300));
+    // Wait for image to fully load
+    await new Promise(r=>setTimeout(r,200));
+    const bgImg = document.getElementById('bg-img');
+    if(bgImg && !bgImg.complete){
+      await new Promise(r=>{ bgImg.onload=r; bgImg.onerror=r; setTimeout(r,3000); });
+    }
+    await new Promise(r=>setTimeout(r,200));
     const canvas = await captureArtboard();
     if(!canvas) continue;
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/jpeg',0.95);
-    a.download = `${propertyName.replace(/\s+/g,'_')}_Page${i+1}.jpg`;
+    a.download = (propertyName||'Aerial').replace(/\s+/g,'_')+'_Page'+(i+1)+'.jpg';
+    document.body.appendChild(a);
     a.click();
-    await new Promise(r=>setTimeout(r,400));
+    document.body.removeChild(a);
+    await new Promise(r=>setTimeout(r,600));
   }
+  // Return to original page
+  switchPage(origPage);
+  if(btn){ btn.disabled=false; btn.textContent='⬇ Download All Aerials'; }
 }
 
 // ═══════════════════════════════════════════════════════════════
