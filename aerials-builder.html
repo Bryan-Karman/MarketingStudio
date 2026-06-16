@@ -171,11 +171,11 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 .img-rh:hover{background:#fff;border-color:var(--gb);}
 
 /* SVG overlay — pen drawing, fixed size = artboard */
-.ab-svg{position:absolute;inset:0;width:1500px;height:1129px;pointer-events:none;z-index:15;}
+.ab-svg{position:absolute;inset:0;width:1500px;height:1129px;pointer-events:none;z-index:36;}
 /* SVG is ALWAYS pointer-events:none — path hit detection done via #path-hit-overlay */
-/* Hit overlay — transparent, sits above SVG, below sticker markups */
+/* Hit overlay — above sticker markups so paths are always clickable */
 #path-hit-overlay{
-  position:absolute;inset:0;z-index:30;
+  position:absolute;inset:0;z-index:40;
   pointer-events:none;
   cursor:default;
   background:transparent;
@@ -325,10 +325,24 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 .markup-sticker.multi-label .sticker-label{ width:100%; min-width:300px; text-align:center; padding:10px 18px 8px; font-size:20px; border-radius:0; flex-shrink:0; white-space:pre-wrap; }
 .markup-sticker.multi-label .sticker-stem{ background:#fff; }
 .markup-sticker.multi-label .sticker-dot{ background:#fff; border:2px solid #aaa; }
-.mt-icons-row{ background:#fff; display:flex; align-items:center; justify-content:center; gap:16px; padding:7px 20px; min-height:45px; width:100%; box-sizing:border-box; }
-.mt-icons-row img{ height:55px; width:auto; max-width:100px; object-fit:contain; display:block; }
-.mt-icons-row .st-emoji{ font-size:40px; line-height:1; }
+.mt-icons-row{ background:#fff; display:flex; align-items:center; justify-content:center; gap:16px; padding:4px 16px; min-height:27px; width:100%; box-sizing:border-box; }
+.mt-icons-row img{ height:30px; width:auto; max-width:70px; object-fit:contain; display:block; }
+.mt-icons-row .st-emoji{ font-size:24px; line-height:1; }
 .mt-placeholder{ color:#ccc; font-size:11px; font-family:inherit; }
+/* Boundary disclaimer */
+.boundary-disclaimer{
+  position:absolute;
+  bottom:50px;
+  left:50px;
+  font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;
+  font-size:20px;
+  font-weight:400;
+  color:#fff;
+  pointer-events:none;
+  z-index:40;
+  text-shadow:0 0 8px rgba(0,0,0,0.9), 0 0 16px rgba(0,0,0,0.8), 0 0 24px rgba(0,0,0,0.7), 1px 1px 3px rgba(0,0,0,1);
+  white-space:nowrap;
+}
 /* Inline label editor */
 .sticker-label-editor{
   position:absolute; inset:0;
@@ -1067,6 +1081,7 @@ function renderPage(i){
 
   attachArtboardEvents(p);
   attachStickerEvents();
+  _updateBoundaryDisclaimer(p);
   // Inject multi-label icon rows immediately and retry after DB loads
   function _reinjectAllMulti(){
     (p.stickers||[]).forEach(function(s){
@@ -1399,7 +1414,11 @@ function attachArtboardEvents(pageObj){
       // Start dragging a new anchor
       _pen.dragging    = true;
       _pen.dragStart   = {x:e.clientX, y:e.clientY};
-      _pen.pendingAnchor = {x:pt.x, y:pt.y, cpIn:null, cpOut:null};
+      // Apply shift constraint to new anchor point
+      const rawPt = {x:pt.x, y:pt.y};
+      const constrainedPt = (e.shiftKey && _pen.anchors.length > 0) ? _shiftConstrain(rawPt) : rawPt;
+      _pen.pendingAnchor = {x:constrainedPt.x, y:constrainedPt.y, cpIn:null, cpOut:null};
+      _pen.shiftHeld = e.shiftKey;
 
       if(!_pen.active){
         _pen.active  = true;
@@ -1448,13 +1467,13 @@ function attachArtboardEvents(pageObj){
         _pen.pendingAnchor.cpOut = {x:_pen.pendingAnchor.x+adx, y:_pen.pendingAnchor.y+ady};
         _pen.pendingAnchor.cpIn  = {x:_pen.pendingAnchor.x-adx, y:_pen.pendingAnchor.y-ady};
       }
-      _updateLivePen(pt);
+      _updateLivePen(e.shiftKey && _pen.anchors.length > 0 ? _shiftConstrain(pt) : pt);
       return;
     }
 
     // ── Pen: hovering (no drag) — update live preview line ──
     if(_pen.active && !_pen.dragging){
-      _updateLivePen(pt);
+      _updateLivePen(e.shiftKey && _pen.anchors.length > 0 ? _shiftConstrain(pt) : pt);
       // Show snap indicator if near first anchor
       const snapEl = document.getElementById('close-snap');
       if(snapEl && _pen.anchors.length>=2){
@@ -1503,7 +1522,11 @@ function attachArtboardEvents(pageObj){
     // ── Pen: commit anchor on mouseup ──
     if(_pen.dragging && _pen.pendingAnchor){
       _pen.dragging = false;
-      const committed = {..._pen.pendingAnchor};
+      let committed = {..._pen.pendingAnchor};
+      // Shift+click: constrain to horizontal or vertical from last anchor
+      if(_pen.shiftHeld && _pen.anchors.length > 0){
+        committed = {...committed, ..._shiftConstrain(committed)};
+      }
       _pen.pendingAnchor = null;
 
       // Check if this new anchor is on top of the first anchor → close loop
@@ -1570,6 +1593,20 @@ let _penEscHandler = null;
 // ─────────────────────────────────────────────────────────────────
 
 // Draw the live preview line from last committed anchor to mouse position
+function _shiftConstrain(pt){
+  // Constrain to horizontal or vertical from the last placed anchor
+  const anchors = _pen.anchors;
+  if(!anchors.length) return pt;
+  const last = anchors[anchors.length-1];
+  const dx = Math.abs(pt.x - last.x);
+  const dy = Math.abs(pt.y - last.y);
+  if(dx >= dy){
+    return {x: pt.x, y: last.y}; // horizontal
+  } else {
+    return {x: last.x, y: pt.y}; // vertical
+  }
+}
+
 function _updateLivePen(pt){
   const livePath = document.getElementById('live-path');
   const cp1El    = document.getElementById('cp-line1');
@@ -1665,6 +1702,7 @@ function _finalisePath(closed){
   if(_pen.anchors.length<2){ _pen.active=false; return; }
   pushUndo();
   pages[currentPage].paths.push({anchors:[..._pen.anchors], closed});
+  _updateBoundaryDisclaimer(pages[currentPage]);
   _pen.active=false; _pen.anchors=[]; _pen.dragging=false; _pen.pendingAnchor=null;
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
@@ -1952,6 +1990,18 @@ function _attachPathOverlayEvents(){
 
     if(hit < 0){
       if(selectedPath >= 0) deselectPath();
+      // If clicking on a sticker, let it through
+      const overSticker = document.elementFromPoint && (() => {
+        const ol = document.getElementById('path-hit-overlay');
+        if(ol) ol.style.pointerEvents = 'none';
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if(ol) ol.style.pointerEvents = '';
+        return el && el.closest('.markup-sticker');
+      })();
+      if(overSticker){
+        overSticker.dispatchEvent(new MouseEvent('mousedown', {bubbles:false, cancelable:true, clientX:e.clientX, clientY:e.clientY, shiftKey:e.shiftKey}));
+        return;
+      }
       // Handle image pan directly here — no re-dispatch needed
       if(tool === 'select' && pages[currentPage].imageUrl){
         e.preventDefault();
@@ -2532,6 +2582,8 @@ function attachStickerEvents(){
       if(e.target.closest('.markup-sticker')) return;
       if(e.target.closest('#path-edit-html-layer')) return;
       if(e.target.tagName==='path' && e.target.closest('#ab-svg')) return;
+      if(e.target.closest('#path-hit-overlay')) return; // path overlay handles its own selection
+      if(_pathJustSelected){ _pathJustSelected=false; return; } // path was just selected, don't deselect
       if(tool==='select'){
         deselectSticker();
         if(_editPath.active) exitPathEditMode();
@@ -3466,6 +3518,23 @@ function filterTenantPicker(q){
 function tenantPickerSelect(markupId){
   closeTenantPicker();
   placeMarkup(markupId);
+}
+
+function _updateBoundaryDisclaimer(p){
+  var ab = document.getElementById('artboard');
+  if(!ab) return;
+  var existing = ab.querySelector('.boundary-disclaimer');
+  var hasPaths = p && p.paths && p.paths.length > 0;
+  if(hasPaths){
+    if(!existing){
+      var d = document.createElement('div');
+      d.className = 'boundary-disclaimer';
+      d.textContent = '*Outline/Boundaries Indicative Only';
+      ab.appendChild(d);
+    }
+  } else {
+    if(existing) existing.remove();
+  }
 }
 
 // CLEAR LINES
