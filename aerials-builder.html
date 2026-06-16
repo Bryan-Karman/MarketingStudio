@@ -173,9 +173,9 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 /* SVG overlay — pen drawing, fixed size = artboard */
 .ab-svg{position:absolute;inset:0;width:1500px;height:1129px;pointer-events:none;z-index:36;}
 /* SVG is ALWAYS pointer-events:none — path hit detection done via #path-hit-overlay */
-/* Hit overlay — above sticker markups so paths are always clickable */
+/* Hit overlay — below sticker markups */
 #path-hit-overlay{
-  position:absolute;inset:0;z-index:40;
+  position:absolute;inset:0;z-index:25;
   pointer-events:none;
   cursor:default;
   background:transparent;
@@ -1990,18 +1990,6 @@ function _attachPathOverlayEvents(){
 
     if(hit < 0){
       if(selectedPath >= 0) deselectPath();
-      // If clicking on a sticker, let it through
-      const overSticker = document.elementFromPoint && (() => {
-        const ol = document.getElementById('path-hit-overlay');
-        if(ol) ol.style.pointerEvents = 'none';
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        if(ol) ol.style.pointerEvents = '';
-        return el && el.closest('.markup-sticker');
-      })();
-      if(overSticker){
-        overSticker.dispatchEvent(new MouseEvent('mousedown', {bubbles:false, cancelable:true, clientX:e.clientX, clientY:e.clientY, shiftKey:e.shiftKey}));
-        return;
-      }
       // Handle image pan directly here — no re-dispatch needed
       if(tool === 'select' && pages[currentPage].imageUrl){
         e.preventDefault();
@@ -2579,12 +2567,20 @@ function attachStickerEvents(){
   if(ab){
     ab.addEventListener('click', e=>{
       if(e.shiftKey) return;
-      if(e.target.closest('.markup-sticker')) return;
       if(e.target.closest('#path-edit-html-layer')) return;
-      if(e.target.tagName==='path' && e.target.closest('#ab-svg')) return;
-      if(e.target.closest('#path-hit-overlay')) return; // path overlay handles its own selection
-      if(_pathJustSelected){ _pathJustSelected=false; return; } // path was just selected, don't deselect
+      if(_pathJustSelected){ _pathJustSelected=false; return; }
       if(tool==='select'){
+        // Check if click is on a sticker first
+        if(e.target.closest('.markup-sticker')) return;
+        // Check if click hits a path
+        const pt = artboardPt(e);
+        const hit = _hitTestPaths(pt);
+        if(hit >= 0){
+          selectPath(hit);
+          _pathJustSelected = true;
+          return;
+        }
+        // Click on empty space - deselect everything
         deselectSticker();
         if(_editPath.active) exitPathEditMode();
         if(selectedPath >= 0) deselectPath();
@@ -2889,7 +2885,7 @@ function _rerenderSticker(s){
   // Re-attach drag/context events
   newEl.addEventListener('mousedown', e=>{
     if(e.target.classList.contains('sticker-del')) return;
-    if(el._editingInline) return;
+    if(newEl._editingInline) return;
     if(tool!=='select') return;
     e.preventDefault(); e.stopPropagation();
     const id = newEl.dataset.id;
