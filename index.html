@@ -371,12 +371,15 @@ body.is-admin .admin-only-inline{display:inline;}
      MASTHEAD
 ════════════════════════════════════════ -->
 <div class="masthead" id="masthead" style="display:none;">
-  <div class="mast-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:22px;width:auto;display:block;"></div>
+  <div class="mast-logo" onclick="showHubScreen()" style="cursor:pointer;" title="Home"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:22px;width:auto;display:block;"></div>
+  <div class="mast-divider"></div>
+  <span onclick="showHubScreen()" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;cursor:pointer;padding:0 10px 0 4px;" title="Home">Studio</span>
   <div class="mast-divider"></div>
   <span id="mast-product-label" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;display:none;"></span>
   <nav class="mast-nav">
-    <a onclick="showHubScreen()" id="nav-hub" style="display:none;">← Products</a>
-    <a class="active" onclick="showPage('portfolios')" id="nav-portfolios" style="display:none;">Portfolios</a>
+    <a onclick="showPage('portfolios')" id="nav-portfolios" style="display:none;">Portfolios</a>
+    <span id="nav-portfolio-crumb" style="display:none;padding:0 14px;height:52px;display:none;align-items:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);pointer-events:none;">›</span>
+    <a id="nav-portfolio-name" style="display:none;" onclick="showPage('portfolios')"></a>
     <a class="admin-only" style="display:none;" onclick="showPage('users')" id="nav-users">Manage Users</a>
     <a class="admin-only" style="display:none;" onclick="showPage('agents')" id="nav-agents">Agents</a>
   </nav>
@@ -436,21 +439,7 @@ body.is-admin .admin-only-inline{display:inline;}
       </div>
     </div>
 
-    <!-- Information Memorandums -->
-    <div class="hub-card coming-soon" onclick="openProduct('im')">
-      <div class="hub-card-icon">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      </div>
-      <div class="hub-card-title">Information Memorandums</div>
-      <div class="hub-card-desc">Build professional investment memorandums and offer documents for CBRE property transactions.</div>
-      <div class="hub-card-footer">
-        <span class="hub-card-cta">
-          Open Studio
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </span>
-        <span class="hub-card-status soon">Coming Soon</span>
-      </div>
-    </div>
+
 
   </div>
 </div>
@@ -1021,6 +1010,25 @@ function showPage(name){
   if(name === 'properties') renderProperties();
   if(name === 'users') renderUsers();
   if(name === 'agents') renderAgents();
+  // Update breadcrumb
+  _updateBreadcrumb(name);
+}
+
+function _updateBreadcrumb(page){
+  const navPort = document.getElementById('nav-portfolios');
+  const navCrumb = document.getElementById('nav-portfolio-crumb');
+  const navName = document.getElementById('nav-portfolio-name');
+  if(!navPort) return;
+  if(page === 'properties' && currentPortfolioId){
+    const port = portfolios.find(p => p.id === currentPortfolioId);
+    if(navPort){ navPort.style.display='flex'; navPort.classList.remove('active'); }
+    if(navCrumb){ navCrumb.style.display='flex'; }
+    if(navName){ navName.style.display='flex'; navName.textContent = port ? port.name : ''; navName.classList.add('active'); }
+  } else {
+    if(navPort){ navPort.style.display='flex'; navPort.classList.add('active'); }
+    if(navCrumb){ navCrumb.style.display='none'; }
+    if(navName){ navName.style.display='none'; }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
