@@ -1132,24 +1132,24 @@ function renderPage(i){
   _reinjectAllMulti();
   setTimeout(_reinjectAllMulti, 500);
   setTimeout(_reinjectAllMulti, 1500);
+  setTimeout(_reinjectAllMulti, 3000);
   // Sync brightness slider to this page's saved value
   syncBrightnessSlider();
   refreshMarkupList();
-  // Redraw road lines on new canvas
-  requestAnimationFrame(_redrawRoadLines);
+  // Render road lines on canvas (stored as paths with isRoadLine:true)
+  requestAnimationFrame(function(){ _renderRoadLinePaths(p); });
   // Attach road line selection events
   requestAnimationFrame(_attachRoadLineSelectEvents);
 }
 
 function renderPaths(p){
-  // Render boundary paths in SVG, road lines on canvas
+  // Render boundary paths in SVG only; road lines rendered on canvas by renderPage
   const html = (p.paths||[]).map((path,idx)=>{
     if(!path.anchors||path.anchors.length<2) return '';
-    if(path.isRoadLine) return ''; // road lines rendered on canvas
+    if(path.isRoadLine) return ''; // road lines rendered on canvas separately
     return anchorsToPathEl(path, idx);
   }).join('');
   requestAnimationFrame(()=>_renderCanvasGlows(p));
-  requestAnimationFrame(()=>_renderRoadLinePaths(p));
   return html;
 }
 
