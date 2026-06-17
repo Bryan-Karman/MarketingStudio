@@ -377,8 +377,9 @@ body.is-admin .admin-only-inline{display:inline;}
   <div class="mast-divider"></div>
   <span id="mast-product-label" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;display:none;"></span>
   <nav class="mast-nav">
+    <a id="nav-hub" style="display:none;" onclick="showHubScreen()">← Products</a>
     <a onclick="showPage('portfolios')" id="nav-portfolios" style="display:none;">Portfolios</a>
-    <span id="nav-portfolio-crumb" style="display:none;padding:0 14px;height:52px;display:none;align-items:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);pointer-events:none;">›</span>
+    <span id="nav-portfolio-crumb" style="display:none;padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;pointer-events:none;">›</span>
     <a id="nav-portfolio-name" style="display:none;" onclick="showPage('portfolios')"></a>
     <a class="admin-only" style="display:none;" onclick="showPage('users')" id="nav-users">Manage Users</a>
     <a class="admin-only" style="display:none;" onclick="showPage('agents')" id="nav-agents">Agents</a>
