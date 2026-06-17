@@ -863,16 +863,14 @@ async function loadIconDB(){
       });
       filteredLib = [...LIBRARY];
       renderLibrary();
-      // Re-inject multi-label icons now that DB icons are loaded
-      (pages[currentPage].stickers||[]).forEach(function(s){
-        if(!s.multiLabel) return;
-        var el = document.getElementById('ms-'+s.id);
-        if(el) _injectMultiIcons(el, s);
-      });
+      // Icons loaded - reinject all multi-label stickers on ALL pages
+      _iconsLoaded = true;
+      _reinjectAllMultiGlobal();
     }
   } catch(e){
-    // Table may not exist yet — that's ok, fall back to static LIBRARY
     console.log('markup_icons table not available:', e.message);
+    _iconsLoaded = true; // even on error, stop waiting
+    _reinjectAllMultiGlobal();
   }
 }
 
@@ -1121,18 +1119,18 @@ function renderPage(i){
   attachArtboardEvents(p);
   attachStickerEvents();
   _updateBoundaryDisclaimer(p);
-  // Inject multi-label icon rows immediately and retry after DB loads
-  function _reinjectAllMulti(){
-    (p.stickers||[]).forEach(function(s){
-      if(!s.multiLabel) return;
-      var el=document.getElementById('ms-'+s.id);
-      if(el) _injectMultiIcons(el,s);
-    });
+  // Inject multi-label icons - retry until icons are loaded from DB
+  _reinjectAllMultiGlobal();
+  var _rlRetry = 0;
+  function _retryInject(){
+    _reinjectAllMultiGlobal();
+    _rlRetry++;
+    if(!_iconsLoaded && _rlRetry < 20){
+      // Keep retrying every 300ms until icons are confirmed loaded
+      setTimeout(_retryInject, 300);
+    }
   }
-  _reinjectAllMulti();
-  setTimeout(_reinjectAllMulti, 500);
-  setTimeout(_reinjectAllMulti, 1500);
-  setTimeout(_reinjectAllMulti, 3000);
+  setTimeout(_retryInject, 300);
   // Sync brightness slider to this page's saved value
   syncBrightnessSlider();
   refreshMarkupList();
@@ -3761,6 +3759,21 @@ function clearRoadLines(){
   scheduleSave();
 }
 
+
+
+// ── ICON INJECTION ──────────────────────────────────────────────
+var _iconsLoaded = false;
+
+function _reinjectAllMultiGlobal(){
+  // Re-inject multi-label icons on the current page
+  var p = pages[currentPage];
+  if(!p) return;
+  (p.stickers||[]).forEach(function(s){
+    if(!s.multiLabel) return;
+    var el = document.getElementById('ms-'+s.id);
+    if(el) _injectMultiIcons(el, s);
+  });
+}
 
 // CLEAR LINES
 // ═══════════════════════════════════════════════════════════════
