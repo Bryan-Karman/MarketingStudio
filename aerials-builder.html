@@ -581,17 +581,21 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
 <!-- ── MASTHEAD ── -->
 <div class="masthead">
-  <button class="mast-home" onclick="goHome()">⌂ Home</button>
+  <div class="mast-logo" onclick="goHome()" style="cursor:pointer;" title="Back to Aerials">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPGRlZnM+PHN0eWxlPi5zdDAge2ZpbGw6ICNmZmY7fTwvc3R5bGU+PC9kZWZzPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik01OTMuNzQsMjg0LjU4aC0xMTUuODN2LTU4LjI2aDExOC45NWMxNC41NywxLjU2LDI1LjY2LDEzLjcsMjUuODQsMjguNDQsMCwxNi4xMy0xMi44MywyOS4zLTI4Ljk2LDI5LjgyTTQ3Ny45MSw5My44NWgxMjEuMzhjMTMuODcsMS45MSwyNC4xLDEzLjcsMjQuNDUsMjcuNTcsMCwxNC4zOS0xMC41OCwyNi43LTI0LjgsMjkuMTNoLTEyMS4zOHMuMzUtNTYuNy4zNS01Ni43Wk02NTAuMjcsMTg2Ljk2YzQ0LjM5LTE0Ljc0LDUyLjAyLTUyLjAyLDUyLjAyLTgyLjM2LDAtNDYuNDctMzIuNzctODYuNy0xMjkuNy04Ni43aC0xODAuNXYzNDcuODNoMTgwLjMzYzk4LjE0LDAsMTMyLjgyLTQ5Ljk0LDEzMi44Mi0xMDAuMDUsMC0zNS4zNy0yMi4xOS02Ni45My01NS4zMS03OS40MU0xMTEwLjQ2LDE3LjM4djM0OS4wNGgzMDUuN3YtNzkuNTloLTIyMC41NnYtNjEuMzhoMTk4Ljg4di03NS43N2gtMTk4Ljg4di01Ni4xOGgyMjAuNTZWMTcuMzhoLTMwNS43Wk05NzkuMDIsMTI1LjkzYy0yLjI1LDEzLjUyLTEzLjUyLDIzLjQxLTI3LjIyLDIzLjkzaC0xMTkuM3YtNTUuNjZoMTE5LjNjMTMuODcsMCwyNS42NiwxMC40LDI3LjIyLDI0LjI4djcuNDZoMFpNOTMyLjczLDE3LjM4aC0xODQuNjd2MzQ4LjUyaDg0Ljc5di0xNDAuNDVoOTMuNDZjMjYuNy41Miw0OC4wMywyMi43MSw0Ny41MSw0OS40MnY5MS4zOGg4My4wNnYtMTEyLjcxYy0uODctMzAuODYtMjAuOTgtNTcuOTEtNTAuMjgtNjcuNDUsMzIuNDItMTEuNDQsNTMuNTgtNDIuNjYsNTIuMDItNzYuOTktLjY5LTc1LjQzLTY1LjU0LTkxLjczLTEyNS44OC05MS43M00zMzYuOTQsMjgyLjE2Yy0xLjIxLDAtMTE2LDIuMjUtMTU2LjA2LTEuNTYtNDkuNDItMS41Ni04OC4wOC00Mi42Ni04Ni43LTkyLjA3LS42OS00Ny41MSwzNi4wNy04Ny4yMiw4My41OC05MC4xNywyNC4xLTMuMjksMTU2LjA2LTEuNzMsMTU3LjYyLTEuNzNoMi43N2wxLjIxLTc5LjI0aC0xNTIuNDFjLTI0LjguNjktNDkuMjQsNS43Mi03Mi40OCwxNC41Ny0yNi44OCwxMi4zMS01MC4yOCwzMS4yMS02OC4xNCw1NC43OS0yMi41NCwzMC0zNC42OCw2Ni41OC0zNC42OCwxMDQuMDQsMCwxMS42Mi44NywyMy4yMywyLjc3LDM0LjY4LDEwLjQsNTMuNDEsNDUuOTUsOTguNDksOTUuMTksMTIxLjM4LDMwLDEyLjMxLDYyLjI1LDE4LjksOTQuNjcsMTkuMjVoMTM1LjI1di04My45MmgtMi42di0uMDJaIi8+Cjwvc3ZnPg==" alt="CBRE" style="height:20px;width:auto;display:block;">
+  </div>
+  <div class="mast-div"></div>
+  <span onclick="window.location.href='index.html'" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.08em;cursor:pointer;padding:0 8px 0 0;" title="Back to Hub">Studio</span>
   <div class="mast-div"></div>
   <div class="mast-crumb">
-    <span class="port" id="mast-port">Portfolio</span>
-    <span style="color:rgba(255,255,255,.2);margin:0 2px">›</span>
-    <span class="prop" id="mast-prop">Property</span>
+    <a onclick="goHome()" style="color:rgba(255,255,255,.5);text-decoration:none;font-size:10px;font-weight:700;cursor:pointer;" id="mast-port">Portfolio</a>
+    <span style="color:rgba(255,255,255,.2);margin:0 6px;font-size:10px;">›</span>
+    <span class="prop" id="mast-prop" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.8);">Property</span>
   </div>
   <div class="mast-r">
     <div class="cld saving" id="cld"><div class="cld-dot"></div><span id="cld-lbl">Loading…</span></div>
     <div class="mast-usr">Signed in as <span id="mast-usr-name">—</span></div>
-    <button class="mast-out" onclick="goHome()">Sign Out</button>
+    <button class="mast-out" onclick="doLogout()">Sign Out</button>
   </div>
 </div>
 
@@ -793,6 +797,7 @@ document.getElementById('mast-prop').textContent = propertyName;
 document.getElementById('mast-usr-name').textContent = userName;
 
 function goHome(){ window.location.href = 'aerials.html'; }
+function doLogout(){ localStorage.removeItem('cbre_session'); window.location.href = 'aerials.html'; }
 
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE HELPERS
