@@ -1159,16 +1159,33 @@ function renderPage(i){
   });
   // Inject multi-label icons - retry until icons are loaded from DB
   _reinjectAllMultiGlobal();
+  // Keep retrying until every mt-icons-row img is fully loaded
   var _rlRetry = 0;
   function _retryInject(){
     _reinjectAllMultiGlobal();
     _rlRetry++;
-    if(!_iconsLoaded && _rlRetry < 20){
-      // Keep retrying every 300ms until icons are confirmed loaded
-      setTimeout(_retryInject, 300);
+    // Check if any multi-label sticker still needs icons
+    var needsRetry = false;
+    (p.stickers||[]).forEach(function(s){
+      if(!s.multiLabel) return;
+      var el = document.getElementById('ms-'+s.id);
+      if(!el) { needsRetry = true; return; }
+      var row = el.querySelector('.mt-icons-row');
+      if(!row) { needsRetry = true; return; }
+      // Check if any img in the row hasn't loaded yet
+      var imgs = row.querySelectorAll('img');
+      if(imgs.length === 0 && (s.iconIds||[]).length > 0) { needsRetry = true; return; }
+      imgs.forEach(function(img){
+        if(!img.complete || img.naturalWidth === 0) needsRetry = true;
+      });
+    });
+    if(needsRetry && _rlRetry < 40){
+      setTimeout(_retryInject, 250);
     }
   }
-  setTimeout(_retryInject, 300);
+  setTimeout(_retryInject, 100);
+  setTimeout(_retryInject, 500);
+  setTimeout(_retryInject, 1000);
   // Sync brightness slider to this page's saved value
   syncBrightnessSlider();
   refreshMarkupList();
@@ -3607,29 +3624,40 @@ function _injectMultiIcons(el, s){
   el.classList.add('multi-label');
   var ex=el.querySelector('.mt-icons-row'); if(ex) ex.remove();
   var mIds=(s.iconIds&&s.iconIds.length)?s.iconIds:[];
-  var html='';
-  mIds.forEach(function(iid){
-    // Try cached URL first (stored directly on sticker - always available)
-    var cachedUrl = s.iconUrls && s.iconUrls[iid];
-    if(cachedUrl){
-      html+='<img src="'+escHtml(cachedUrl)+'" crossorigin="anonymous" alt="">';
-      return;
-    }
-    // Fall back to LIBRARY lookup (works if icons already loaded)
-    var lib=LIBRARY.find(function(x){return x.id===iid;});
-    if(lib&&lib.iconUrl){
-      html+='<img src="'+escHtml(lib.iconUrl)+'" crossorigin="anonymous" alt="">';
-      // Cache it for next time
-      if(!s.iconUrls) s.iconUrls={};
-      s.iconUrls[iid]=lib.iconUrl;
-    } else if(lib&&lib.emoji&&lib.emoji!=='\u25A1'){
-      html+='<span class="st-emoji">'+lib.emoji+'</span>';
-    }
-  });
-  if(!html) html='<span class="mt-placeholder">+ Choose Icons</span>';
+  if(!mIds.length){
+    var body2=el.querySelector('.sticker-body');
+    if(body2){ var ph=document.createElement('div'); ph.className='mt-icons-row'; ph.innerHTML='<span class="mt-placeholder">+ Choose Icons</span>'; body2.appendChild(ph); }
+    return;
+  }
   var body=el.querySelector('.sticker-body');
   if(!body) return;
-  var row=document.createElement('div'); row.className='mt-icons-row'; row.innerHTML=html;
+  var row=document.createElement('div'); row.className='mt-icons-row';
+  var loaded=0, total=0;
+  mIds.forEach(function(iid){
+    var url = (s.iconUrls && s.iconUrls[iid]) || (function(){ var lib=LIBRARY.find(function(x){return x.id===iid;}); if(lib&&lib.iconUrl){ if(!s.iconUrls) s.iconUrls={}; s.iconUrls[iid]=lib.iconUrl; return lib.iconUrl; } return null; })();
+    if(url){
+      total++;
+      var img=document.createElement('img');
+      img.crossOrigin='anonymous';
+      img.alt='';
+      img.onload=function(){
+        loaded++;
+        if(loaded===total) requestAnimationFrame(function(){ _positionStickerTail(el); });
+      };
+      img.onerror=function(){
+        // Image failed - retry after short delay
+        setTimeout(function(){ img.src=img.src+'?r='+Date.now(); },500);
+      };
+      img.src=escHtml(url);
+      row.appendChild(img);
+    } else {
+      var lib=LIBRARY.find(function(x){return x.id===iid;});
+      if(lib&&lib.emoji&&lib.emoji!=='□'){
+        var sp=document.createElement('span'); sp.className='st-emoji'; sp.textContent=lib.emoji; row.appendChild(sp);
+      }
+    }
+  });
+  if(!row.children.length) row.innerHTML='<span class="mt-placeholder">+ Choose Icons</span>';
   body.appendChild(row);
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){ _positionStickerTail(el); });
@@ -4211,6 +4239,24 @@ async function captureArtboard(){
     swapPrev   = bgImg;
   }
 
+  // Pre-bake CSS filter on prop-tenant icon images (html2canvas ignores CSS filters)
+  const ptSwaps = [];
+  document.querySelectorAll('.markup-sticker.prop-tenant .sticker-icon-box img').forEach(img=>{
+    if(!img.complete || !img.naturalWidth) return;
+    const off2 = document.createElement('canvas');
+    off2.width = img.naturalWidth; off2.height = img.naturalHeight;
+    const ctx2 = off2.getContext('2d');
+    ctx2.filter = 'invert(71%) sepia(79%) saturate(499%) hue-rotate(104deg) brightness(101%)';
+    ctx2.drawImage(img, 0, 0);
+    off2.style.cssText = img.style.cssText;
+    off2.style.width  = img.offsetWidth  + 'px';
+    off2.style.height = img.offsetHeight + 'px';
+    off2.style.filter = 'none';
+    img.parentNode.insertBefore(off2, img);
+    img.style.display = 'none';
+    ptSwaps.push({canvas:off2, img});
+  });
+
   await new Promise(r=>setTimeout(r,80));
 
   try {
@@ -4240,6 +4286,8 @@ async function captureArtboard(){
       swapPrev.style.display = '';
       swapCanvas.remove();
     }
+    // Restore prop-tenant icon images
+    ptSwaps.forEach(function(s){ s.canvas.remove(); s.img.style.display = ''; });
     wrap.style.transform       = prevTransform;
     wrap.style.transformOrigin = prevOrigin;
     document.body.classList.remove('exporting');
@@ -4260,7 +4308,7 @@ async function exportCurrentPage(){
     if(!canvas){ if(btn){btn.disabled=false;btn.textContent='⬇ Download Aerial';} return; }
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/jpeg',0.95);
-    a.download = (propertyName||'Aerial').replace(/\s+/g,'_')+'_Page'+(currentPage+1)+'.jpg';
+    a.download = (propertyName||'Aerial')+' - Aerial'+(pages.length>1?' Page '+(currentPage+1):'')+'.jpg';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -4286,7 +4334,7 @@ async function exportAllPages(){
     if(!canvas) continue;
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/jpeg',0.95);
-    a.download = (propertyName||'Aerial').replace(/\s+/g,'_')+'_Page'+(i+1)+'.jpg';
+    a.download = (propertyName||'Aerial')+' - Aerial'+(pages.length>1?' Page '+(i+1):'')+'.jpg';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
