@@ -336,7 +336,7 @@ body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{dis
 .markup-sticker.multi-label .sticker-icon-box{ display:none !important; }
 .markup-sticker.multi-label .sticker-label{ width:100%; min-width:300px; text-align:center; padding:10px 18px 8px; font-size:20px; border-radius:0; flex-shrink:0; white-space:pre-wrap; }
 .markup-sticker.multi-label .sticker-stem{ background:#fff; }
-.markup-sticker.multi-label .sticker-dot{ background:#fff; border:2px solid #aaa; }
+.markup-sticker.multi-label .sticker-dot{ background:#fff; border:2px solid #fff; }
 .mt-icons-row{ background:#fff; display:flex; align-items:center; justify-content:center; gap:16px; padding:4px 16px; min-height:27px; width:100%; box-sizing:border-box; }
 .mt-icons-row img{ height:30px; width:auto; max-width:70px; object-fit:contain; display:block; }
 .mt-icons-row .st-emoji{ font-size:24px; line-height:1; }
@@ -573,6 +573,15 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 .ctx-item.ctx-disabled{color:#555;cursor:default;}
 .ctx-item.ctx-disabled:hover{background:none;color:#555;}
 .ctx-sep{height:1px;background:#2a2a2a;margin:3px 0;}
+
+/* ── PROPERTY TENANT LABEL ── */
+.markup-sticker.prop-tenant .sticker-label{ background:#17E88F !important; color:#fff !important; }
+.markup-sticker.prop-tenant .sticker-icon-box{ background:#fff !important; }
+.markup-sticker.prop-tenant .sticker-icon-box img{
+  filter: invert(71%) sepia(79%) saturate(499%) hue-rotate(104deg) brightness(101%) !important;
+}
+.markup-sticker.prop-tenant .sticker-stem{ background:#17E88F !important; }
+.markup-sticker.prop-tenant .sticker-dot{ background:#17E88F !important; }
 </style>
 <!-- html2canvas for export -->
 
@@ -708,7 +717,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
                cursor:pointer;border-radius:2px;border:1px solid #2a5a7a;
                background:#0d1f2a;color:#4a8aaa;font-family:inherit;letter-spacing:.04em;
                text-align:left;">+ Custom Label (No Logo)</button>
-      <button onclick="placeRoadLabel()" 
+      <button onclick="placeRoadLabel()"
         style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
                cursor:pointer;border-radius:2px;border:1px solid #4a7a72;
                background:#1a3530;color:#80BBad;font-family:inherit;letter-spacing:.04em;
@@ -718,11 +727,30 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
                cursor:pointer;border-radius:2px;border:1px solid #4a6a5a;
                background:#0d1f18;color:#aaddcc;font-family:inherit;letter-spacing:.04em;
                text-align:left;">+ Multi Tenanted</button>
+      <button onclick="openPropTenantPicker()"
+        style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #0aaa66;
+               background:#032a1a;color:#17E88F;font-family:inherit;letter-spacing:.04em;
+               text-align:left;">+ Property Tenant</button>
       <button onclick="placePropLabel()"
         style="width:100%;margin-bottom:0;padding:7px 10px;font-size:10px;font-weight:700;
                cursor:pointer;border-radius:2px;border:1px solid #3a7a8a;
                background:#1a3540;color:#6abbc8;font-family:inherit;letter-spacing:.04em;
                text-align:left;">+ Property Address</button>
+    </div>
+
+    <!-- Property Tenant picker modal (hidden) -->
+    <div id="prop-tenant-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;">
+      <div style="background:#1e1e1e;border:1px solid #0aaa66;border-radius:4px;width:340px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.7);">
+        <div style="padding:12px 16px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;">
+          <span style="font-size:13px;font-weight:700;color:#17E88F;flex:1;">Property Tenant</span>
+          <button onclick="closePropTenantPicker()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;">&#x2715;</button>
+        </div>
+        <div style="padding:10px 12px;border-bottom:1px solid #2a2a2a;">
+          <input class="sb-search" type="text" id="prop-tenant-search" placeholder="Search markups…" oninput="filterPropTenantPicker(this.value)" autocomplete="off" style="width:100%;">
+        </div>
+        <div id="prop-tenant-list" style="flex:1;overflow-y:auto;padding:8px 0;"></div>
+      </div>
     </div>
 
     <!-- Tenant picker modal (hidden) -->
@@ -1124,6 +1152,11 @@ function renderPage(i){
   attachArtboardEvents(p);
   attachStickerEvents();
   _updateBoundaryDisclaimer(p);
+  // Rerender prop-tenant stickers so filter applies via _buildStickerHTML
+  (p.stickers||[]).forEach(function(s){
+    if(!s.propTenant) return;
+    _rerenderSticker(s);
+  });
   // Inject multi-label icons - retry until icons are loaded from DB
   _reinjectAllMultiGlobal();
   var _rlRetry = 0;
@@ -1141,8 +1174,6 @@ function renderPage(i){
   refreshMarkupList();
   // Render road lines on canvas (stored as paths with isRoadLine:true)
   requestAnimationFrame(function(){ _renderRoadLinePaths(p); });
-  // Attach road line selection events
-  requestAnimationFrame(_attachRoadLineSelectEvents);
 }
 
 function renderPaths(p){
@@ -1358,7 +1389,8 @@ function _buildStickerHTML(s, isSelected, isMulti){
   const flipClass = flipped ? ' flipped'    : '';
   const noIcClass = effNoIcon ? ' no-icon'  : '';
   const roadClass = isRoad   ? ' road-label': '';
-  const propClass = isProp   ? ' prop-label' : '';
+  const propClass = isProp      ? ' prop-label'  : '';
+  const ptClass   = s.propTenant ? ' prop-tenant' : '';
 
   let labelInner;
   if(isProp){
@@ -1376,12 +1408,15 @@ function _buildStickerHTML(s, isSelected, isMulti){
     labelInner = escHtml(label);
   }
 
-  const tailHtml = isRoad ? '' : `<div class="sticker-tail">
-      <div class="sticker-stem" style="height:${stemH}px;"></div>
+  const absStemH = Math.abs(stemH);
+  const stemAbove = stemH < 0;
+  const tailStyle = stemAbove ? 'flex-direction:column-reverse;position:absolute;bottom:100%;' : '';
+  const tailHtml = isRoad ? '' : `<div class="sticker-tail" style="${tailStyle}">
+      <div class="sticker-stem" style="height:${absStemH}px;"></div>
       <div class="sticker-dot"></div>
     </div><div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>`;
 
-  return `<div class="markup-sticker${selClass}${flipClass}${noIcClass}${roadClass}${propClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
+  return `<div class="markup-sticker${selClass}${flipClass}${noIcClass}${roadClass}${propClass}${ptClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
     <div class="sticker-body">
       ${effNoIcon ? '' : '<div class="sticker-icon-box">'+iconContent+'</div>'}
       <div class="sticker-label">${labelInner}</div>
@@ -1435,11 +1470,18 @@ function _positionStickerTail(el){
   // Position stem drag handle
   if(handle){
     const bodyH = body.offsetHeight;
-    const stemH = parseInt(el.querySelector('.sticker-stem')?.style.height||'26', 10);
-    const dotH  = 11; // sticker-dot height
-    // Place handle at the very bottom of the dot
+    const rawStemH = parseInt(el.querySelector('.sticker-stem')?.style.height||'26', 10);
+    const id2 = el.dataset.id;
+    const s2  = pages[currentPage].stickers.find(x=>x.id===id2);
+    const isAbove = s2 && s2.stemHeight < 0;
+    const dotH  = 11;
     handle.style.left = (clamped + halfStem) + 'px';
-    handle.style.top  = (bodyH + stemH + dotH) + 'px';
+    if(isAbove){
+      // Handle above the body, at the dot position
+      handle.style.top = (-rawStemH - dotH) + 'px';
+    } else {
+      handle.style.top = (bodyH + rawStemH + dotH) + 'px';
+    }
   }
 }
 
@@ -2604,10 +2646,11 @@ function _attachStemDrag(handle){
     const stickerEl = document.getElementById('ms-'+id);
     const onMove = ev=>{
       const dy   = (ev.clientY - startY) / _zoom;
-      const newH = Math.max(10, Math.round(origH + dy));
+      const newH = Math.round(origH + dy);
+      // Allow any value — positive = stem below, negative = stem above
       s.stemHeight = newH;
-      if(stemEl) stemEl.style.height = newH + 'px';
-      if(stickerEl) _positionStickerTail(stickerEl);
+      if(stemEl) stemEl.style.height = Math.abs(newH) + 'px';
+      _rerenderStickerTail(stickerEl, s);
     };
     const onUp = ()=>{
       document.removeEventListener('mousemove', onMove);
@@ -3043,6 +3086,7 @@ function _rerenderSticker(s){
   requestAnimationFrame(()=>{
     _positionStickerTail(newEl);
     if(s.multiLabel) _injectMultiIcons(newEl,s);
+    if(s.propTenant) newEl.classList.add('prop-tenant');
     // Re-attach inline editing on new element
     _attachInlineEdit(newEl, s);
   });
@@ -3797,6 +3841,118 @@ function _reinjectAllMultiGlobal(){
     var el = document.getElementById('ms-'+s.id);
     if(el) _injectMultiIcons(el, s);
   });
+}
+
+
+function openPropTenantPicker(){
+  var picker = document.getElementById('prop-tenant-picker');
+  picker.style.display = 'flex';
+  filterPropTenantPicker('');
+  setTimeout(function(){ document.getElementById('prop-tenant-search').focus(); }, 50);
+}
+
+function closePropTenantPicker(){
+  document.getElementById('prop-tenant-picker').style.display = 'none';
+}
+
+function filterPropTenantPicker(q){
+  var list = document.getElementById('prop-tenant-list');
+  if(!list) return;
+  var lq = q.toLowerCase();
+  var items = LIBRARY.filter(function(m){ return !q || m.name.toLowerCase().indexOf(lq)>=0 || (m.cat||'').toLowerCase().indexOf(lq)>=0; });
+  if(!items.length){
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:#555;font-size:11px;">No results</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(m){
+    var thumb = m.iconUrl
+      ? '<img src="'+escHtml(m.iconUrl)+'" style="width:28px;height:28px;object-fit:contain;border-radius:2px;filter:hue-rotate(-20deg) saturate(1.67) brightness(1.5);">'
+      : '<span style="font-size:20px;line-height:28px;width:28px;display:inline-block;text-align:center;">'+(m.emoji||'□')+'</span>';
+    return '<div data-mid="'+escHtml(m.id)+'" class="pt-item" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-bottom:1px solid #222;">'
+      + '<div style="width:32px;height:32px;background:#0a2a1a;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+thumb+'</div>'
+      + '<div><div style="font-size:11px;font-weight:600;color:#17E88F;">'+escHtml(m.name)+'</div>'
+      + '<div style="font-size:9px;color:#555;">'+escHtml(m.cat||'')+'</div></div>'
+      + '</div>';
+  }).join('');
+  list.querySelectorAll('.pt-item').forEach(function(el){
+    el.addEventListener('mouseover', function(){ el.style.background='#0a2a1a'; });
+    el.addEventListener('mouseout',  function(){ el.style.background=''; });
+    el.addEventListener('click', function(){ propTenantPickerSelect(el.dataset.mid); });
+  });
+}
+
+function propTenantPickerSelect(markupId){
+  closePropTenantPicker();
+  placePropTenantMarkup(markupId);
+}
+
+function placePropTenantMarkup(markupId){
+  var m = LIBRARY.find(function(x){ return x.id===markupId; });
+  if(!m) return;
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){ alert('Maximum '+MAX_MARKUPS+' markups per page.'); return; }
+  pushUndo();
+  var s = {
+    id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
+    markupId: markupId,
+    x: 600, y: 400,
+    label: m.name,
+    flipped: false,
+    noIcon: false,
+    propTenant: true,
+    iconIds: [markupId],
+    iconUrls: {},
+    stemHeight: 26
+  };
+  if(m.iconUrl) s.iconUrls[markupId] = m.iconUrl;
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  selectSticker(s.id, false);
+  refreshMarkupList();
+  scheduleSave();
+}
+
+
+function _rerenderStickerTail(el, s){
+  if(!el || !s) return;
+  const tail   = el.querySelector('.sticker-tail');
+  const handle = el.querySelector('.stem-drag-handle');
+  const body   = el.querySelector('.sticker-body');
+  const stemEl = el.querySelector('.sticker-stem');
+  if(!tail || !body) return;
+
+  const stemH = s.stemHeight || 26;
+  const absH  = Math.abs(stemH);
+  const above = stemH < 0;
+
+  if(stemEl) stemEl.style.height = absH + 'px';
+
+  if(above){
+    // Move tail ABOVE the body
+    tail.style.position   = 'absolute';
+    tail.style.bottom     = body.offsetHeight + 'px';
+    tail.style.top        = 'auto';
+    tail.style.flexDirection = 'column-reverse'; // dot on top, stem below
+  } else {
+    // Normal: tail below body
+    tail.style.position   = '';
+    tail.style.bottom     = '';
+    tail.style.top        = '';
+    tail.style.flexDirection = '';
+  }
+
+  // Reposition the drag handle
+  _positionStickerTail(el);
+  if(handle){
+    const bodyH = body.offsetHeight;
+    const dotH  = 11;
+    if(above){
+      handle.style.top = (-absH - dotH) + 'px';
+    } else {
+      handle.style.top = (bodyH + absH + dotH) + 'px';
+    }
+  }
 }
 
 // CLEAR LINES
