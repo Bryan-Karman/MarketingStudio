@@ -2131,13 +2131,7 @@ function globalSync(){
         // Per-tab income behaviour
         var _fi = ((document.getElementById('fi')||{}).value||'').trim();
         if(field === 'income'){
-          if([2,3].indexOf(currentTab) > -1){
-            // EDM/Asian Desk: income has its own dedicated element — show it with the value
-            inner.textContent = val || _fi;
-            el.style.display = (val || _fi) ? '' : 'none';
-            return;
-          }
-          // Other tabs: hide standalone income box — income is merged into bullets/bodycopy
+          // Income is always hidden — folded into bodycopy for EDM, bullets for others
           el.style.display = 'none';
           return;
         } else if(field === 'bullets' && [5,6,8].indexOf(currentTab) > -1){
@@ -2147,8 +2141,8 @@ function globalSync(){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
           inner.textContent = _fi ? val + '\n' + _fi : val;
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
-          // EDM, Asian Desk: bodycopy does NOT get income appended — income has own element
-          inner.textContent = val;
+          // EDM, Asian Desk: append income as last dash line of bodycopy
+          inner.textContent = _fi ? val + '\n\u2013 ' + _fi : val;
         } else if(field === 'saleinfo'){
           // Combined sale method + date (used on AFR4)
           const fm = gv('fm') || '';
@@ -2218,19 +2212,18 @@ function globalSync(){
         const phone = phoneField ? gv(phoneField) : '';
         sv.content = phone ? val+' '+phone : val;
       } else if(sv.field === 'income'){
-        if([2,3].indexOf(ti) > -1){
-          // EDM/Asian Desk: income has own element — show it
-          sv.content = val;
-        } else {
-          // Other tabs: income folded into bullets/bodycopy — skip standalone
-          sv._hidden = true;
-        }
+        // Always hidden — folded into bodycopy/bullets
+        sv._hidden = true;
       } else if(sv.field === 'bullets' && [0,1,4,5,6,7,8].indexOf(ti) > -1){
         // AFR/Auction/Brochure/LinkedIn: append income as last bullet
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
+      } else if(sv.field === 'bodycopy' && [2,3].indexOf(ti) > -1){
+        // EDM/Asian Desk: append income as last dash line of bodycopy
+        const _fi = gv('fi') || '';
+        sv.content = _fi ? val + '\n\u2013 ' + _fi : val;
       } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
-        // (kept for legacy) append income to bodycopy on old tabs
+        // Legacy
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else if(sv.field && sv.field.match(/_(2|3|4)$/)){
@@ -2362,7 +2355,7 @@ function addBanner(){
 // ════════════════════════════════════════
 function mkT(x,y,w,h,content,cfg){
   const el = createElement({id:nextId++,type:'text',x,y,w,h,content,...cfg});
-  if(cfg && cfg.bullets){
+  if(cfg && cfg.bullets === '1'){
     el.dataset.bullets = '1';
     const inner = el.querySelector('.el-inner');
     // Set paragraph spacing before applyBullets so it's picked up
@@ -2372,6 +2365,15 @@ function mkT(x,y,w,h,content,cfg){
         inner.style.setProperty('--bullet-spacing', cfg.bulletParaSpacing); }
     }
     if(inner) applyBullets(inner, true);
+  } else if(cfg && cfg.bullets === '0'){
+    el.dataset.bullets = '0';
+    // Apply plain para spacing if specified
+    if(cfg.bulletParaSpacing){
+      el.dataset.bulletParaSpacing = cfg.bulletParaSpacing;
+      const inner = el.querySelector('.el-inner');
+      if(inner){ inner.dataset.bulletSpacing = cfg.bulletParaSpacing;
+        inner.style.setProperty('--bullet-spacing', cfg.bulletParaSpacing); }
+    }
   }
   if(cfg && cfg.combinedAgent){
     el.dataset.combinedAgent = '1';
@@ -2749,7 +2751,7 @@ function buildEDM(W,H){
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'Georgia,"Times New Roman",serif',lineHeight:'1.15',field:'heading',z:4});
   (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10'}); _e.dataset.bulletParaSpacing='10'; _e.dataset.incomeAnchor='1'; return _e; })();
-  mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'income',z:4});
+  // income shown as last line of bodycopy — see bodycopy sync logic
   mkI(144,1016,311,130,'logo','Image',{z:4});
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'salemethod',z:4});
   mkT(34,1251,569,37,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'saledate',z:4});
@@ -3682,13 +3684,16 @@ function applyState(data,skipZoom=false){
         const w = parseFloat(sv.w)||0;
         return w > 0 && w <= 220;
       });
-      // Also clear if heading element has wrong color (black = old state) or wrong font size
+      // Also clear if heading has wrong color/size, or if standalone income element exists in dark panel
       const headingEl = st.find(function(sv){ return sv.field==='heading'; });
       const hasWrongHeading = headingEl && (
         (headingEl.innerStyle||'').indexOf('rgb(0, 0, 0)') > -1 ||
         (headingEl.innerStyle||'').indexOf('51px') > -1
       );
-      if(hasOldSize || hasWrongHeading){ delete savedStates[tabIdx]; }
+      const hasOldIncomeEl = st.some(function(sv){
+        return sv.field==='income' && parseFloat(sv.y||0) < 1200;
+      });
+      if(hasOldSize || hasWrongHeading || hasOldIncomeEl){ delete savedStates[tabIdx]; }
     });
     if(data.fields){
       const f=data.fields;
@@ -4421,7 +4426,7 @@ async function exportEDMHtml(){
         ${f_heading?`<p style="font-family:Georgia,"Times New Roman",serif;font-size:50px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
         ${f_subhead?`<p style="font-family:Georgia,"Times New Roman",serif;font-size:37px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 28px;">${esc(f_subhead)}</p>`:''}
         ${highlightRows(f_bullets)}
-        ${f_income?`<p style="font-family:Arial,sans-serif;font-size:28px;font-weight:700;color:#ffffff;line-height:1.35;margin:11px 0 0;">${esc(f_income)}</p>`:''}
+        <!-- income appears as last line of bodycopy below -->
         ${logoRow}
       </td>
     </tr></table>
