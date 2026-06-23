@@ -2131,7 +2131,13 @@ function globalSync(){
         // Per-tab income behaviour
         var _fi = ((document.getElementById('fi')||{}).value||'').trim();
         if(field === 'income'){
-          // Always hide standalone income box — income is merged into bullets/bodycopy
+          if([2,3].indexOf(currentTab) > -1){
+            // EDM/Asian Desk: income has its own dedicated element — show it with the value
+            inner.textContent = val || _fi;
+            el.style.display = (val || _fi) ? '' : 'none';
+            return;
+          }
+          // Other tabs: hide standalone income box — income is merged into bullets/bodycopy
           el.style.display = 'none';
           return;
         } else if(field === 'bullets' && [5,6,8].indexOf(currentTab) > -1){
@@ -2141,8 +2147,8 @@ function globalSync(){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
           inner.textContent = _fi ? val + '\n' + _fi : val;
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
-          // EDM, Asian Desk: append income as last body copy line
-          inner.textContent = _fi ? val + '\n' + _fi : val;
+          // EDM, Asian Desk: bodycopy does NOT get income appended — income has own element
+          inner.textContent = val;
         } else if(field === 'saleinfo'){
           // Combined sale method + date (used on AFR4)
           const fm = gv('fm') || '';
@@ -2212,14 +2218,19 @@ function globalSync(){
         const phone = phoneField ? gv(phoneField) : '';
         sv.content = phone ? val+' '+phone : val;
       } else if(sv.field === 'income'){
-        // Income folded into bullets/bodycopy — skip standalone
-        sv._hidden = true;
-      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1){
-        // AFR/Auction/Brochure: append income as last bullet
+        if([2,3].indexOf(ti) > -1){
+          // EDM/Asian Desk: income has own element — show it
+          sv.content = val;
+        } else {
+          // Other tabs: income folded into bullets/bodycopy — skip standalone
+          sv._hidden = true;
+        }
+      } else if(sv.field === 'bullets' && [0,1,4,5,6,7,8].indexOf(ti) > -1){
+        // AFR/Auction/Brochure/LinkedIn: append income as last bullet
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
-        // EDM/Asian Desk: append income to bodycopy
+        // (kept for legacy) append income to bodycopy on old tabs
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else if(sv.field && sv.field.match(/_(2|3|4)$/)){
@@ -2732,12 +2743,12 @@ function buildAuction(W,H){
 }
 
 function buildEDM(W,H){
-  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1});
+  mkR(0,0,600,1313,'rgb(1, 42, 45)',{z:1});
   mkI(0,116,600,425,'img1','Image',{z:2});
   mkBanner(142,487,461,57,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',textAlign:'right',field:'banner',z:10,bannerPad:'14px 23px 11px'});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'Georgia,"Times New Roman",serif',lineHeight:'1.15',field:'heading',z:4});
-  (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10'}); _e.dataset.bulletParaSpacing='10';; _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10'}); _e.dataset.bulletParaSpacing='10'; _e.dataset.incomeAnchor='1'; return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'salemethod',z:4});
@@ -2847,7 +2858,7 @@ function buildEDMAsianDesk(W,H){
   mkI(0,116,600,425,'img1','Image',{z:2});
   mkR(354,478,246,62,'rgb(0, 63, 45)',{z:4});
   mkT(337,498,238,31,'',{color:'rgb(255, 255, 255)',fontSize:'31px',fontWeight:'700',fontFamily:'Arial, "Franklin Gothic Medium", sans-serif',textAlign:'right',field:'zh_banner',z:5});
-  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1});
+  mkR(0,0,600,1313,'rgb(1, 42, 45)',{z:1});
   mkR(34,592,8,359,'rgb(23, 232, 143)',{z:4});
   mkT(85,583,492,142,'',{color:'rgb(255, 255, 255)',fontSize:'45px',fontFamily:'Georgia, "Times New Roman", serif',lineHeight:'1.15',field:'zh_heading',z:4});
   mkT(85,730,492,62,'',{color:'rgb(255, 255, 255)',fontSize:'37px',fontFamily:'Georgia, "Times New Roman", serif',lineHeight:'1.15',field:'zh_subheading',z:4});
@@ -3666,12 +3677,18 @@ function applyState(data,skipZoom=false){
     [2,3].forEach(function(tabIdx){
       const st = savedStates[tabIdx];
       if(!st||!st.length) return;
-      // Check if any full-width element (w >= 200px) is still at 212px-era size
+      // Clear if any full-width element is at 212px-era size
       const hasOldSize = st.some(function(sv){
         const w = parseFloat(sv.w)||0;
-        return w > 0 && w <= 220; // 212px canvas max width
+        return w > 0 && w <= 220;
       });
-      if(hasOldSize){ delete savedStates[tabIdx]; }
+      // Also clear if heading element has wrong color (black = old state) or wrong font size
+      const headingEl = st.find(function(sv){ return sv.field==='heading'; });
+      const hasWrongHeading = headingEl && (
+        (headingEl.innerStyle||'').indexOf('rgb(0, 0, 0)') > -1 ||
+        (headingEl.innerStyle||'').indexOf('51px') > -1
+      );
+      if(hasOldSize || hasWrongHeading){ delete savedStates[tabIdx]; }
     });
     if(data.fields){
       const f=data.fields;
