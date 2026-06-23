@@ -3995,8 +3995,7 @@ async function init(){
     }
     updateEdmCharCounts();
     setPropertyCount(_propertyCount||1);
-
-
+    _updateEDMHtmlBtn();
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
@@ -4220,17 +4219,18 @@ function exportEDMHtml(){
 
   const isAsian = (currentTab===3);
 
-  // ── Canvas is 212px wide; email target is 600px ──
+  // Canvas is 212px wide; email is 600px
   const CANVAS_W = 212;
   const EMAIL_W  = 600;
-  const S = EMAIL_W / CANVAS_W; // scale factor ~2.83
+  const S = EMAIL_W / CANVAS_W;
 
-  function sc(px){ return Math.round(parseFloat(px) * S); }
+  // Scale a canvas px value to email px, return as number
+  function sc(v){ return Math.round(parseFloat(v)*S); }
+  // Scale and return as "Npx" string
+  function sp(v){ return sc(v)+'px'; }
   function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  // ── Read live state from canvas (post-repack, correct Y positions) ──
   const state = serializeTab();
-
   function fv(f){ const e=state.find(x=>x.field===f); return e?(e.content||'').trim():''; }
   function getImg(k){ return (assets&&assets[k]) ? assets[k] : (state.find(x=>x.assetKey===k&&x.type==='img')||{}).imgSrc||''; }
 
@@ -4245,18 +4245,18 @@ function exportEDMHtml(){
   const f_salemethod = fv(isAsian?'zh_salemethod':'salemethod');
   const f_saledate   = fv(isAsian?'zh_saledate':'saledate');
   const f_bodycopy   = fv(isAsian?'zh_bodycopy':'bodycopy');
-  const f_btn1       = fv(isAsian?'zh_btn1':'btn1') || 'Request Information Memorandum';
-  const f_btn2       = fv(isAsian?'zh_btn2':'btn2') || 'View Listing';
-  const f_btn3       = fv(isAsian?'zh_btn3':'btn3') || 'View Full Portfolio Line Up';
+  const f_btn1       = fv(isAsian?'zh_btn1':'btn1')||'Request Information Memorandum';
+  const f_btn2       = fv(isAsian?'zh_btn2':'btn2')||'View Listing';
+  const f_btn3       = fv(isAsian?'zh_btn3':'btn3')||'View Full Portfolio Line Up';
   const f_disclaimer = fv(isAsian?'zh_disclaimer':'')||'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.';
   const f_contact    = isAsian ? fv('zh_contact_label') : 'For more information contact the sales team';
   const f_addr1      = fv('address1');
   const f_addr2      = fv('address2');
 
-  // Bullets + income combined
+  // Bullets + income
   let bulletContent = f_bullets;
-  if(f_income && bulletContent && !bulletContent.includes(f_income)) bulletContent += '\n'+f_income;
-  else if(f_income && !bulletContent) bulletContent = f_income;
+  if(f_income && bulletContent && !bulletContent.includes(f_income)) bulletContent+='\n'+f_income;
+  else if(f_income && !bulletContent) bulletContent=f_income;
 
   // Images
   const src1    = getImg('img1');
@@ -4264,72 +4264,89 @@ function exportEDMHtml(){
   const src3    = getImg('img3');
   const srcLogo = getImg('logo');
 
-  // Agents — read active ones from live DOM state
+  // Agents
   const agents = [1,2,3,4].map(i=>({
-    name:  fv('agent'+i+'name'),
-    phone: fv('agent'+i+'num'),
-    photo: getImg('agent'+i+'photo'),
+    name:fv('agent'+i+'name'), phone:fv('agent'+i+'num'), photo:getImg('agent'+i+'photo')
   })).filter(a=>a.name||a.phone);
 
-  // ── Scaled font sizes matching canvas exactly ──
-  // Canvas uses px values; we scale proportionally then cap at readable sizes
-  function sf(canvasPx){ return Math.round(parseFloat(canvasPx)*S)+'px'; }
+  // ── Canvas font sizes (px) → scaled ──
+  // heading=18px, bullets=10px, salemethod=13px, saledate=9px
+  // address=12px, bodycopy=10px, contact=12px, agents=12px, btn=10px, disclaimer=4px
+  // We scale these exactly as the canvas does
+  const FS = {
+    heading: sp(18), subhead: sp(14),
+    bullets: sp(10), income: sp(10),
+    salemethod: sp(13), saledate: sp(9),
+    addr: sp(12), bodycopy: sp(10),
+    contact: sp(12), agent: sp(12),
+    btn: sp(10), disclaimer: sp(4),
+  };
 
-  // ── Bullet rows — preserving leading dash indent ──
-  function bulletRows(raw, color, canvasFsPx, lh, indent){
+  // ── Bullet rows with proper hanging indent ──
+  // Canvas uses "– text" with padding-left on wrapped lines
+  // We replicate with a two-cell table: dash cell + text cell
+  function bulletRows(raw, color, fsPx, lhCanvas, spacingPx){
     if(!raw) return '';
-    const fs = sf(canvasFsPx);
-    const leftPad = indent ? sc(indent)+'px' : '0';
+    const fs = sp(fsPx);
+    const lh = lhCanvas;
+    const mb = sp(spacingPx);
     return raw.split('\n').filter(l=>l.trim()).map(l=>{
-      // Preserve the em-dash prefix exactly as it is in the content
-      const line = (l.startsWith('\u2013 ')||l.startsWith('\u2013')) ? l : l;
-      return `<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${fs};color:${color};line-height:${lh};margin:0 0 ${sc(6)}px;padding-left:${leftPad};text-indent:-${leftPad};">${esc(line)}</p>`;
+      // Normalise: ensure line starts with "– "
+      const stripped = (l.startsWith('\u2013 ')||l.startsWith('- ')) ? l.slice(2) : l;
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:${mb};"><tr>
+        <td width="${sp(10)}" valign="top" style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${fs};color:${color};line-height:${lh};padding-right:${sp(3)};">\u2013</td>
+        <td style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${fs};color:${color};line-height:${lh};">${esc(stripped)}</td>
+      </tr></table>`;
     }).join('');
   }
 
-  // ── CTA button row ──
+  // ── CTA button ──
   function ctaRow(label, bg){
     if(!label) return '';
-    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:${sc(5)}px;"><tr>
-      <td bgcolor="${bg}" style="padding:${sc(8)}px ${sc(14)}px;">
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:${sp(4)};"><tr>
+      <td bgcolor="${bg}" style="padding:${sp(8)}px ${sp(14)}px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(10)};font-weight:500;color:#ffffff;">${esc(label)}</td>
-          <td align="right" width="${sc(18)}">
-            <img src="${SVG_ARROW_WHITE}" width="${sc(18)}" height="${sc(18)}" alt="" style="display:block;width:${sc(18)}px;height:${sc(18)}px;">
+          <td style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.btn};font-weight:500;color:#ffffff;">${esc(label)}</td>
+          <td align="right" width="${sp(18)}">
+            <img src="${SVG_ARROW_WHITE}" width="${sp(18)}" height="${sp(18)}" alt="" style="display:block;width:${sp(18)}px;height:${sp(18)}px;">
           </td>
         </tr></table>
       </td>
     </tr></table>`;
   }
 
-  // ── Banner pill — overlaid on image using position:relative trick ──
-  // We use a wrapper div around image + banner so banner sits on top of image
-  const bannerOverImg = f_banner ? `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:relative;">
-      <tr><td style="padding:0;line-height:0;position:relative;">
-        <img src="${esc(src1)}" width="${EMAIL_W}" alt="Property image" style="width:100%;max-width:${EMAIL_W}px;display:block;">
-        <table cellpadding="0" cellspacing="0" border="0" style="position:absolute;bottom:0;right:0;"><tr>
-          <td bgcolor="#003f2d" style="padding:${sc(5)}px ${sc(8)}px ${sc(4)}px;font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(10)};font-weight:700;color:#ffffff;white-space:nowrap;letter-spacing:0.3px;">${esc(f_banner)}</td>
-        </tr></table>
-      </td></tr>
-    </table>` :
-    `<img src="${esc(src1)}" width="${EMAIL_W}" alt="Property image" style="width:100%;max-width:${EMAIL_W}px;display:block;">`;
+  // ── Banner: position:absolute over image bottom-right ──
+  // Note: position:absolute in email only works in some clients (Apple Mail, iOS).
+  // For Gmail/Outlook fallback we add a separate row below the image.
+  // We use a VML-safe approach: render banner as a separate row that looks overlaid.
+  // The most reliable cross-client approach is a separate dark row with banner right-aligned.
+  const bannerHtml = f_banner ? `
+  <tr>
+    <td bgcolor="#012a2d" style="padding:0;" align="right">
+      <table cellpadding="0" cellspacing="0" border="0" align="right">
+        <tr><td bgcolor="#003f2d" style="padding:${sp(5)}px ${sp(8)}px ${sp(4)}px;font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.bullets};font-weight:700;color:#ffffff;white-space:nowrap;letter-spacing:0.3px;">${esc(f_banner)}</td></tr>
+      </table>
+    </td>
+  </tr>` : '';
 
-  // ── Logo (transparent — no bg) ──
-  const logoHtml = srcLogo
-    ? `<img src="${esc(srcLogo)}" width="${sc(110)}" alt="Logo" style="display:block;max-width:${sc(110)}px;margin:${sc(10)}px 0 0;">`
-    : '';
+  // ── Property logo — transparent, no background, centred ──
+  const logoHtml = srcLogo ? `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:${sp(10)}px 0 0;">
+      <tr><td align="left">
+        <img src="${esc(srcLogo)}" height="${sp(46)}" alt="Logo" style="display:block;height:${sp(46)}px;max-height:${sp(46)}px;width:auto;">
+      </td></tr>
+    </table>` : '';
 
   // ── Address bar ──
   const addrSection = (f_addr1||f_addr2) ? `
   <tr>
-    <td bgcolor="#0d2a2d" style="padding:${sc(10)}px ${sc(14)}px;">
+    <td bgcolor="#0d2a2d" style="padding:${sp(10)}px ${sp(14)}px;">
       <table cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="${sc(3)}" bgcolor="#17e88f" style="width:${sc(3)}px;line-height:1;">&nbsp;</td>
-        <td width="${sc(10)}">&nbsp;</td>
+        <td width="${sp(3)}" bgcolor="#17e88f" style="width:${sp(3)}px;font-size:${sp(24)};line-height:1;">&nbsp;</td>
+        <td width="${sp(10)}">&nbsp;</td>
         <td>
-          ${f_addr1?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(12)};font-weight:600;color:#ffffff;margin:0 0 ${sc(2)}px;">${esc(f_addr1)}</p>`:''}
-          ${f_addr2?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(12)};font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:''}
+          ${f_addr1?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.addr};font-weight:600;color:#ffffff;margin:0 0 ${sp(2)}px;">${esc(f_addr1)}</p>`:''}
+          ${f_addr2?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.addr};font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:''}
         </td>
       </tr></table>
     </td>
@@ -4337,24 +4354,23 @@ function exportEDMHtml(){
 
   // ── Agent rows ──
   const agentRows = agents.map(a=>{
-    const ph = a.photo||'';
-    const photoW = sc(40); const photoH = sc(40);
-    const photoCell = ph
-      ? `<img src="${esc(ph)}" width="${photoW}" height="${photoH}" alt="${esc(a.name)}" style="width:${photoW}px;height:${photoH}px;border-radius:2px;display:block;">`
-      : `<div style="width:${photoW}px;height:${photoH}px;background:#e0e0e0;"></div>`;
-    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:${sc(12)}px;"><tr>
-      <td width="${sc(52)}" valign="top">${photoCell}</td>
-      <td valign="middle" style="padding-left:${sc(10)}px;">
-        <p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(12)};font-weight:500;color:#012a2d;margin:0 0 ${sc(2)}px;">${esc(a.name)}</p>
-        <p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(12)};color:#444444;margin:0;">${esc(a.phone)}</p>
+    const ph=a.photo||'';
+    const pw=sp(40); const ph2=sp(40);
+    const photoCell=ph
+      ?`<img src="${esc(ph)}" width="${pw}" height="${ph2}" alt="${esc(a.name)}" style="width:${pw}px;height:${ph2}px;border-radius:2px;display:block;">`
+      :`<div style="width:${pw}px;height:${ph2}px;background:#e0e0e0;"></div>`;
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:${sp(12)}px;"><tr>
+      <td width="${sp(52)}" valign="top">${photoCell}</td>
+      <td valign="middle" style="padding-left:${sp(10)}px;">
+        <p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.agent};font-weight:500;color:#012a2d;margin:0 0 ${sp(1)}px;">${esc(a.name)}</p>
+        <p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.agent};color:#444444;margin:0;">${esc(a.phone)}</p>
       </td>
     </tr></table>`;
   }).join('');
 
-  const filename = (_propertyName||'property').replace(/[^a-z0-9]/gi,'-').toLowerCase()+
-                   (isAsian?'-edm-asian-desk':'-edm')+'.html';
+  const filename=(_propertyName||'property').replace(/[^a-z0-9]/gi,'-').toLowerCase()+(isAsian?'-edm-asian-desk':'-edm')+'.html';
 
-  const html = `<!DOCTYPE html>
+  const html=`<!DOCTYPE html>
 <html lang="${isAsian?'zh-CN':'en'}">
 <head>
 <meta charset="UTF-8">
@@ -4375,35 +4391,38 @@ function exportEDMHtml(){
 <tr><td align="center" style="padding:20px 0;">
 <table width="${EMAIL_W}" cellpadding="0" cellspacing="0" border="0" style="max-width:${EMAIL_W}px;">
 
-  <!-- HEADER: Portfolio + CBRE logos -->
+  <!-- HEADER -->
   <tr>
-    <td bgcolor="#012a2d" style="padding:${sc(10)}px ${sc(14)}px;">
+    <td bgcolor="#012a2d" style="padding:${sp(10)}px ${sp(14)}px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
         <td valign="middle">
-          <img src="${SVG_PORTFOLIO_WHITE}" width="${sc(55)}" height="${sc(21)}" alt="Portfolio" style="display:block;width:${sc(55)}px;height:${sc(21)}px;">
+          <img src="${SVG_PORTFOLIO_WHITE}" width="${sc(55)*EMAIL_W/CANVAS_W/S}" height="${sc(21)}" alt="Portfolio" style="display:block;height:${sc(21)}px;width:auto;max-height:${sc(21)}px;">
         </td>
         <td align="right" valign="middle">
-          <img src="${SVG_CBRE_WHITE}" width="${sc(60)}" height="${sc(15)}" alt="CBRE" style="display:block;width:${sc(60)}px;height:${sc(15)}px;">
+          <img src="${SVG_CBRE_WHITE}" width="${sc(60)}" height="${sc(15)}" alt="CBRE" style="display:block;height:${sc(15)}px;width:auto;max-height:${sc(15)}px;">
         </td>
       </tr></table>
     </td>
   </tr>
 
-  <!-- HERO IMAGE + BANNER OVERLAID -->
-  <tr><td style="padding:0;line-height:0;position:relative;">
-    ${bannerOverImg}
+  <!-- HERO IMAGE -->
+  <tr><td style="padding:0;font-size:0;line-height:0;">
+    <img src="${esc(src1)}" width="${EMAIL_W}" alt="Property" style="width:${EMAIL_W}px;max-width:${EMAIL_W}px;display:block;">
   </td></tr>
 
-  <!-- DARK PANEL: green bar + heading + bullets + logo -->
+  <!-- BANNER (below image, right-aligned — reliable across all email clients) -->
+  ${bannerHtml}
+
+  <!-- DARK PANEL: green accent + heading + bullets + logo -->
   <tr>
-    <td bgcolor="#012a2d" style="padding:${sc(16)}px ${sc(14)}px ${sc(10)}px;">
+    <td bgcolor="#012a2d" style="padding:${sp(16)}px ${sp(14)}px ${sp(10)}px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="${sc(3)}" bgcolor="#17e88f" style="width:${sc(3)}px;">&nbsp;</td>
-        <td width="${sc(12)}">&nbsp;</td>
+        <td width="${sp(3)}" bgcolor="#17e88f" style="width:${sp(3)}px;font-size:${sp(127)};line-height:1;">&nbsp;</td>
+        <td width="${sp(12)}">&nbsp;</td>
         <td>
-          ${f_heading?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:${sf(18)};font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?sc(4):sc(12)}px;">${esc(f_heading)}</p>`:''}
-          ${f_subhead?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:${sf(14)};font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${sc(12)}px;">${esc(f_subhead)}</p>`:''}
-          ${bulletRows(bulletContent,'#ffffff',10,1.35,12)}
+          ${f_heading?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:${FS.heading};font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?sp(4):sp(12)}px;">${esc(f_heading)}</p>`:''}
+          ${f_subhead?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:${FS.subhead};font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${sp(12)}px;">${esc(f_subhead)}</p>`:''}
+          ${bulletRows(bulletContent,'#ffffff',10,1.35,6)}
           ${logoHtml}
         </td>
       </tr></table>
@@ -4412,15 +4431,15 @@ function exportEDMHtml(){
 
   <!-- SALE METHOD + DATE -->
   ${(f_salemethod||f_saledate)?`<tr>
-    <td bgcolor="#012a2d" style="padding:${sc(4)}px ${sc(14)}px ${sc(16)}px ${sc(29)}px;">
-      ${f_salemethod?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(13)};font-weight:700;color:#ffffff;margin:0 0 ${sc(2)}px;">${esc(f_salemethod)}</p>`:''}
-      ${f_saledate?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(9)};color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:''}
+    <td bgcolor="#012a2d" style="padding:${sp(2)}px ${sp(14)}px ${sp(16)}px ${sp(32)}px;">
+      ${f_salemethod?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.salemethod};font-weight:700;color:#ffffff;margin:0 0 ${sp(2)}px;">${esc(f_salemethod)}</p>`:''}
+      ${f_saledate?`<p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.saledate};color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:''}
     </td>
   </tr>`:''}
 
   <!-- SECOND IMAGE -->
-  <tr><td style="padding:0;line-height:0;">
-    <img src="${esc(src2)}" width="${EMAIL_W}" alt="Property image 2" style="width:100%;max-width:${EMAIL_W}px;display:block;">
+  <tr><td style="padding:0;font-size:0;line-height:0;">
+    <img src="${esc(src2)}" width="${EMAIL_W}" alt="Property 2" style="width:${EMAIL_W}px;max-width:${EMAIL_W}px;display:block;">
   </td></tr>
 
   <!-- ADDRESS BAR -->
@@ -4428,42 +4447,42 @@ function exportEDMHtml(){
 
   <!-- BODY COPY -->
   ${f_bodycopy?`<tr>
-    <td bgcolor="#ffffff" style="padding:${sc(14)}px ${sc(12)}px;">
-      ${bulletRows(f_bodycopy,'#333333',10,1.2,0)}
+    <td bgcolor="#ffffff" style="padding:${sp(14)}px ${sp(12)}px;">
+      ${bulletRows(f_bodycopy,'#333333',10,1.2,6)}
     </td>
   </tr>`:''}
 
   <!-- THIRD IMAGE -->
-  <tr><td style="padding:0;line-height:0;">
-    <img src="${esc(src3)}" width="${EMAIL_W}" alt="Property image 3" style="width:100%;max-width:${EMAIL_W}px;display:block;">
+  <tr><td style="padding:0;font-size:0;line-height:0;">
+    <img src="${esc(src3)}" width="${EMAIL_W}" alt="Property 3" style="width:${EMAIL_W}px;max-width:${EMAIL_W}px;display:block;">
   </td></tr>
 
   <!-- CONTACT HEADING -->
   ${f_contact?`<tr>
-    <td bgcolor="#ffffff" style="padding:${sc(14)}px ${sc(12)}px ${sc(8)}px;">
-      <p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${sf(12)};font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p>
+    <td bgcolor="#ffffff" style="padding:${sp(14)}px ${sp(12)}px ${sp(8)}px;">
+      <p style="font-family:Arial,'Franklin Gothic Medium',sans-serif;font-size:${FS.contact};font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p>
     </td>
   </tr>`:''}
 
   <!-- AGENTS -->
-  ${agentRows?`<tr><td bgcolor="#ffffff" style="padding:${sc(6)}px ${sc(12)}px ${sc(4)}px;">${agentRows}</td></tr>`:''}
+  ${agentRows?`<tr><td bgcolor="#ffffff" style="padding:${sp(6)}px ${sp(12)}px ${sp(4)}px;">${agentRows}</td></tr>`:''}
 
   <!-- CTA BUTTONS -->
-  <tr><td bgcolor="#ffffff" style="padding:${sc(4)}px ${sc(12)}px ${sc(16)}px;">
+  <tr><td bgcolor="#ffffff" style="padding:${sp(4)}px ${sp(12)}px ${sp(16)}px;">
     ${ctaRow(f_btn1,'#012a2d')}
     ${ctaRow(f_btn2,'#0f2a2d')}
     ${ctaRow(f_btn3,'#012a2d')}
   </td></tr>
 
-  <!-- FOOTER -->
+  <!-- FOOTER: CBRE logo + disclaimer -->
   <tr>
-    <td bgcolor="#012a2d" style="padding:${sc(12)}px ${sc(14)}px ${sc(8)}px;">
-      <img src="${SVG_CBRE_WHITE}" width="${sc(185)}" height="${sc(16)}" alt="CBRE" style="display:block;width:${sc(185)}px;height:${sc(16)}px;">
+    <td bgcolor="#012a2d" style="padding:${sp(12)}px ${sp(14)}px ${sp(8)}px;">
+      <img src="${SVG_CBRE_WHITE}" height="${sp(16)}" alt="CBRE" style="display:block;height:${sp(16)}px;width:auto;">
     </td>
   </tr>
   <tr>
-    <td bgcolor="#012a2d" style="padding:0 ${sc(8)}px ${sc(14)}px;">
-      <p style="font-family:Arial,sans-serif;font-size:${sf(4)};color:#999999;line-height:1.2;margin:0;">${esc(f_disclaimer)}</p>
+    <td bgcolor="#012a2d" style="padding:0 ${sp(8)}px ${sp(14)}px;">
+      <p style="font-family:Arial,sans-serif;font-size:${FS.disclaimer};color:#999999;line-height:1.2;margin:0;">${esc(f_disclaimer)}</p>
     </td>
   </tr>
 
@@ -4473,10 +4492,10 @@ function exportEDMHtml(){
 </body>
 </html>`;
 
-  const blob = new Blob([html],{type:'text/html'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
   document.body.appendChild(a);
   a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
