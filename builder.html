@@ -4277,18 +4277,13 @@ async function exportEDMHtml(){
             const nw = img.naturalWidth, nh = img.naturalHeight;
             if(!nw||!nh){ resolve(src); return; }
             try{
-              // Render at canvas element dimensions (contain fit) to match artwork
-              const cw = fw, ch = fh;
+              // Render at natural size then strip white — preserve aspect ratio
               const cv = document.createElement('canvas');
-              cv.width = cw; cv.height = ch;
+              cv.width = nw; cv.height = nh;
               const ctx = cv.getContext('2d');
-              // contain: scale to fit within cw×ch
-              const scale = Math.min(cw/nw, ch/nh);
-              const dw = nw*scale, dh = nh*scale;
-              const dx = (cw-dw)/2, dy = (ch-dh)/2;
-              ctx.drawImage(img, dx, dy, dw, dh);
-              // Strip near-white pixels
-              const d = ctx.getImageData(0,0,cw,ch);
+              ctx.drawImage(img, 0, 0, nw, nh);
+              // Strip near-white pixels to make background transparent
+              const d = ctx.getImageData(0,0,nw,nh);
               for(let i=0;i<d.data.length;i+=4){
                 const r=d.data[i],g=d.data[i+1],b=d.data[i+2];
                 if(r>230&&g>230&&b>230) d.data[i+3]=0;
@@ -4390,21 +4385,17 @@ async function exportEDMHtml(){
       : '';
 
     // Get logo element dimensions from state for correct sizing
-    const _logoSv = state.find(x=>x.assetKey==='logo'&&x.type==='img');
-    const _logoW = _logoSv ? parseFloat(_logoSv.w)||311 : 311;
-    const _logoH = _logoSv ? parseFloat(_logoSv.h)||130 : 130;
     const logoRow = srcLogo
       ? `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;"><tr>`+
           `<td>`+
-            `<img src="${esc(srcLogo)}" width="${_logoW}" height="${_logoH}" alt="Logo" style="display:block;width:${_logoW}px;height:${_logoH}px;">`+
+            `<img src="${esc(srcLogo)}" height="130" alt="Logo" style="display:block;height:130px;width:auto;max-width:311px;">`+
           `</td></tr></table>`
       : '';
 
     const addrRow = (f_addr1||f_addr2)
-      ? `<tr><td bgcolor="#0d2a2d" style="padding:28px 40px;">`+
-          `<table cellpadding="0" cellspacing="0" border="0"><tr>`+
-            `<td width="8" bgcolor="#17e88f" style="width:8px;line-height:1;">&nbsp;</td>`+
-            `<td width="28">&nbsp;</td><td>`+
+      ? `<tr><td bgcolor="#0d2a2d" style="padding:28px 40px 28px 48px;">`+
+          `<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>`+
+            `<td style="border-left:8px solid #17e88f;padding-left:28px;">`+
             (f_addr1?`<p style="font-family:Arial,sans-serif;font-size:34px;font-weight:600;color:#ffffff;margin:0 0 6px;">${esc(f_addr1)}</p>`:'')+
             (f_addr2?`<p style="font-family:Arial,sans-serif;font-size:34px;font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:'')+
           `</td></tr></table></td></tr>`
@@ -4464,11 +4455,9 @@ async function exportEDMHtml(){
   ${bannerRow}
 
   <!-- DARK PANEL -->
-  <tr><td bgcolor="#012a2d" style="padding:45px 40px 28px;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;"><tr>
-      <td style="width:8px;min-width:8px;max-width:8px;background-color:#17e88f;font-size:1px;line-height:1;">&nbsp;</td>
-      <td style="width:34px;min-width:34px;font-size:1px;">&nbsp;</td>
-      <td>
+  <tr><td bgcolor="#012a2d" style="padding:45px 40px 28px 48px;border-left:0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="border-left:8px solid #17e88f;padding-left:34px;">
         ${f_heading?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:50px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
         ${f_subhead?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:37px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 28px;">${esc(f_subhead)}</p>`:''}
         ${highlightRows(f_bullets)}
