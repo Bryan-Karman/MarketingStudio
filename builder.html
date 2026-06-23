@@ -359,6 +359,9 @@ Line five</textarea>
       <!-- Hidden EDM meta inputs — always present so JS can read/write regardless of tab -->
       <input type="hidden" id="fedm-subject">
       <input type="hidden" id="fedm-preview">
+      <input type="hidden" id="fedm-link-listing">
+      <input type="hidden" id="fedm-link-portfolio">
+      <input type="hidden" id="fedm-link-im-subject">
       <!-- Hidden inputs — populated by agent selector JS, consumed by globalSync -->
       <input type="hidden" id="fn1"><input type="hidden" id="fp1">
       <input type="hidden" id="fn2"><input type="hidden" id="fp2">
@@ -3376,7 +3379,32 @@ function edmMetaHTML(){
         <button onclick="copyEdmField('edm-preview-display')" style="font-size:9px;padding:1px 7px;background:#2a2a2a;border:1px solid #444;border-radius:2px;color:#aaa;cursor:pointer;">Copy</button>
       </div>
     </div>
-  </div>`;
+  </div>
+  ${_adminMode ? `<div style="background:#141414;border:1px solid #1a3a2a;border-radius:3px;padding:8px 10px;margin-bottom:2px;margin-top:4px;">
+    <div style="font-size:9px;font-weight:700;color:#5a9a7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">&#9881; EDM Links (Admin)</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div>
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">View Listing URL <span style="color:#555;font-weight:400;">(images + btn)</span></label>
+        <input id="edm-link-listing-display" type="url" value="${(document.getElementById('fedm-link-listing')||{}).value||''}" placeholder="https://cbre.com.au/listing/..."
+          oninput="document.getElementById('fedm-link-listing').value=this.value;debouncedPersist();"
+          style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">Request IM &mdash; Mailto Subject</label>
+        <input id="edm-link-im-subject-display" type="text" value="${(document.getElementById('fedm-link-im-subject')||{}).value||('Please send me further information about '+((document.getElementById('fa1')||{}).value||'this property'))}" placeholder="Please send me further information about..."
+          oninput="document.getElementById('fedm-link-im-subject').value=this.value;debouncedPersist();"
+          style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
+        <div style="font-size:9px;color:#555;margin-top:2px;">Each agent name links to their email. Button uses Agent 1.</div>
+      </div>
+      <div>
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">View Full Portfolio Line Up URL</label>
+        <input id="edm-link-portfolio-display" type="url" value="${(document.getElementById('fedm-link-portfolio')||{}).value||''}" placeholder="https://cbre.com.au/portfolio/..."
+          oninput="document.getElementById('fedm-link-portfolio').value=this.value;debouncedPersist();"
+          style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
+      </div>
+    </div>
+  </div>` : ''}
+  `;
 }
 
 function updateEdmMetaVisibility(){
@@ -3398,6 +3426,13 @@ function updateEdmCharCounts(){
   const sd = document.getElementById('edm-subject-display');
   const pd = document.getElementById('edm-preview-display');
   if(subj && sd && sd.value !== subj.value) sd.value = subj.value;
+  // Sync link display inputs
+  const _ll=document.getElementById('fedm-link-listing'); const _lld=document.getElementById('edm-link-listing-display');
+  if(_ll && _lld && _lld.value !== _ll.value) _lld.value = _ll.value;
+  const _lp=document.getElementById('fedm-link-portfolio'); const _lpd=document.getElementById('edm-link-portfolio-display');
+  if(_lp && _lpd && _lpd.value !== _lp.value) _lpd.value = _lp.value;
+  const _li=document.getElementById('fedm-link-im-subject'); const _lid=document.getElementById('edm-link-im-subject-display');
+  if(_li && _lid && _lid.value !== _li.value) _lid.value = _li.value;
   if(prev && pd && pd.value !== prev.value) pd.value = prev.value;
 }
 
@@ -3489,7 +3524,11 @@ function collectState(){
   savedStates[currentTab]=serializeTab();
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
   const _edmPrev=(document.getElementById('fedm-preview')||{}).value||'';
-  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmPreview:_edmPrev,
+  const _edmLinkListing=(document.getElementById('fedm-link-listing')||{}).value||'';
+  const _edmLinkPortfolio=(document.getElementById('fedm-link-portfolio')||{}).value||'';
+  const _edmLinkIMSubject=(document.getElementById('fedm-link-im-subject')||{}).value||'';
+  const _agentSlotsState=agentSlots.map(s=>({mode:s.mode,agentId:s.agentId,customName:s.customName,customPhone:s.customPhone,customEmail:s.customEmail||''}));
+  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
@@ -3505,6 +3544,9 @@ function applyState(data,skipZoom=false){
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
     if(data.edmPreview!=null){ const p=document.getElementById('fedm-preview'); if(p) p.value=data.edmPreview; }
+    if(data.edmLinkListing!=null){ const el=document.getElementById('fedm-link-listing'); if(el) el.value=data.edmLinkListing; }
+    if(data.edmLinkPortfolio!=null){ const el=document.getElementById('fedm-link-portfolio'); if(el) el.value=data.edmLinkPortfolio; }
+    if(data.edmLinkIMSubject!=null){ const el=document.getElementById('fedm-link-im-subject'); if(el) el.value=data.edmLinkIMSubject; }
     updateEdmCharCounts();
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
@@ -3634,7 +3676,7 @@ function saveTab(){debouncedPersist();}
 
 let agentList=[];
 let _pendingAgentSlots=null;
-let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''},{mode:'db',agentId:'',customName:'',customPhone:''}];
+let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''}];
 
 async function loadAgents(){
   // Agents already fetched in init() - just re-render to ensure UI is current
@@ -3662,12 +3704,13 @@ function renderAgentBlocks(){
         <select class="agent-select" onchange="selectAgent(${i},this.value)">${optionsHtml}</select>
         ${agent ? `<div class="agent-preview">
           ${agent.photo ? `<img class="agent-thumb" src="${agent.photo}">` : '<div class="agent-thumb"></div>'}
-          <div class="agent-preview-info"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}</div>
+          <div class="agent-preview-info"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}<br><span style="color:#5a9a7a;font-size:9px;">${escAgt(agent.email||'no email')}</span></div>
         </div>` : ''}
       ` : `
         <div class="agent-custom-fields">
           <input type="text" placeholder="Name" value="${escAgt(slot.customName)}" oninput="setCustomAgent(${i},'name',this.value)">
           <input type="text" placeholder="Phone" value="${escAgt(slot.customPhone)}" oninput="setCustomAgent(${i},'phone',this.value)">
+          <input type="email" placeholder="Email" value="${escAgt(slot.customEmail||'')}" oninput="setCustomAgent(${i},'email',this.value)" style="margin-top:2px;">
         </div>
       `}
     </div>`;
@@ -3677,7 +3720,7 @@ function renderAgentBlocks(){
 function escAgt(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function setAgentMode(i, mode){ agentSlots[i].mode=mode; if(mode==='db'){agentSlots[i].customName='';agentSlots[i].customPhone='';}else{agentSlots[i].agentId='';} syncAgentSlot(i); renderAgentBlocks(); }
 function selectAgent(i, agentId){ agentSlots[i].agentId=agentId; syncAgentSlot(i); renderAgentBlocks(); }
-function setCustomAgent(i, field, val){ if(field==='name') agentSlots[i].customName=val; else agentSlots[i].customPhone=val; syncAgentSlot(i); }
+function setCustomAgent(i, field, val){ if(field==='name') agentSlots[i].customName=val; else if(field==='phone') agentSlots[i].customPhone=val; else if(field==='email') agentSlots[i].customEmail=val; syncAgentSlot(i); }
 
 function syncAgentSlot(i){
   const slot=agentSlots[i]; const num=i+1;
@@ -3803,7 +3846,7 @@ async function init(){
   let loaded=false;
   // Fetch agents FIRST so dropdown is populated when UI renders
   try{
-    const _ar=await fetch(SUPA_URL+'/rest/v1/agents?select=id,name,phone,photo&order=name.asc',
+    const _ar=await fetch(SUPA_URL+'/rest/v1/agents?select=id,name,phone,photo,email&order=name.asc',
       {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).then(r=>r.json());
     if(Array.isArray(_ar)) agentList=_ar;
     console.log('[CBRE] Agents pre-loaded:',agentList.length);
@@ -4289,12 +4332,50 @@ async function exportEDMSections(){
       uploadedUrls.push({name:sec.name, url, w:EMAIL_W, h:emailH});
     }
 
-    // ── Generate HTML ──
+    // ── Generate HTML with links ──
     const propName = (_propertyName||'property').replace(/[^a-z0-9]/gi,'-').toLowerCase();
     const subject  = (document.getElementById('fedm-subject')||{}).value||'';
-    const imgTags  = uploadedUrls.map(s=>
-      `  <img src="${s.url}" width="${s.w}" height="${s.h}" alt="" style="display:block;width:${s.w}px;height:${s.h}px;border:0;">`
-    ).join('\n');
+    const linkListing   = (document.getElementById('fedm-link-listing')||{}).value||'';
+    const linkPortfolio = (document.getElementById('fedm-link-portfolio')||{}).value||'';
+    const imSubject     = (document.getElementById('fedm-link-im-subject')||{}).value||
+                          ('Please send me further information about '+((document.getElementById('fa1')||{}).value||'this property'));
+
+    // Get agent emails from agentSlots (db agent email or custom email)
+    function getAgentEmail(slotIdx){
+      const slot = agentSlots[slotIdx];
+      if(!slot) return '';
+      if(slot.mode==='db' && slot.agentId){
+        const ag = agentList.find(a=>a.id===slot.agentId);
+        return ag ? (ag.email||'') : '';
+      }
+      return slot.customEmail||'';
+    }
+    const agentEmails = [0,1,2,3].map(getAgentEmail);
+
+    function imgTag(s){ return `<img src="${s.url}" width="${s.w}" height="${s.h}" alt="" style="display:block;width:${s.w}px;height:${s.h}px;border:0;">`; }
+    function linked(s, href){ return href ? `<a href="${href}" style="display:block;border:0;text-decoration:none;">${imgTag(s)}</a>` : imgTag(s); }
+    function mailtoLink(email, subj){ return email ? `mailto:${email}?subject=${encodeURIComponent(subj)}` : ''; }
+
+    const imgTags = uploadedUrls.map(s=>{
+      const n = s.name;
+      // Images → View Listing URL
+      if(n==='s1'||n==='s3'||n==='s5') return linked(s, linkListing);
+      // s2 = dark panel (heading/bullets/logo/salemethod) → View Listing
+      if(n==='s2') return linked(s, linkListing);
+      // s4 = body copy → no link
+      if(n==='s4') return imgTag(s);
+      // Agent sections → mailto their own email
+      if(n==='agent1') return linked(s, mailtoLink(agentEmails[0], imSubject));
+      if(n==='agent2') return linked(s, mailtoLink(agentEmails[1], imSubject));
+      if(n==='agent3') return linked(s, mailtoLink(agentEmails[2], imSubject));
+      if(n==='agent4') return linked(s, mailtoLink(agentEmails[3], imSubject));
+      // Buttons
+      if(n==='btn1') return linked(s, mailtoLink(agentEmails[0], imSubject)); // Request IM → agent 1 email
+      if(n==='btn2') return linked(s, linkListing);   // View Listing
+      if(n==='btn3') return linked(s, linkPortfolio); // Portfolio
+      // Footer → no link
+      return imgTag(s);
+    }).join('\n');
 
     const html =
 `<!DOCTYPE html>
@@ -4309,6 +4390,7 @@ async function exportEDMSections(){
   body{background:#f0f0f0;-webkit-text-size-adjust:none;}
   img{display:block;border:0;outline:none;}
   table{border-collapse:collapse;}
+  a img{border:0;}
 </style>
 </head>
 <body>
