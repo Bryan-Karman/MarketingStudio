@@ -493,9 +493,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[210,297],[420,297],[75,546.8],[75,546.8],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420]];
+const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420]];
 const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction'];
-const SIZES=[[595,842],[1191,842],[212,1550],[212,1550],[800,800],[228,398],[464,398],[907,680],[794,1123]];
+const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123]];
 
 
 // ═══════════════════════════════════
@@ -2328,8 +2328,8 @@ function addBanner(){
   const tabDefaults=[
     {x:324,y:545,w:244,h:26,pad:'8px 11px 5px'}, // Brochure1
     {x:936,y:545,w:228,h:26,pad:'8px 11px 6px'}, // Brochure2
-    {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDM
-    {x:119,y:176,w:84,h:20,pad:'5px 8px 4px'},    // EDMAsianDesk
+    {x:337,y:498,w:461,h:57,pad:'14px 23px 11px'},    // EDM
+    {x:337,y:498,w:461,h:57,pad:'14px 23px 11px'},    // EDMAsianDesk
     {x:400,y:400,w:200,h:40,pad:'10px 12px'},      // LinkedIn
     {x:18,y:149,w:210,h:22,pad:'5px 8px 4px'},    // AFR2
     {x:319,y:149,w:145,h:22,pad:'5px 8px 4px'},   // AFR4
@@ -2732,54 +2732,54 @@ function buildAuction(W,H){
 }
 
 function buildEDM(W,H){
-  mkR(0,0,213,464,'rgb(1, 42, 45)',{z:1});
-  mkI(0,41,212,150,'img1','Image',{z:2});
-  mkBanner(50,172,163,20,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:10,bannerPad:'5px 8px 4px'});
-  mkR(12,209,3,127,'rgb(23,232,143)',{z:4});
-  mkT(30,206,174,65,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'18px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4});
-  (function(){ var _e=mkT(29,286,175,54,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0'}); _e.dataset.incomeAnchor='1'; return _e; })();
-  mkT(29,342,175,14,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
-  mkI(51,359,110,46,'logo','Image',{z:4});
-  mkT(12,424,188,16,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'13px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4});
-  mkT(12,442,201,13,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'9px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4});
-  mkI(0,464,212,140,'img2','Image',{z:2});
-  mkR(0,604,212,44,'rgb(13, 42, 45)',{z:3});
-  mkR(12,614,3,24,'rgb(23,232,143)',{z:4});
-  mkT(27,613,179,16,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4});
-  mkT(27,628,179,14,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4});
-  mkT(12,661,188,218,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'6'});
-  mkI(0,881,212,130,'img3','Image',{z:2});
-  mkT(12,1025,157,34,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3});
+  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1});
+  mkI(0,116,600,425,'img1','Image',{z:2});
+  mkBanner(142,487,461,57,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:10,bannerPad:'14px 23px 11px'});
+  mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
+  mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4});
+  (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
+  mkI(144,1016,311,130,'logo','Image',{z:4});
+  mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4});
+  mkT(34,1251,569,37,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4});
+  mkI(0,1313,600,396,'img2','Image',{z:2});
+  mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3});
+  mkR(34,1738,8,68,'rgb(23,232,143)',{z:4});
+  mkT(76,1735,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4});
+  mkT(76,1777,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4});
+  mkT(34,1871,532,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17'});
+  mkI(0,2493,600,368,'img3','Image',{z:2});
+  mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3});
   (function(){
     function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
     function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
-    tagAgent(mkI(12,1062,40,40,'agent1photo','Image',{z:3}),1,1062);
-    tagAgent(mkT(65,1063,142,14,gv('fn1')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',z:3}),1,1063);
-    tagAgent(mkT(65,1079,142,14,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1num',z:3}),1,1079);
-    tagAgent(mkI(12,1112,40,40,'agent2photo','Image',{z:3}),2,1112);
-    tagAgent(mkT(65,1113,142,14,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',z:3}),2,1113);
-    tagAgent(mkT(65,1129,142,14,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2num',z:3}),2,1129);
-    tagAgent(mkI(12,1162,40,40,'agent3photo','Image',{z:3}),3,1162);
-    tagAgent(mkT(65,1163,142,14,gv('fn3')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',z:3}),3,1163);
-    tagAgent(mkT(65,1179,142,14,gv('fp3')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3num',z:3}),3,1179);
-    tagAgent(mkI(12,1212,40,40,'agent4photo','Image',{z:3}),4,1212);
-    tagAgent(mkT(65,1213,142,14,gv('fn4')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3}),4,1213);
-    tagAgent(mkT(65,1229,142,14,gv('fp4')||'',{color:'rgb(1,42,45)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3}),4,1229);
-    tagBelow(mkR(12,1262,188,30,'rgb(1, 42, 45)',{z:3}),1265);
-    tagBelow(mkT(21,1272,162,18,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}),1275);
-    tagBelow((function(){ var _e=mkI(177,1268,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),1277);
-    tagBelow(mkR(12,1300,188,30,'rgb(15, 42, 45)',{z:3}),1309);
-    tagBelow(mkT(21,1310,162,18,'View Listing',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}),1319);
-    tagBelow((function(){ var _e=mkI(177,1307,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),1316);
-    tagBelow(mkR(12,1338,188,30,'rgb(1, 42, 45)',{z:3}),1347);
-    tagBelow(mkT(21,1348,162,18,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}),1357);
-    tagBelow((function(){ var _e=mkI(177,1344,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),1353);
-    tagBelow(mkR(0,1378,212,40,'rgb(1, 42, 45)',{z:3}),1390);
-    tagBelow(mkT(8,1428,196,60,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153,153,153)',fontSize:'4px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),1442);
-    tagBelow(mkSVGLogo(14,1389,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201}),1401);
+    tagAgent(mkI(34,3006,113,113,'agent1photo','Image',{z:3}),1,3006);
+    tagAgent(mkT(184,3008,402,40,gv('fn1')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',z:3}),1,3008);
+    tagAgent(mkT(184,3054,402,40,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1num',z:3}),1,3054);
+    tagAgent(mkI(34,3147,113,113,'agent2photo','Image',{z:3}),2,3147);
+    tagAgent(mkT(184,3150,402,40,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',z:3}),2,3150);
+    tagAgent(mkT(184,3195,402,40,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2num',z:3}),2,3195);
+    tagAgent(mkI(34,3289,113,113,'agent3photo','Image',{z:3}),3,3289);
+    tagAgent(mkT(184,3292,402,40,gv('fn3')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',z:3}),3,3292);
+    tagAgent(mkT(184,3337,402,40,gv('fp3')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3num',z:3}),3,3337);
+    tagAgent(mkI(34,3430,113,113,'agent4photo','Image',{z:3}),4,3430);
+    tagAgent(mkT(184,3433,402,40,gv('fn4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3}),4,3433);
+    tagAgent(mkT(184,3478,402,40,gv('fp4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3}),4,3478);
+    tagBelow(mkR(34,3572,532,85,'rgb(1, 42, 45)',{z:3}),3580);
+    tagBelow(mkT(59,3600,458,51,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}),3608);
+    tagBelow((function(){ var _e=mkI(501,3589,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3614);
+    tagBelow(mkR(34,3679,532,85,'rgb(15, 42, 45)',{z:3}),3705);
+    tagBelow(mkT(59,3708,458,51,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}),3733);
+    tagBelow((function(){ var _e=mkI(501,3699,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3725);
+    tagBelow(mkR(34,3787,532,85,'rgb(1, 42, 45)',{z:3}),3812);
+    tagBelow(mkT(59,3815,458,51,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}),3841);
+    tagBelow((function(){ var _e=mkI(501,3804,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3829);
+    tagBelow(mkR(0,3900,600,113,'rgb(1, 42, 45)',{z:3}),3934);
+    tagBelow(mkT(23,4042,555,170,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),4081);
+    tagBelow(mkSVGLogo(40,3931,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3965);
   })();
-  mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
-  mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
+  mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
+  mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 
 // ─── AFR 2-AGENT 228×398 ───
@@ -2842,58 +2842,58 @@ function buildSignboard(W,H){
   mkT(652,595,215,34,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
   mkSVGLogo(61,16,107,91,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
 }
-// ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
+// ─── EDM ASIAN DESK 600×4387 (Simplified Chinese) ───
 function buildEDMAsianDesk(W,H){
-  mkI(0,41,212,150,'img1','Image',{z:2});
-  mkR(125,169,87,22,'rgb(0, 63, 45)',{z:4});
-  mkT(119,176,84,11,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'700',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'zh_banner',z:5});
-  mkR(0,0,213,464,'rgb(1, 42, 45)',{z:1});
-  mkR(12,209,3,127,'rgb(23, 232, 143)',{z:4});
-  mkT(30,206,174,50,'',{color:'rgb(255, 255, 255)',fontSize:'16px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_heading',z:4});
-  mkT(30,258,174,22,'',{color:'rgb(255, 255, 255)',fontSize:'13px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_subheading',z:4});
-  mkT(29,284,175,54,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_bullets',z:4,bullets:'1',bulletParaSpacing:'6'});
-  mkT(29,342,175,14,gv('fi')||'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_income',z:4});
-  mkI(51,359,110,46,'logo','Image',{z:4});
-  mkT(12,424,188,16,'',{color:'rgb(255, 255, 255)',fontSize:'13px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_salemethod',z:4});
-  mkT(12,442,201,13,'',{color:'rgb(255, 255, 255)',fontSize:'9px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_saledate',z:4});
-  mkI(0,464,212,140,'img2','Image',{z:2});
-  mkR(0,604,212,44,'rgb(13, 42, 45)',{z:3});
-  mkR(12,614,3,24,'rgb(23, 232, 143)',{z:4});
-  mkT(27,613,179,16,gv('fa1')||'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:4});
-  mkT(27,628,179,14,gv('fa2')||'',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:4});
-  mkT(12,661,188,218,'',{color:'rgb(51, 51, 51)',fontSize:'10px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'6'});
-  mkI(0,872,212,130,'img3','Image',{z:2});
-  mkT(12,1014,157,34,'',{color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3});
+  mkI(0,116,600,425,'img1','Image',{z:2});
+  mkR(354,478,246,62,'rgb(0, 63, 45)',{z:4});
+  mkT(337,498,238,31,'',{color:'rgb(255, 255, 255)',fontSize:'31px',fontWeight:'700',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'zh_banner',z:5});
+  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1});
+  mkR(34,592,8,359,'rgb(23, 232, 143)',{z:4});
+  mkT(85,583,492,142,'',{color:'rgb(255, 255, 255)',fontSize:'45px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_heading',z:4});
+  mkT(85,730,492,62,'',{color:'rgb(255, 255, 255)',fontSize:'37px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_subheading',z:4});
+  mkT(82,804,495,153,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_bullets',z:4,bullets:'1',bulletParaSpacing:'17'});
+  mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_income',z:4});
+  mkI(144,1016,311,130,'logo','Image',{z:4});
+  mkT(34,1200,532,45,'',{color:'rgb(255, 255, 255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_salemethod',z:4});
+  mkT(34,1251,569,37,'',{color:'rgb(255, 255, 255)',fontSize:'25px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_saledate',z:4});
+  mkI(0,1313,600,396,'img2','Image',{z:2});
+  mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3});
+  mkR(34,1738,8,68,'rgb(23, 232, 143)',{z:4});
+  mkT(76,1735,507,45,gv('fa1')||'',{color:'rgb(255, 255, 255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address1',z:4});
+  mkT(76,1777,507,40,gv('fa2')||'',{color:'rgb(255, 255, 255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'address2',z:4});
+  mkT(34,1871,532,617,'',{color:'rgb(51, 51, 51)',fontSize:'28px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'17'});
+  mkI(0,2468,600,368,'img3','Image',{z:2});
+  mkT(34,2870,444,96,'',{color:'rgb(1, 42, 45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3});
   (function(){
     function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
     function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
-    tagAgent(mkI(12,1055,40,40,'agent1photo','Image',{z:3}), 1, 1055);
-    tagAgent(mkT(65,1061,142,18,gv('fn1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3}), 1, 1061);
-    tagAgent(mkT(65,1077,142,16,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3}), 1, 1077);
-    tagAgent(mkI(12,1103,40,40,'agent2photo','Image',{z:3}), 2, 1103);
-    tagAgent(mkT(65,1109,142,18,gv('fn2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3}), 2, 1109);
-    tagAgent(mkT(65,1125,142,16,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3}), 2, 1125);
-    tagAgent(mkI(12,1151,40,40,'agent3photo','Image',{z:3}), 3, 1151);
-    tagAgent(mkT(65,1158,142,18,gv('fn3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3}), 3, 1158);
-    tagAgent(mkT(65,1174,142,16,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3}), 3, 1174);
-    tagAgent(mkI(12,1199,40,40,'agent4photo','Image',{z:3}), 4, 1199);
-    tagAgent(mkT(65,1206,142,18,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3}), 4, 1206);
-    tagAgent(mkT(65,1223,142,16,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3}), 4, 1223);
-    tagBelow(mkR(12,1260,188,30,'rgb(1, 42, 45)',{z:3}), 1260);
-    tagBelow(mkT(21,1270,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn1',z:4}), 1270);
-    tagBelow((function(){ var _e=mkI(177,1266,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1266);
-    tagBelow(mkR(12,1298,188,30,'rgb(15, 42, 45)',{z:3}), 1298);
-    tagBelow(mkT(21,1308,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn2',z:4}), 1308);
-    tagBelow((function(){ var _e=mkI(177,1305,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1305);
-    tagBelow(mkR(12,1336,188,30,'rgb(1, 42, 45)',{z:3}), 1336);
-    tagBelow(mkT(21,1346,162,18,'',{color:'rgb(255, 255, 255)',fontSize:'10px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4}), 1346);
-    tagBelow((function(){ var _e=mkI(177,1342,18,18,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 1342);
-    tagBelow(mkR(0,1379,212,40,'rgb(1, 42, 45)',{z:3}), 1379);
-    tagBelow(mkT(8,1431,196,60,'',{color:'rgb(153, 153, 153)',fontSize:'4px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',field:'zh_disclaimer',z:3}), 1431);
-    tagBelow(mkSVGLogo(14,1390,185,16,SVG_CBRE_WHITE,'cbre-white',{z:201}), 1390);
-  })(); // end agent/button block
-  mkSVGLogo(14,10,55,21,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
-  mkSVGLogo(143,13,60,15,SVG_CBRE_WHITE,'cbre-white',{z:201});
+    tagAgent(mkI(34,2986,113,113,'agent1photo','Image',{z:3}), 1, 2986);
+    tagAgent(mkT(184,3003,402,51,gv('fn1')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3}), 1, 3003);
+    tagAgent(mkT(184,3048,402,45,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3}), 1, 3048);
+    tagAgent(mkI(34,3122,113,113,'agent2photo','Image',{z:3}), 2, 3122);
+    tagAgent(mkT(184,3139,402,51,gv('fn2')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2name',z:3}), 2, 3139);
+    tagAgent(mkT(184,3184,402,45,gv('fp2')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent2num',z:3}), 2, 3184);
+    tagAgent(mkI(34,3258,113,113,'agent3photo','Image',{z:3}), 3, 3258);
+    tagAgent(mkT(184,3277,402,51,gv('fn3')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3name',z:3}), 3, 3277);
+    tagAgent(mkT(184,3323,402,45,gv('fp3')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent3num',z:3}), 3, 3323);
+    tagAgent(mkI(34,3393,113,113,'agent4photo','Image',{z:3}), 4, 3393);
+    tagAgent(mkT(184,3413,402,51,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3}), 4, 3413);
+    tagAgent(mkT(184,3461,402,45,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3}), 4, 3461);
+    tagBelow(mkR(34,3566,532,85,'rgb(1, 42, 45)',{z:3}), 3566);
+    tagBelow(mkT(59,3594,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn1',z:4}), 3594);
+    tagBelow((function(){ var _e=mkI(501,3583,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3583);
+    tagBelow(mkR(34,3674,532,85,'rgb(15, 42, 45)',{z:3}), 3674);
+    tagBelow(mkT(59,3702,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn2',z:4}), 3702);
+    tagBelow((function(){ var _e=mkI(501,3693,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3693);
+    tagBelow(mkR(34,3781,532,85,'rgb(1, 42, 45)',{z:3}), 3781);
+    tagBelow(mkT(59,3809,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4}), 3809);
+    tagBelow((function(){ var _e=mkI(501,3798,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3798);
+    tagBelow(mkR(0,3903,600,113,'rgb(1, 42, 45)',{z:3}), 3903);
+    tagBelow(mkT(23,4050,555,170,'',{color:'rgb(153, 153, 153)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',field:'zh_disclaimer',z:3}), 4050);
+    tagBelow(mkSVGLogo(40,3934,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}), 3934);
+  })();
+  mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
+  mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 
 // ════════════════════════════════════════
@@ -3662,6 +3662,17 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
+    // Migration: if EDM tabs (2,3) were saved at old 212px canvas width, clear them so they rebuild at 600px
+    [2,3].forEach(function(tabIdx){
+      const st = savedStates[tabIdx];
+      if(!st||!st.length) return;
+      // Check if any full-width element (w >= 200px) is still at 212px-era size
+      const hasOldSize = st.some(function(sv){
+        const w = parseFloat(sv.w)||0;
+        return w > 0 && w <= 220; // 212px canvas max width
+      });
+      if(hasOldSize){ delete savedStates[tabIdx]; }
+    });
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
@@ -4152,9 +4163,9 @@ function repackEDMAgents(){
 
   // Slot base Y positions differ between EDM (tab 2) and Asian Desk (tab 3)
   const SLOT_BASE = currentTab === 3
-    ? [1055, 1103, 1151, 1199]   // Asian Desk
-    : [1062, 1112, 1162, 1212];  // Standard EDM
-  const SLOT_H = currentTab === 3 ? 48 : 50;
+    ? [2986, 3122, 3258, 3393]   // Asian Desk (scaled 600px)
+    : [3006, 3147, 3289, 3430];  // Standard EDM (scaled 600px)
+  const SLOT_H = currentTab === 3 ? 136 : 142;
 
   // Build packed Y positions — active slots stack from SLOT_BASE[0] down
   var packedY = [];
@@ -4213,15 +4224,6 @@ function repackEDMAgents(){
 // ════════════════════════════════════════
 // EXPORT EDM AS EMAIL HTML
 // ════════════════════════════════════════
-
-// ════════════════════════════════════════
-// EXPORT EDM AS EMAIL HTML
-// ════════════════════════════════════════
-
-// ════════════════════════════════════════
-// EXPORT EDM AS EMAIL HTML
-// ════════════════════════════════════════
-
 async function exportEDMHtml(){
   if(!_adminMode){ alert('EDM HTML export is available to admins only.'); return; }
   if(currentTab!==2&&currentTab!==3){ alert('Please switch to the EDM or EDM - Asian Desk tab first.'); return; }
@@ -4236,24 +4238,23 @@ async function exportEDMHtml(){
 
     function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-    // Snapshot current canvas state
     const state = serializeTab();
     function fv(f){ const e=state.find(x=>x.field===f); return e?(e.content||'').trim():''; }
 
-    // ── Get image as dataURL, respecting crop/pan — reuses builder's imgToDataUrl ──
-    async function getImgDataUrl(assetKey){
+    // Image rendering — 1:1, no scaling needed since canvas is now 600px wide
+    async function getImgSrc(assetKey){
       const sv = state.find(x=>x.assetKey===assetKey && x.type==='img');
       if(!sv) return '';
       const src = (assets&&assets[assetKey]) ? assets[assetKey] : (sv.imgSrc||'');
       if(!src) return '';
       const isLogo = ['logo','logo2','logo3','logo4'].includes(assetKey);
       const fit = isLogo ? 'contain' : 'cover';
-      const fw = parseFloat(sv.w)||100, fh = parseFloat(sv.h)||100;
+      const fw = parseFloat(sv.w)||600, fh = parseFloat(sv.h)||400;
       const result = await imgToDataUrl(src, fw, fh, sv.cropX, sv.cropY, sv.cropW, sv.cropH, fit);
       return result || src;
     }
 
-    // ── Field values ──
+    // Field values
     const subject      = (document.getElementById('fedm-subject')||{}).value||'';
     const preview      = (document.getElementById('fedm-preview')||{}).value||'';
     const f_heading    = fv(isAsian?'zh_heading':'heading');
@@ -4272,45 +4273,48 @@ async function exportEDMHtml(){
     const f_addr1      = fv('address1');
     const f_addr2      = fv('address2');
 
-    // ── Load all images with correct cropping ──
-    const src1    = await getImgDataUrl('img1');
-    const src2    = await getImgDataUrl('img2');
-    const src3    = await getImgDataUrl('img3');
-    const srcLogo = await getImgDataUrl('logo');
-    const agentImgs = await Promise.all([1,2,3,4].map(i=>getImgDataUrl('agent'+i+'photo')));
+    // Load images
+    const src1    = await getImgSrc('img1');
+    const src2    = await getImgSrc('img2');
+    const src3    = await getImgSrc('img3');
+    const srcLogo = await getImgSrc('logo');
+    const agentSrcs = await Promise.all([1,2,3,4].map(i=>getImgSrc('agent'+i+'photo')));
     const agents = [1,2,3,4].map((i,idx)=>({
-      name:fv('agent'+i+'name'), phone:fv('agent'+i+'num'), photo:agentImgs[idx]
+      name:fv('agent'+i+'name'), phone:fv('agent'+i+'num'), photo:agentSrcs[idx]
     })).filter(a=>a.name||a.phone);
 
-    // ── HTML builders ──
-    // Highlights: plain lines, no dash prefix (canvas bullets:'0')
+    // Canvas is now 600px wide — font sizes from buildEDM used directly in HTML
+    // heading=51px(Georgia), bullets=28px, income=28px, salemethod=37px, saledate=25px
+    // addr=34px, bodycopy=28px, contact=34px, agent=34px, btn=28px, disclaimer=11px, banner=28px
+
+    // Highlight rows: plain lines, no dash (bullets:'0' in canvas)
     function highlightRows(raw){
       if(!raw) return '';
       return raw.split('\n').filter(l=>l.trim()).map(l=>{
         const txt = l.replace(/^\u2013\s*/,'').trim();
-        return `<p style="font-family:Arial,sans-serif;font-size:13px;color:#ffffff;line-height:1.4;margin:0 0 7px;">${esc(txt)}</p>`;
+        return `<p style="font-family:Arial,sans-serif;font-size:28px;color:#ffffff;line-height:1.35;margin:0 0 17px;">${esc(txt)}</p>`;
       }).join('');
     }
 
-    // Body copy: dash + hanging indent (canvas bullets:'1')
+    // Body rows: dash + hanging indent (bullets:'1' in canvas)
     function bodyRows(raw){
       if(!raw) return '';
       return raw.split('\n').filter(l=>l.trim()).map(l=>{
         const txt = l.startsWith('\u2013 ') ? l.slice(2) : l.replace(/^\u2013/,'').replace(/^-\s*/,'').trim();
-        return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>`+
-          `<td width="14" valign="top" style="font-family:Arial,sans-serif;font-size:13px;color:#333;line-height:1.4;">\u2013</td>`+
-          `<td style="font-family:Arial,sans-serif;font-size:13px;color:#333;line-height:1.4;">${esc(txt)}</td>`+
+        return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:17px;"><tr>`+
+          `<td width="28" valign="top" style="font-family:Arial,sans-serif;font-size:28px;color:#333;line-height:1.2;">\u2013</td>`+
+          `<td style="font-family:Arial,sans-serif;font-size:28px;color:#333;line-height:1.2;">${esc(txt)}</td>`+
           `</tr></table>`;
       }).join('');
     }
 
     function ctaRow(label, bg){
       if(!label) return '';
-      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:5px;"><tr>`+
-        `<td bgcolor="${bg}" style="padding:10px 16px;">`+
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;"><tr>`+
+        `<td bgcolor="${bg}" style="padding:23px 40px;">`+
           `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>`+
-            `<td style="font-family:Arial,sans-serif;font-size:12px;font-weight:500;color:#ffffff;">${esc(label)}</td>`+
-            `<td align="right" width="22"><img src="${SVG_ARROW_WHITE}" width="20" height="20" alt="" style="display:block;width:20px;height:20px;"></td>`+
+            `<td style="font-family:Arial,sans-serif;font-size:28px;font-weight:500;color:#ffffff;">${esc(label)}</td>`+
+            `<td align="right" width="51"><img src="${SVG_ARROW_WHITE}" width="51" height="51" alt="" style="display:block;width:51px;height:51px;"></td>`+
           `</tr></table>`+
         `</td></tr></table>`;
     }
@@ -4318,41 +4322,41 @@ async function exportEDMHtml(){
     const bannerRow = f_banner
       ? `<tr><td bgcolor="#012a2d" align="right" style="padding:0;">`+
           `<table cellpadding="0" cellspacing="0" border="0" align="right"><tr>`+
-            `<td bgcolor="#003f2d" style="padding:6px 10px 5px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;">${esc(f_banner)}</td>`+
+            `<td bgcolor="#003f2d" style="padding:14px 23px 11px;font-family:Arial,sans-serif;font-size:28px;font-weight:700;color:#ffffff;white-space:nowrap;">${esc(f_banner)}</td>`+
           `</tr></table></td></tr>`
       : '';
 
-    // Logo: height:auto width:auto — never squash, just set max-height
     const logoRow = srcLogo
-      ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">`+
-          `<tr><td><img src="${esc(srcLogo)}" alt="Logo" style="display:block;height:52px;width:auto;max-height:52px;"></td></tr>`+
+      ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">`+
+          `<tr><td><img src="${esc(srcLogo)}" height="130" alt="Logo" style="display:block;height:130px;width:auto;max-width:311px;"></td></tr>`+
         `</table>`
       : '';
 
     const addrRow = (f_addr1||f_addr2)
-      ? `<tr><td bgcolor="#0d2a2d" style="padding:10px 16px;">`+
+      ? `<tr><td bgcolor="#0d2a2d" style="padding:28px 40px;">`+
           `<table cellpadding="0" cellspacing="0" border="0"><tr>`+
-            `<td width="3" bgcolor="#17e88f" style="width:3px;line-height:1;">&nbsp;</td>`+
-            `<td width="10">&nbsp;</td><td>`+
-            (f_addr1?`<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#ffffff;margin:0 0 2px;">${esc(f_addr1)}</p>`:'')+
-            (f_addr2?`<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:'')+
+            `<td width="8" bgcolor="#17e88f" style="width:8px;line-height:1;">&nbsp;</td>`+
+            `<td width="28">&nbsp;</td><td>`+
+            (f_addr1?`<p style="font-family:Arial,sans-serif;font-size:34px;font-weight:600;color:#ffffff;margin:0 0 6px;">${esc(f_addr1)}</p>`:'')+
+            (f_addr2?`<p style="font-family:Arial,sans-serif;font-size:34px;font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:'')+
           `</td></tr></table></td></tr>`
       : '';
 
     const agentRowsHtml = agents.map(a=>{
       const photo = a.photo
-        ? `<img src="${esc(a.photo)}" width="44" height="44" alt="${esc(a.name)}" style="display:block;width:44px;height:44px;border-radius:2px;">`
-        : `<div style="width:44px;height:44px;background:#e0e0e0;display:block;"></div>`;
-      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>`+
-        `<td width="56" valign="top">${photo}</td>`+
-        `<td valign="middle" style="padding-left:10px;">`+
-          `<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:600;color:#012a2d;margin:0 0 2px;">${esc(a.name)}</p>`+
-          `<p style="font-family:Arial,sans-serif;font-size:13px;color:#444;margin:0;">${esc(a.phone)}</p>`+
+        ? `<img src="${esc(a.photo)}" width="113" height="113" alt="${esc(a.name)}" style="display:block;width:113px;height:113px;border-radius:6px;">`
+        : `<div style="width:113px;height:113px;background:#e0e0e0;display:block;"></div>`;
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:34px;"><tr>`+
+        `<td width="147" valign="top">${photo}</td>`+
+        `<td valign="middle" style="padding-left:28px;">`+
+          `<p style="font-family:Arial,sans-serif;font-size:34px;font-weight:600;color:#012a2d;margin:0 0 6px;">${esc(a.name)}</p>`+
+          `<p style="font-family:Arial,sans-serif;font-size:34px;color:#444;margin:0;">${esc(a.phone)}</p>`+
         `</td></tr></table>`;
     }).join('');
 
     const filename = (_propertyName||'property').replace(/[^a-z0-9]/gi,'-').toLowerCase()+(isAsian?'-edm-asian-desk':'-edm')+'.html';
 
+    // Image heights from canvas (now 600px wide): img1=425, img2=396, img3=368
     const html =
 `<!DOCTYPE html>
 <html lang="${isAsian?'zh-CN':'en'}">
@@ -4376,31 +4380,31 @@ async function exportEDMHtml(){
 <table width="${EMAIL_W}" cellpadding="0" cellspacing="0" border="0" style="max-width:${EMAIL_W}px;">
 
   <!-- HEADER -->
-  <tr><td bgcolor="#012a2d" style="padding:8px 14px;">
+  <tr><td bgcolor="#012a2d" style="padding:28px 40px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td valign="middle"><img src="${SVG_PORTFOLIO_WHITE}" width="156" height="60" alt="Portfolio" style="display:block;width:156px;height:60px;"></td>
-      <td align="right" valign="middle"><img src="${SVG_CBRE_WHITE}" width="170" height="43" alt="CBRE" style="display:block;width:170px;height:43px;"></td>
+      <td valign="middle"><img src="${SVG_PORTFOLIO_WHITE}" width="156" height="59" alt="Portfolio" style="display:block;width:156px;height:59px;"></td>
+      <td align="right" valign="middle"><img src="${SVG_CBRE_WHITE}" width="170" height="42" alt="CBRE" style="display:block;width:170px;height:42px;"></td>
     </tr></table>
   </td></tr>
 
   <!-- HERO IMAGE -->
   <tr><td style="padding:0;font-size:0;line-height:0;">
-    <img src="${esc(src1)}" width="${EMAIL_W}" alt="Property" style="display:block;width:${EMAIL_W}px;max-width:${EMAIL_W}px;">
+    <img src="${esc(src1)}" width="${EMAIL_W}" height="425" alt="Property" style="display:block;width:${EMAIL_W}px;height:425px;">
   </td></tr>
 
   <!-- BANNER -->
   ${bannerRow}
 
   <!-- DARK PANEL -->
-  <tr><td bgcolor="#012a2d" style="padding:16px 16px 12px;">
+  <tr><td bgcolor="#012a2d" style="padding:45px 40px 28px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="3" bgcolor="#17e88f" style="width:3px;">&nbsp;</td>
-      <td width="14">&nbsp;</td>
+      <td width="8" bgcolor="#17e88f" style="width:8px;">&nbsp;</td>
+      <td width="34">&nbsp;</td>
       <td>
-        ${f_heading?`<p style="font-family:Georgia,serif;font-size:20px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'5px':'12px'};">${esc(f_heading)}</p>`:''}
-        ${f_subhead?`<p style="font-family:Georgia,serif;font-size:14px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 12px;">${esc(f_subhead)}</p>`:''}
+        ${f_heading?`<p style="font-family:Georgia,serif;font-size:51px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
+        ${f_subhead?`<p style="font-family:Georgia,serif;font-size:37px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 28px;">${esc(f_subhead)}</p>`:''}
         ${highlightRows(f_bullets)}
-        ${f_income?`<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#ffffff;line-height:1.4;margin:4px 0 0;">${esc(f_income)}</p>`:''}
+        ${f_income?`<p style="font-family:Arial,sans-serif;font-size:28px;font-weight:700;color:#ffffff;line-height:1.35;margin:11px 0 0;">${esc(f_income)}</p>`:''}
         ${logoRow}
       </td>
     </tr></table>
@@ -4408,46 +4412,46 @@ async function exportEDMHtml(){
 
   <!-- SALE METHOD + DATE -->
   ${(f_salemethod||f_saledate)?
-    `<tr><td bgcolor="#012a2d" style="padding:2px 16px 16px 33px;">`+
-      (f_salemethod?`<p style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;margin:0 0 3px;">${esc(f_salemethod)}</p>`:'')+
-      (f_saledate?`<p style="font-family:Arial,sans-serif;font-size:11px;color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:'')+
+    `<tr><td bgcolor="#012a2d" style="padding:6px 40px 45px 82px;">`+
+      (f_salemethod?`<p style="font-family:Arial,sans-serif;font-size:37px;font-weight:700;color:#ffffff;margin:0 0 6px;">${esc(f_salemethod)}</p>`:'')+
+      (f_saledate?`<p style="font-family:Arial,sans-serif;font-size:25px;color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:'')+
     `</td></tr>`:''}
 
   <!-- SECOND IMAGE -->
   <tr><td style="padding:0;font-size:0;line-height:0;">
-    <img src="${esc(src2)}" width="${EMAIL_W}" alt="Property 2" style="display:block;width:${EMAIL_W}px;max-width:${EMAIL_W}px;">
+    <img src="${esc(src2)}" width="${EMAIL_W}" height="396" alt="Property 2" style="display:block;width:${EMAIL_W}px;height:396px;">
   </td></tr>
 
   <!-- ADDRESS BAR -->
   ${addrRow}
 
   <!-- BODY COPY -->
-  ${f_bodycopy?`<tr><td bgcolor="#ffffff" style="padding:16px 14px;">${bodyRows(f_bodycopy)}</td></tr>`:''}
+  ${f_bodycopy?`<tr><td bgcolor="#ffffff" style="padding:40px 34px;">${bodyRows(f_bodycopy)}</td></tr>`:''}
 
   <!-- THIRD IMAGE -->
   <tr><td style="padding:0;font-size:0;line-height:0;">
-    <img src="${esc(src3)}" width="${EMAIL_W}" alt="Property 3" style="display:block;width:${EMAIL_W}px;max-width:${EMAIL_W}px;">
+    <img src="${esc(src3)}" width="${EMAIL_W}" height="368" alt="Property 3" style="display:block;width:${EMAIL_W}px;height:368px;">
   </td></tr>
 
   <!-- CONTACT HEADING -->
-  ${f_contact?`<tr><td bgcolor="#ffffff" style="padding:16px 14px 10px;"><p style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p></td></tr>`:''}
+  ${f_contact?`<tr><td bgcolor="#ffffff" style="padding:45px 34px 28px;"><p style="font-family:Arial,sans-serif;font-size:34px;font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p></td></tr>`:''}
 
   <!-- AGENTS -->
-  ${agentRowsHtml?`<tr><td bgcolor="#ffffff" style="padding:8px 14px 4px;">${agentRowsHtml}</td></tr>`:''}
+  ${agentRowsHtml?`<tr><td bgcolor="#ffffff" style="padding:17px 34px 11px;">${agentRowsHtml}</td></tr>`:''}
 
   <!-- CTA BUTTONS -->
-  <tr><td bgcolor="#ffffff" style="padding:6px 14px 20px;">
+  <tr><td bgcolor="#ffffff" style="padding:17px 34px 57px;">
     ${ctaRow(f_btn1,'#012a2d')}
     ${ctaRow(f_btn2,'#0f2a2d')}
     ${ctaRow(f_btn3,'#012a2d')}
   </td></tr>
 
   <!-- FOOTER -->
-  <tr><td bgcolor="#012a2d" style="padding:12px 14px 8px;">
-    <img src="${SVG_CBRE_WHITE}" height="16" alt="CBRE" style="display:block;height:16px;width:auto;">
+  <tr><td bgcolor="#012a2d" style="padding:34px 40px 23px;">
+    <img src="${SVG_CBRE_WHITE}" width="524" height="45" alt="CBRE" style="display:block;width:524px;height:45px;">
   </td></tr>
-  <tr><td bgcolor="#012a2d" style="padding:0 10px 14px;">
-    <p style="font-family:Arial,sans-serif;font-size:8px;color:#999;line-height:1.3;margin:0;">${esc(f_disclaimer)}</p>
+  <tr><td bgcolor="#012a2d" style="padding:0 23px 40px;">
+    <p style="font-family:Arial,sans-serif;font-size:11px;color:#999;line-height:1.3;margin:0;">${esc(f_disclaimer)}</p>
   </td></tr>
 
 </table>
