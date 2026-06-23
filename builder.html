@@ -2736,8 +2736,8 @@ function buildEDM(W,H){
   mkI(0,116,600,425,'img1','Image',{z:2});
   mkBanner(142,487,461,57,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',textAlign:'right',field:'banner',z:10,bannerPad:'14px 23px 11px'});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
-  mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'Georgia,"Times New Roman",serif',lineHeight:'1.15',field:'heading',z:4});
-  (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'Georgia,"Times New Roman",serif',lineHeight:'1.15',field:'heading',z:4});
+  (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10'}); _e.dataset.bulletParaSpacing='10';; _e.dataset.incomeAnchor='1'; return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'salemethod',z:4});
@@ -2747,7 +2747,7 @@ function buildEDM(W,H){
   mkR(34,1738,8,68,'rgb(23,232,143)',{z:4});
   mkT(76,1735,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'address1',z:4});
   mkT(76,1777,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'address2',z:4});
-  mkT(34,1871,532,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17'});
+  (function(){ var _e=mkT(34,1871,532,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'24px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17'}); _e.dataset.bulletParaSpacing='17'; applyPlainParaSpacing(_e.querySelector('.el-inner'),17); return _e; })();
   mkI(0,2493,600,368,'img3','Image',{z:2});
   mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.15',z:3});
   (function(){
@@ -2766,17 +2766,17 @@ function buildEDM(W,H){
     tagAgent(mkT(184,3433,402,40,gv('fn4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'agent4name',z:3}),4,3433);
     tagAgent(mkT(184,3478,402,40,gv('fp4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'agent4num',z:3}),4,3478);
     tagBelow(mkR(34,3572,532,85,'rgb(1, 42, 45)',{z:3}),3580);
-    tagBelow(mkT(59,3600,458,51,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'btn1',z:4}),3608);
+    tagBelow(mkT(59,3600,458,51,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'24px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'btn1',z:4}),3608);
     tagBelow((function(){ var _e=mkI(501,3589,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3614);
     tagBelow(mkR(34,3679,532,85,'rgb(15, 42, 45)',{z:3}),3705);
-    tagBelow(mkT(59,3708,458,51,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'btn2',z:4}),3733);
+    tagBelow(mkT(59,3708,458,51,'View Listing',{color:'rgb(255,255,255)',fontSize:'24px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'btn2',z:4}),3733);
     tagBelow((function(){ var _e=mkI(501,3699,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3725);
     tagBelow(mkR(34,3787,532,85,'rgb(1, 42, 45)',{z:3}),3812);
-    tagBelow(mkT(59,3815,458,51,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'btn3',z:4}),3841);
+    tagBelow(mkT(59,3815,458,51,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'24px',fontWeight:'500',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',field:'btn3',z:4}),3841);
     tagBelow((function(){ var _e=mkI(501,3804,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3829);
-    tagBelow(mkR(0,3900,600,113,'rgb(1, 42, 45)',{z:3}),3934);
-    tagBelow(mkT(23,4042,555,170,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.2',z:3}),4081);
-    tagBelow(mkSVGLogo(40,3931,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3965);
+    tagBelow(mkR(0,3920,600,113,'rgb(1, 42, 45)',{z:3}),3934);
+    tagBelow(mkT(23,4067,555,170,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Arial,"Franklin Gothic Medium",sans-serif',lineHeight:'1.2',z:3}),4081);
+    tagBelow(mkSVGLogo(40,3951,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3965);
   })();
   mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
   mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
@@ -4292,7 +4292,7 @@ async function exportEDMHtml(){
       if(!raw) return '';
       return raw.split('\n').filter(l=>l.trim()).map(l=>{
         const txt = l.replace(/^\u2013\s*/,'').trim();
-        return `<p style="font-family:Arial,sans-serif;font-size:28px;color:#ffffff;line-height:1.35;margin:0 0 17px;">${esc(txt)}</p>`;
+        return `<p style="font-family:Arial,sans-serif;font-size:24px;color:#ffffff;line-height:1.35;margin:0 0 17px;">${esc(txt)}</p>`;
       }).join('');
     }
 
@@ -4303,7 +4303,7 @@ async function exportEDMHtml(){
         const txt = l.startsWith('\u2013 ') ? l.slice(2) : l.replace(/^\u2013/,'').replace(/^-\s*/,'').trim();
         return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:17px;"><tr>`+
           `<td width="28" valign="top" style="font-family:Arial,sans-serif;font-size:28px;color:#333;line-height:1.2;">\u2013</td>`+
-          `<td style="font-family:Arial,sans-serif;font-size:28px;color:#333;line-height:1.2;">${esc(txt)}</td>`+
+          `<td style="font-family:Arial,sans-serif;font-size:24px;color:#333;line-height:1.2;">${esc(txt)}</td>`+
           `</tr></table>`;
       }).join('');
     }
@@ -4313,7 +4313,7 @@ async function exportEDMHtml(){
       return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;"><tr>`+
         `<td bgcolor="${bg}" style="padding:23px 40px;">`+
           `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>`+
-            `<td style="font-family:Arial,sans-serif;font-size:28px;font-weight:500;color:#ffffff;">${esc(label)}</td>`+
+            `<td style="font-family:Arial,sans-serif;font-size:24px;font-weight:500;color:#ffffff;">${esc(label)}</td>`+
             `<td align="right" width="51"><img src="${SVG_ARROW_WHITE}" width="51" height="51" alt="" style="display:block;width:51px;height:51px;"></td>`+
           `</tr></table>`+
         `</td></tr></table>`;
@@ -4401,7 +4401,7 @@ async function exportEDMHtml(){
       <td width="8" bgcolor="#17e88f" style="width:8px;">&nbsp;</td>
       <td width="34">&nbsp;</td>
       <td>
-        ${f_heading?`<p style="font-family:Georgia,"Times New Roman",serif;font-size:51px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
+        ${f_heading?`<p style="font-family:Georgia,"Times New Roman",serif;font-size:50px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
         ${f_subhead?`<p style="font-family:Georgia,"Times New Roman",serif;font-size:37px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 28px;">${esc(f_subhead)}</p>`:''}
         ${highlightRows(f_bullets)}
         ${f_income?`<p style="font-family:Arial,sans-serif;font-size:28px;font-weight:700;color:#ffffff;line-height:1.35;margin:11px 0 0;">${esc(f_income)}</p>`:''}
