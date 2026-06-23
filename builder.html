@@ -3527,7 +3527,7 @@ function collectState(){
   const _edmLinkListing=(document.getElementById('fedm-link-listing')||{}).value||'';
   const _edmLinkPortfolio=(document.getElementById('fedm-link-portfolio')||{}).value||'';
   const _edmLinkIMSubject=(document.getElementById('fedm-link-im-subject')||{}).value||'';
-  const _agentSlotsState=agentSlots.map(s=>({mode:s.mode,agentId:s.agentId,customName:s.customName,customPhone:s.customPhone,customEmail:s.customEmail||''}));
+  const _agentSlotsState=agentSlots.map(s=>({mode:s.mode,agentId:s.agentId,customName:s.customName,customPhone:s.customPhone,customEmail:s.customEmail||'',emailOverride:s.emailOverride||''}));
   return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
@@ -3676,7 +3676,7 @@ function saveTab(){debouncedPersist();}
 
 let agentList=[];
 let _pendingAgentSlots=null;
-let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:''}];
+let agentSlots=[{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:'',emailOverride:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:'',emailOverride:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:'',emailOverride:''},{mode:'db',agentId:'',customName:'',customPhone:'',customEmail:'',emailOverride:''}];
 
 async function loadAgents(){
   // Agents already fetched in init() - just re-render to ensure UI is current
@@ -3704,8 +3704,10 @@ function renderAgentBlocks(){
         <select class="agent-select" onchange="selectAgent(${i},this.value)">${optionsHtml}</select>
         ${agent ? `<div class="agent-preview">
           ${agent.photo ? `<img class="agent-thumb" src="${agent.photo}">` : '<div class="agent-thumb"></div>'}
-          <div class="agent-preview-info"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}<br><span style="color:#5a9a7a;font-size:9px;">${escAgt(agent.email||'no email')}</span></div>
-        </div>` : ''}
+          <div class="agent-preview-info" style="flex:1;"><strong style="color:#ccc">${escAgt(agent.name)}</strong><br>${escAgt(agent.phone||'')}</div>
+        </div>
+        ${agent.email ? `<div style="font-size:9px;color:#5a9a7a;margin-top:3px;">✉ ${escAgt(agent.email)}</div>` : '<div style="font-size:9px;color:#555;margin-top:3px;">No email on file — add via Hub</div>'}
+        ` : ''}
       ` : `
         <div class="agent-custom-fields">
           <input type="text" placeholder="Name" value="${escAgt(slot.customName)}" oninput="setCustomAgent(${i},'name',this.value)">
@@ -3718,6 +3720,11 @@ function renderAgentBlocks(){
 }
 
 function escAgt(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function setAgentEmailOverride(i, val){
+  agentSlots[i].emailOverride = val;
+  debouncedPersist();
+}
+
 function setAgentMode(i, mode){ agentSlots[i].mode=mode; if(mode==='db'){agentSlots[i].customName='';agentSlots[i].customPhone='';}else{agentSlots[i].agentId='';} syncAgentSlot(i); renderAgentBlocks(); }
 function selectAgent(i, agentId){ agentSlots[i].agentId=agentId; syncAgentSlot(i); renderAgentBlocks(); }
 function setCustomAgent(i, field, val){ if(field==='name') agentSlots[i].customName=val; else if(field==='phone') agentSlots[i].customPhone=val; else if(field==='email') agentSlots[i].customEmail=val; syncAgentSlot(i); }
