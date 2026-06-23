@@ -4218,59 +4218,9 @@ function repackEDMAgents(){
 // EXPORT EDM AS EMAIL HTML
 // ════════════════════════════════════════
 
-// Render the visible/cropped portion of an img element onto a Canvas, return dataURL
-function _edmCropImage(assetKey, canvasElW, canvasElH){
-  return new Promise(function(resolve){
-    // Find the live img element on the artwork for this assetKey
-    const art = document.getElementById('artwork');
-    const elDiv = art ? Array.from(art.querySelectorAll('.el')).find(function(e){
-      return e.dataset.assetKey === assetKey && e.dataset.type === 'img';
-    }) : null;
-    const imgEl = elDiv ? elDiv.querySelector('img') : null;
-    // Fallback src
-    const fallbackSrc = (assets && assets[assetKey]) ? assets[assetKey] : '';
-
-    function renderCrop(img){
-      try{
-        const cw = Math.round(canvasElW);
-        const ch = Math.round(canvasElH);
-        const cv = document.createElement('canvas');
-        cv.width = cw; cv.height = ch;
-        const ctx = cv.getContext('2d');
-        if(img.dataset.cropW && img.dataset.cropW !== '' && parseFloat(img.dataset.cropW) > 0){
-          // User has panned/zoomed — draw using crop coordinates
-          const iw = parseFloat(img.dataset.cropW);
-          const ih = parseFloat(img.dataset.cropH);
-          const ix = parseFloat(img.dataset.cropX);
-          const iy = parseFloat(img.dataset.cropY);
-          ctx.drawImage(img, -ix, -iy, iw, ih);
-        } else {
-          // Default object-fit:cover
-          const nw = img.naturalWidth, nh = img.naturalHeight;
-          if(!nw || !nh){ resolve(fallbackSrc); return; }
-          const scale = Math.max(cw/nw, ch/nh);
-          const dw = nw*scale, dh = nh*scale;
-          const dx = (cw-dw)/2, dy = (ch-dh)/2;
-          ctx.drawImage(img, dx, dy, dw, dh);
-        }
-        resolve(cv.toDataURL('image/jpeg', 0.90));
-      } catch(e){
-        // Likely cross-origin — return original src
-        resolve(fallbackSrc || (imgEl ? imgEl.src : ''));
-      }
-    }
-
-    if(!imgEl || !imgEl.src){ resolve(fallbackSrc); return; }
-    if(imgEl.complete && imgEl.naturalWidth > 0){ renderCrop(imgEl); }
-    else{
-      const tmp = new Image();
-      tmp.crossOrigin = 'anonymous';
-      tmp.onload = function(){ renderCrop(tmp); };
-      tmp.onerror = function(){ resolve(fallbackSrc); };
-      tmp.src = imgEl.src;
-    }
-  });
-}
+// ════════════════════════════════════════
+// EXPORT EDM AS EMAIL HTML
+// ════════════════════════════════════════
 
 async function exportEDMHtml(){
   if(!_adminMode){ alert('EDM HTML export is available to admins only.'); return; }
@@ -4286,8 +4236,22 @@ async function exportEDMHtml(){
 
     function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+    // Snapshot current canvas state
     const state = serializeTab();
     function fv(f){ const e=state.find(x=>x.field===f); return e?(e.content||'').trim():''; }
+
+    // ── Get image as dataURL, respecting crop/pan — reuses builder's imgToDataUrl ──
+    async function getImgDataUrl(assetKey){
+      const sv = state.find(x=>x.assetKey===assetKey && x.type==='img');
+      if(!sv) return '';
+      const src = (assets&&assets[assetKey]) ? assets[assetKey] : (sv.imgSrc||'');
+      if(!src) return '';
+      const isLogo = ['logo','logo2','logo3','logo4'].includes(assetKey);
+      const fit = isLogo ? 'contain' : 'cover';
+      const fw = parseFloat(sv.w)||100, fh = parseFloat(sv.h)||100;
+      const result = await imgToDataUrl(src, fw, fh, sv.cropX, sv.cropY, sv.cropW, sv.cropH, fit);
+      return result || src;
+    }
 
     // ── Field values ──
     const subject      = (document.getElementById('fedm-subject')||{}).value||'';
@@ -4295,11 +4259,11 @@ async function exportEDMHtml(){
     const f_heading    = fv(isAsian?'zh_heading':'heading');
     const f_subhead    = fv(isAsian?'zh_subheading':'subheading');
     const f_banner     = fv(isAsian?'zh_banner':'banner');
-    const f_bullets    = fv(isAsian?'zh_bullets':'bullets');       // plain lines, no dashes
-    const f_income     = fv(isAsian?'zh_income':'income');         // separate bold line
+    const f_bullets    = fv(isAsian?'zh_bullets':'bullets');
+    const f_income     = fv(isAsian?'zh_income':'income');
     const f_salemethod = fv(isAsian?'zh_salemethod':'salemethod');
     const f_saledate   = fv(isAsian?'zh_saledate':'saledate');
-    const f_bodycopy   = fv(isAsian?'zh_bodycopy':'bodycopy');     // dash-prefixed lines
+    const f_bodycopy   = fv(isAsian?'zh_bodycopy':'bodycopy');
     const f_btn1       = fv(isAsian?'zh_btn1':'btn1')||'Request Information Memorandum';
     const f_btn2       = fv(isAsian?'zh_btn2':'btn2')||'View Listing';
     const f_btn3       = fv(isAsian?'zh_btn3':'btn3')||'View Full Portfolio Line Up';
@@ -4308,80 +4272,60 @@ async function exportEDMHtml(){
     const f_addr1      = fv('address1');
     const f_addr2      = fv('address2');
 
-    // ── Images: render crop from live canvas ──
-    // Canvas element sizes from buildEDM: img1=212×150, img2=212×140, img3=212×130, logo=110×46, agent=40×40
-    const src1    = await _edmCropImage('img1',    212, 150);
-    const src2    = await _edmCropImage('img2',    212, 140);
-    const src3    = await _edmCropImage('img3',    212, 130);
-    const srcLogo = await _edmCropImage('logo',    110,  46);
-    const agents  = await Promise.all([1,2,3,4].map(async i=>({
-      name:  fv('agent'+i+'name'),
-      phone: fv('agent'+i+'num'),
-      photo: await _edmCropImage('agent'+i+'photo', 40, 40),
-    })));
-    const activeAgents = agents.filter(a=>a.name||a.phone);
+    // ── Load all images with correct cropping ──
+    const src1    = await getImgDataUrl('img1');
+    const src2    = await getImgDataUrl('img2');
+    const src3    = await getImgDataUrl('img3');
+    const srcLogo = await getImgDataUrl('logo');
+    const agentImgs = await Promise.all([1,2,3,4].map(i=>getImgDataUrl('agent'+i+'photo')));
+    const agents = [1,2,3,4].map((i,idx)=>({
+      name:fv('agent'+i+'name'), phone:fv('agent'+i+'num'), photo:agentImgs[idx]
+    })).filter(a=>a.name||a.phone);
 
-    // ── Fixed email font sizes (px) — not scaled, these are screen reading sizes ──
-    const FS = {
-      heading:   '22px',  // Georgia — matches artwork weight visually
-      subhead:   '15px',
-      highlight: '14px',  // plain lines in dark panel
-      income:    '14px',  // bold income line
-      salemethod:'15px',
-      saledate:  '11px',
-      addr:      '14px',
-      bodycopy:  '13px',  // dash lines on white bg
-      contact:   '14px',
-      agent:     '13px',
-      btn:       '12px',
-      disclaimer:'8px',
-    };
-
-    // ── Highlight lines — plain (no dash), one per line ──
-    function highlightRows(raw, color){
+    // ── HTML builders ──
+    // Highlights: plain lines, no dash prefix (canvas bullets:'0')
+    function highlightRows(raw){
       if(!raw) return '';
       return raw.split('\n').filter(l=>l.trim()).map(l=>{
-        // Strip any accidental leading dash
-        const txt = l.replace(/^\u2013\s*/,'').replace(/^-\s*/,'');
-        return `<p style="font-family:Arial,sans-serif;font-size:${FS.highlight};color:${color};line-height:1.35;margin:0 0 6px;">${esc(txt)}</p>`;
+        const txt = l.replace(/^\u2013\s*/,'').trim();
+        return `<p style="font-family:Arial,sans-serif;font-size:13px;color:#ffffff;line-height:1.4;margin:0 0 7px;">${esc(txt)}</p>`;
       }).join('');
     }
 
-    // ── Body copy lines — dash + hanging indent via two-cell table ──
-    function bodyRows(raw, color){
+    // Body copy: dash + hanging indent (canvas bullets:'1')
+    function bodyRows(raw){
       if(!raw) return '';
       return raw.split('\n').filter(l=>l.trim()).map(l=>{
-        const stripped = l.startsWith('\u2013 ') ? l.slice(2) : l.startsWith('\u2013') ? l.slice(1).trim() : l.replace(/^-\s*/,'');
-        return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;">`+
-          `<tr>`+
-          `<td width="12" valign="top" style="font-family:Arial,sans-serif;font-size:${FS.bodycopy};color:${color};line-height:1.4;">\u2013</td>`+
-          `<td style="font-family:Arial,sans-serif;font-size:${FS.bodycopy};color:${color};line-height:1.4;">${esc(stripped)}</td>`+
+        const txt = l.startsWith('\u2013 ') ? l.slice(2) : l.replace(/^\u2013/,'').replace(/^-\s*/,'').trim();
+        return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>`+
+          `<td width="14" valign="top" style="font-family:Arial,sans-serif;font-size:13px;color:#333;line-height:1.4;">\u2013</td>`+
+          `<td style="font-family:Arial,sans-serif;font-size:13px;color:#333;line-height:1.4;">${esc(txt)}</td>`+
           `</tr></table>`;
       }).join('');
     }
 
     function ctaRow(label, bg){
       if(!label) return '';
-      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:5px;">`+
-        `<tr><td bgcolor="${bg}" style="padding:10px 16px;">`+
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:5px;"><tr>`+
+        `<td bgcolor="${bg}" style="padding:10px 16px;">`+
           `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>`+
-            `<td style="font-family:Arial,sans-serif;font-size:${FS.btn};font-weight:500;color:#ffffff;">${esc(label)}</td>`+
+            `<td style="font-family:Arial,sans-serif;font-size:12px;font-weight:500;color:#ffffff;">${esc(label)}</td>`+
             `<td align="right" width="22"><img src="${SVG_ARROW_WHITE}" width="20" height="20" alt="" style="display:block;width:20px;height:20px;"></td>`+
           `</tr></table>`+
         `</td></tr></table>`;
     }
 
     const bannerRow = f_banner
-      ? `<tr><td bgcolor="#012a2d" style="padding:0;" align="right">`+
+      ? `<tr><td bgcolor="#012a2d" align="right" style="padding:0;">`+
           `<table cellpadding="0" cellspacing="0" border="0" align="right"><tr>`+
             `<td bgcolor="#003f2d" style="padding:6px 10px 5px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;">${esc(f_banner)}</td>`+
           `</tr></table></td></tr>`
       : '';
 
-    // Logo: height fixed, width auto — never squash
+    // Logo: height:auto width:auto — never squash, just set max-height
     const logoRow = srcLogo
-      ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">`+
-          `<tr><td><img src="${esc(srcLogo)}" height="46" alt="Logo" style="display:block;height:46px;width:auto;max-height:46px;"></td></tr>`+
+      ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">`+
+          `<tr><td><img src="${esc(srcLogo)}" alt="Logo" style="display:block;height:52px;width:auto;max-height:52px;"></td></tr>`+
         `</table>`
       : '';
 
@@ -4390,20 +4334,20 @@ async function exportEDMHtml(){
           `<table cellpadding="0" cellspacing="0" border="0"><tr>`+
             `<td width="3" bgcolor="#17e88f" style="width:3px;line-height:1;">&nbsp;</td>`+
             `<td width="10">&nbsp;</td><td>`+
-            (f_addr1?`<p style="font-family:Arial,sans-serif;font-size:${FS.addr};font-weight:600;color:#ffffff;margin:0 0 2px;">${esc(f_addr1)}</p>`:'')+
-            (f_addr2?`<p style="font-family:Arial,sans-serif;font-size:${FS.addr};font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:'')+
+            (f_addr1?`<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#ffffff;margin:0 0 2px;">${esc(f_addr1)}</p>`:'')+
+            (f_addr2?`<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:500;color:#ffffff;margin:0;">${esc(f_addr2)}</p>`:'')+
           `</td></tr></table></td></tr>`
       : '';
 
-    const agentRowsHtml = activeAgents.map(a=>{
+    const agentRowsHtml = agents.map(a=>{
       const photo = a.photo
-        ? `<img src="${esc(a.photo)}" width="46" height="46" alt="${esc(a.name)}" style="display:block;width:46px;height:46px;border-radius:2px;">`
-        : `<div style="width:46px;height:46px;background:#e0e0e0;"></div>`;
-      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">`+
-        `<tr><td width="58" valign="top">${photo}</td>`+
+        ? `<img src="${esc(a.photo)}" width="44" height="44" alt="${esc(a.name)}" style="display:block;width:44px;height:44px;border-radius:2px;">`
+        : `<div style="width:44px;height:44px;background:#e0e0e0;display:block;"></div>`;
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>`+
+        `<td width="56" valign="top">${photo}</td>`+
         `<td valign="middle" style="padding-left:10px;">`+
-          `<p style="font-family:Arial,sans-serif;font-size:${FS.agent};font-weight:600;color:#012a2d;margin:0 0 2px;">${esc(a.name)}</p>`+
-          `<p style="font-family:Arial,sans-serif;font-size:${FS.agent};color:#444;margin:0;">${esc(a.phone)}</p>`+
+          `<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:600;color:#012a2d;margin:0 0 2px;">${esc(a.name)}</p>`+
+          `<p style="font-family:Arial,sans-serif;font-size:13px;color:#444;margin:0;">${esc(a.phone)}</p>`+
         `</td></tr></table>`;
     }).join('');
 
@@ -4431,7 +4375,7 @@ async function exportEDMHtml(){
 <tr><td align="center" style="padding:20px 0;">
 <table width="${EMAIL_W}" cellpadding="0" cellspacing="0" border="0" style="max-width:${EMAIL_W}px;">
 
-  <!-- HEADER: Portfolio + CBRE logos -->
+  <!-- HEADER -->
   <tr><td bgcolor="#012a2d" style="padding:8px 14px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td valign="middle"><img src="${SVG_PORTFOLIO_WHITE}" width="156" height="60" alt="Portfolio" style="display:block;width:156px;height:60px;"></td>
@@ -4447,16 +4391,16 @@ async function exportEDMHtml(){
   <!-- BANNER -->
   ${bannerRow}
 
-  <!-- DARK PANEL: heading + highlight points + income + logo -->
-  <tr><td bgcolor="#012a2d" style="padding:18px 16px 12px;">
+  <!-- DARK PANEL -->
+  <tr><td bgcolor="#012a2d" style="padding:16px 16px 12px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td width="3" bgcolor="#17e88f" style="width:3px;">&nbsp;</td>
       <td width="14">&nbsp;</td>
       <td>
-        ${f_heading?`<p style="font-family:Georgia,serif;font-size:${FS.heading};font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'5px':'14px'};">${esc(f_heading)}</p>`:''}
-        ${f_subhead?`<p style="font-family:Georgia,serif;font-size:${FS.subhead};font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 14px;">${esc(f_subhead)}</p>`:''}
-        ${highlightRows(f_bullets,'#ffffff')}
-        ${f_income?`<p style="font-family:Arial,sans-serif;font-size:${FS.income};font-weight:700;color:#ffffff;line-height:1.35;margin:6px 0 0;">${esc(f_income)}</p>`:''}
+        ${f_heading?`<p style="font-family:Georgia,serif;font-size:20px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'5px':'12px'};">${esc(f_heading)}</p>`:''}
+        ${f_subhead?`<p style="font-family:Georgia,serif;font-size:14px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 12px;">${esc(f_subhead)}</p>`:''}
+        ${highlightRows(f_bullets)}
+        ${f_income?`<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#ffffff;line-height:1.4;margin:4px 0 0;">${esc(f_income)}</p>`:''}
         ${logoRow}
       </td>
     </tr></table>
@@ -4464,10 +4408,10 @@ async function exportEDMHtml(){
 
   <!-- SALE METHOD + DATE -->
   ${(f_salemethod||f_saledate)?
-  `<tr><td bgcolor="#012a2d" style="padding:2px 16px 18px 33px;">`+
-    (f_salemethod?`<p style="font-family:Arial,sans-serif;font-size:${FS.salemethod};font-weight:700;color:#ffffff;margin:0 0 2px;">${esc(f_salemethod)}</p>`:'')+
-    (f_saledate?`<p style="font-family:Arial,sans-serif;font-size:${FS.saledate};color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:'')+
-  `</td></tr>`:''}
+    `<tr><td bgcolor="#012a2d" style="padding:2px 16px 16px 33px;">`+
+      (f_salemethod?`<p style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;margin:0 0 3px;">${esc(f_salemethod)}</p>`:'')+
+      (f_saledate?`<p style="font-family:Arial,sans-serif;font-size:11px;color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:'')+
+    `</td></tr>`:''}
 
   <!-- SECOND IMAGE -->
   <tr><td style="padding:0;font-size:0;line-height:0;">
@@ -4477,8 +4421,8 @@ async function exportEDMHtml(){
   <!-- ADDRESS BAR -->
   ${addrRow}
 
-  <!-- BODY COPY (dash lines, white bg) -->
-  ${f_bodycopy?`<tr><td bgcolor="#ffffff" style="padding:16px 14px;">${bodyRows(f_bodycopy,'#333333')}</td></tr>`:''}
+  <!-- BODY COPY -->
+  ${f_bodycopy?`<tr><td bgcolor="#ffffff" style="padding:16px 14px;">${bodyRows(f_bodycopy)}</td></tr>`:''}
 
   <!-- THIRD IMAGE -->
   <tr><td style="padding:0;font-size:0;line-height:0;">
@@ -4486,10 +4430,10 @@ async function exportEDMHtml(){
   </td></tr>
 
   <!-- CONTACT HEADING -->
-  ${f_contact?`<tr><td bgcolor="#ffffff" style="padding:16px 14px 10px;"><p style="font-family:Arial,sans-serif;font-size:${FS.contact};font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p></td></tr>`:''}
+  ${f_contact?`<tr><td bgcolor="#ffffff" style="padding:16px 14px 10px;"><p style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p></td></tr>`:''}
 
   <!-- AGENTS -->
-  ${agentRowsHtml?`<tr><td bgcolor="#ffffff" style="padding:8px 14px 6px;">${agentRowsHtml}</td></tr>`:''}
+  ${agentRowsHtml?`<tr><td bgcolor="#ffffff" style="padding:8px 14px 4px;">${agentRowsHtml}</td></tr>`:''}
 
   <!-- CTA BUTTONS -->
   <tr><td bgcolor="#ffffff" style="padding:6px 14px 20px;">
@@ -4503,7 +4447,7 @@ async function exportEDMHtml(){
     <img src="${SVG_CBRE_WHITE}" height="16" alt="CBRE" style="display:block;height:16px;width:auto;">
   </td></tr>
   <tr><td bgcolor="#012a2d" style="padding:0 10px 14px;">
-    <p style="font-family:Arial,sans-serif;font-size:${FS.disclaimer};color:#999;line-height:1.3;margin:0;">${esc(f_disclaimer)}</p>
+    <p style="font-family:Arial,sans-serif;font-size:8px;color:#999;line-height:1.3;margin:0;">${esc(f_disclaimer)}</p>
   </td></tr>
 
 </table>
