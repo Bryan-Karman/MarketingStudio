@@ -4297,10 +4297,8 @@ async function exportEDMHtml(){
         });
       }
 
-      // Photos: use imgToDataUrl for crop/cover handling
-      const fw = parseFloat(sv.w)||600, fh = parseFloat(sv.h)||400;
-      const result = await imgToDataUrl(src, fw, fh, sv.cropX, sv.cropY, sv.cropW, sv.cropH, 'cover');
-      return result || src;
+      // Photos: return source URL directly
+      return src;
     }
 
     // Field values
@@ -4419,45 +4417,34 @@ async function exportEDMHtml(){
     // Image heights from canvas (now 600px wide): img1=425, img2=396, img3=368
     const html =
 `<!DOCTYPE html>
-<!-- EDM Export v3 - built ${new Date().toISOString()} -->
+<!-- EDM Export v4 -->
 <html lang="${isAsian?'zh-CN':'en'}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=600">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<!-- Subject: ${esc(subject)} -->
-<!-- Preview: ${esc(preview)} -->
 <title>${esc(subject||f_heading||'Property EDM')}</title>
 <style>
   body,table,td,p,a{margin:0;padding:0;border:0;}
-  body{background:#ffffff;font-family:Arial,sans-serif;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;}
+  body{background:#f0f0f0;font-family:Arial,sans-serif;-webkit-text-size-adjust:none;}
   img{display:block;border:0;outline:none;text-decoration:none;}
   table{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;}
-  .email-wrap{width:600px;margin:0 auto;}
 </style>
 </head>
 <body>
-<div class="email-wrap">
-<table width="600" cellpadding="0" cellspacing="0" border="0">
-
-  <!-- HEADER -->
-  <tr><td bgcolor="#012a2d" width="600" style="width:600px;padding:28px 40px;">
+<center>
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;">
+  <tr><td width="600" bgcolor="#012a2d" style="width:600px;padding:28px 40px;">
     <table width="520" cellpadding="0" cellspacing="0" border="0"><tr>
       <td valign="middle"><img src="${SVG_PORTFOLIO_WHITE}" width="156" height="59" alt="Portfolio" style="display:block;width:156px;height:59px;"></td>
       <td align="right" valign="middle"><img src="${SVG_CBRE_WHITE}" width="170" height="42" alt="CBRE" style="display:block;width:170px;height:42px;"></td>
     </tr></table>
   </td></tr>
-
-  <!-- HERO IMAGE -->
   <tr><td width="600" style="width:600px;padding:0;font-size:0;line-height:0;">
-    <img src="${esc(src1)}" width="600" alt="Property" style="display:block;width:600px;max-width:600px;">
+    <img src="${esc(src1)}" width="600" alt="Property" style="display:block;width:600px;">
   </td></tr>
-
-  <!-- BANNER -->
   ${bannerRow}
-
-  <!-- DARK PANEL -->
-  <tr><td bgcolor="#012a2d" width="600" style="width:600px;padding:45px 40px 28px 48px;">
+  <tr><td width="600" bgcolor="#012a2d" style="width:600px;padding:45px 40px 28px 48px;">
     <table width="504" cellpadding="0" cellspacing="0" border="0"><tr>
       <td style="border-left:8px solid #17e88f;padding-left:34px;">
         ${f_heading?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:50px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
@@ -4467,55 +4454,30 @@ async function exportEDMHtml(){
       </td>
     </tr></table>
   </td></tr>
-
-  <!-- SALE METHOD + DATE -->
-  ${(f_salemethod||f_saledate)?
-    `<tr><td bgcolor="#012a2d" width="600" style="width:600px;padding:6px 40px 45px 82px;">`+
-      (f_salemethod?`<p style="font-family:Arial,sans-serif;font-size:37px;font-weight:700;color:#ffffff;margin:0 0 6px;">${esc(f_salemethod)}</p>`:'')+
-      (f_saledate?`<p style="font-family:Arial,sans-serif;font-size:25px;color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:'')+
-    `</td></tr>`:''}
-
-  <!-- SECOND IMAGE -->
+  ${(f_salemethod||f_saledate)?`<tr><td width="600" bgcolor="#012a2d" style="width:600px;padding:6px 40px 45px 82px;">`+(f_salemethod?`<p style="font-family:Arial,sans-serif;font-size:37px;font-weight:700;color:#ffffff;margin:0 0 6px;">${esc(f_salemethod)}</p>`:'')+  (f_saledate?`<p style="font-family:Arial,sans-serif;font-size:25px;color:#ffffff;margin:0;">${esc(f_saledate)}</p>`:'')+`</td></tr>`:''}
   <tr><td width="600" style="width:600px;padding:0;font-size:0;line-height:0;">
-    <img src="${esc(src2)}" width="600" alt="Property 2" style="display:block;width:600px;max-width:600px;">
+    <img src="${esc(src2)}" width="600" alt="Property 2" style="display:block;width:600px;">
   </td></tr>
-
-  <!-- ADDRESS BAR -->
   ${addrRow}
-
-  <!-- BODY COPY -->
-  ${f_bodycopy?`<tr><td bgcolor="#ffffff" width="600" style="width:600px;padding:40px 34px;">${bodyRows(f_bodycopy)}</td></tr>`:''}
-
-  <!-- THIRD IMAGE -->
+  ${f_bodycopy?`<tr><td width="600" bgcolor="#ffffff" style="width:600px;padding:40px 34px;">${bodyRows(f_bodycopy)}</td></tr>`:''}
   <tr><td width="600" style="width:600px;padding:0;font-size:0;line-height:0;">
-    <img src="${esc(src3)}" width="600" alt="Property 3" style="display:block;width:600px;max-width:600px;">
+    <img src="${esc(src3)}" width="600" alt="Property 3" style="display:block;width:600px;">
   </td></tr>
-
-  <!-- CONTACT HEADING -->
-  ${f_contact?`<tr><td bgcolor="#ffffff" width="600" style="width:600px;padding:45px 34px 28px;"><p style="font-family:Arial,sans-serif;font-size:34px;font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p></td></tr>`:''}
-
-  <!-- AGENTS -->
-  ${agentRowsHtml?`<tr><td bgcolor="#ffffff" width="600" style="width:600px;padding:8px 34px 4px;">${agentRowsHtml}</td></tr>`:''}
-
-  <!-- CTA BUTTONS -->
-  <tr><td bgcolor="#ffffff" width="600" style="width:600px;padding:6px 34px 40px;">
-    ${ctaRow(f_btn1,'#012a2d')}
-    ${ctaRow(f_btn2,'#0f2a2d')}
-    ${ctaRow(f_btn3,'#012a2d')}
+  ${f_contact?`<tr><td width="600" bgcolor="#ffffff" style="width:600px;padding:45px 34px 28px;"><p style="font-family:Arial,sans-serif;font-size:34px;font-weight:700;color:#012a2d;line-height:1.15;margin:0;">${esc(f_contact)}</p></td></tr>`:''}
+  ${agentRowsHtml?`<tr><td width="600" bgcolor="#ffffff" style="width:600px;padding:8px 34px 4px;">${agentRowsHtml}</td></tr>`:''}
+  <tr><td width="600" bgcolor="#ffffff" style="width:600px;padding:6px 34px 40px;">
+    ${ctaRow(f_btn1,'#012a2d')}${ctaRow(f_btn2,'#0f2a2d')}${ctaRow(f_btn3,'#012a2d')}
   </td></tr>
-
-  <!-- FOOTER -->
-  <tr><td bgcolor="#012a2d" width="600" style="width:600px;padding:34px 40px 23px;">
+  <tr><td width="600" bgcolor="#012a2d" style="width:600px;padding:34px 40px 23px;">
     <img src="${SVG_CBRE_WHITE}" width="524" height="45" alt="CBRE" style="display:block;width:524px;height:45px;">
   </td></tr>
-  <tr><td bgcolor="#012a2d" width="600" style="width:600px;padding:0 23px 40px;">
+  <tr><td width="600" bgcolor="#012a2d" style="width:600px;padding:0 23px 40px;">
     <p style="font-family:Arial,sans-serif;font-size:11px;color:#999;line-height:1.3;margin:0;">${esc(f_disclaimer)}</p>
   </td></tr>
-
 </table>
-</div>
+</center>
 </body>
-</html>`;;
+</html>`;;;
 
     const blob=new Blob([html],{type:'text/html'});
     const a=document.createElement('a');
