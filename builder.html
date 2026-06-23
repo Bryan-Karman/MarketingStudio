@@ -3690,10 +3690,7 @@ function applyState(data,skipZoom=false){
         (headingEl.innerStyle||'').indexOf('rgb(0, 0, 0)') > -1 ||
         (headingEl.innerStyle||'').indexOf('51px') > -1
       );
-      const hasOldIncomeEl = st.some(function(sv){
-        return sv.field==='income' && parseFloat(sv.y||0) < 1200;
-      });
-      if(hasOldSize || hasWrongHeading || hasOldIncomeEl){ delete savedStates[tabIdx]; }
+      if(hasOldSize || hasWrongHeading){ delete savedStates[tabIdx]; }
     });
     if(data.fields){
       const f=data.fields;
@@ -4271,8 +4268,7 @@ async function exportEDMHtml(){
       if(!src) return '';
       const isLogo = ['logo','logo2','logo3','logo4'].includes(assetKey);
 
-      // Logos: load source directly, strip white pixels → output transparent PNG
-      // Do NOT pass through imgToDataUrl (which outputs JPEG, flattening alpha to black)
+      // Logos: render at canvas element size with contain fit, strip white → transparent PNG
       if(isLogo){
         return new Promise(resolve=>{
           const img = new Image();
@@ -4281,11 +4277,18 @@ async function exportEDMHtml(){
             const nw = img.naturalWidth, nh = img.naturalHeight;
             if(!nw||!nh){ resolve(src); return; }
             try{
+              // Render at canvas element dimensions (contain fit) to match artwork
+              const cw = fw, ch = fh;
               const cv = document.createElement('canvas');
-              cv.width = nw; cv.height = nh;
+              cv.width = cw; cv.height = ch;
               const ctx = cv.getContext('2d');
-              ctx.drawImage(img,0,0);
-              const d = ctx.getImageData(0,0,nw,nh);
+              // contain: scale to fit within cw×ch
+              const scale = Math.min(cw/nw, ch/nh);
+              const dw = nw*scale, dh = nh*scale;
+              const dx = (cw-dw)/2, dy = (ch-dh)/2;
+              ctx.drawImage(img, dx, dy, dw, dh);
+              // Strip near-white pixels
+              const d = ctx.getImageData(0,0,cw,ch);
               for(let i=0;i<d.data.length;i+=4){
                 const r=d.data[i],g=d.data[i+1],b=d.data[i+2];
                 if(r>230&&g>230&&b>230) d.data[i+3]=0;
@@ -4347,10 +4350,19 @@ async function exportEDMHtml(){
       }).join('');
     }
 
-    // Body rows: dash + hanging indent — all lines same weight including income
+    // Body rows: dash + hanging indent
+    // Always read income directly from input field and append as last line
+    const _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
     function bodyRows(raw){
-      if(!raw) return '';
-      return raw.split('\n').filter(l=>l.trim()).map(l=>{
+      const lines = (raw||'').split('\n').filter(l=>l.trim());
+      // Append income as last line if not already present
+      if(_fiVal){
+        const lastLine = lines[lines.length-1]||'';
+        const lastClean = lastLine.replace(/^\u2013\s*/,'').trim();
+        if(lastClean !== _fiVal) lines.push('\u2013 '+_fiVal);
+      }
+      if(!lines.length) return '';
+      return lines.map(l=>{
         const txt = l.startsWith('\u2013 ') ? l.slice(2) : l.replace(/^\u2013/,'').replace(/^-\s*/,'').trim();
         return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:17px;"><tr>`+
           `<td width="28" valign="top" style="font-family:Arial,sans-serif;font-size:24px;color:#333;line-height:1.2;">–</td>`+
@@ -4377,10 +4389,14 @@ async function exportEDMHtml(){
           `</tr></table></td></tr>`
       : '';
 
+    // Get logo element dimensions from state for correct sizing
+    const _logoSv = state.find(x=>x.assetKey==='logo'&&x.type==='img');
+    const _logoW = _logoSv ? parseFloat(_logoSv.w)||311 : 311;
+    const _logoH = _logoSv ? parseFloat(_logoSv.h)||130 : 130;
     const logoRow = srcLogo
       ? `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;"><tr>`+
           `<td>`+
-            `<img src="${esc(srcLogo)}" height="130" alt="Logo" style="display:block;height:130px;width:auto;">`+
+            `<img src="${esc(srcLogo)}" width="${_logoW}" height="${_logoH}" alt="Logo" style="display:block;width:${_logoW}px;height:${_logoH}px;">`+
           `</td></tr></table>`
       : '';
 
@@ -4449,9 +4465,9 @@ async function exportEDMHtml(){
 
   <!-- DARK PANEL -->
   <tr><td bgcolor="#012a2d" style="padding:45px 40px 28px;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;"><tr>
       <td style="width:8px;min-width:8px;max-width:8px;background-color:#17e88f;font-size:1px;line-height:1;">&nbsp;</td>
-      <td width="34" style="font-size:1px;">&nbsp;</td>
+      <td style="width:34px;min-width:34px;font-size:1px;">&nbsp;</td>
       <td>
         ${f_heading?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:50px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
         ${f_subhead?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:37px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 28px;">${esc(f_subhead)}</p>`:''}
