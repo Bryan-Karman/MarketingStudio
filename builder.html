@@ -4270,9 +4270,38 @@ async function exportEDMHtml(){
       const src = (assets&&assets[assetKey]) ? assets[assetKey] : (sv.imgSrc||'');
       if(!src) return '';
       const isLogo = ['logo','logo2','logo3','logo4'].includes(assetKey);
-      const fit = isLogo ? 'contain' : 'cover';
+
+      // Logos: load source directly, strip white pixels → output transparent PNG
+      // Do NOT pass through imgToDataUrl (which outputs JPEG, flattening alpha to black)
+      if(isLogo){
+        return new Promise(resolve=>{
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function(){
+            const nw = img.naturalWidth, nh = img.naturalHeight;
+            if(!nw||!nh){ resolve(src); return; }
+            try{
+              const cv = document.createElement('canvas');
+              cv.width = nw; cv.height = nh;
+              const ctx = cv.getContext('2d');
+              ctx.drawImage(img,0,0);
+              const d = ctx.getImageData(0,0,nw,nh);
+              for(let i=0;i<d.data.length;i+=4){
+                const r=d.data[i],g=d.data[i+1],b=d.data[i+2];
+                if(r>230&&g>230&&b>230) d.data[i+3]=0;
+              }
+              ctx.putImageData(d,0,0);
+              resolve(cv.toDataURL('image/png'));
+            }catch(e){ resolve(src); }
+          };
+          img.onerror = ()=>resolve(src);
+          img.src = src;
+        });
+      }
+
+      // Photos: use imgToDataUrl for crop/cover handling
       const fw = parseFloat(sv.w)||600, fh = parseFloat(sv.h)||400;
-      const result = await imgToDataUrl(src, fw, fh, sv.cropX, sv.cropY, sv.cropW, sv.cropH, fit);
+      const result = await imgToDataUrl(src, fw, fh, sv.cropX, sv.cropY, sv.cropW, sv.cropH, 'cover');
       return result || src;
     }
 
@@ -4318,23 +4347,14 @@ async function exportEDMHtml(){
       }).join('');
     }
 
-    // Body rows: dash + hanging indent (bullets:'1' in canvas)
-    // Income appended as last line, bold
-    const _incomeVal = (document.getElementById('fi')||{}).value||'';
+    // Body rows: dash + hanging indent — all lines same weight including income
     function bodyRows(raw){
-      if(!raw && !_incomeVal) return '';
-      const lines = (raw||'').split('\n').filter(l=>l.trim());
-      // Append income if not already in body
-      if(_incomeVal && !raw.includes(_incomeVal)){
-        lines.push('\u2013 '+_incomeVal);
-      }
-      return lines.map((l,idx)=>{
-        const isIncome = _incomeVal && idx === lines.length-1 && l.includes(_incomeVal);
+      if(!raw) return '';
+      return raw.split('\n').filter(l=>l.trim()).map(l=>{
         const txt = l.startsWith('\u2013 ') ? l.slice(2) : l.replace(/^\u2013/,'').replace(/^-\s*/,'').trim();
-        const fw = isIncome ? '700' : '400';
         return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:17px;"><tr>`+
-          `<td width="28" valign="top" style="font-family:Arial,sans-serif;font-size:24px;font-weight:${fw};color:#333;line-height:1.2;">–</td>`+
-          `<td style="font-family:Arial,sans-serif;font-size:24px;font-weight:${fw};color:#333;line-height:1.2;">${esc(txt)}</td>`+
+          `<td width="28" valign="top" style="font-family:Arial,sans-serif;font-size:24px;color:#333;line-height:1.2;">–</td>`+
+          `<td style="font-family:Arial,sans-serif;font-size:24px;color:#333;line-height:1.2;">${esc(txt)}</td>`+
           `</tr></table>`;
       }).join('');
     }
@@ -4358,9 +4378,9 @@ async function exportEDMHtml(){
       : '';
 
     const logoRow = srcLogo
-      ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;"><tr>`+
-          `<td align="left" style="background:transparent;">`+
-            `<img src="${esc(srcLogo)}" height="130" alt="Logo" style="display:block;height:130px;width:auto;max-width:311px;background:transparent;">`+
+      ? `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;"><tr>`+
+          `<td>`+
+            `<img src="${esc(srcLogo)}" height="130" alt="Logo" style="display:block;height:130px;width:auto;">`+
           `</td></tr></table>`
       : '';
 
@@ -4430,7 +4450,7 @@ async function exportEDMHtml(){
   <!-- DARK PANEL -->
   <tr><td bgcolor="#012a2d" style="padding:45px 40px 28px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="8" bgcolor="#17e88f" style="width:8px;font-size:1px;line-height:1;">&nbsp;</td>
+      <td style="width:8px;min-width:8px;max-width:8px;background-color:#17e88f;font-size:1px;line-height:1;">&nbsp;</td>
       <td width="34" style="font-size:1px;">&nbsp;</td>
       <td>
         ${f_heading?`<p style="font-family:Georgia,'Times New Roman',serif;font-size:50px;font-weight:400;color:#ffffff;line-height:1.15;margin:0 0 ${f_subhead?'11px':'28px'};">${esc(f_heading)}</p>`:''}
