@@ -733,7 +733,8 @@ function createElement(cfg){
         debouncedPersist();
       }
       inner._inlineInputHandler=_inlineInputHandler;
-      inner.addEventListener('input',_inlineInputHandler);
+      inner.addEventListener('input', _inlineInputHandler);
+      inner.addEventListener('keyup', _inlineInputHandler);
       inner.onkeydown=ev=>{
         handleRtbKeydown(ev, inner);
         if(ev.key==='Enter' && !ev.shiftKey && inner.style.whiteSpace==='pre-wrap'){
@@ -763,36 +764,34 @@ function createElement(cfg){
           inner.style.cursor='';
           inner.onkeydown=null;
           if(inner._inlineInputHandler){
-            inner.removeEventListener('input',inner._inlineInputHandler);
+            inner.removeEventListener('input', inner._inlineInputHandler);
+            inner.removeEventListener('keyup', inner._inlineInputHandler);
             inner._inlineInputHandler=null;
           }
           _savedRange = null;
           hideRtb();
-          // Save rich HTML content (preserves <b>, <i> etc)
-          // Re-read field from DOM in case closure ref is stale
+          // Write canvas text back to sidebar and sync everything
           const _blurEl = inner.closest('.el');
-          const field = _blurEl ? _blurEl.dataset.field : '';
-          if(field){
-            const sidebarId=fieldToSidebarId(field);
-            if(sidebarId){
-              const sidebarEl=document.getElementById(sidebarId);
-              if(sidebarEl){
-                const _managedFields = ['bullets','bodycopy'];
-                if(_managedFields.indexOf(field) === -1){
-                  var _rawText = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ');
-                  sidebarEl.value = _rawText.trim();
-                  // Dispatch input event so any listeners (char counters etc) also update
-                  sidebarEl.dispatchEvent(new Event('input', {bubbles:true}));
-                }
-              }
+          const _blurField = _blurEl ? _blurEl.dataset.field : '';
+          const _managedFields = ['bullets','bodycopy'];
+          if(_blurField && _managedFields.indexOf(_blurField) === -1){
+            const _sid = fieldToSidebarId(_blurField);
+            const _sel = _sid ? document.getElementById(_sid) : null;
+            if(_sel){
+              const _txt = (inner.innerText||inner.textContent||'')
+                .replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+              _sel.value = _txt;
+              // Call exactly what the sidebar oninput calls
+              if(typeof clEnforce==='function') clEnforce(_sid);
+              globalSync();
+              debouncedPersist();
             }
+          } else {
+            // managed field or no field — just sync and save
+            globalSync();
+            debouncedPersist();
           }
-          // Store rich HTML in el dataset so serializeTab can save it
           el.dataset.richHtml = inner.innerHTML;
-          // Sync ALL field elements now that editing is done
-          // (globalSync skips contentEditable=true so it's safe now)
-          globalSync();
-          debouncedPersist();
         }, 80);
       };
     });
