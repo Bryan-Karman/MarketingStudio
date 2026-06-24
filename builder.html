@@ -774,33 +774,38 @@ function createElement(cfg){
           const _blurEl = inner.closest('.el');
           const _blurField = _blurEl ? _blurEl.dataset.field : '';
           console.log('[INLINE EDIT] blur fired. field:', _blurField, 'innerText:', (inner.innerText||'').slice(0,50));
-          const _managedFields = ['bullets','bodycopy'];
-          if(_blurField && _managedFields.indexOf(_blurField) === -1){
-            const _sid = fieldToSidebarId(_blurField);
-            const _sel = _sid ? document.getElementById(_sid) : null;
-            if(_sel){
-              const _txt = (inner.innerText||inner.textContent||'')
-                .replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
-              console.log('[INLINE EDIT] sidebar id:', _sid, 'old value:', _sel.value, 'new value:', _txt);
-              // 1. Update sidebar value
-              _sel.value = _txt;
-              console.log('[INLINE EDIT] sidebar after set:', _sel.value);
-              // 2. Update savedStates directly so restoreTab uses new value
-              if(savedStates[currentTab]){
-                var _stEid = _blurEl ? _blurEl.dataset.eid : null;
-                savedStates[currentTab].forEach(function(sv){
-                  if(sv.eid === _stEid || sv.field === _blurField){
-                    sv.content = _txt;
-                  }
-                });
-              }
-              // 3. Sync canvas elements and save
-              if(typeof clEnforce==='function') clEnforce(_sid);
-              console.log('[INLINE EDIT] before globalSync, sidebar:', _sel.value);
-              globalSync();
-              console.log('[INLINE EDIT] after globalSync, sidebar:', _sel.value, 'canvas inner:', (inner.innerText||'').slice(0,50));
-              debouncedPersist();
+          // Read canvas text correctly for all field types
+          function _readInnerText(innerEl, fld){
+            if(fld==='bullets'){
+              var bts=innerEl.querySelectorAll('span.bt');
+              if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^\u2013\s*/,'');}).join('\n');
+              var bds=innerEl.querySelectorAll('div');
+              if(bds.length) return Array.from(bds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;}).join('\n');
             }
+            if(fld==='bodycopy'){
+              var pds=innerEl.querySelectorAll('div.plain-line');
+              if(pds.length) return Array.from(pds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;}).join('\n');
+              var ds=innerEl.querySelectorAll('div');
+              if(ds.length) return Array.from(ds).map(function(d){return d.textContent.trim();}).filter(function(t){return t;}).join('\n');
+            }
+            if(fld==='income') return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+            return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+          }
+          var _sid2 = fieldToSidebarId(_blurField);
+          var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
+          if(_blurField && _sel2){
+            var _txt2 = _readInnerText(inner, _blurField);
+            console.log('[INLINE EDIT] field:', _blurField, 'writing to sidebar:', _txt2.slice(0,60));
+            _sel2.value = _txt2;
+            if(savedStates[currentTab]){
+              var _eid2 = _blurEl ? _blurEl.dataset.eid : null;
+              savedStates[currentTab].forEach(function(sv){
+                if(sv.eid===_eid2||sv.field===_blurField) sv.content=_txt2;
+              });
+            }
+            if(typeof clEnforce==='function') clEnforce(_sid2);
+            globalSync();
+            debouncedPersist();
           } else {
             globalSync();
             debouncedPersist();
