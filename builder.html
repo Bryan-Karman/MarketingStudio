@@ -719,7 +719,7 @@ function createElement(cfg){
         if(_f && _mgd.indexOf(_f)===-1){
           const _sid=fieldToSidebarId(_f);
           const _sel=_sid?document.getElementById(_sid):null;
-          if(_sel) _sel.value=inner.innerText.replace(/​/g,'').trim();
+          if(_sel) _sel.value=inner.innerText.replace(/[\u200B\u200b]/g,'').trim();
         }
         debouncedPersist();
       };
