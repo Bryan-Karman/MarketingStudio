@@ -1562,6 +1562,9 @@ function showProps(el){
     let _showImgs=Math.min(8,Math.max(4,_highestImg+1)); // always show at least img1-4
     let _imgOpts=''; for(let _i=1;_i<=_showImgs;_i++){ const _k='img'+_i; _imgOpts+=`<option value="${_k}" ${el.dataset.assetKey===_k?'selected':''}>${_imgLabels[_i-1]}</option>`; }
     const _logoOpts=['logo','logo2','logo3','logo4'].map((_k,_i)=>`<option value="${_k}" ${el.dataset.assetKey===_k?'selected':''}>Logo ${_i+1}</option>`).join('');
+    const _curAsset = el.dataset.assetKey || '';
+    const _assetLabel = _curAsset.startsWith('img') ? (_imgLabels[parseInt(_curAsset.replace('img',''))-1]||'Image') : _curAsset.startsWith('logo') ? 'Logo '+_curAsset.replace('logo','') : 'Image';
+    const _hasImg = !!assets[_curAsset];
     html+=`<div class="pf"><label>Image Source</label>
       <select onchange="el_set_asset(this.value)">
         <option value="">— None —</option>
@@ -1569,6 +1572,16 @@ function showProps(el){
         ${_logoOpts}
       </select>
     </div>`;
+    // Upload button for the current slot
+    if(_curAsset){
+      html+=`<div class="pf">
+        <label style="display:block;width:100%;padding:8px 0 4px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.05em;">${_hasImg ? '↺ Replace' : '⬆ Upload'} ${_assetLabel}</label>
+        <label style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px 0;background:${_hasImg?'#1a2a1a':'#1a2a2a'};border:1.5px dashed ${_hasImg?'#5bbf7a':'#444'};border-radius:3px;color:${_hasImg?'#5bbf7a':'#aaa'};font-size:11px;font-weight:600;cursor:pointer;">
+          ${_hasImg ? '↺' : '⬆'} ${_hasImg ? 'Replace' : 'Upload'} ${_assetLabel}
+          <input type="file" accept="image/*" style="display:none;" onchange="loadAsset(event,'${_curAsset}');showProps(selectedEl);">
+        </label>
+      </div>`;
+    }
   }
 
   // Bullet toggle — only show for text elements
