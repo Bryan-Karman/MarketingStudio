@@ -858,7 +858,11 @@ function createElement(cfg){
   // Resize handles
   ['nw','n','ne','e','se','s','sw','w'].forEach(p=>{
     const h=document.createElement('div');h.className=`rh rh-${p}`;h.dataset.h=p;
-    h.addEventListener('mousedown',e=>{e.stopPropagation();startResize(e,el,p);});
+    h.addEventListener('mousedown',e=>{
+      e.stopPropagation();
+      if(el.dataset.locked==='1') return; // no resize on locked elements
+      startResize(e,el,p);
+    });
     el.appendChild(h);
   });
 
@@ -869,14 +873,15 @@ function createElement(cfg){
     if(el.classList.contains('crop-mode')) return;
     e.stopPropagation();
     selectElement(el);
-    if(el.dataset.locked==='1') return; // locked — no drag or pan
-
-    const sx=e.clientX, sy=e.clientY;
-    let committed=false;
 
     const isImg = el.dataset.type==='img';
     const img   = isImg ? el.querySelector('img') : null;
     const hasVisibleImg = img && img.src && img.style.display !== 'none';
+
+    // Locked non-image elements: block all interaction
+    if(el.dataset.locked==='1' && !isImg) return;
+    // Locked image elements: allow pan/crop inside but not moving the box
+    const _lockedImg = el.dataset.locked==='1' && isImg;
 
     // For image elements with a loaded photo — always pan on drag
     // For images with no photo yet, or non-image elements — move the box
@@ -908,8 +913,8 @@ function createElement(cfg){
         if(Math.abs(dx) >= Math.abs(dy)){ dy=0; } else { dx=0; }
       }
 
-      if(groupStarts){
-        // Move ALL selected elements together
+      if(groupStarts && !_lockedImg){
+        // Move ALL selected elements together (not for locked images)
         groupStarts.forEach(function(p){
           p.el.style.left = Math.round(p.ox+dx/zoom)+'px';
           p.el.style.top  = Math.round(p.oy+dy/zoom)+'px';
@@ -923,7 +928,8 @@ function createElement(cfg){
         img.style.left=nx+'px';
         img.style.top =ny+'px';
         img.style.cursor='grabbing';
-      } else {
+      } else if(!_lockedImg){
+        // Only move box if not a locked image
         el.style.left=Math.round(ox+dx/zoom)+'px';
         el.style.top =Math.round(oy+dy/zoom)+'px';
         el.style.cursor='grabbing';
@@ -2111,28 +2117,25 @@ function applyTemplateLocks(idx){
   if(idx !== 0 && idx !== 1) return;
   const art = document.getElementById('artwork');
   if(!art) return;
-  const ALWAYS_UNLOCKED_ASSETS = ['img1','img2','img3','img4','img5','logo','logo2','logo3','logo4'];
-  const ALWAYS_UNLOCKED_FIELDS = ['banner'];
+  const UNLOCKED_FIELDS = ['banner'];
   art.querySelectorAll('.el').forEach(function(el){
-    var assetKey = el.dataset.assetKey || '';
-    var field    = el.dataset.field || '';
-    // Keep unlocked: image slots and banner
-    if(ALWAYS_UNLOCKED_ASSETS.indexOf(assetKey) > -1) {
+    var field = el.dataset.field || '';
+    // Banner stays fully unlocked (moveable pill)
+    if(UNLOCKED_FIELDS.indexOf(field) > -1) {
       el.dataset.locked = '0';
       el.classList.remove('locked-el');
       el.style.cursor = '';
       return;
     }
-    if(ALWAYS_UNLOCKED_FIELDS.indexOf(field) > -1) {
-      el.dataset.locked = '0';
-      el.classList.remove('locked-el');
-      el.style.cursor = '';
-      return;
-    }
-    // Everything else on brochure tabs is locked
+    // Everything else locked — including images (position locked, but crop/pan still works)
     el.dataset.locked = '1';
     el.classList.add('locked-el');
-    el.style.cursor = 'not-allowed';
+    // Images show pointer so user knows they can interact inside
+    if(el.dataset.type === 'img') {
+      el.style.cursor = 'pointer';
+    } else {
+      el.style.cursor = 'not-allowed';
+    }
   });
 }
 
