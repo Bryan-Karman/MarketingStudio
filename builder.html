@@ -712,14 +712,23 @@ function createElement(cfg){
       inner.style.cursor='text';
       inner.focus();
       showRtb(inner);
-      // Use addEventListener (not oninput=) — contenteditable requires this in all browsers
+      // Remove any previously attached handler to avoid duplicates
+      if(inner._inlineInputHandler){
+        inner.removeEventListener('input', inner._inlineInputHandler);
+        inner._inlineInputHandler = null;
+      }
       function _inlineInputHandler(){
-        const _f=el.dataset.field;
+        // Read field from the element itself (not closure) in case el ref changed
+        const _el2 = inner.closest('.el');
+        const _f = _el2 ? _el2.dataset.field : '';
         const _mgd=['bullets','bodycopy'];
         if(_f && _mgd.indexOf(_f)===-1){
           const _sid=fieldToSidebarId(_f);
           const _sel=_sid?document.getElementById(_sid):null;
-          if(_sel) _sel.value=inner.innerText.replace(/\u200B/g,'').trim();
+          if(_sel){
+            const _txt = (inner.innerText||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+            _sel.value = _txt;
+          }
         }
         debouncedPersist();
       }
@@ -760,22 +769,20 @@ function createElement(cfg){
           _savedRange = null;
           hideRtb();
           // Save rich HTML content (preserves <b>, <i> etc)
-          const field=el.dataset.field;
+          // Re-read field from DOM in case closure ref is stale
+          const _blurEl = inner.closest('.el');
+          const field = _blurEl ? _blurEl.dataset.field : '';
           if(field){
             const sidebarId=fieldToSidebarId(field);
             if(sidebarId){
               const sidebarEl=document.getElementById(sidebarId);
               if(sidebarEl){
-                // For bullet/bodycopy fields: DON'T write back — sidebar is source of truth
-                // globalSync manages these fields; writing back causes duplication
                 const _managedFields = ['bullets','bodycopy'];
                 if(_managedFields.indexOf(field) === -1){
-                  // Write canvas text back to sidebar input
                   var _rawText = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ');
                   sidebarEl.value = _rawText.trim();
-                  // Also update the right-panel textarea if it's showing this element
-                  var _rp = document.querySelector('#props-content textarea[oninput="el_inner_txt(this.value)"]');
-                  if(_rp) _rp.value = _rawText.trim();
+                  // Dispatch input event so any listeners (char counters etc) also update
+                  sidebarEl.dispatchEvent(new Event('input', {bubbles:true}));
                 }
               }
             }
