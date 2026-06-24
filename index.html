@@ -184,6 +184,8 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .card-btn-open:hover{background:var(--gb);}
 .card-btn-del{background:transparent;color:#c0392b;border:1px solid #e8c0c0;padding:4px 10px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;}
 .card-btn-del:hover{background:#c0392b;color:#fff;border-color:#c0392b;}
+.card-btn-move{background:transparent;color:#4a90a4;border:1px solid #b0d0dc;padding:4px 10px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;}
+.card-btn-move:hover{background:#4a90a4;color:#fff;border-color:#4a90a4;}
 .card-status-wrap{display:flex;align-items:center;gap:5px;margin-left:auto;}
 .card-status-label{font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;}
 .card-btn-del.hidden{display:none;}
@@ -1193,6 +1195,7 @@ async function renderProperties(){
   function _sb(pr){ return pr.state ? '<span style="font-size:9px;font-weight:700;background:#1a3a2a;color:#5bbf7a;border:1px solid #2a5a3a;border-radius:2px;padding:1px 5px;flex-shrink:0;">'+escHtml(pr.state)+'</span>' : ''; }
   function _pc(pr){ if(!isAdmin) return ''; return '<span data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" onclick="openRenameProperty(this)" style="cursor:pointer;color:#888;font-size:13px;padding:2px 3px;flex-shrink:0;" title="Rename">✎</span>'; }
   function _del(pr){ if(!isAdmin) return ''; return '<button class="card-btn-del" onclick="deleteProperty(event,\'' + pr.portfolioId + '\',\''+pr.id+'\')">Delete</button>'; }
+  function _move(pr){ if(!isAdmin) return ''; return '<button class="card-btn-move" onclick="openMoveProperty(\'' + pr.portfolioId + '\',\''+pr.id+'\')">Move →</button>'; }
   var _dot = '<span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;"></span>';
   var _stxt = '<span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>';
 
@@ -1212,6 +1215,7 @@ async function renderProperties(){
       _listRow += '<span class="approval-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#b85c00;flex-shrink:0;"></span>';
       _listRow += '<span class="approval-status-txt" style="font-size:10px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;">In Progress</span>';
       _listRow += '<button class="prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex-shrink:0;padding:5px 14px;background:#003f2d;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Open →</button>';
+      _listRow += _move(pr);
       _listRow += _del(pr);
       _listRow += '</div>';
       return _listRow;
@@ -1228,7 +1232,7 @@ async function renderProperties(){
         +'</div>'
         +'<div class="property-card-actions">'
         +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">Open Builder →</button>'
-        +statusWrap+_del(pr)
+        +statusWrap+_move(pr)+_del(pr)
         +'</div></div>';
     }
   }).join('');
@@ -1301,6 +1305,55 @@ async function createProperty(){
   document.getElementById('new-property-name').value = '';
   document.getElementById('new-property-state').value = '';
   renderProperties();
+}
+
+let _movingPropertyId = null;
+let _movingPortfolioId = null;
+
+function openMoveProperty(portfolioId, propertyId){
+  _movingPortfolioId = portfolioId;
+  _movingPropertyId  = propertyId;
+  const prop = (properties[portfolioId]||[]).find(p=>p.id===propertyId);
+  document.getElementById('move-property-name').textContent = prop ? prop.name : propertyId;
+  const sel = document.getElementById('move-target-portfolio');
+  sel.innerHTML = portfolios
+    .filter(p => p.id !== portfolioId)
+    .map(p => '<option value="'+p.id+'">'+escHtml(p.name)+'</option>')
+    .join('');
+  if(!sel.options.length) sel.innerHTML = '<option disabled>No other portfolios available</option>';
+  document.getElementById('move-property-err').textContent = '';
+  document.getElementById('modal-move-property').classList.add('open');
+}
+
+async function moveProperty(){
+  const targetId = document.getElementById('move-target-portfolio').value;
+  if(!targetId){ document.getElementById('move-property-err').textContent = 'Please select a destination.'; return; }
+  const saveBtn = document.getElementById('move-property-save');
+  saveBtn.disabled = true; saveBtn.textContent = 'Moving…';
+  try{
+    await SB.patch('projects',
+      '?portfolio_id=eq.'+encodeURIComponent(_movingPortfolioId)+'&property_id=eq.'+encodeURIComponent(_movingPropertyId),
+      { portfolio_id: targetId }
+    );
+    await SB.patch('properties',
+      '?id=eq.'+encodeURIComponent(_movingPropertyId)+'&portfolio_id=eq.'+encodeURIComponent(_movingPortfolioId),
+      { portfolio_id: targetId }
+    );
+    const srcProps = properties[_movingPortfolioId]||[];
+    const propObj  = srcProps.find(p=>p.id===_movingPropertyId);
+    if(propObj){
+      properties[_movingPortfolioId] = srcProps.filter(p=>p.id!==_movingPropertyId);
+      propObj.portfolioId = targetId;
+      if(!properties[targetId]) properties[targetId]=[];
+      properties[targetId].push(propObj);
+    }
+    closeModal('modal-move-property');
+    renderProperties(currentPortfolioId);
+  }catch(e){
+    document.getElementById('move-property-err').textContent = 'Move failed: '+(e.message||String(e));
+  }finally{
+    saveBtn.disabled=false; saveBtn.textContent='Move Property';
+  }
 }
 
 async function deleteProperty(e, portfolioId, propId){
@@ -1606,6 +1659,7 @@ document.addEventListener('keydown', e => {
     if(document.getElementById('modal-property').classList.contains('open')) createProperty();
     if(document.getElementById('modal-user').classList.contains('open')) saveUser();
     if(document.getElementById('modal-agent').classList.contains('open')) saveAgent();
+    if(document.getElementById('modal-move-property').classList.contains('open')) moveProperty();
   }
 });
 
@@ -1687,6 +1741,23 @@ document.addEventListener('click', function(e){
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal('modal-agent')">Cancel</button>
       <button class="modal-confirm" id="agent-modal-save" onclick="saveAgent()">Add Agent</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-move-property">
+  <div class="modal" style="width:420px;">
+    <div class="modal-title">Move Property</div>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Moving: <strong id="move-property-name" style="color:var(--text);"></strong></p>
+    <div class="modal-field">
+      <label>Destination Portfolio</label>
+      <select id="move-target-portfolio" style="width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+      </select>
+    </div>
+    <div class="login-err" id="move-property-err"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-move-property')">Cancel</button>
+      <button class="modal-confirm" id="move-property-save" onclick="moveProperty()">Move Property</button>
     </div>
   </div>
 </div>
