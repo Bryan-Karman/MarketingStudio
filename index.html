@@ -988,6 +988,12 @@ async function onLoginSuccess(){
 
   await loadDemoData();
   showHubScreen();
+  // If returning from builder with ?openPortfolio=id, open that portfolio directly
+  const _urlParams = new URLSearchParams(window.location.search);
+  const _openPfId = _urlParams.get('openPortfolio');
+  if(_openPfId && portfolios.find(p=>p.id===_openPfId)){
+    openPortfolio(_openPfId);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
