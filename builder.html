@@ -713,13 +713,13 @@ function createElement(cfg){
       inner.focus();
       showRtb(inner);
       inner.oninput=ev=>{
-        // Live-sync non-managed fields to sidebar while typing
+        // Update sidebar input live while typing (so sidebar stays in sync)
         const _f=el.dataset.field;
         const _mgd=['bullets','bodycopy'];
         if(_f && _mgd.indexOf(_f)===-1){
           const _sid=fieldToSidebarId(_f);
           const _sel=_sid?document.getElementById(_sid):null;
-          if(_sel){ _sel.value=inner.innerText.replace(/​/g,'').trim(); globalSync(); }
+          if(_sel) _sel.value=inner.innerText.replace(/​/g,'').trim();
         }
         debouncedPersist();
       };
@@ -751,6 +751,7 @@ function createElement(cfg){
           inner.contentEditable='false';
           inner.style.cursor='';
           inner.onkeydown=null;
+          inner.oninput=null;
           _savedRange = null;
           hideRtb();
           // Save rich HTML content (preserves <b>, <i> etc)
@@ -764,23 +765,18 @@ function createElement(cfg){
                 // globalSync manages these fields; writing back causes duplication
                 const _managedFields = ['bullets','bodycopy'];
                 if(_managedFields.indexOf(field) === -1){
-                  // Safe to write back for unmanaged fields (heading, address etc)
+                  // Write back to sidebar, then globalSync propagates to other elements
                   var _rawText = inner.innerText.replace(/\u200B/g,'');
                   sidebarEl.value = _rawText.trim();
-                  // Fire globalSync so all other canvas elements using this field update too
-                  globalSync();
                 }
               }
             }
           }
           // Store rich HTML in el dataset so serializeTab can save it
           el.dataset.richHtml = inner.innerHTML;
-          // For field-linked elements, re-sync from sidebar to restore correct content
-          const _field = el.dataset.field;
-          const _managedFields2 = ['bullets','bodycopy'];
-          if(_field && _managedFields2.indexOf(_field) > -1){
-            globalSync();
-          }
+          // Sync ALL field elements now that editing is done
+          // (globalSync skips contentEditable=true so it's safe now)
+          globalSync();
           debouncedPersist();
         }, 80);
       };
@@ -2064,6 +2060,8 @@ function globalSync(){
     if(val===null) return;
     const inner=el.querySelector('.el-inner');
     if(inner && el.dataset.type==='text'){
+      // Skip elements currently being edited inline — don't interrupt typing
+      if(inner.contentEditable === 'true') return;
       // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
       if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
