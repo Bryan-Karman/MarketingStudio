@@ -773,7 +773,6 @@ function createElement(cfg){
           // Write canvas text back to sidebar and trigger full sync
           const _blurEl = inner.closest('.el');
           const _blurField = _blurEl ? _blurEl.dataset.field : '';
-          console.log('[INLINE EDIT] blur fired. field:', _blurField, 'innerText:', (inner.innerText||'').slice(0,50));
           // income field: handled by its own element, don't touch sidebar — just sync
           if(_blurField === 'income'){
             globalSync();
@@ -783,16 +782,21 @@ function createElement(cfg){
             var _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
             function _readInnerText(innerEl, fld){
               function _stripAllIncome(lines){
-                if(!_fiVal) return lines;
-                // Strip ALL lines that are the income value (exact match after stripping prefix)
-                // Also re-read fi in case it changed
+                // Strip any line that IS the income value OR starts with same prefix
+                // Use the CURRENT fi value (user may have edited it on canvas)
                 var _fi2 = ((document.getElementById('fi')||{}).value||'').trim();
+                // Also detect income-like lines: starts with 'Net Income' or matches fi prefix
+                var _fiPrefix = _fi2.split(':')[0].trim().toLowerCase(); // e.g. "net income"
                 return lines.filter(function(l){
                   var clean = l.replace(/^\u2013\s*/,'').trim();
-                  return clean !== _fi2 && clean !== _fiVal;
+                  if(!clean) return false;
+                  // Exact match with either current or original fi value
+                  if(clean === _fi2 || clean === _fiVal) return false;
+                  // Starts with same prefix as income (e.g. "Net Income: anything")
+                  if(_fiPrefix && clean.toLowerCase().startsWith(_fiPrefix+':')) return false;
+                  return true;
                 });
               }
-              console.log('[INLINE] field:', fld, 'fiVal:', _fiVal);
               function _readLines(innerEl){
                 var bts=innerEl.querySelectorAll('span.bt');
                 if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
@@ -803,11 +807,18 @@ function createElement(cfg){
                 return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
               }
               if(fld==='bullets'||fld==='bodycopy'){
-                var _rawLines = _readLines(innerEl);
-                console.log('[INLINE] raw lines before strip:', JSON.stringify(_rawLines));
-                var _stripped = _stripAllIncome(_rawLines);
-                console.log('[INLINE] lines after strip:', JSON.stringify(_stripped));
-                return _stripped.join('\n');
+                var _allLines = _readLines(innerEl);
+                // Check if user edited the income line — update fi if so
+                var _fi2 = ((document.getElementById('fi')||{}).value||'').trim();
+                var _fiPrefix = _fi2.split(':')[0].trim().toLowerCase();
+                _allLines.forEach(function(l){
+                  var clean = l.replace(/^\u2013\s*/,'').trim();
+                  if(_fiPrefix && clean.toLowerCase().startsWith(_fiPrefix+':') && clean !== _fi2){
+                    var _fiEl = document.getElementById('fi');
+                    if(_fiEl){ _fiEl.value = clean; }
+                  }
+                });
+                return _stripAllIncome(_allLines).join('\n');
               }
               return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
             }
@@ -2119,7 +2130,6 @@ function globalSync(){
     if(inner && el.dataset.type==='text'){
       // Skip elements currently being edited inline — don't interrupt typing
       if(inner.contentEditable === 'true') return;
-      if(field==='heading'){ console.log('[globalSync] heading field, val from sidebar:', getFieldVal(field)); }
       // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
       if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
