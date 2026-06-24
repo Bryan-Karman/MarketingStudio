@@ -773,6 +773,7 @@ function createElement(cfg){
           // Write canvas text back to sidebar and trigger full sync
           const _blurEl = inner.closest('.el');
           const _blurField = _blurEl ? _blurEl.dataset.field : '';
+          console.log('[INLINE EDIT] blur fired. field:', _blurField, 'innerText:', (inner.innerText||'').slice(0,50));
           const _managedFields = ['bullets','bodycopy'];
           if(_blurField && _managedFields.indexOf(_blurField) === -1){
             const _sid = fieldToSidebarId(_blurField);
@@ -780,8 +781,10 @@ function createElement(cfg){
             if(_sel){
               const _txt = (inner.innerText||inner.textContent||'')
                 .replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+              console.log('[INLINE EDIT] sidebar id:', _sid, 'old value:', _sel.value, 'new value:', _txt);
               // 1. Update sidebar value
               _sel.value = _txt;
+              console.log('[INLINE EDIT] sidebar after set:', _sel.value);
               // 2. Update savedStates directly so restoreTab uses new value
               if(savedStates[currentTab]){
                 var _stEid = _blurEl ? _blurEl.dataset.eid : null;
@@ -793,7 +796,9 @@ function createElement(cfg){
               }
               // 3. Sync canvas elements and save
               if(typeof clEnforce==='function') clEnforce(_sid);
+              console.log('[INLINE EDIT] before globalSync, sidebar:', _sel.value);
               globalSync();
+              console.log('[INLINE EDIT] after globalSync, sidebar:', _sel.value, 'canvas inner:', (inner.innerText||'').slice(0,50));
               debouncedPersist();
             }
           } else {
@@ -2085,6 +2090,7 @@ function globalSync(){
     if(inner && el.dataset.type==='text'){
       // Skip elements currently being edited inline — don't interrupt typing
       if(inner.contentEditable === 'true') return;
+      if(field==='heading'){ console.log('[globalSync] heading field, val from sidebar:', getFieldVal(field)); }
       // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
       if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
