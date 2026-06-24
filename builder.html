@@ -774,64 +774,55 @@ function createElement(cfg){
           const _blurEl = inner.closest('.el');
           const _blurField = _blurEl ? _blurEl.dataset.field : '';
           console.log('[INLINE EDIT] blur fired. field:', _blurField, 'innerText:', (inner.innerText||'').slice(0,50));
-          // Read canvas text correctly, stripping income append and bullet prefixes
-          function _readInnerText(innerEl, fld){
-            var _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
-            function _stripIncome(lines){
-              if(!_fiVal || !lines.length) return lines;
-              var last = lines[lines.length-1].replace(/^\u2013\s*/,'').trim();
-              if(last === _fiVal) return lines.slice(0,-1);
-              return lines;
-            }
-            if(fld==='bullets'){
-              var bts=innerEl.querySelectorAll('span.bt');
-              var lines=[];
-              if(bts.length){
-                lines=Array.from(bts).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;});
-              } else {
-                var bds=innerEl.querySelectorAll('div');
-                if(bds.length) lines=Array.from(bds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;});
-                else lines=(innerEl.innerText||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;});
-              }
-              return _stripIncome(lines).join('\n');
-            }
-            if(fld==='bodycopy'){
-              var pds=innerEl.querySelectorAll('div.plain-line');
-              var lines2=[];
-              if(pds.length){
-                lines2=Array.from(pds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;});
-              } else {
-                var ds=innerEl.querySelectorAll('div');
-                if(ds.length) lines2=Array.from(ds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;});
-                else lines2=(innerEl.innerText||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(function(t){return t;});
-              }
-              return _stripIncome(lines2).join('\n');
-            }
-            if(fld==='income') return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
-            return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
-          }
-          var _sid2 = fieldToSidebarId(_blurField);
-          var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
-          if(_blurField && _sel2){
-            var _txt2 = _readInnerText(inner, _blurField);
-            _sel2.value = _txt2;
-            if(savedStates[currentTab]){
-              var _eid2 = _blurEl ? _blurEl.dataset.eid : null;
-              savedStates[currentTab].forEach(function(sv){
-                if(sv.eid===_eid2||sv.field===_blurField) sv.content=_txt2;
-              });
-            }
-            if(typeof clEnforce==='function') clEnforce(_sid2);
-            // bullets/bodycopy: use onBulletFieldChange to re-render correctly without doubling
-            if(_blurField==='bullets'||_blurField==='bodycopy'){
-              if(typeof onBulletFieldChange==='function') onBulletFieldChange();
-            } else {
-              globalSync();
-            }
-            debouncedPersist();
-          } else {
+          // income field: handled by its own element, don't touch sidebar — just sync
+          if(_blurField === 'income'){
             globalSync();
             debouncedPersist();
+          } else {
+            // For all other fields: read canvas text, strip income, write to sidebar
+            var _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
+            function _readInnerText(innerEl, fld){
+              function _stripAllIncome(lines){
+                if(!_fiVal) return lines;
+                // Strip ALL lines matching income value (handles double-append case)
+                return lines.filter(function(l){ return l.replace(/^\u2013\s*/,'').trim() !== _fiVal; });
+              }
+              function _readLines(innerEl){
+                var bts=innerEl.querySelectorAll('span.bt');
+                if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+                var pds=innerEl.querySelectorAll('div.plain-line');
+                if(pds.length) return Array.from(pds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+                var ds=innerEl.querySelectorAll('div');
+                if(ds.length) return Array.from(ds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+                return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+              }
+              if(fld==='bullets'||fld==='bodycopy'){
+                return _stripAllIncome(_readLines(innerEl)).join('\n');
+              }
+              return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+            }
+            var _sid2 = fieldToSidebarId(_blurField);
+            var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
+            if(_blurField && _sel2){
+              var _txt2 = _readInnerText(inner, _blurField);
+              _sel2.value = _txt2;
+              if(savedStates[currentTab]){
+                var _eid2 = _blurEl ? _blurEl.dataset.eid : null;
+                savedStates[currentTab].forEach(function(sv){
+                  if(sv.eid===_eid2||sv.field===_blurField) sv.content=_txt2;
+                });
+              }
+              if(typeof clEnforce==='function') clEnforce(_sid2);
+              if(_blurField==='bullets'||_blurField==='bodycopy'){
+                if(typeof onBulletFieldChange==='function') onBulletFieldChange();
+              } else {
+                globalSync();
+              }
+              debouncedPersist();
+            } else {
+              globalSync();
+              debouncedPersist();
+            }
           }
           el.dataset.richHtml = inner.innerHTML;
         }, 80);
