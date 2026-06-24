@@ -712,17 +712,19 @@ function createElement(cfg){
       inner.style.cursor='text';
       inner.focus();
       showRtb(inner);
-      inner.oninput=ev=>{
-        // Update sidebar input live while typing (so sidebar stays in sync)
+      // Use addEventListener (not oninput=) — contenteditable requires this in all browsers
+      function _inlineInputHandler(){
         const _f=el.dataset.field;
         const _mgd=['bullets','bodycopy'];
         if(_f && _mgd.indexOf(_f)===-1){
           const _sid=fieldToSidebarId(_f);
           const _sel=_sid?document.getElementById(_sid):null;
-          if(_sel) _sel.value=inner.innerText.replace(/[\u200B\u200b]/g,'').trim();
+          if(_sel) _sel.value=inner.innerText.replace(/\u200B/g,'').trim();
         }
         debouncedPersist();
-      };
+      }
+      inner._inlineInputHandler=_inlineInputHandler;
+      inner.addEventListener('input',_inlineInputHandler);
       inner.onkeydown=ev=>{
         handleRtbKeydown(ev, inner);
         if(ev.key==='Enter' && !ev.shiftKey && inner.style.whiteSpace==='pre-wrap'){
@@ -751,7 +753,10 @@ function createElement(cfg){
           inner.contentEditable='false';
           inner.style.cursor='';
           inner.onkeydown=null;
-          inner.oninput=null;
+          if(inner._inlineInputHandler){
+            inner.removeEventListener('input',inner._inlineInputHandler);
+            inner._inlineInputHandler=null;
+          }
           _savedRange = null;
           hideRtb();
           // Save rich HTML content (preserves <b>, <i> etc)
@@ -765,9 +770,12 @@ function createElement(cfg){
                 // globalSync manages these fields; writing back causes duplication
                 const _managedFields = ['bullets','bodycopy'];
                 if(_managedFields.indexOf(field) === -1){
-                  // Write back to sidebar, then globalSync propagates to other elements
-                  var _rawText = inner.innerText.replace(/\u200B/g,'');
+                  // Write canvas text back to sidebar input
+                  var _rawText = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ');
                   sidebarEl.value = _rawText.trim();
+                  // Also update the right-panel textarea if it's showing this element
+                  var _rp = document.querySelector('#props-content textarea[oninput="el_inner_txt(this.value)"]');
+                  if(_rp) _rp.value = _rawText.trim();
                 }
               }
             }
