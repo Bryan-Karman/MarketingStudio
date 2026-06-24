@@ -770,7 +770,7 @@ function createElement(cfg){
           }
           _savedRange = null;
           hideRtb();
-          // Write canvas text back to sidebar and sync everything
+          // Write canvas text back to sidebar and trigger full sync
           const _blurEl = inner.closest('.el');
           const _blurField = _blurEl ? _blurEl.dataset.field : '';
           const _managedFields = ['bullets','bodycopy'];
@@ -780,14 +780,23 @@ function createElement(cfg){
             if(_sel){
               const _txt = (inner.innerText||inner.textContent||'')
                 .replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+              // 1. Update sidebar value
               _sel.value = _txt;
-              // Call exactly what the sidebar oninput calls
+              // 2. Update savedStates directly so restoreTab uses new value
+              if(savedStates[currentTab]){
+                var _stEid = _blurEl ? _blurEl.dataset.eid : null;
+                savedStates[currentTab].forEach(function(sv){
+                  if(sv.eid === _stEid || sv.field === _blurField){
+                    sv.content = _txt;
+                  }
+                });
+              }
+              // 3. Sync canvas elements and save
               if(typeof clEnforce==='function') clEnforce(_sid);
               globalSync();
               debouncedPersist();
             }
           } else {
-            // managed field or no field — just sync and save
             globalSync();
             debouncedPersist();
           }
