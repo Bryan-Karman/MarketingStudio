@@ -712,6 +712,17 @@ function createElement(cfg){
       inner.style.cursor='text';
       inner.focus();
       showRtb(inner);
+      inner.oninput=ev=>{
+        // Live-sync non-managed fields to sidebar while typing
+        const _f=el.dataset.field;
+        const _mgd=['bullets','bodycopy'];
+        if(_f && _mgd.indexOf(_f)===-1){
+          const _sid=fieldToSidebarId(_f);
+          const _sel=_sid?document.getElementById(_sid):null;
+          if(_sel){ _sel.value=inner.innerText.replace(/​/g,'').trim(); globalSync(); }
+        }
+        debouncedPersist();
+      };
       inner.onkeydown=ev=>{
         handleRtbKeydown(ev, inner);
         if(ev.key==='Enter' && !ev.shiftKey && inner.style.whiteSpace==='pre-wrap'){
@@ -756,6 +767,8 @@ function createElement(cfg){
                   // Safe to write back for unmanaged fields (heading, address etc)
                   var _rawText = inner.innerText.replace(/\u200B/g,'');
                   sidebarEl.value = _rawText.trim();
+                  // Fire globalSync so all other canvas elements using this field update too
+                  globalSync();
                 }
               }
             }
