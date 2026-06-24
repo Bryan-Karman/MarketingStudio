@@ -2101,7 +2101,39 @@ function restoreTab(idx){
       bel.style.alignItems='center';
     }
   });
+  // Re-apply template locks after restore (saved states may predate lock rules)
+  applyTemplateLocks(idx);
   return true;
+}
+
+function applyTemplateLocks(idx){
+  // Brochure tabs (0,1): lock everything except images, logo, banner
+  if(idx !== 0 && idx !== 1) return;
+  const art = document.getElementById('artwork');
+  if(!art) return;
+  const ALWAYS_UNLOCKED_ASSETS = ['img1','img2','img3','img4','img5','logo','logo2','logo3','logo4'];
+  const ALWAYS_UNLOCKED_FIELDS = ['banner'];
+  art.querySelectorAll('.el').forEach(function(el){
+    var assetKey = el.dataset.assetKey || '';
+    var field    = el.dataset.field || '';
+    // Keep unlocked: image slots and banner
+    if(ALWAYS_UNLOCKED_ASSETS.indexOf(assetKey) > -1) {
+      el.dataset.locked = '0';
+      el.classList.remove('locked-el');
+      el.style.cursor = '';
+      return;
+    }
+    if(ALWAYS_UNLOCKED_FIELDS.indexOf(field) > -1) {
+      el.dataset.locked = '0';
+      el.classList.remove('locked-el');
+      el.style.cursor = '';
+      return;
+    }
+    // Everything else on brochure tabs is locked
+    el.dataset.locked = '1';
+    el.classList.add('locked-el');
+    el.style.cursor = 'not-allowed';
+  });
 }
 
 function resetTab(){
@@ -2579,6 +2611,8 @@ function buildTemplate(idx){
     if(_vdef) _variantFn=_vdef.fn();
   }
   (_variantFn||_buildFns[idx])(s[0],s[1]);
+  // Re-apply template locks after build
+  applyTemplateLocks(idx);
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
