@@ -161,14 +161,19 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
   box-sizing:border-box;
 }
 
-.masthead{height:38px;background:#060606;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;position:relative;z-index:200;}
-.mast-home{display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:3px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.15);cursor:pointer;background:none;white-space:nowrap;}
-.mast-home:hover{color:#fff;border-color:rgba(255,255,255,.4);}
-.mast-div{width:1px;height:16px;background:rgba(255,255,255,.12);}
-.mast-crumb{font-size:10px;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:5px;}
-.mast-crumb .port{color:rgba(255,255,255,.5);font-weight:700;}
-.mast-crumb .prop{color:#5bbf7a;font-weight:700;}
+.masthead{height:44px;background:#012a2d;border-bottom:2px solid #17e88f;display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0;position:relative;z-index:200;}
+.mast-logo{display:flex;align-items:center;padding-right:14px;border-right:1px solid rgba(255,255,255,.15);margin-right:4px;cursor:pointer;}
+.mast-logo img{height:17px;width:auto;display:block;}
+.mast-studio{font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;cursor:pointer;padding:0 10px;white-space:nowrap;}
+.mast-studio:hover{color:#fff;}
+.mast-nav{display:flex;gap:0;flex:1;}
+.mast-nav a{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.07em;text-transform:uppercase;padding:0 12px;height:44px;display:flex;align-items:center;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;text-decoration:none;white-space:nowrap;transition:color .15s;}
+.mast-nav a:hover{color:#fff;border-bottom-color:rgba(255,255,255,.3);}
+.mast-nav a.active{color:#fff;border-bottom-color:#17e88f;}
+.mast-nav .nav-sep{width:1px;height:18px;background:rgba(255,255,255,.1);margin:0 2px;align-self:center;}
+.mast-nav .nav-crumb{font-size:11px;font-weight:700;color:#17e88f;letter-spacing:.07em;text-transform:uppercase;padding:0 12px;height:44px;display:flex;align-items:center;border-bottom:2px solid #17e88f;margin-bottom:-2px;white-space:nowrap;}
 .mast-r{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.mast-div{width:1px;height:16px;background:rgba(255,255,255,.12);}
 .cld{display:flex;align-items:center;gap:4px;font-size:9px;color:rgba(255,255,255,.3);padding:2px 7px;border:1px solid rgba(255,255,255,.08);border-radius:2px;}
 .cld-dot{width:5px;height:5px;border-radius:50%;background:#555;}
 .cld.saved .cld-dot{background:#5bbf7a;} .cld.saving .cld-dot{background:#f39c12;animation:cdblink .6s infinite;} .cld.error .cld-dot{background:#e74c3c;}
@@ -240,9 +245,16 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 </head>
 <body>
 <div class="masthead">
-  <button class="mast-home" onclick="goHome()">⌂ Home</button>
-  <div class="mast-div"></div>
-  <div class="mast-crumb"><span class="port" id="mast-port">Portfolio</span><span style="color:rgba(255,255,255,.2);margin:0 2px">›</span><span class="prop" id="mast-prop">Property</span></div>
+  <div class="mast-logo" onclick="goHome()" title="CBRE Studio Hub">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPGRlZnM+PHN0eWxlPi5zdDB7ZmlsbDojZmZmO308L3N0eWxlPjwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE">
+  </div>
+  <span class="mast-studio" onclick="goHome()">Studio</span>
+  <nav class="mast-nav">
+    <a onclick="goHome()" title="Back to Studio Hub">← Products</a>
+    <a id="mast-port-link" onclick="goPortfolio()" title="Back to this Portfolio">Portfolios</a>
+    <div class="nav-sep"></div>
+    <span class="nav-crumb" id="mast-prop">Property</span>
+  </nav>
   <div class="mast-r">
     <div class="cld saving" id="cld"><div class="cld-dot"></div><span id="cld-lbl">Loading…</span></div>
     <div class="mast-usr">Signed in as <span id="mast-usr-name">—</span></div>
@@ -3486,17 +3498,22 @@ const _userRole=_qp.get('userRole')||(_openedFromHub?'user':'admin');
 const LS_KEY='cbre_v5_'+_portfolioId+'_'+_propertyId;
 
 (function(){
-  const pp=document.getElementById('mast-port');
+  const pp=document.getElementById('mast-port-link');
   const pr=document.getElementById('mast-prop');
   const un=document.getElementById('mast-usr-name');
-  if(pp) pp.textContent=_portfolioName;
-  if(pr) pr.textContent=_propertyName;
+  if(pp) pp.textContent=_portfolioName||'Portfolios';
+  if(pr) pr.textContent=_propertyName||'Property';
   const userName=_qp.get('userName')||'';
   if(un&&userName) un.textContent=userName;
   else { try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s&&s.name&&un) un.textContent=s.name; }catch(e){} }
 })();
 
 function goHome(){ window.location.href='index.html'; }
+function goPortfolio(){
+  // Return to index and surface the right portfolio
+  const pid = _qp.get('portfolioId');
+  window.location.href = 'index.html' + (pid ? '?openPortfolio='+encodeURIComponent(pid) : '');
+}
 function doLogout(){ localStorage.removeItem('cbre_hub_session'); window.location.href='index.html'; }
 function setCdtStatus(cls,txt){ const el=document.getElementById('cld'); const lb=document.getElementById('cld-lbl'); if(el) el.className='cld '+cls; if(lb) lb.textContent=txt; }
 
