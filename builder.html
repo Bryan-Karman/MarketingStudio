@@ -2733,7 +2733,7 @@ function buildBrochure2(W,H){
   mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
-  mkI(900,377,264,194,'img1','Image',{z:2});
+  mkI(900,377,264,194,'img4','Image',{z:2});
   mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
   mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
   mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
@@ -3767,8 +3767,9 @@ function renderLogoUploadSlots(){
     } else {
       html+='<label class="uz" style="cursor:pointer;">+ Upload '+label+'<input type="file" accept="image/*" onchange="loadAsset(event,&quot;'+key+'&quot;)" style="display:none;"></label>';
     }
-    if(loaded){
-      btnHtml+='<button class="btn-sm" onclick="addLogoElement(\'' +key+ '\')" title="Place '+label+' on canvas">Place L'+(n+1)+'</button>';
+    // Only show Place button for logo1 (others auto-place on upload)
+    if(loaded && n===0){
+      btnHtml+='<button class="btn-sm" onclick="addLogoElement(\'' +key+ '\')" title="Place '+label+' on canvas">Place L1</button>';
     }
   }
   container.innerHTML=html;
@@ -3805,6 +3806,35 @@ function renderImgUploadSlots(){
   container.innerHTML=html;
 }
 
+function addLogoElement(key){
+  // Find existing logo element on canvas to position next to it
+  const art = document.getElementById('artwork');
+  if(!art) return;
+  // Find any existing logo element to use as position reference
+  const existing = art.querySelector('.el[data-asset-key^="logo"]');
+  let x = 20, y = 20, w = 100, h = 60;
+  if(existing){
+    x = parseFloat(existing.style.left||0) + parseFloat(existing.style.width||100) + 10;
+    y = parseFloat(existing.style.top||0);
+    w = parseFloat(existing.style.width||100);
+    h = parseFloat(existing.style.height||60);
+  }
+  // Don't place if already on canvas
+  if(art.querySelector(`.el[data-asset-key="${key}"]`)) return;
+  mkI(x, y, w, h, key, 'Logo', {z:4});
+  // Apply the asset src if already loaded
+  if(assets[key]){
+    const el = art.querySelector(`.el[data-asset-key="${key}"]`);
+    if(el){
+      const img = el.querySelector('img');
+      const inner = el.querySelector('.el-inner');
+      if(inner) inner.style.background = 'transparent';
+      if(img){ img.src=assets[key]; img.style.display=''; img.style.objectFit='contain'; }
+    }
+  }
+  debouncedPersist();
+}
+
 function loadAsset(e,key){
   const f=e.target.files[0]; if(!f) return;
   const isLogo=['logo','logo2','logo3','logo4'].includes(key);
@@ -3829,6 +3859,26 @@ function loadAsset(e,key){
       if(ph) ph.style.display='none';
     });
     Object.keys(savedStates).forEach(ti=>{(savedStates[ti]||[]).forEach(sv=>{if(sv.assetKey===key)sv.imgSrc=finalSrc;});});
+    // Auto-place logo2/logo3/logo4 on canvas next to existing logo if not already there
+    if(['logo2','logo3','logo4'].includes(key)){
+      const _art = document.getElementById('artwork');
+      if(_art && !_art.querySelector(`.el[data-asset-key="${key}"]`)){
+        // Find position reference: last logo element on canvas
+        const _logos = Array.from(_art.querySelectorAll('.el[data-asset-key^="logo"]'));
+        const _ref = _logos.length ? _logos[_logos.length-1] : null;
+        const _x = _ref ? parseFloat(_ref.style.left||0)+parseFloat(_ref.style.width||100)+10 : 20;
+        const _y = _ref ? parseFloat(_ref.style.top||0) : 20;
+        const _w = _ref ? parseFloat(_ref.style.width||100) : 100;
+        const _h = _ref ? parseFloat(_ref.style.height||60) : 60;
+        const _el = mkI(_x, _y, _w, _h, key, 'Logo', {z:4});
+        if(_el){
+          const _img = _el.querySelector('img');
+          const _inner = _el.querySelector('.el-inner');
+          if(_inner) _inner.style.background='transparent';
+          if(_img){ _img.src=finalSrc; _img.style.display=''; _img.style.objectFit='contain'; }
+        }
+      }
+    }
     renderImgUploadSlots(); renderLogoUploadSlots();
     persistAll();
   };
