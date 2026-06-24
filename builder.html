@@ -784,9 +784,15 @@ function createElement(cfg){
             function _readInnerText(innerEl, fld){
               function _stripAllIncome(lines){
                 if(!_fiVal) return lines;
-                // Strip ALL lines matching income value (handles double-append case)
-                return lines.filter(function(l){ return l.replace(/^\u2013\s*/,'').trim() !== _fiVal; });
+                // Strip ALL lines that are the income value (exact match after stripping prefix)
+                // Also re-read fi in case it changed
+                var _fi2 = ((document.getElementById('fi')||{}).value||'').trim();
+                return lines.filter(function(l){
+                  var clean = l.replace(/^\u2013\s*/,'').trim();
+                  return clean !== _fi2 && clean !== _fiVal;
+                });
               }
+              console.log('[INLINE] field:', fld, 'fiVal:', _fiVal);
               function _readLines(innerEl){
                 var bts=innerEl.querySelectorAll('span.bt');
                 if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
@@ -797,7 +803,11 @@ function createElement(cfg){
                 return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
               }
               if(fld==='bullets'||fld==='bodycopy'){
-                return _stripAllIncome(_readLines(innerEl)).join('\n');
+                var _rawLines = _readLines(innerEl);
+                console.log('[INLINE] raw lines before strip:', JSON.stringify(_rawLines));
+                var _stripped = _stripAllIncome(_rawLines);
+                console.log('[INLINE] lines after strip:', JSON.stringify(_stripped));
+                return _stripped.join('\n');
               }
               return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
             }
