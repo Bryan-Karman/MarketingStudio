@@ -63,9 +63,11 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
 .fl input:focus,.fl textarea:focus{border-color:var(--g);}
 .fl textarea{min-height:50px;line-height:1.5;}
 .sec{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;padding:6px 0 2px;border-top:1px solid #2a2a2a;margin-top:2px;}
-.uz{border:1.5px dashed #444;border-radius:2px;padding:7px;text-align:center;cursor:pointer;font-size:11px;color:#777;background:#222;}
+.uz{border:1.5px dashed #444;border-radius:2px;padding:7px;text-align:center;cursor:pointer;font-size:11px;color:#777;background:#222;display:block;margin-bottom:4px;}
 .uz:hover{background:#2a2a2a;}
 .uz input{display:none;}
+#img-upload-slots .uz:last-child{margin-bottom:0;}
+#logo-upload-slots .uz:last-child{margin-bottom:0;}
 .add-btn{width:100%;padding:6px;font-size:11px;cursor:pointer;border:1px solid #444;border-radius:2px;background:#242424;color:#ccc;text-align:left;}
 .add-btn:hover{background:#2e2e2e;color:#fff;}
 
@@ -383,19 +385,11 @@ Line five</textarea>
         <div style="font-size:10px;color:#666;padding:4px 0;">Loading agents…</div>
       </div>
       <div class="sec">Assets</div>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo')">+ Upload Logo 1</label>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo2')">+ Upload Logo 2</label>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo3')">+ Upload Logo 3</label>
-      <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'logo4')">+ Upload Logo 4</label>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
-        <button class="btn-sm" onclick="addLogoElement('logo')"  title="Place Logo 1 on canvas">Place L1</button>
-        <button class="btn-sm" onclick="addLogoElement('logo2')" title="Place Logo 2 on canvas">Place L2</button>
-        <button class="btn-sm" onclick="addLogoElement('logo3')" title="Place Logo 3 on canvas">Place L3</button>
-        <button class="btn-sm" onclick="addLogoElement('logo4')" title="Place Logo 4 on canvas">Place L4</button>
-      </div>
       <div id="img-upload-slots">
         <label class="uz"><input type="file" accept="image/*" onchange="loadAsset(event,'img1')">+ Upload Hero Image</label>
       </div>
+      <div id="logo-upload-slots" style="margin-top:4px;"></div>
+      <div id="logo-place-btns" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;"></div>
       <div class="sec">Add Elements</div>
       <button class="add-btn" onclick="addEl('text')">+ Text Box</button>
       <button class="add-btn" onclick="addEl('rect')">+ Colour Block</button>
@@ -1479,17 +1473,17 @@ function showProps(el){
   }
 
   if(type==='img'){
+    const _imgLabels=['Hero Image','2nd Image','3rd Image','4th Image','5th Image','6th Image','7th Image','8th Image'];
+    // Show all image slots that have been loaded, plus the next empty one
+    let _highestImg=0; for(let _i=1;_i<=8;_i++){ if(assets['img'+_i]) _highestImg=_i; }
+    let _showImgs=Math.min(8,Math.max(4,_highestImg+1)); // always show at least img1-4
+    let _imgOpts=''; for(let _i=1;_i<=_showImgs;_i++){ const _k='img'+_i; _imgOpts+=`<option value="${_k}" ${el.dataset.assetKey===_k?'selected':''}>${_imgLabels[_i-1]}</option>`; }
+    const _logoOpts=['logo','logo2','logo3','logo4'].map((_k,_i)=>`<option value="${_k}" ${el.dataset.assetKey===_k?'selected':''}>Logo ${_i+1}</option>`).join('');
     html+=`<div class="pf"><label>Image Source</label>
       <select onchange="el_set_asset(this.value)">
         <option value="">— None —</option>
-        <option value="img1" ${el.dataset.assetKey==='img1'?'selected':''}>Hero Image</option>
-        <option value="img2" ${el.dataset.assetKey==='img2'?'selected':''}>Second Image</option>
-        <option value="img3" ${el.dataset.assetKey==='img3'?'selected':''}>Third Image</option>
-        <option value="img4" ${el.dataset.assetKey==='img4'?'selected':''}>Fourth Image</option>
-        <option value="logo" ${el.dataset.assetKey==='logo'?'selected':''}>Logo 1</option>
-        <option value="logo2" ${el.dataset.assetKey==='logo2'?'selected':''}>Logo 2</option>
-        <option value="logo3" ${el.dataset.assetKey==='logo3'?'selected':''}>Logo 3</option>
-        <option value="logo4" ${el.dataset.assetKey==='logo4'?'selected':''}>Logo 4</option>
+        ${_imgOpts}
+        ${_logoOpts}
       </select>
     </div>`;
   }
@@ -3557,6 +3551,8 @@ function applyState(data,skipZoom=false){
   if(!data||data.v!==5) return false;
   try{
     if(data.assets) assets=data.assets;
+    // Refresh upload slot panels after assets restored
+    setTimeout(function(){ renderImgUploadSlots(); renderLogoUploadSlots(); }, 0);
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
@@ -3618,6 +3614,38 @@ async function supabaseLoad(){
   return null;
 }
 
+function renderLogoUploadSlots(){
+  const container = document.getElementById('logo-upload-slots');
+  const btnWrap   = document.getElementById('logo-place-btns');
+  if(!container) return;
+  const labels = ['Logo 1','Logo 2','Logo 3','Logo 4'];
+  const keys   = ['logo','logo2','logo3','logo4'];
+  var highestLoaded = 0;
+  for(var i=0;i<4;i++){ if(assets[keys[i]]) highestLoaded=i+1; }
+  var showCount = Math.min(4, Math.max(1, highestLoaded+1));
+  var html='', btnHtml='';
+  for(var n=0;n<showCount;n++){
+    var key=keys[n], label=labels[n];
+    var loaded=!!assets[key];
+    var src=assets[key]||'';
+    var fname='';
+    if(loaded){
+      if(src.startsWith('data:')){ fname='Uploaded'; }
+      else { fname=src.split('/').pop().split('?')[0]; fname=decodeURIComponent(fname); if(fname.length>28) fname=fname.slice(0,25)+'…'; }
+    }
+    if(loaded){
+      html+='<label class="uz" style="border-color:#5bbf7a;display:flex;flex-direction:column;gap:2px;padding:6px 8px;cursor:pointer;">'           +'<span style="color:#5bbf7a;font-size:11px;font-weight:700;">↺ Replace '+label+'</span>'           +'<span style="color:#666;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+fname+'</span>'           +'<input type="file" accept="image/*" onchange="loadAsset(event,&quot;'+key+'&quot;)" style="display:none;"></label>';
+    } else {
+      html+='<label class="uz" style="cursor:pointer;">+ Upload '+label+'<input type="file" accept="image/*" onchange="loadAsset(event,&quot;'+key+'&quot;)" style="display:none;"></label>';
+    }
+    if(loaded){
+      btnHtml+='<button class="btn-sm" onclick="addLogoElement(\'' +key+ '\')" title="Place '+label+' on canvas">Place L'+(n+1)+'</button>';
+    }
+  }
+  container.innerHTML=html;
+  if(btnWrap) btnWrap.innerHTML=btnHtml;
+}
+
 function renderImgUploadSlots(){
   const container = document.getElementById('img-upload-slots');
   if(!container) return;
@@ -3662,6 +3690,9 @@ function loadAsset(e,key){
       if(uploadRes.ok){finalSrc=`${SUPA_URL}/storage/v1/object/public/assets/${path}`;}
     }catch(err){console.warn('Storage upload failed, using base64 fallback');}
     assets[key]=finalSrc;
+    // Refresh correct slot panel
+    if(['logo','logo2','logo3','logo4'].includes(key)) renderLogoUploadSlots();
+    else renderImgUploadSlots();
     document.querySelectorAll(`.el[data-asset-key="${key}"]`).forEach(el=>{
       const img=el.querySelector('img'),ph=el.querySelector('.img-ph-txt'),inner=el.querySelector('.el-inner');
       if(inner) inner.style.background=isLogo?'transparent':'#c5ccc5';
@@ -3669,7 +3700,7 @@ function loadAsset(e,key){
       if(ph) ph.style.display='none';
     });
     Object.keys(savedStates).forEach(ti=>{(savedStates[ti]||[]).forEach(sv=>{if(sv.assetKey===key)sv.imgSrc=finalSrc;});});
-    renderImgUploadSlots();
+    renderImgUploadSlots(); renderLogoUploadSlots();
     persistAll();
   };
   reader.readAsDataURL(f);
@@ -3916,7 +3947,7 @@ async function init(){
     fitZoomToTab();
     renderAgentBlocks();
     document.getElementById('props-content').innerHTML=emptyPropsHTML();
-    renderImgUploadSlots();
+    renderImgUploadSlots(); renderLogoUploadSlots();
     updateEdmMetaVisibility();
     // Pre-populate EDM subject with "Heading | Sub Heading" if still empty
     const _edmS = document.getElementById('fedm-subject');
