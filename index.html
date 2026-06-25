@@ -1682,6 +1682,78 @@ document.addEventListener('click', function(e){
     openBuilder(body.dataset.pid, body.dataset.id);
   }
 });
+
+// ════════════════════════════════════════
+// AGENT CSV IMPORT
+// ════════════════════════════════════════
+function importAgentsCSV(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const text = e.target.result;
+    const rows = text.split(/\r?\n/).map(function(line){
+      const cols = [];
+      let cur='', inQ=false;
+      for(let i=0;i<line.length;i++){
+        const c=line[i];
+        if(c==='"'){ inQ=!inQ; }
+        else if(c===',' && !inQ){ cols.push(cur.trim()); cur=''; }
+        else { cur+=c; }
+      }
+      cols.push(cur.trim());
+      return cols;
+    }).filter(function(r){ return r[0] && r[0].replace(/\uFEFF/,'').trim(); });
+
+    const parsed = rows.map(function(r){
+      return { name:(r[0]||'').replace(/\uFEFF/,'').trim(), phone:(r[1]||'').trim(), email:(r[2]||'').trim().toLowerCase() };
+    }).filter(function(r){ return r.name; });
+
+    if(!parsed.length){ alert('No valid agents found in CSV.'); input.value=''; return; }
+
+    const existingNames = allAgents.map(function(a){ return a.name.toLowerCase(); });
+    const newAgents=[], dupes=[];
+    parsed.forEach(function(p){
+      if(existingNames.indexOf(p.name.toLowerCase())>-1) dupes.push(p);
+      else newAgents.push(p);
+    });
+
+    document.getElementById('csv-import-summary').innerHTML =
+      '<strong>'+newAgents.length+'</strong> new agents to import' +
+      (dupes.length ? ' &nbsp;&middot;&nbsp; <span style="color:#e8a030;">'+dupes.length+' already exist (skipped)</span>' : '');
+
+    document.getElementById('csv-import-list').innerHTML = newAgents.map(function(a){
+      return '<tr><td style="padding:4px 8px;">'+escHtml(a.name)+'</td><td style="padding:4px 8px;color:#888;">'+escHtml(a.phone)+'</td><td style="padding:4px 8px;color:#888;">'+escHtml(a.email)+'</td></tr>';
+    }).join('') || '<tr><td colspan="3" style="padding:8px;color:#888;text-align:center;">All agents already exist.</td></tr>';
+
+    document.getElementById('modal-csv-import')._pendingAgents = newAgents;
+    document.getElementById('modal-csv-import').classList.add('open');
+    input.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+async function confirmAgentImport(){
+  const modal = document.getElementById('modal-csv-import');
+  const agents = modal._pendingAgents||[];
+  if(!agents.length){ closeModal('modal-csv-import'); return; }
+  const saveBtn = document.getElementById('csv-import-save');
+  saveBtn.disabled=true; saveBtn.textContent='Importing…';
+  let imported=0, failed=0;
+  for(const a of agents){
+    try{
+      const id='ag'+Date.now()+Math.random().toString(36).slice(2,6);
+      const record={id, name:a.name, phone:a.phone, email:a.email, photo:''};
+      await SB.post('agents', record);
+      allAgents.push(record);
+      imported++;
+    }catch(e){ console.error('Failed to import',a.name,e); failed++; }
+  }
+  closeModal('modal-csv-import');
+  renderAgents();
+  saveBtn.disabled=false; saveBtn.textContent='Import';
+  if(failed) alert('Imported '+imported+' agents. '+failed+' failed.');
+}
 </script>
 
 <!-- ═══════════════════════════════════════
@@ -1694,7 +1766,11 @@ document.addEventListener('click', function(e){
         <div class="page-title">Agents</div>
         <div class="page-sub">Manage the global agent database used across all marketing materials</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="admin-btn" style="cursor:pointer;margin:0;" title="Import agents from CSV (name, phone, email)">
+          ⬆ Import CSV
+          <input type="file" accept=".csv,text/csv" style="display:none;" onchange="importAgentsCSV(this)">
+        </label>
         <button class="admin-btn primary" onclick="openAgentModal()">+ Add Agent</button>
       </div>
     </div>
@@ -1763,6 +1839,29 @@ document.addEventListener('click', function(e){
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal('modal-move-property')">Cancel</button>
       <button class="modal-confirm" id="move-property-save" onclick="moveProperty()">Move Property</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-csv-import">
+  <div class="modal" style="width:520px;max-height:80vh;display:flex;flex-direction:column;">
+    <div class="modal-title">Import Agents from CSV</div>
+    <div id="csv-import-summary" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;"></div>
+    <div style="overflow-y:auto;flex:1;border:1px solid var(--border);border-radius:3px;margin-bottom:14px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead style="position:sticky;top:0;background:var(--card-bg);z-index:1;">
+          <tr>
+            <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);color:var(--text-muted);font-weight:600;">Name</th>
+            <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);color:var(--text-muted);font-weight:600;">Phone</th>
+            <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);color:var(--text-muted);font-weight:600;">Email</th>
+          </tr>
+        </thead>
+        <tbody id="csv-import-list"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-csv-import')">Cancel</button>
+      <button class="modal-confirm" id="csv-import-save" onclick="confirmAgentImport()">Import</button>
     </div>
   </div>
 </div>
