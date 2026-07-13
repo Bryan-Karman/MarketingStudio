@@ -739,30 +739,77 @@ function createElement(cfg){
         handleRtbKeydown(ev, inner);
         if(ev.key==='Enter' && !ev.shiftKey){
           ev.preventDefault();
-          const sel=window.getSelection();
-          if(!sel||!sel.rangeCount) return;
-          const range=sel.getRangeAt(0);
-          range.deleteContents();
-          // For contenteditable divs with white-space:normal, insert <br> or newline
-          if(inner.style.whiteSpace==='pre-wrap'){
-            const textNode=document.createTextNode('\n');
-            range.insertNode(textNode);
-            range.setStartAfter(textNode);
-            range.setEndAfter(textNode);
+          const _isBulletEl = el.dataset.bullets==='1';
+          if(_isBulletEl){
+            // For bullet elements: read current lines, append new bullet, re-render
+            const _btSpans = inner.querySelectorAll('span.bt');
+            let _lines = [];
+            if(_btSpans.length){
+              _lines = Array.from(_btSpans).map(s=>s.textContent.replace(/^\u2013\s*/,'').trim()).filter(Boolean);
+            } else {
+              _lines = (inner.innerText||'').split('\n').map(l=>l.replace(/^\u2013\s*/,'').trim()).filter(Boolean);
+            }
+            // Find which line cursor is on and insert after it
+            const _sel2=window.getSelection();
+            let _insertAfter = _lines.length - 1; // default: end
+            if(_sel2&&_sel2.rangeCount){
+              const _r=_sel2.getRangeAt(0);
+              const _btArr=Array.from(_btSpans);
+              for(let _i=0;_i<_btArr.length;_i++){
+                if(_btArr[_i].contains(_r.startContainer)||_btArr[_i]===_r.startContainer){
+                  _insertAfter=_i; break;
+                }
+              }
+            }
+            _lines.splice(_insertAfter+1,0,'');
+            // Update sidebar if linked
+            const _sid3=fieldToSidebarId(el.dataset.field||'');
+            const _sel3=_sid3?document.getElementById(_sid3):null;
+            if(_sel3) _sel3.value=_lines.join('\n');
+            // Re-apply bullets
+            applyBullets(inner, true);
+            inner.innerHTML=''; // applyBullets will re-render from field
+            // Manually set innerHTML to our lines
+            const _sp=el.dataset.bulletParaSpacing||'4';
+            inner.innerHTML=_lines.map(function(l,i){
+              return '<div><span class="bt">– '+l+'</span></div>';
+            }).join('');
+            inner.style.setProperty('--bullet-spacing',_sp);
+            // Place cursor in the new empty span
+            const _newSpans=inner.querySelectorAll('span.bt');
+            const _targetSpan=_newSpans[_insertAfter+1];
+            if(_targetSpan){
+              const _nr=document.createRange();
+              _nr.setStart(_targetSpan,_targetSpan.childNodes.length);
+              _nr.collapse(true);
+              _sel2.removeAllRanges();
+              _sel2.addRange(_nr);
+            }
+            if(inner._inlineInputHandler) inner._inlineInputHandler();
           } else {
-            // For bullet/bodycopy fields — insert newline char so blur handler reads it
-            const br=document.createElement('br');
-            range.insertNode(br);
-            const after=document.createTextNode('\u200B');
-            range.setStartAfter(br);
-            range.insertNode(after);
-            range.setStartAfter(after);
-            range.collapse(true);
+            // Non-bullet: insert newline
+            const sel=window.getSelection();
+            if(!sel||!sel.rangeCount) return;
+            const range=sel.getRangeAt(0);
+            range.deleteContents();
+            if(inner.style.whiteSpace==='pre-wrap'){
+              const textNode=document.createTextNode('\n');
+              range.insertNode(textNode);
+              range.setStartAfter(textNode);
+              range.setEndAfter(textNode);
+            } else {
+              const br=document.createElement('br');
+              range.insertNode(br);
+              const after=document.createTextNode('\u200B');
+              range.setStartAfter(br);
+              range.insertNode(after);
+              range.setStartAfter(after);
+              range.collapse(true);
+            }
+            sel.removeAllRanges();
+            sel.addRange(range);
+            if(inner._inlineInputHandler) inner._inlineInputHandler();
           }
-          sel.removeAllRanges();
-          sel.addRange(range);
-          // Trigger input handler so sidebar stays in sync
-          if(inner._inlineInputHandler) inner._inlineInputHandler();
         }
       };
       inner.addEventListener('mouseup', saveSelectionRange);
