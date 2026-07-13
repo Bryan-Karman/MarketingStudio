@@ -2243,6 +2243,34 @@ function globalSync(){
   //    This means over-limit text can never reach the canvas under any circumstance
   CL_FIELD_IDS.forEach(id=>{ if(typeof clEnforce==='function') clEnforce(id); });
 
+  // 1a. Update incomeAnchor free-text box (no field attr) on AFR4
+  if(currentTab===6){
+    const _anchorEl=document.querySelector('.el[data-income-anchor="1"]:not([data-field]),.el[data-income-anchor="1"][data-field=""]');
+    if(_anchorEl){
+      const _aInner=_anchorEl.querySelector('.el-inner');
+      if(_aInner && _aInner.contentEditable!=='true'){
+        const _fi4=((document.getElementById('fi')||{}).value||'').trim();
+        // Read current lines stripping any old income
+        const _btSpans=_aInner.querySelectorAll('span.bt');
+        let _baseLines=[];
+        if(_btSpans.length){
+          _baseLines=Array.from(_btSpans).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+        } else {
+          _baseLines=(_aInner.innerText||_aInner.textContent||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+        }
+        const _fp=_fi4.split(':')[0].trim().toLowerCase();
+        _baseLines=_baseLines.filter(function(l){ return !(_fp&&l.toLowerCase().startsWith(_fp+':')); });
+        if(_fi4) _baseLines.push(_fi4);
+        _aInner.textContent=_baseLines.join('\n');
+        // Ensure bulletParaSpacing is set
+        if(!_anchorEl.dataset.bulletParaSpacing) _anchorEl.dataset.bulletParaSpacing='4';
+        _aInner.dataset.bulletSpacing=_anchorEl.dataset.bulletParaSpacing;
+        _aInner.style.setProperty('--bullet-spacing',_anchorEl.dataset.bulletParaSpacing);
+        applyBullets(_aInner,true);
+      }
+    }
+  }
+
   // 1. Update elements on the currently visible tab (live DOM)
   document.querySelectorAll('.el[data-field]').forEach(el=>{
     const field=el.dataset.field;
@@ -2302,19 +2330,6 @@ function globalSync(){
       }
       // Re-apply bullet prefix if this element has bullets enabled
       if(el.dataset.bullets==='1'){
-        // AFR4: if this is the incomeAnchor right box, append income before applying bullets
-        if(currentTab===6 && el.dataset.incomeAnchor==='1'){
-          var _fi4=((document.getElementById('fi')||{}).value||'').trim();
-          var _baseText=(inner.innerText||inner.textContent||'').split('\n')
-            .map(function(l){return l.replace(/^\u2013\s*/,'').trim();})
-            .filter(function(l){
-              if(!l) return false;
-              // strip any existing income line
-              var _fp=_fi4.split(':')[0].trim().toLowerCase();
-              return !(_fp && l.toLowerCase().startsWith(_fp+':'));
-            }).join('\n');
-          inner.textContent = _fi4 ? _baseText+'\n'+_fi4 : _baseText;
-        }
         applyBullets(inner, true);
       }
       // Brochure tabs (3,4): bullets field uses plain spacing + bold income
@@ -2781,8 +2796,13 @@ function buildAFR4(W,H){
   (function(){
     var _el=mkT(238,266,217,99,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:50,bullets:'1',bulletParaSpacing:'4'});
     _el.dataset.incomeAnchor='1';
+    _el.dataset.bulletParaSpacing='4';
     var _inner=_el.querySelector('.el-inner');
-    if(_inner) applyBullets(_inner,true);
+    if(_inner){
+      _inner.dataset.bulletSpacing='4';
+      _inner.style.setProperty('--bullet-spacing','4');
+      applyBullets(_inner,true);
+    }
   })();
 }
 
