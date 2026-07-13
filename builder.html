@@ -737,18 +737,32 @@ function createElement(cfg){
       inner.addEventListener('keyup', _inlineInputHandler);
       inner.onkeydown=ev=>{
         handleRtbKeydown(ev, inner);
-        if(ev.key==='Enter' && !ev.shiftKey && inner.style.whiteSpace==='pre-wrap'){
+        if(ev.key==='Enter' && !ev.shiftKey){
           ev.preventDefault();
           const sel=window.getSelection();
           if(!sel||!sel.rangeCount) return;
           const range=sel.getRangeAt(0);
           range.deleteContents();
-          const textNode=document.createTextNode('\n');
-          range.insertNode(textNode);
-          range.setStartAfter(textNode);
-          range.setEndAfter(textNode);
+          // For contenteditable divs with white-space:normal, insert <br> or newline
+          if(inner.style.whiteSpace==='pre-wrap'){
+            const textNode=document.createTextNode('\n');
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+          } else {
+            // For bullet/bodycopy fields — insert newline char so blur handler reads it
+            const br=document.createElement('br');
+            range.insertNode(br);
+            const after=document.createTextNode('\u200B');
+            range.setStartAfter(br);
+            range.insertNode(after);
+            range.setStartAfter(after);
+            range.collapse(true);
+          }
           sel.removeAllRanges();
           sel.addRange(range);
+          // Trigger input handler so sidebar stays in sync
+          if(inner._inlineInputHandler) inner._inlineInputHandler();
         }
       };
       inner.addEventListener('mouseup', saveSelectionRange);
@@ -2657,7 +2671,7 @@ function buildAFR4(W,H){
   mkR(0,170,464,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,446,27,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'heading',z:3});
   mkT(11,198,444,25,gv('fs')||'Sub Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'subheading',z:3});
-  mkR(0,238,464,160,'rgb(255, 255, 255)',{z:1});
+  mkR(0,227,464,171,'rgb(255, 255, 255)',{z:1});
   mkT(11,233,340,17,gv('fa1')||'Suburb State',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:3});
   mkT(11,248,351,15,gv('fa2')||'Street Address',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3});
   mkI(405,232,52,26,'logo','Image',{z:3});
@@ -2672,6 +2686,7 @@ function buildAFR4(W,H){
   mkT(237,378,104,13,gv('fp3')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3num',z:3});
   mkT(353,363,103,14,gv('fn4')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3});
   mkT(353,379,104,13,gv('fp4')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3});
+  mkT(238,266,217,78,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:50,bullets:'1',bulletParaSpacing:'4'});
 }
 
 // ─── AUCTION POSTER 794×1123 ───
