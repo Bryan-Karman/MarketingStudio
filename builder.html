@@ -1962,6 +1962,7 @@ function serializeTab(){
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
       field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'',
+      afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
     };
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
@@ -2058,6 +2059,8 @@ function restoreTab(idx){
       el.style.cursor='not-allowed';
     }
     if(sv.combinedAgent==='1') el.dataset.combinedAgent='1';
+    if(sv.afrSaleCombo==='1') el.dataset.afrSaleCombo='1';
+    if(sv.incomeAnchor==='1') el.dataset.incomeAnchor='1';
     if(sv.agentOrigY) el.dataset.agentOrigY=sv.agentOrigY;
     if(sv.agentBelow==='1'){ el.dataset.agentBelow='1'; if(sv.agentBelowY) el.dataset.agentBelowY=sv.agentBelowY; }
     if(sv.banner==='1'){
@@ -3730,6 +3733,8 @@ function switchTab(idx,btn){
   deselectAll();
   if((idx===2||idx===3)&&typeof _migrateEDMStates==='function') _migrateEDMStates();
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
+  // For AFR4: re-run globalSync after restore so income and sale combo re-render
+  if(idx===6) setTimeout(function(){ globalSync(); }, 50);
   fitZoomToTab();
   updateEdmMetaVisibility();
   if(idx===2||idx===3) setTimeout(repackEDMAgents,80);
@@ -4255,6 +4260,7 @@ async function init(){
     } else {
       buildTemplate(currentTab);
     }
+    if(currentTab===6) setTimeout(function(){ globalSync(); }, 50);
     fitZoomToTab();
     renderAgentBlocks();
     document.getElementById('props-content').innerHTML=emptyPropsHTML();
