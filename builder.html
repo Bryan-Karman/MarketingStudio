@@ -2232,6 +2232,13 @@ function globalSync(){
   document.querySelectorAll('.el[data-field]').forEach(el=>{
     const field=el.dataset.field;
     if(!field) return;
+    // AFR sale combo: salemethod + ", " + saledate
+    if(el.dataset.afrSaleCombo==='1'){
+      const _sm=getFieldVal('salemethod')||''; const _sd=getFieldVal('saledate')||'';
+      const _inner2=el.querySelector('.el-inner');
+      if(_inner2) _inner2.textContent=_sm&&_sd?_sm+', '+_sd:_sm||_sd;
+      return;
+    }
     if(field.startsWith('zh_')) return; // Chinese tab — handled by syncEDMAsianDesk
     const val=getFieldVal(field);
     if(val===null) return;
@@ -2724,7 +2731,13 @@ function buildAFR4(W,H){
   mkI(405,232,52,26,'logo','Image',{z:3});
   (function(){ var _e=mkT(10,266,217,78,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'4'}); _e.dataset.incomeAnchor='1'; return _e; })();
   (function(){ var _e=mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  mkT(11,345,442,16,gv('fd')||'Day Date Time',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3});
+  // Sale method + date combined: "Investment Portfolio Auction, Closing 3pm AEST..."
+  (function(){
+    var _sm=gv('fm')||''; var _sd=gv('fd')||'';
+    var _combined=_sm&&_sd?_sm+', '+_sd:_sm||_sd||'Sale Method, Date & Details';
+    var _el=mkT(11,345,442,16,_combined,{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+    _el.dataset.afrSaleCombo='1';
+  })();
   mkT(12,363,103,13,gv('fn1')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',z:3});
   mkT(11,378,105,13,gv('fp1')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1num',z:3});
   mkT(122,363,104,14,gv('fn2')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',z:3});
@@ -2733,7 +2746,12 @@ function buildAFR4(W,H){
   mkT(237,378,104,13,gv('fp3')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3num',z:3});
   mkT(353,363,103,14,gv('fn4')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3});
   mkT(353,379,104,13,gv('fp4')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3});
-  mkT(238,266,217,78,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:50,bullets:'1',bulletParaSpacing:'4'});
+  // Free text right column — always present, not linked to sidebar
+  (function(){
+    var _el=mkT(238,266,217,99,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:50,bullets:'1',bulletParaSpacing:'4'});
+    var _inner=_el.querySelector('.el-inner');
+    if(_inner) applyBullets(_inner,true);
+  })();
 }
 
 // ─── AUCTION POSTER 794×1123 ───
