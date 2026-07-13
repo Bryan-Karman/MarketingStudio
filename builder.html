@@ -2729,7 +2729,7 @@ function buildAFR4(W,H){
   mkT(11,233,340,17,gv('fa1')||'Suburb State',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:3});
   mkT(11,248,351,15,gv('fa2')||'Street Address',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3});
   mkI(405,232,52,26,'logo','Image',{z:3});
-  (function(){ var _e=mkT(10,266,217,78,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'4'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(10,266,217,78,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'4'}); return _e; })();
   (function(){ var _e=mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   // Sale method + date combined: "Investment Portfolio Auction, Closing 3pm AEST..."
   (function(){
@@ -2746,9 +2746,10 @@ function buildAFR4(W,H){
   mkT(237,378,104,13,gv('fp3')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3num',z:3});
   mkT(353,363,103,14,gv('fn4')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3});
   mkT(353,379,104,13,gv('fp4')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3});
-  // Free text right column — always present, not linked to sidebar
+  // Free text right column — always present, income appends here
   (function(){
     var _el=mkT(238,266,217,99,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:50,bullets:'1',bulletParaSpacing:'4'});
+    _el.dataset.incomeAnchor='1';
     var _inner=_el.querySelector('.el-inner');
     if(_inner) applyBullets(_inner,true);
   })();
