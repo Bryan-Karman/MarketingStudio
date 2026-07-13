@@ -2273,9 +2273,12 @@ function globalSync(){
           // Always hide standalone income box — income is merged into bullets/bodycopy
           el.style.display = 'none';
           return;
-        } else if(field === 'bullets' && [5,6,8].indexOf(currentTab) > -1){
-          // AFR2, AFR4, Auction: append income as plain last bullet line
+        } else if(field === 'bullets' && [5,8].indexOf(currentTab) > -1){
+          // AFR2, Auction: append income as plain last bullet line
           inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else if(field === 'bullets' && currentTab === 6){
+          // AFR4: left bullets box shows bullets only — income goes to right free-text box
+          inner.textContent = val;
         } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
           inner.textContent = _fi ? val + '\n' + _fi : val;
@@ -2299,6 +2302,19 @@ function globalSync(){
       }
       // Re-apply bullet prefix if this element has bullets enabled
       if(el.dataset.bullets==='1'){
+        // AFR4: if this is the incomeAnchor right box, append income before applying bullets
+        if(currentTab===6 && el.dataset.incomeAnchor==='1'){
+          var _fi4=((document.getElementById('fi')||{}).value||'').trim();
+          var _baseText=(inner.innerText||inner.textContent||'').split('\n')
+            .map(function(l){return l.replace(/^\u2013\s*/,'').trim();})
+            .filter(function(l){
+              if(!l) return false;
+              // strip any existing income line
+              var _fp=_fi4.split(':')[0].trim().toLowerCase();
+              return !(_fp && l.toLowerCase().startsWith(_fp+':'));
+            }).join('\n');
+          inner.textContent = _fi4 ? _baseText+'\n'+_fi4 : _baseText;
+        }
         applyBullets(inner, true);
       }
       // Brochure tabs (3,4): bullets field uses plain spacing + bold income
@@ -2338,8 +2354,8 @@ function globalSync(){
       } else if(sv.field === 'income'){
         // Income folded into bullets/bodycopy — skip standalone
         sv._hidden = true;
-      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1){
-        // AFR/Auction/Brochure: append income as last bullet
+      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1 && ti !== 6){
+        // AFR/Auction/Brochure: append income as last bullet (not AFR4 tab 6)
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
