@@ -2246,7 +2246,30 @@ function globalSync(){
   //    This means over-limit text can never reach the canvas under any circumstance
   CL_FIELD_IDS.forEach(id=>{ if(typeof clEnforce==='function') clEnforce(id); });
 
-  // 1a. Update incomeAnchor free-text box (no field attr) on AFR4
+  // 1a. Update AFR4 special elements (no data-field attr)
+  if(currentTab===6){
+    // Sale method + date combo
+    const _comboEl=document.querySelector('.el[data-afr-sale-combo="1"]');
+    if(!_comboEl){
+      // Try dataset check (dataset uses camelCase)
+      const _allEls=document.querySelectorAll('.el');
+      let _found=null;
+      _allEls.forEach(function(e){ if(e.dataset.afrSaleCombo==='1') _found=e; });
+      if(_found){
+        const _ci=_found.querySelector('.el-inner');
+        if(_ci){
+          const _sm=getFieldVal('salemethod')||''; const _sd=getFieldVal('saledate')||'';
+          _ci.textContent=_sm&&_sd?_sm+', '+_sd:_sm||_sd||'Sale Method, Date & Details';
+        }
+      }
+    } else {
+      const _ci=_comboEl.querySelector('.el-inner');
+      if(_ci){
+        const _sm=getFieldVal('salemethod')||''; const _sd=getFieldVal('saledate')||'';
+        _ci.textContent=_sm&&_sd?_sm+', '+_sd:_sm||_sd||'Sale Method, Date & Details';
+      }
+    }
+  }
   if(currentTab===6){
     const _anchorEl=document.querySelector('.el[data-income-anchor="1"]:not([data-field]),.el[data-income-anchor="1"][data-field=""]');
     if(_anchorEl){
@@ -2278,13 +2301,7 @@ function globalSync(){
   document.querySelectorAll('.el[data-field]').forEach(el=>{
     const field=el.dataset.field;
     if(!field) return;
-    // AFR sale combo: salemethod + ", " + saledate
-    if(el.dataset.afrSaleCombo==='1'){
-      const _sm=getFieldVal('salemethod')||''; const _sd=getFieldVal('saledate')||'';
-      const _inner2=el.querySelector('.el-inner');
-      if(_inner2) _inner2.textContent=_sm&&_sd?_sm+', '+_sd:_sm||_sd;
-      return;
-    }
+
     if(field.startsWith('zh_')) return; // Chinese tab — handled by syncEDMAsianDesk
     const val=getFieldVal(field);
     if(val===null) return;
