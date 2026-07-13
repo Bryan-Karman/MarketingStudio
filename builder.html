@@ -2187,6 +2187,21 @@ function restoreTab(idx){
 }
 
 function applyTemplateLocks(idx){
+  // AFR 4 Mods (tab 6): fix income anchor — must be on the right free-text box (z:50), not left bullets
+  if(idx === 6){
+    const art = document.getElementById('artwork');
+    if(art){
+      const els = Array.from(art.querySelectorAll('.el[data-type="text"]'));
+      // Clear incomeAnchor from all elements first
+      els.forEach(function(el){ delete el.dataset.incomeAnchor; });
+      // Set incomeAnchor on the free-text right column (z-index 50, no field link)
+      const rightBox = els.find(function(el){
+        return el.dataset.field==='' && el.dataset.bullets==='1' && parseInt(el.style.zIndex||'0')===50;
+      });
+      if(rightBox){ rightBox.dataset.incomeAnchor='1'; }
+    }
+    return;
+  }
   // Brochure tabs (0,1): lock everything except images, logo, banner
   if(idx !== 0 && idx !== 1) return;
   const art = document.getElementById('artwork');
