@@ -376,6 +376,14 @@ Line five</textarea>
       <input type="hidden" id="fedm-link-listing">
       <input type="hidden" id="fedm-link-portfolio">
       <input type="hidden" id="fedm-link-im-subject">
+      <input type="hidden" id="fedm-link-s1">
+      <input type="hidden" id="fedm-link-s2">
+      <input type="hidden" id="fedm-link-s3">
+      <input type="hidden" id="fedm-link-s4">
+      <input type="hidden" id="fedm-link-btn1">
+      <input type="hidden" id="fedm-link-btn2">
+      <input type="hidden" id="fedm-link-btn3">
+      <input type="hidden" id="fedm-link-s5">
       <!-- Hidden inputs — populated by agent selector JS, consumed by globalSync -->
       <input type="hidden" id="fn1"><input type="hidden" id="fp1">
       <input type="hidden" id="fn2"><input type="hidden" id="fp2">
@@ -2992,9 +3000,8 @@ function buildEDM(W,H){
     tagBelow((function(){ var _e=mkI(501,3808,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3808);
     tagBelow(mkR(0,3930,600,113,'rgb(1, 42, 45)',{z:3}),3930);
     tagBelow(mkSVGLogo(40,3961,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3961);
-    tagBelow(mkT(23,4077,555,170,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),4077);
+    tagBelow(mkT(23,4077,555,170,'*All areas and figures approx only.   \nThis communication is from CBRE or one of its associated/subsidiary companies. This communication contains information which is confidential and may be privileged. If you are not the intended recipient, please contact the sender immediately. Any use of its contents is strictly prohibited and you must not copy, send or disclose it, or rely on its contents in any way whatsoever.\nInformation herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. It is your responsibility to independently confirm its accuracy and completeness. Any projections, opinions, assumptions or estimates used are for example only and do not represent the current or future performance of the market.\nReasonable care has been taken to ensure that this communication (and any attachments or hyperlinks contained within it) is free from computer viruses. No responsibility is accepted by CBRE Pty Ltd or its associated/subsidiary companies and the recipient should carry out any appropriate virus checks.\nCBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy which can be viewed here.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),4077);
 
-    tagBelow(mkT(23,3797,555,170,'*All areas and figures approx only. This communication is from CBRE or one of its associated/subsidiary companies. Information herein has been obtained from sources believed reliable. CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),4081);
   })();
   mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
   mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
@@ -3048,7 +3055,7 @@ function buildEDMAsianDesk(W,H){
     tagBelow(mkT(59,3809,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4}), 3809);
     tagBelow((function(){ var _e=mkI(501,3798,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3798);
     tagBelow(mkR(0,3903,600,113,'rgb(1, 42, 45)',{z:3}), 3903);
-    tagBelow(mkT(23,4050,555,170,'',{color:'rgb(153, 153, 153)',fontSize:'11px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',padding:'0px 0px 2px',field:'zh_disclaimer',z:3}), 4050);
+    tagBelow(mkT(23,4050,555,170,'*All areas and figures approx only.   \nThis communication is from CBRE or one of its associated/subsidiary companies. This communication contains information which is confidential and may be privileged. If you are not the intended recipient, please contact the sender immediately. Any use of its contents is strictly prohibited and you must not copy, send or disclose it, or rely on its contents in any way whatsoever.\nInformation herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. It is your responsibility to independently confirm its accuracy and completeness. Any projections, opinions, assumptions or estimates used are for example only and do not represent the current or future performance of the market.\nReasonable care has been taken to ensure that this communication (and any attachments or hyperlinks contained within it) is free from computer viruses. No responsibility is accepted by CBRE Pty Ltd or its associated/subsidiary companies and the recipient should carry out any appropriate virus checks.\nCBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy which can be viewed here.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}), 4050);
     tagBelow(mkSVGLogo(40,3934,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}), 3934);
   })();
   mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
@@ -3672,23 +3679,43 @@ function edmMetaHTML(){
   ${_adminMode ? `<div style="background:#141414;border:1px solid #1a3a2a;border-radius:3px;padding:8px 10px;margin-bottom:2px;margin-top:4px;">
     <div style="font-size:9px;font-weight:700;color:#5a9a7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">&#9881; EDM Links (Admin)</div>
     <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="font-size:9px;color:#5a9a7a;font-weight:600;margin-bottom:-2px;">IMAGES</div>
       <div>
-        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">View Listing URL <span style="color:#555;font-weight:400;">(images + btn)</span></label>
-        <input id="edm-link-listing-display" type="url" value="${(document.getElementById('fedm-link-listing')||{}).value||''}" placeholder="https://cbre.com.au/listing/..."
-          oninput="document.getElementById('fedm-link-listing').value=this.value;debouncedPersist();"
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">Hero Image (top)</label>
+        <input id="edm-link-s1-display" type="url" value="${(document.getElementById('fedm-link-s1')||{}).value||''}" placeholder="https://... or mailto:..."
+          oninput="document.getElementById('fedm-link-s1').value=this.value;debouncedPersist();"
           style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
       </div>
+      <div>
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">2nd Property Image</label>
+        <input id="edm-link-s3-display" type="url" value="${(document.getElementById('fedm-link-s3')||{}).value||''}" placeholder="https://... or mailto:..."
+          oninput="document.getElementById('fedm-link-s3').value=this.value;debouncedPersist();"
+          style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">3rd Property Image</label>
+        <input id="edm-link-s5-display" type="url" value="${(document.getElementById('fedm-link-s5')||{}).value||''}" placeholder="https://... or mailto:..."
+          oninput="document.getElementById('fedm-link-s5').value=this.value;debouncedPersist();"
+          style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
+      </div>
+      <div style="font-size:9px;color:#5a9a7a;font-weight:600;margin-top:2px;margin-bottom:-2px;">BUTTONS</div>
       <div>
         <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">Request IM &mdash; Mailto Subject</label>
         <input id="edm-link-im-subject-display" type="text" value="${(document.getElementById('fedm-link-im-subject')||{}).value||('Please send me further information about '+((document.getElementById('fa1')||{}).value||'this property'))}" placeholder="Please send me further information about..."
           oninput="document.getElementById('fedm-link-im-subject').value=this.value;debouncedPersist();"
           style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
-        <div style="font-size:9px;color:#555;margin-top:2px;">Each agent name links to their email. Button uses Agent 1.</div>
+        <div style="font-size:9px;color:#555;margin-top:2px;">Each agent links to their email. Leave blank to use default.</div>
       </div>
       <div>
-        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">View Full Portfolio Line Up URL</label>
-        <input id="edm-link-portfolio-display" type="url" value="${(document.getElementById('fedm-link-portfolio')||{}).value||''}" placeholder="https://cbre.com.au/portfolio/..."
-          oninput="document.getElementById('fedm-link-portfolio').value=this.value;debouncedPersist();"
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">View Listing Button URL</label>
+        <input id="edm-link-btn2-display" type="url" value="${(document.getElementById('fedm-link-btn2')||{}).value||''}" placeholder="https://cbre.com.au/listing/..."
+          oninput="document.getElementById('fedm-link-btn2').value=this.value;debouncedPersist();"
+          style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px;">View Full Portfolio URL</label>
+        <input id="edm-link-btn3-display" type="url" value="${(document.getElementById('fedm-link-btn3')||{}).value||''}" placeholder="https://cbre.com.au/portfolio/..."
+          oninput="document.getElementById('fedm-link-btn3').value=this.value;debouncedPersist();"
           style="width:100%;font-size:11px;padding:5px 6px;border:1px solid #2a3a2a;border-radius:2px;background:#1a2a1a;color:#ddd;font-family:inherit;outline:none;">
       </div>
     </div>
@@ -3819,12 +3846,27 @@ function toggleMITab(idx,cb){
 function collectState(){
   savedStates[currentTab]=serializeTab();
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
+  const _edmS1=(document.getElementById('fedm-link-s1')||{}).value||'';
+  const _edmS2=(document.getElementById('fedm-link-s2')||{}).value||'';
+  const _edmS3=(document.getElementById('fedm-link-s3')||{}).value||'';
+  const _edmS4=(document.getElementById('fedm-link-s4')||{}).value||'';
+  const _edmS5=(document.getElementById('fedm-link-s5')||{}).value||'';
+  const _edmBtn2=(document.getElementById('fedm-link-btn2')||{}).value||'';
+  const _edmBtn3=(document.getElementById('fedm-link-btn3')||{}).value||'';
   const _edmPrev=(document.getElementById('fedm-preview')||{}).value||'';
   const _edmLinkListing=(document.getElementById('fedm-link-listing')||{}).value||'';
   const _edmLinkPortfolio=(document.getElementById('fedm-link-portfolio')||{}).value||'';
+  // Per-section overrides (fall back to listing/portfolio if blank)
+  const _lnkS1 =(document.getElementById('fedm-link-s1')||{}).value||_edmLinkListing;
+  const _lnkS2 =(document.getElementById('fedm-link-s2')||{}).value||_edmLinkListing;
+  const _lnkS3 =(document.getElementById('fedm-link-s3')||{}).value||_edmLinkListing;
+  const _lnkS4 =(document.getElementById('fedm-link-s4')||{}).value||'';
+  const _lnkS5 =(document.getElementById('fedm-link-s5')||{}).value||_edmLinkListing;
+  const _lnkBtn2=(document.getElementById('fedm-link-btn2')||{}).value||_edmLinkListing;
+  const _lnkBtn3=(document.getElementById('fedm-link-btn3')||{}).value||_edmLinkPortfolio;
   const _edmLinkIMSubject=(document.getElementById('fedm-link-im-subject')||{}).value||'';
   const _agentSlotsState=agentSlots.map(s=>({mode:s.mode,agentId:s.agentId,customName:s.customName,customPhone:s.customPhone,customEmail:s.customEmail||'',emailOverride:s.emailOverride||''}));
-  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
+  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmS1:_edmS1,edmS2:_edmS2,edmS3:_edmS3,edmS4:_edmS4,edmS5:_edmS5,edmBtn2:_edmBtn2,edmBtn3:_edmBtn3,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
@@ -3841,6 +3883,8 @@ function applyState(data,skipZoom=false){
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
+    const _edmMap={edmS1:'fedm-link-s1',edmS2:'fedm-link-s2',edmS3:'fedm-link-s3',edmS4:'fedm-link-s4',edmS5:'fedm-link-s5',edmBtn2:'fedm-link-btn2',edmBtn3:'fedm-link-btn3'};
+    Object.keys(_edmMap).forEach(function(k){ if(data[k]!=null){ const el=document.getElementById(_edmMap[k]); if(el) el.value=data[k]; }});
     if(data.edmPreview!=null){ const p=document.getElementById('fedm-preview'); if(p) p.value=data.edmPreview; }
     if(data.edmLinkListing!=null){ const el=document.getElementById('fedm-link-listing'); if(el) el.value=data.edmLinkListing; }
     if(data.edmLinkPortfolio!=null){ const el=document.getElementById('fedm-link-portfolio'); if(el) el.value=data.edmLinkPortfolio; }
@@ -4750,21 +4794,22 @@ async function exportEDMSections(){
     const imgTags = uploadedUrls.map(s=>{
       const n = s.name;
       // Images → View Listing URL
-      if(n==='s1'||n==='s3'||n==='s5') return linked(s, linkListing);
-      // s2 = dark panel (heading/bullets/logo/salemethod) → View Listing
-      if(n==='s2') return linked(s, linkListing);
-      // s4 = body copy → no link
+      if(n==='s1') return linked(s, _lnkS1);
+      if(n==='s2') return imgTag(s);
+      if(n==='s3') return linked(s, _lnkS3);
       if(n==='s4') return imgTag(s);
+      if(n==='s5') return linked(s, _lnkS5);
       // Agent sections → mailto their own email
       if(n==='agent1') return linked(s, mailtoLink(agentEmails[0], imSubject));
       if(n==='agent2') return linked(s, mailtoLink(agentEmails[1], imSubject));
       if(n==='agent3') return linked(s, mailtoLink(agentEmails[2], imSubject));
       if(n==='agent4') return linked(s, mailtoLink(agentEmails[3], imSubject));
       // Buttons
-      if(n==='btn1') return linked(s, mailtoLink(agentEmails[0], imSubject)); // Request IM → agent 1 email
-      if(n==='btn2') return linked(s, linkListing);   // View Listing
-      if(n==='btn3') return linked(s, linkPortfolio); // Portfolio
-      // Footer → no link
+      if(n==='btn1') return linked(s, mailtoLink(agentEmails[0], imSubject));
+      if(n==='btn2') return linked(s, _lnkBtn2);
+      if(n==='btn3') return linked(s, _lnkBtn3);
+      // Footer → privacy policy
+      if(n==='footer') return linked(s, 'https://www.cbre.com.au/about-us/pacific-privacy-notice');
       return imgTag(s);
     }).join('\n');
 
