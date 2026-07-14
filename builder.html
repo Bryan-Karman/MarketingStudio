@@ -2387,6 +2387,10 @@ function globalSync(){
       if(el.dataset.bullets==='1'){
         applyBullets(inner, true);
       }
+      // Auction tab (8): bullets field — preserve pre-wrap newlines
+      if(currentTab === 8 && field === 'bullets'){
+        inner.style.whiteSpace = 'pre-wrap';
+      }
       // Brochure tabs (0,1): bullets field uses plain spacing + bold income
       if([0,1].indexOf(currentTab) > -1 && field === 'bullets'){
         var _bps = parseFloat(el.dataset.bulletParaSpacing)||6;
@@ -2400,11 +2404,7 @@ function globalSync(){
           }
         }
       }
-      // Auction tab (8): bullets field uses plain line breaks, no bullet prefix
-      if(currentTab === 8 && field === 'bullets'){
-        var _bps8 = parseFloat(el.dataset.bulletParaSpacing)||10;
-        applyPlainParaSpacing(inner, _bps8);
-      }
+
     }
   });
 
@@ -2877,7 +2877,7 @@ function buildAuction(W,H){
   mkT(30,743,516,48,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',field:'address2',z:2});
   mkI(637,690,128,93,'logo','Image',{z:2});
   mkR(32,807,56,3,'rgb(23, 232, 143)',{z:2});
-  (function(){ var _e=mkT(32,837,431,249,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.25',field:'bullets',z:2,locked:'1',bulletParaSpacing:'10'}); _e.dataset.bulletParaSpacing='10'; applyPlainParaSpacing(_e.querySelector('.el-inner'),10); return _e; })();
+  (function(){ var _e=mkT(32,837,431,249,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.25',field:'bullets',z:2,locked:'1'}); var _i=_e.querySelector('.el-inner'); if(_i) _i.style.whiteSpace='pre-wrap'; return _e; })();
   mkT(31,974,424,48,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2,locked:'0'});
   mkR(498,840,2,200,'rgb(203, 205, 203)',{z:2});
   mkT(534,837,210,27,'CBRE',{color:'rgb(127, 132, 128)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:2});
