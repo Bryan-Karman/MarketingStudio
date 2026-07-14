@@ -2845,8 +2845,8 @@ function buildAuction(W,H){
   mkT(30,743,516,48,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',field:'address2',z:2});
   mkI(637,690,128,93,'logo','Image',{z:2});
   mkR(32,807,56,3,'rgb(23, 232, 143)',{z:2});
-  mkT(32,837,431,133,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'bullets',z:2});
-  mkT(31,974,424,48,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2});
+  mkT(32,837,431,249,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.25',field:'bullets',z:2,bullets:'1',bulletParaSpacing:'10',locked:'1'});
+  mkT(31,974,424,48,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2,locked:'0'});
   mkR(498,840,2,200,'rgb(203, 205, 203)',{z:2});
   mkT(534,837,210,27,'CBRE',{color:'rgb(127, 132, 128)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:2});
   mkT(534,869,234,30,gv('fn1'),{color:'rgb(127, 132, 128)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:2});
@@ -2954,26 +2954,26 @@ function buildBrochure2_v2(W,H){
 }
 
 function buildEDM(W,H){
-  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1});
+  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkI(0,116,600,425,'img1','Image',{z:2});
   mkR(354,478,246,62,'rgb(0, 63, 45)',{z:4});
   mkT(337,498,238,31,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
-  mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4});
-  (function(){ var _e=mkT(82,809,495,153,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.35',field:'bullets',z:4,bullets:'0'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4,locked:'1'});
+  (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'1',bulletParaSpacing:'10',locked:'1'}); _e.dataset.incomeAnchor='1'; return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
-  mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4});
-  mkT(34,1251,569,37,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4});
+  mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4,locked:'1'});
+  mkT(34,1251,569,37,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4,locked:'1'});
   mkI(0,1313,600,396,'img2','Image',{z:2});
   mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3});
   mkR(34,1738,8,68,'rgb(23,232,143)',{z:4});
   mkT(76,1735,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4});
   mkT(76,1777,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4});
   mkR(0,1834,600,2066,'rgb(255,255,255)',{z:2}); // white bg for body/agents/buttons
-  mkT(34,1871,532,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17'});
+  mkT(34,1871,541,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
   mkI(0,2493,600,368,'img3','Image',{z:2});
-  mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3});
+  mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3,locked:'1'});
   (function(){
     function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
     function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
@@ -2989,16 +2989,16 @@ function buildEDM(W,H){
     tagAgent(mkI(34,3430,113,113,'agent4photo','Image',{z:3}),4,3430);
     tagAgent(mkT(184,3433,402,40,gv('fn4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3}),4,3433);
     tagAgent(mkT(184,3478,402,40,gv('fp4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3}),4,3478);
-    tagBelow(mkR(34,3594,532,85,'rgb(1, 42, 45)',{z:3}),3594);
+    tagBelow(mkR(34,3594,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}),3594);
     tagBelow((function(){ var _e=mkT(59,3594,440,85,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3594);
     tagBelow((function(){ var _e=mkI(501,3594,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3594);
-    tagBelow(mkR(34,3701,532,85,'rgb(15, 42, 45)',{z:3}),3701);
+    tagBelow(mkR(34,3701,532,85,'rgb(15, 42, 45)',{z:3,locked:'1'}),3701);
     tagBelow((function(){ var _e=mkT(59,3701,440,85,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3701);
     tagBelow((function(){ var _e=mkI(501,3701,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3701);
-    tagBelow(mkR(34,3808,532,85,'rgb(1, 42, 45)',{z:3}),3808);
+    tagBelow(mkR(34,3808,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}),3808);
     tagBelow((function(){ var _e=mkT(59,3808,440,85,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3808);
     tagBelow((function(){ var _e=mkI(501,3808,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3808);
-    tagBelow(mkR(0,3930,600,113,'rgb(1, 42, 45)',{z:3}),3930);
+    tagBelow(mkR(0,3930,600,113,'rgb(1, 42, 45)',{z:3,locked:'1'}),3930);
     tagBelow(mkSVGLogo(40,3961,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3961);
     tagBelow(mkT(23,4077,555,170,'*All areas and figures approx only.   \nThis communication is from CBRE or one of its associated/subsidiary companies. This communication contains information which is confidential and may be privileged. If you are not the intended recipient, please contact the sender immediately. Any use of its contents is strictly prohibited and you must not copy, send or disclose it, or rely on its contents in any way whatsoever.\nInformation herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. It is your responsibility to independently confirm its accuracy and completeness. Any projections, opinions, assumptions or estimates used are for example only and do not represent the current or future performance of the market.\nReasonable care has been taken to ensure that this communication (and any attachments or hyperlinks contained within it) is free from computer viruses. No responsibility is accepted by CBRE Pty Ltd or its associated/subsidiary companies and the recipient should carry out any appropriate virus checks.\nCBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy which can be viewed here.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),4077);
 
@@ -3012,24 +3012,24 @@ function buildEDMAsianDesk(W,H){
   mkI(0,116,600,425,'img1','Image',{z:2});
   mkR(354,478,246,62,'rgb(0, 63, 45)',{z:4});
   mkT(337,498,238,31,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',textAlign:'right',field:'zh_banner',z:5});
-  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1});
+  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkR(34,592,8,359,'rgb(23, 232, 143)',{z:4});
-  mkT(85,583,492,142,'',{color:'rgb(255, 255, 255)',fontSize:'45px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_heading',z:4});
+  mkT(85,583,492,177,'',{color:'rgb(255, 255, 255)',fontSize:'45px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_heading',z:4,locked:'1'});
   mkT(85,730,492,62,'',{color:'rgb(255, 255, 255)',fontSize:'37px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'zh_subheading',z:4});
   mkT(82,804,495,153,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_bullets',z:4});
   mkT(82,968,495,40,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
-  mkT(34,1200,532,45,'',{color:'rgb(255, 255, 255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_salemethod',z:4});
-  mkT(34,1251,569,37,'',{color:'rgb(255, 255, 255)',fontSize:'25px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_saledate',z:4});
+  mkT(34,1200,532,45,'',{color:'rgb(255, 255, 255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_salemethod',z:4,locked:'1'});
+  mkT(34,1251,528,76,'',{color:'rgb(255, 255, 255)',fontSize:'25px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_saledate',z:4,locked:'1'});
   mkI(0,1313,600,396,'img2','Image',{z:2});
   mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3});
   mkR(34,1738,8,68,'rgb(23, 232, 143)',{z:4});
   mkT(76,1735,507,45,gv('fa1')||'省/州',{color:'rgb(255, 255, 255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_address1',z:4});
   mkT(76,1777,507,40,gv('fa2')||'详细地址',{color:'rgb(255, 255, 255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_address2',z:4});
   mkR(0,1834,600,2066,'rgb(255,255,255)',{z:2}); // white bg for body/agents/buttons
-  mkT(34,1871,532,617,'',{color:'rgb(51, 51, 51)',fontSize:'28px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'17'});
-  mkI(0,2468,600,368,'img3','Image',{z:2});
-  mkT(34,2870,444,96,'',{color:'rgb(1, 42, 45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3});
+  mkT(34,1901,532,584,'',{color:'rgb(51, 51, 51)',fontSize:'28px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
+  mkI(0,2518,600,368,'img3','Image',{z:2,locked:'1'});
+  mkT(34,2920,533,96,'',{color:'rgb(1, 42, 45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3,locked:'1'});
   (function(){
     function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
     function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
@@ -3045,38 +3045,38 @@ function buildEDMAsianDesk(W,H){
     tagAgent(mkI(34,3393,113,113,'agent4photo','Image',{z:3}), 4, 3393);
     tagAgent(mkT(184,3413,402,51,gv('fn4')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4name',z:3}), 4, 3413);
     tagAgent(mkT(184,3461,402,45,gv('fp4')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent4num',z:3}), 4, 3461);
-    tagBelow(mkR(34,3566,532,85,'rgb(1, 42, 45)',{z:3}), 3566);
+    tagBelow(mkR(34,3599,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}), 3566);
     tagBelow(mkT(59,3594,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn1',z:4}), 3594);
     tagBelow((function(){ var _e=mkI(501,3583,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3583);
-    tagBelow(mkR(34,3674,532,85,'rgb(15, 42, 45)',{z:3}), 3674);
+    tagBelow(mkR(34,3707,532,85,'rgb(15, 42, 45)',{z:3,locked:'1'}), 3674);
     tagBelow(mkT(59,3702,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn2',z:4}), 3702);
     tagBelow((function(){ var _e=mkI(501,3693,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3693);
-    tagBelow(mkR(34,3781,532,85,'rgb(1, 42, 45)',{z:3}), 3781);
+    tagBelow(mkR(34,3814,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}), 3781);
     tagBelow(mkT(59,3809,458,51,'',{color:'rgb(255, 255, 255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'zh_btn3',z:4}), 3809);
     tagBelow((function(){ var _e=mkI(501,3798,51,51,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(), 3798);
-    tagBelow(mkR(0,3903,600,113,'rgb(1, 42, 45)',{z:3}), 3903);
+    tagBelow(mkR(0,3936,600,113,'rgb(1, 42, 45)',{z:3,locked:'1'}), 3903);
     tagBelow(mkT(23,4050,555,170,'*All areas and figures approx only.   \nThis communication is from CBRE or one of its associated/subsidiary companies. This communication contains information which is confidential and may be privileged. If you are not the intended recipient, please contact the sender immediately. Any use of its contents is strictly prohibited and you must not copy, send or disclose it, or rely on its contents in any way whatsoever.\nInformation herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. It is your responsibility to independently confirm its accuracy and completeness. Any projections, opinions, assumptions or estimates used are for example only and do not represent the current or future performance of the market.\nReasonable care has been taken to ensure that this communication (and any attachments or hyperlinks contained within it) is free from computer viruses. No responsibility is accepted by CBRE Pty Ltd or its associated/subsidiary companies and the recipient should carry out any appropriate virus checks.\nCBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy which can be viewed here.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}), 4050);
-    tagBelow(mkSVGLogo(40,3934,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}), 3934);
+    tagBelow(mkSVGLogo(40,3967,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201,locked:'1'}), 3934);
   })();
   mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
   mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 // ─── LINKEDIN 800×800 ───
 function buildLinkedIn(W,H){
-  mkR(0,0,800,376,'rgb(1, 42, 45)',{z:1});
-  mkR(38,144,3,311,'rgb(23, 232, 143)',{z:3});
-  mkT(69,135,711,66,gv('fa1')||'Suburb State',{color:'rgb(255, 255, 255)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'address1',z:3});
-  mkT(70,198,699,68,gv('fm')||'For Sale',{color:'rgb(23, 232, 143)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'salemethod',z:3});
-  mkT(74,289,702,58,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'22px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.35',field:'bullets',z:3});
-  mkI(0,376,800,424,'img1','Image',{z:1});
-  mkSVGLogo(611,37,145,35,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkSVGLogo(34,36,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200});
+  mkR(0,0,800,376,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(38,144,3,311,'rgb(23, 232, 143)',{z:3,locked:'1'});
+  mkT(70,135,711,66,gv('fa1')||'Suburb State',{color:'rgb(255, 255, 255)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'address1',z:3,locked:'1'});
+  mkT(70,198,699,68,gv('fm')||'For Sale',{color:'rgb(23, 232, 143)',fontSize:'50px',fontFamily:'"Financier Display", Georgia, serif',lineHeight:'1.15',field:'salemethod',z:3,locked:'1'});
+  mkT(74,289,702,58,document.getElementById('fbull').value,{color:'rgb(255, 255, 255)',fontSize:'22px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.35',field:'bullets',z:3,locked:'1'});
+  mkI(0,376,800,424,'img1','Image',{z:1,locked:'1'});
+  mkSVGLogo(611,37,145,35,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  mkSVGLogo(34,36,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
 }
 function buildSignboard(W,H){
   mkR(0,0,907,680,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkR(586,0,321,680,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkR(196,61,449,4,'rgb(91, 232, 143)',{z:201,locked:'1'});
-  mkT(746,50,117,39,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4});
+  mkT(671,50,192,39,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
   mkT(63,175,499,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'55px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
   mkT(64,318,465,185,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'10',locked:'1'});
   mkT(62,507,442,26,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
@@ -3084,11 +3084,11 @@ function buildSignboard(W,H){
   mkT(64,605,117,23,'*Approx.',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
   mkT(346,607,199,26,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
   mkT(618,374,243,31,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
-  mkT(626,409,236,29,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(626,409,236,35,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
   mkT(627,467,233,33,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
-  mkT(617,500,243,30,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(617,500,243,35,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
   mkT(615,559,248,33,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
-  mkT(652,595,215,34,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkT(628,595,239,34,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
   mkSVGLogo(61,16,107,91,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
 }
 // ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
