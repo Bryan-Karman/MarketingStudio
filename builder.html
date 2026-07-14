@@ -2213,6 +2213,33 @@ function applyTemplateLocks(idx){
     }
     return;
   }
+  // EDM (tab 2) and EDM Asian Desk (tab 3): lock structural elements, leave editable ones free
+  if(idx === 2 || idx === 3){
+    const art = document.getElementById('artwork');
+    if(!art) return;
+    // Fields the user should be able to edit directly on canvas
+    const EDITABLE_FIELDS = ['banner','zh_banner','income','zh_income','logo'];
+    // Asset keys that should stay interactive (images user uploads)
+    const EDITABLE_ASSETS = ['img1','img2','img3','logo','agent1photo','agent2photo','agent3photo','agent4photo'];
+    art.querySelectorAll('.el').forEach(function(el){
+      var field = el.dataset.field || '';
+      var asset = el.dataset.assetKey || '';
+      // Banner pills: always unlocked
+      if(field === 'banner' || field === 'zh_banner') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
+      // Income: unlocked
+      if(field === 'income' || field === 'zh_income') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
+      // Agent photos: unlocked (user uploads)
+      if(EDITABLE_ASSETS.indexOf(asset) > -1 && el.dataset.type==='img') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor='pointer'; return; }
+      // Agent name/num fields: unlocked
+      if(field.match(/^agent\d+(name|num)$/) || field.match(/^agent\d+(name|num)$/)) { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
+      // Logo: unlocked
+      if(asset === 'logo') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor='pointer'; return; }
+      // Everything else: locked
+      el.dataset.locked='1'; el.classList.add('locked-el');
+      if(el.dataset.type==='img') el.style.cursor='pointer'; else el.style.cursor='not-allowed';
+    });
+    return;
+  }
   // Brochure tabs (0,1): lock everything except images, logo, banner
   if(idx !== 0 && idx !== 1) return;
   const art = document.getElementById('artwork');
@@ -2845,7 +2872,7 @@ function buildAuction(W,H){
   mkT(30,743,516,48,gv('fa2'),{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'"Financier Display", Georgia, serif',field:'address2',z:2});
   mkI(637,690,128,93,'logo','Image',{z:2});
   mkR(32,807,56,3,'rgb(23, 232, 143)',{z:2});
-  mkT(32,837,431,249,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.25',field:'bullets',z:2,bullets:'1',bulletParaSpacing:'10',locked:'1'});
+  mkT(32,837,431,249,document.getElementById('fbull').value,{color:'rgb(1, 42, 45)',fontSize:'24px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.25',field:'bullets',z:2,locked:'1'});
   mkT(31,974,424,48,gv('fi')||'',{color:'rgb(1, 42, 45)',fontSize:'24px',fontWeight:'500',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'income',z:2,locked:'0'});
   mkR(498,840,2,200,'rgb(203, 205, 203)',{z:2});
   mkT(534,837,210,27,'CBRE',{color:'rgb(127, 132, 128)',fontSize:'24px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',z:2});
