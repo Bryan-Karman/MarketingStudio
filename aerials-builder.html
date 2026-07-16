@@ -2966,6 +2966,10 @@ function showProps(s){
   const isRoad    = !!s.roadLabel;
   const isProp    = !!s.propLabel;
   const isArea    = !!s.areaLabel;
+  // Build hide-stem button outside template literal to avoid nested backtick crash
+  const hideStemBtn = (!isArea && !isRoad)
+    ? '<button onclick="toggleStickerHideStem()" style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid '+(s.hideStem?'#5bbf7a':'#333')+';background:'+(s.hideStem?'#003f2d':'#242424')+';color:'+(s.hideStem?'#5bbf7a':'#888')+';font-family:inherit;text-align:left;">'+(s.hideStem?'☑':'□')+' Hide Stem / Pin</button>'
+    : '';
 
   scroll.innerHTML = `
     ${!isProp ? '<div class=\"pf\"><label>Label</label>'
@@ -3026,12 +3030,7 @@ function showProps(s){
                color:${s.showArrow?'#5bbf7a':'#888'};font-family:inherit;text-align:left;">
         ${s.showArrow?'☑':'□'} Show Arrow ${s.showArrow?(s.flipped?'(←)':'(→)'):''}
       </button>
-      ${!isArea && !isRoad ? \`<button onclick="toggleStickerHideStem()"
-        style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
-               border:1px solid \${s.hideStem?'#5bbf7a':'#333'};background:\${s.hideStem?'#003f2d':'#242424'};
-               color:\${s.hideStem?'#5bbf7a':'#888'};font-family:inherit;text-align:left;">
-        \${s.hideStem?'☑':'□'} Hide Stem / Pin
-      </button>\` : ''}
+      ${hideStemBtn}
     </div>
     <button class="props-del-btn" onclick="deleteSticker('${s.id}')">🗑 Delete Markup</button>
 
@@ -3738,8 +3737,7 @@ function placeAreaLabel(){
     id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
     markupId: '_area',
     x: 600, y: 400,
-    label: 'SITE AREA
-1,000 SQM*',
+    label: 'SITE AREA\n1,000 SQM*',
     subLabel: '',
     noIcon: true,
     flipped: false,
