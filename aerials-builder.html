@@ -1042,6 +1042,7 @@ function renderTabs(){
     </button>`;
   });
   html += `<button class="tab-add" onclick="addPage()">+ Add Page</button>`;
+  html += `<button class="tab-add" onclick="duplicatePage()" title="Duplicate current page with all markups and image" style="background:#0d1f2a;color:#6aaad8;border-left:1px solid #2a2a2a;">⧉ Duplicate Page</button>`;
   bar.innerHTML = html;
 }
 
@@ -1060,6 +1061,32 @@ function addPage(){
   currentPage = pages.length-1;
   renderTabs();
   renderPage(currentPage);
+  scheduleSave();
+}
+
+function duplicatePage(){
+  savePageState();
+  const src = pages[currentPage];
+  // Deep clone the page so stickers/paths are independent
+  const clone = JSON.parse(JSON.stringify(src));
+  // Give it a new id and label
+  clone.id = 'pg'+Date.now()+Math.random().toString(36).slice(2,6);
+  clone.label = src.label + ' (copy)';
+  // Give every sticker a new id so they don't collide with originals
+  const idMap = {};
+  (clone.stickers||[]).forEach(function(s){
+    const newId = 'ms'+Date.now()+Math.random().toString(36).slice(2,5);
+    idMap[s.id] = newId;
+    s.id = newId;
+  });
+  // Insert duplicate right after current page
+  pages.splice(currentPage + 1, 0, clone);
+  currentPage = currentPage + 1;
+  renderTabs();
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  refreshMarkupList();
   scheduleSave();
 }
 
@@ -1215,12 +1242,15 @@ function _renderRoadLinePaths(p){
   var off = document.createElement('canvas');
   off.width = cv.width; off.height = cv.height;
   var oc = off.getContext('2d');
-  oc.lineCap = 'round'; oc.lineJoin = 'round'; oc.strokeStyle = '#ffffff';
 
-  roadPaths.forEach(function(path, ri){
+  roadPaths.forEach(function(path){
     var globalIdx = (p.paths||[]).indexOf(path);
-    oc.beginPath();
+    // Save state so each path starts clean
+    oc.save();
+    oc.lineCap = 'round'; oc.lineJoin = 'round';
+    oc.strokeStyle = '#ffffff';
     oc.lineWidth = path.roadWidth || 25;
+    oc.beginPath();
     var a = path.anchors;
     oc.moveTo(a[0].x, a[0].y);
     for(var i=1;i<a.length;i++){
@@ -1235,10 +1265,12 @@ function _renderRoadLinePaths(p){
       oc.closePath();
     }
     oc.stroke();
+    oc.restore();
 
-    // Draw anchor dots if this road line is selected
+    // Draw anchor dots if this road line is selected (separate save/restore)
     if(globalIdx === selectedPath){
       a.forEach(function(pt){
+        oc.save();
         oc.beginPath();
         oc.arc(pt.x, pt.y, 7, 0, Math.PI*2);
         oc.fillStyle = '#ffffff';
@@ -1246,6 +1278,7 @@ function _renderRoadLinePaths(p){
         oc.strokeStyle = '#003f2d';
         oc.lineWidth = 2;
         oc.stroke();
+        oc.restore();
       });
     }
   });
@@ -3406,14 +3439,18 @@ function _renderIconModalGrid(query){
 function _filterIconModal(q){ _renderIconModalGrid(q); }
 
 function _iconModalClick(e, iconId){
-  if(e.shiftKey || _iconPickerSelected.length > 0){
-    // Multi-select with shift, or if already have selections keep adding
+  if(e.shiftKey){
+    // Shift+click: toggle in multi-select
     const idx = _iconPickerSelected.indexOf(iconId);
     if(idx>=0){ _iconPickerSelected.splice(idx,1); }
     else { _iconPickerSelected.push(iconId); }
   } else {
-    // Single select
-    _iconPickerSelected = [iconId];
+    // Single click: if already the only selection, deselect; otherwise select just this one
+    if(_iconPickerSelected.length===1 && _iconPickerSelected[0]===iconId){
+      _iconPickerSelected = [];
+    } else {
+      _iconPickerSelected = [iconId];
+    }
   }
   _renderIconModalGrid(document.getElementById('icon-modal-search')?.value||'');
 }
@@ -3530,10 +3567,6 @@ function placeCustomMarkup(){
 function placeMarkup(markupId){
   const m = LIBRARY.find(x=>x.id===markupId);
   if(!m) return;
-  if(!pages[currentPage].imageUrl){
-    alert('Please upload an aerial image first.');
-    return;
-  }
   if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
     alert(`Maximum ${MAX_MARKUPS} markups per page.`);
     return;
@@ -3733,7 +3766,7 @@ function _attachInlineEdit(el, s){
       labelEl.style.caretColor = '';
       el._editingInline = false;
       s.label = labelEl.innerText.replace(/\n$/, '');
-      labelEl.textContent = s.label;
+      labelEl.innerText = s.label;
       _positionStickerTail(el);
       scheduleSave();
       labelEl.removeEventListener('input', onInput);
@@ -4011,9 +4044,6 @@ async function handleImageUpload(input){
     const ext  = file.name.split('.').pop().toLowerCase()||'jpg';
     const path = `aerials/${portfolioId}/${propertyId}/page${currentPage}_${Date.now()}.${ext}`;
 
-    // Delete existing then upload
-    await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}}).catch(()=>{});
-
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`,{
       method:'POST',
       headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':file.type||'image/jpeg','x-upsert':'true'},
@@ -4073,19 +4103,23 @@ function undoStep(){
   if(!undoStack.length) return;
   redoStack.push(JSON.stringify(pages));
   pages = JSON.parse(undoStack.pop());
+  selectedSticker = null; selectedStickers.clear(); selectedPath = -1;
   renderTabs();
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
   attachStickerEvents();
+  showProps(null);
 }
 function redoStep(){
   if(!redoStack.length) return;
   undoStack.push(JSON.stringify(pages));
   pages = JSON.parse(redoStack.pop());
+  selectedSticker = null; selectedStickers.clear(); selectedPath = -1;
   renderTabs();
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
   attachStickerEvents();
+  showProps(null);
 }
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); undoStep(); return; }
@@ -4326,13 +4360,14 @@ async function exportAllPages(){
   for(let i=0;i<pages.length;i++){
     if(!pages[i].imageUrl) continue; // skip pages with no image
     switchPage(i);
-    // Wait for image to fully load
-    await new Promise(r=>setTimeout(r,200));
+    // Wait for image and multi-label icons to fully load
+    await new Promise(r=>setTimeout(r,300));
     const bgImg = document.getElementById('bg-img');
     if(bgImg && !bgImg.complete){
       await new Promise(r=>{ bgImg.onload=r; bgImg.onerror=r; setTimeout(r,3000); });
     }
-    await new Promise(r=>setTimeout(r,200));
+    _reinjectAllMultiGlobal();
+    await new Promise(r=>setTimeout(r,400));
     const canvas = await captureArtboard();
     if(!canvas) continue;
     const a = document.createElement('a');
