@@ -1951,12 +1951,19 @@ function _updatePathHighlights(){
   const svg = document.getElementById('ab-svg');
   if(!svg) return;
   const allGroups = [...svg.querySelectorAll('g.path-group')];
-  allGroups.forEach((g,i)=>{
+  // Build a mapping: SVG group index → actual paths[] index (skip road lines)
+  const p = pages[currentPage];
+  const boundaryPathIndices = [];
+  (p.paths||[]).forEach(function(path, idx){
+    if(!path.isRoadLine && path.anchors && path.anchors.length >= 2) boundaryPathIndices.push(idx);
+  });
+  allGroups.forEach((g, svgIdx)=>{
+    const actualIdx = boundaryPathIndices[svgIdx];
     const line = g.querySelector('.path-line-layer');
     const glow = g.querySelector('.path-glow-layer');
-    if(i === selectedPath){
+    const isSelected = (actualIdx !== undefined && actualIdx === selectedPath);
+    if(isSelected){
       if(line){ line.setAttribute('stroke', '#fff'); line.setAttribute('stroke-width', String(PEN_WIDTH + 2)); }
-      // Brighten glow image for selected state
       if(glow) glow.setAttribute('opacity','1.0');
     } else {
       if(line){ line.setAttribute('stroke', PEN_COLOUR); line.setAttribute('stroke-width', String(PEN_WIDTH)); }
