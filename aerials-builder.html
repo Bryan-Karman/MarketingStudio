@@ -1300,15 +1300,19 @@ function _renderCanvasGlows(p){
   // Remove old glow images
   svg.querySelectorAll('.canvas-glow-img').forEach(el=>el.remove());
 
+  // Only process boundary paths (not road lines) — and use their SVG group index
+  let svgGroupIdx = 0;
   (p.paths||[]).forEach((path,idx)=>{
     if(!path.anchors||path.anchors.length<2) return;
+    if(path.isRoadLine) return; // road lines rendered on canvas, no SVG glow needed
     const d = _buildPathD(path);
     const dataUrl = _buildGlowCanvas(path, d);
+    const grpIdx = svgGroupIdx++;
     if(!dataUrl) return;
 
     // Find the path-group for this index and prepend the glow image
     const groups = [...svg.querySelectorAll('g.path-group')];
-    const grp = groups[idx];
+    const grp = groups[grpIdx];
     if(!grp) return;
 
     // Remove old glow layer in this group, replace with canvas image
@@ -3832,7 +3836,8 @@ function _updateBoundaryDisclaimer(p){
   var ab = document.getElementById('artboard');
   if(!ab) return;
   var existing = ab.querySelector('.boundary-disclaimer');
-  var hasPaths = p && p.paths && p.paths.length > 0;
+  // Only show disclaimer for boundary paths, not road lines
+  var hasPaths = p && p.paths && p.paths.some(function(path){ return !path.isRoadLine; });
   if(hasPaths){
     if(!existing){
       var d = document.createElement('div');
