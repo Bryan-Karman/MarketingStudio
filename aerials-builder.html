@@ -3340,7 +3340,18 @@ function openIconPicker(stickerId){
           <div class="admin-only-label">⬆ Upload New Icon <span class="admin-badge">ADMIN ONLY</span></div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <input type="text" id="icon-upload-name" placeholder="Name (e.g. Bunnings)" class="icon-search" style="margin-bottom:0;">
-            <input type="text" id="icon-upload-cat" placeholder="Category (e.g. Retail)" class="icon-search" style="margin-bottom:0;">
+            <select id="icon-upload-cat" class="icon-search" style="margin-bottom:0;background:#1a2a1a;border:1px solid #2a3a2a;color:#ccc;padding:6px 8px;border-radius:3px;width:100%;">
+              <option>Fast Food</option>
+              <option>Fuel</option>
+              <option>Supermarket</option>
+              <option>Automotive</option>
+              <option>Retail</option>
+              <option>Large Format Retail</option>
+              <option>Icons</option>
+              <option>Healthcare</option>
+              <option>Government</option>
+              <option>Banking</option>
+            </select>
             <label class="icon-upload-zone">
               <input type="file" accept="image/*,image/svg+xml" id="icon-upload-file">
               <div>📁 Click to choose image file</div>
