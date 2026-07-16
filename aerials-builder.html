@@ -580,7 +580,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 .markup-sticker.area-label .sticker-tail{ display:none !important; }
 .markup-sticker.area-label .stem-drag-handle{ display:none !important; }
 /* ── ARROW on label ── */
-.sticker-arrow{ display:flex;align-items:center;justify-content:center;background:inherit;padding:0 12px 0 4px;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;align-self:stretch; }
+.sticker-arrow{ display:flex;align-items:center;justify-content:center;background:#003f2d;padding:0 10px;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;align-self:stretch;min-width:40px;cursor:pointer;border-left:2px solid rgba(255,255,255,0.15); }
 /* ── PROPERTY TENANT LABEL ── */
 .markup-sticker.prop-tenant .sticker-label{ background:#17E88F !important; color:#fff !important; }
 .markup-sticker.prop-tenant .sticker-icon-box{ background:#fff !important; }
@@ -1497,7 +1497,12 @@ function _buildStickerHTML(s, isSelected, isMulti){
       <div class="sticker-stem" style="height:${absStemH}px;"></div>
       <div class="sticker-dot"></div>
     </div><div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>`;
-  const arrowHtml = s.showArrow ? `<div class="sticker-arrow">${s.flipped ? '←' : '→'}</div>` : '';
+  const arrowAngle = s.arrowAngle || 0;
+  const arrowHtml = s.showArrow
+    ? `<div class="sticker-arrow" onclick="rotateStickerArrow('${s.id}')" title="Click to rotate arrow">` +
+      `<span style="display:inline-block;transform:rotate(${arrowAngle}deg);transition:transform 0.2s;">&#10140;</span>` +
+      `</div>`
+    : '';
 
   return `<div class="markup-sticker${selClass}${flipClass}${noIcClass}${roadClass}${propClass}${areaClass}${ptClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
     <div class="sticker-body">
@@ -3028,8 +3033,9 @@ function showProps(s){
         style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
                border:1px solid ${s.showArrow?'#5bbf7a':'#333'};background:${s.showArrow?'#003f2d':'#242424'};
                color:${s.showArrow?'#5bbf7a':'#888'};font-family:inherit;text-align:left;">
-        ${s.showArrow?'☑':'□'} Show Arrow ${s.showArrow?(s.flipped?'(←)':'(→)'):''}
+        ${s.showArrow?'☑':'□'} Show Arrow
       </button>
+      ${s.showArrow ? '<div style="font-size:9px;color:#888;margin-top:2px;padding:0 2px;">Click arrow on canvas to rotate ('+((s.arrowAngle||0))+'°)</div>' : ''}
       ${hideStemBtn}
     </div>
     <button class="props-del-btn" onclick="deleteSticker('${s.id}')">🗑 Delete Markup</button>
@@ -3120,7 +3126,22 @@ function toggleStickerArrow(){
   if(!s) return;
   pushUndo();
   s.showArrow = !s.showArrow;
+  if(s.showArrow && s.arrowAngle === undefined) s.arrowAngle = 0;
   _rerenderSticker(s); showProps(s); scheduleSave();
+}
+
+function rotateStickerArrow(id){
+  const s = pages[currentPage].stickers.find(x=>x.id===id);
+  if(!s || !s.showArrow) return;
+  // Rotate 45 degrees per click, wrap at 360
+  s.arrowAngle = ((s.arrowAngle || 0) + 45) % 360;
+  // Update just the span transform directly without full rerender
+  const el = document.getElementById('ms-'+id);
+  if(el){
+    const span = el.querySelector('.sticker-arrow span');
+    if(span) span.style.transform = 'rotate('+s.arrowAngle+'deg)';
+  }
+  scheduleSave();
 }
 
 function toggleStickerHideStem(){
@@ -3737,7 +3758,7 @@ function placeAreaLabel(){
     id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
     markupId: '_area',
     x: 600, y: 400,
-    label: 'SITE AREA\n1,000 SQM*',
+    label: 'xxx',
     subLabel: '',
     noIcon: true,
     flipped: false,
