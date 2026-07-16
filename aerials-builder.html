@@ -2961,14 +2961,8 @@ function updateStickerLabel(val){
   const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
   if(!s) return;
   s.label = val;
-  if(s.multiLabel){
-    // Update the header text directly for multi-label
-    const hdr = document.querySelector('#ms-'+s.id+' .multi-label-header');
-    if(hdr) hdr.textContent = val;
-  } else {
-    const labelEl = document.querySelector(`#ms-${s.id} .sticker-label`);
-    if(labelEl) labelEl.textContent = val;
-  }
+  const labelEl = document.querySelector(`#ms-${s.id} .sticker-label`);
+  if(labelEl) labelEl.textContent = val;
   const stickerEl = document.getElementById('ms-'+s.id);
   if(stickerEl) requestAnimationFrame(()=>_positionStickerTail(stickerEl));
   const mlInput = document.querySelector(`#markup-list-scroll .ml-label-input[data-id="${s.id}"]`);
@@ -3708,9 +3702,7 @@ function showMultiProps(s){
 
 
 function _attachInlineEdit(el, s){
-  const labelEl = s.multiLabel
-    ? el.querySelector('.multi-label-header')
-    : el.querySelector('.sticker-label');
+  const labelEl = el.querySelector('.sticker-label');
   if(!labelEl) return;
   labelEl.style.cursor = 'text';
   labelEl.addEventListener('dblclick', function(e){
