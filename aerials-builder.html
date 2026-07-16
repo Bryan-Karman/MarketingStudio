@@ -169,6 +169,7 @@ body.exporting .img-ghost{display:none!important;}
 body.exporting .svg-ghost-group{display:none!important;}
 body.exporting #anchor-dots{display:none!important;}
 body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{display:none!important;}
+body.exporting .stem-drag-handle{display:none!important;}
 .ab-img-layer.panning{cursor:grabbing;}
 .ab-bg{position:absolute;transform-origin:0 0;user-select:none;}
 .ab-bg img{display:block;max-width:none;pointer-events:all;user-select:none;cursor:grab;}
@@ -4269,8 +4270,11 @@ async function captureArtboard(){
   const artboard = document.getElementById('artboard');
   if(!artboard) return null;
 
-  // 1. Deselect everything
+  // 1. Deselect everything (stickers AND paths so no anchor dots appear in export)
   deselectSticker();
+  const _prevSelectedPath = selectedPath;
+  selectedPath = -1;
+  _renderRoadLinePaths(pages[currentPage]); // re-render without selection dots
 
   // 2. Exporting class — hides editor chrome
   document.body.classList.add('exporting');
@@ -4378,6 +4382,9 @@ async function captureArtboard(){
     wrap.style.transform       = prevTransform;
     wrap.style.transformOrigin = prevOrigin;
     document.body.classList.remove('exporting');
+    // Restore path selection and re-render road lines with dots if needed
+    selectedPath = _prevSelectedPath;
+    _renderRoadLinePaths(pages[currentPage]);
   }
 }
 
