@@ -2758,6 +2758,8 @@ function attachStickerEvents(){
 
       if(!alreadyInSet){ selectSticker(id, e.shiftKey); }
       else if(e.shiftKey){ selectSticker(id, true); }
+      // Always clear path selection when clicking a sticker
+      if(selectedPath >= 0 && !e.shiftKey){ deselectPath(); }
 
       const startX = e.clientX, startY = e.clientY;
       const dragGroup = preSnapSet || (selectedStickers.size > 0 ? [...selectedStickers] : [id]);
@@ -2843,6 +2845,8 @@ function attachStickerEvents(){
 
 function selectSticker(id, shiftHeld){
   if(shiftHeld){
+    // Clear any path selection when shift-selecting stickers too
+    if(selectedPath >= 0) deselectPath();
     if(selectedStickers.has(id)){
       selectedStickers.delete(id);
       document.getElementById('ms-'+id)?.classList.remove('multi-selected','selected');
