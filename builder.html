@@ -1962,6 +1962,8 @@ function rgbToHex(str){
 function serializeTab(){
   const art=document.getElementById('artwork');
   const els=[];
+  // Stamp the current tab index on the array for validation on restore
+  els._tabIdx = currentTab;
   art.querySelectorAll('.el').forEach(el=>{
     const inner=el.querySelector('.el-inner');
     const img=el.querySelector('img');
@@ -2038,6 +2040,35 @@ function serializeTab(){
 
 function restoreTab(idx){
   if(!savedStates[idx]) return false;
+  // Validate: check the saved state's canvas size matches this tab's expected size
+  // Each tab has a unique canvas size — if sizes don't match, the state is from the wrong tab
+  const _validState=savedStates[idx];
+  if(_validState && _validState.length > 0){
+    const firstEl = _validState[0];
+    // Get the bounding box of all elements to estimate the canvas dimensions
+    // Use a simpler check: the saved tabIdx stamp if present
+    if(firstEl._savedForTab !== undefined && firstEl._savedForTab !== idx){
+      console.warn('Tab '+idx+' has state saved for tab '+firstEl._savedForTab+' — discarding and rebuilding');
+      delete savedStates[idx];
+      buildTemplate(idx);
+      return false;
+    }
+    // Size sanity check: all elements should fit within this tab's canvas
+    const [maxW, maxH] = SIZES[idx];
+    let hasOversized = false;
+    state.forEach(function(sv){
+      const elX2 = parseFloat(sv.x)||0;
+      const elW2 = parseFloat(sv.w)||0;
+      // If any element's right edge is way beyond this tab's canvas width, it's wrong tab
+      if(elX2 + elW2 > maxW * 1.5) hasOversized = true;
+    });
+    if(hasOversized){
+      console.warn('Tab '+idx+' has elements outside expected canvas size ('+maxW+'px) — discarding and rebuilding');
+      delete savedStates[idx];
+      buildTemplate(idx);
+      return false;
+    }
+  }
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
   const s=SIZES[idx];
@@ -3823,7 +3854,12 @@ function copyEdmField(id){
 }
 
 function switchTab(idx,btn){
-  savedStates[currentTab]=serializeTab();
+  const _serialized = serializeTab();
+  // Stamp each element with the tab it was saved from, for future validation
+  if(_serialized && Array.isArray(_serialized)){
+    _serialized.forEach(function(sv){ sv._savedForTab = currentTab; });
+  }
+  savedStates[currentTab]=_serialized;
   persistAll();
   currentTab=idx;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -3896,7 +3932,9 @@ function toggleMITab(idx,cb){
 }
 
 function collectState(){
-  savedStates[currentTab]=serializeTab();
+  const _cs = serializeTab();
+  if(_cs && Array.isArray(_cs)) _cs.forEach(function(sv){ sv._savedForTab = currentTab; });
+  savedStates[currentTab]=_cs;
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
   const _edmS1=(document.getElementById('fedm-link-s1')||{}).value||'';
   const _edmS2=(document.getElementById('fedm-link-s2')||{}).value||'';
@@ -3945,6 +3983,26 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
+    // Validate all loaded states — discard any where elements are too wide for the tab's canvas
+    Object.keys(savedStates).forEach(function(ti){
+      const tidx = parseInt(ti);
+      const expected = SIZES[tidx];
+      if(!expected) { delete savedStates[ti]; return; }
+      const st = savedStates[ti];
+      if(!st || !st.length) return;
+      // Check for stamped tab mismatch
+      if(st[0]._savedForTab !== undefined && st[0]._savedForTab !== tidx){
+        console.warn('Discarding corrupt state for tab '+tidx+' (stamped for tab '+st[0]._savedForTab+')');
+        delete savedStates[ti]; return;
+      }
+      // Check size: if any element is way outside the expected canvas, discard
+      var maxW = expected[0];
+      var oversized = st.some(function(sv){ return (parseFloat(sv.x)||0)+(parseFloat(sv.w)||0) > maxW*1.5; });
+      if(oversized){
+        console.warn('Discarding corrupt state for tab '+tidx+' (elements exceed canvas width '+maxW+'px)');
+        delete savedStates[ti];
+      }
+    });
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
