@@ -2817,14 +2817,14 @@ function buildTemplate(idx){
 // ─── AFR 2-AGENT 228×398 ───
 function buildAFR2(W,H){
   mkI(0,0,228,172,'img1','Image',{z:1});
-  mkBanner(18,149,210,22,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
+  mkBanner(9,149,219,22,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
   mkR(0,170,228,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,214,46,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:3});
   mkR(0,219,228,179,'rgb(255, 255, 255)',{z:1});
   mkT(11,233,170,18,gv('fa1')||'Suburb State',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:3});
   mkT(11,248,161,19,gv('fa2')||'Street Address',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3});
   mkI(181,231,41,30,'logo','Image',{z:3});
-  (function(){ var _e=mkT(11,265,216,84,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(11,265,216,84,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
   (function(){ var _e=mkT(11,330,211,14,gv('fi')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkT(11,346,213,14,gv('fm')||'For Sale',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3});
   mkT(11,362,105,13,gv('fn1')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',z:3});
@@ -2834,7 +2834,7 @@ function buildAFR2(W,H){
 }
 function buildAFR4(W,H){
   mkI(0,0,464,172,'img1','Image',{z:1});
-  mkBanner(319,149,145,22,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
+  mkBanner(68,149,396,22,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:4,bannerPad:'7px 8px 4px'});
   mkR(0,170,464,57,'rgb(1, 42, 45)',{z:2});
   mkT(11,176,446,27,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'heading',z:3});
   mkT(11,198,444,25,gv('fs')||'Sub Heading',{color:'rgb(255,255,255)',fontSize:'19px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.2',field:'subheading',z:3});
@@ -2842,7 +2842,7 @@ function buildAFR4(W,H){
   mkT(11,233,340,17,gv('fa1')||'Suburb State',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:3});
   mkT(11,248,351,15,gv('fa2')||'Street Address',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3});
   mkI(405,232,52,26,'logo','Image',{z:3});
-  (function(){ var _e=mkT(11,266,217,78,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'3'}); return _e; })();
+  (function(){ var _e=mkT(11,266,217,78,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'3'}); return _e; })();
   (function(){ var _e=mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   // Sale method + date combined: "Investment Portfolio Auction, Closing 3pm AEST..."
   (function(){
@@ -2861,7 +2861,7 @@ function buildAFR4(W,H){
   mkT(353,379,104,13,gv('fp4')||'',{color:'rgb(0,0,0)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3});
   // Free text right column — always present, income appends here
   (function(){
-    var _el=mkT(237,266,217,79,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:50,bullets:'1',bulletParaSpacing:'3'});
+    var _el=mkT(237,266,217,79,'– Additional point here\n– Add more points',{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:50,bullets:'1',bulletParaSpacing:'3'});
     _el.dataset.incomeAnchor='1';
     _el.dataset.bulletParaSpacing='3';
     var _inner=_el.querySelector('.el-inner');
@@ -2941,7 +2941,7 @@ function buildBrochure1(W,H){
 function buildBrochure2(W,H){
   mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
   mkI(28,65,539,505,'img1','Image',{z:2});
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
+  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'48px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
   mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
   mkI(624,66,539,300,'img2','Image',{z:2});
   mkI(624,377,264,194,'img3','Image',{z:2});
@@ -3129,7 +3129,7 @@ function buildSignboard(W,H){
   mkR(586,0,321,680,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkR(196,61,449,4,'rgb(91, 232, 143)',{z:201,locked:'1'});
   mkT(671,50,192,39,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
-  mkT(63,175,499,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'55px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(63,175,514,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
   mkT(64,318,465,185,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'10',locked:'1'});
   mkT(62,507,442,26,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
   mkT(64,538,501,31,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
