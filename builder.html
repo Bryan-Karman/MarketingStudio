@@ -1838,6 +1838,9 @@ function el_set_asset(key){
   }
   // Refresh props panel to reflect change
   showProps(selectedEl);
+  // Update savedStates immediately so a rapid tab switch doesn't lose the change
+  savedStates[currentTab] = serializeTab();
+  debouncedPersist();
 }
 
 function deleteSelected(){
