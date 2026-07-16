@@ -2059,7 +2059,7 @@ function restoreTab(idx){
     // Size sanity check: all elements should fit within this tab's canvas
     const [maxW, maxH] = SIZES[idx];
     let hasOversized = false;
-    state.forEach(function(sv){
+    _validState.forEach(function(sv){
       const elX2 = parseFloat(sv.x)||0;
       const elW2 = parseFloat(sv.w)||0;
       // If any element's right edge is way beyond this tab's canvas width, it's wrong tab
