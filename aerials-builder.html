@@ -464,11 +464,12 @@ body.exporting .stem-drag-handle{display:none!important;}
 .ig-item{
   display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:7px 4px;border-radius:3px;border:2px solid transparent;
-  cursor:pointer;background:#242424;transition:all .12s;position:relative;
+  cursor:pointer;background:#2a2a2a;transition:all .12s;position:relative;
 }
-.ig-item:hover{border-color:#3a5a3a;background:#2a2a2a;}
+.ig-item:hover{border-color:#3a5a3a;background:#333;}
 .ig-item.ig-sel{border-color:#5bbf7a;background:#003f2d;}
 .ig-item img,.ig-item .ig-emoji{width:34px;height:34px;object-fit:contain;display:block;}
+.ig-item-thumb{width:42px;height:42px;background:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;}
 .ig-item .ig-emoji{font-size:26px;line-height:34px;text-align:center;}
 .ig-item .ig-name{font-size:8px;color:#777;text-align:center;line-height:1.2;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ig-item.ig-sel .ig-name{color:#5bbf7a;}
@@ -3459,7 +3460,7 @@ function openIconPicker(stickerId){
         <input class="icon-search" type="text" placeholder="Search icons…" id="icon-modal-search"
           oninput="_filterIconModal(this.value)" autocomplete="off">
         <div style="font-size:9px;color:#555;margin-bottom:8px;">
-          Click to select. <strong style="color:#aaa;">Shift+click</strong> to select multiple icons in one box.
+          Click to select or deselect. Add as many icons as you need.
         </div>
         <div id="icon-modal-grid"></div>
         ${isAdmin ? `
@@ -3521,7 +3522,7 @@ function _renderIconModalGrid(query){
         ? `<img src="${escHtml(m.iconUrl)}" alt="${escHtml(m.name)}">`
         : `<span class="ig-emoji">${m.emoji||'□'}</span>`;
       html += `<div class="ig-item${isSel?' ig-sel':''}" data-id="${m.id}" onclick="_iconModalClick(event,'${m.id}')">
-        ${thumb}
+        <div class="ig-item-thumb">${thumb}</div>
         <span class="ig-name">${escHtml(m.name)}</span>
         ${isAdmin && m.fromDB ? `<button class="ig-del" onclick="_adminDeleteIcon(event,'${m.id}')">✕</button>` : ''}
       </div>`;
@@ -3539,19 +3540,10 @@ function _renderIconModalGrid(query){
 function _filterIconModal(q){ _renderIconModalGrid(q); }
 
 function _iconModalClick(e, iconId){
-  if(e.shiftKey){
-    // Shift+click: toggle in multi-select
-    const idx = _iconPickerSelected.indexOf(iconId);
-    if(idx>=0){ _iconPickerSelected.splice(idx,1); }
-    else { _iconPickerSelected.push(iconId); }
-  } else {
-    // Single click: if already the only selection, deselect; otherwise select just this one
-    if(_iconPickerSelected.length===1 && _iconPickerSelected[0]===iconId){
-      _iconPickerSelected = [];
-    } else {
-      _iconPickerSelected = [iconId];
-    }
-  }
+  // Always toggle — no shift needed
+  const idx = _iconPickerSelected.indexOf(iconId);
+  if(idx>=0){ _iconPickerSelected.splice(idx,1); }
+  else { _iconPickerSelected.push(iconId); }
   _renderIconModalGrid(document.getElementById('icon-modal-search')?.value||'');
 }
 
