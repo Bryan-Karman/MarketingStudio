@@ -575,6 +575,12 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 .ctx-item.ctx-disabled:hover{background:none;color:#555;}
 .ctx-sep{height:1px;background:#2a2a2a;margin:3px 0;}
 
+/* ── PROPERTY AREA LABEL ── */
+.markup-sticker.area-label .sticker-label{ background:rgb(23,232,143) !important; color:#fff !important; }
+.markup-sticker.area-label .sticker-tail{ display:none !important; }
+.markup-sticker.area-label .stem-drag-handle{ display:none !important; }
+/* ── ARROW on label ── */
+.sticker-arrow{ display:flex;align-items:center;justify-content:center;background:inherit;padding:0 12px 0 4px;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;align-self:stretch; }
 /* ── PROPERTY TENANT LABEL ── */
 .markup-sticker.prop-tenant .sticker-label{ background:#17E88F !important; color:#fff !important; }
 .markup-sticker.prop-tenant .sticker-icon-box{ background:#fff !important; }
@@ -734,10 +740,15 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
                background:#032a1a;color:#17E88F;font-family:inherit;letter-spacing:.04em;
                text-align:left;">+ Property Tenant</button>
       <button onclick="placePropLabel()"
-        style="width:100%;margin-bottom:0;padding:7px 10px;font-size:10px;font-weight:700;
+        style="width:100%;margin-bottom:5px;padding:7px 10px;font-size:10px;font-weight:700;
                cursor:pointer;border-radius:2px;border:1px solid #3a7a8a;
                background:#1a3540;color:#6abbc8;font-family:inherit;letter-spacing:.04em;
                text-align:left;">+ Property Address</button>
+      <button onclick="placeAreaLabel()"
+        style="width:100%;margin-bottom:0;padding:7px 10px;font-size:10px;font-weight:700;
+               cursor:pointer;border-radius:2px;border:1px solid #0aaa66;
+               background:#0a2010;color:rgb(23,232,143);font-family:inherit;letter-spacing:.04em;
+               text-align:left;">+ Property Area</button>
     </div>
 
     <!-- Property Tenant picker modal (hidden) -->
@@ -756,16 +767,22 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
     <!-- Tenant picker modal (hidden) -->
     <div id="tenant-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;">
-      <div style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;width:340px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.7);">
+      <div style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;width:500px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.7);">
         <div style="padding:12px 16px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;">
-          <span style="font-size:13px;font-weight:700;color:#ccc;flex:1;">Tenant Label</span>
+          <span style="font-size:13px;font-weight:700;color:#ccc;flex:1;" id="tenant-picker-title">Tenant Label</span>
+          <span style="font-size:9px;color:#555;margin-right:10px;">Click to select · <strong style="color:#aaa;">Shift+click</strong> for multiple</span>
           <button onclick="closeTenantPicker()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;">&#x2715;</button>
         </div>
         <div style="padding:10px 12px;border-bottom:1px solid #2a2a2a;">
           <input class="sb-search" type="text" id="tenant-search" placeholder="Search markups…" oninput="filterTenantPicker(this.value)" autocomplete="off" style="width:100%;">
         </div>
-        <div id="tenant-list" style="flex:1;overflow-y:auto;padding:8px 0;">
+        <div id="tenant-list" style="flex:1;overflow-y:auto;padding:10px 12px;">
           <!-- populated by JS -->
+        </div>
+        <div style="padding:10px 14px;border-top:1px solid #2a2a2a;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+          <span id="tenant-sel-count" style="font-size:10px;color:#555;flex:1;"></span>
+          <button onclick="closeTenantPicker()" style="padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;border-radius:2px;background:#242424;border:1px solid #444;color:#aaa;font-family:inherit;">Cancel</button>
+          <button onclick="confirmTenantPicker()" id="tenant-apply-btn" style="padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;border-radius:2px;background:#003f2d;border:1px solid #5bbf7a;color:#5bbf7a;font-family:inherit;">Place Label</button>
         </div>
       </div>
     </div>
@@ -1444,12 +1461,14 @@ function _buildStickerHTML(s, isSelected, isMulti){
   }
 
   const isProp   = !!s.propLabel;
-  const effNoIcon = isRoad || isProp || noIcon || !hasRealIcon;
+  const isArea   = !!s.areaLabel;
+  const effNoIcon = isRoad || isProp || isArea || noIcon || !hasRealIcon;
   const selClass  = isSelected ? ' selected' : (isMulti ? ' multi-selected' : '');
   const flipClass = flipped ? ' flipped'    : '';
   const noIcClass = effNoIcon ? ' no-icon'  : '';
   const roadClass = isRoad   ? ' road-label': '';
   const propClass = isProp      ? ' prop-label'  : '';
+  const areaClass = isArea      ? ' area-label'  : '';
   const ptClass   = s.propTenant ? ' prop-tenant' : '';
 
   let labelInner;
@@ -1462,6 +1481,8 @@ function _buildStickerHTML(s, isSelected, isMulti){
       + '<div class="prop-line1">'+escHtml(line1)+'</div>'
       + '<div class="prop-line2">'+escHtml(line2)+'</div>'
       + '</div></div>';
+  } else if(isArea){
+    labelInner = escHtml(label);
   } else if(subLabel){
     labelInner = '<div class="sticker-label-wrap"><div class="sticker-label-main">'+escHtml(label)+'</div><div class="sticker-label-sub">'+escHtml(subLabel)+'</div></div>';
   } else {
@@ -1471,15 +1492,18 @@ function _buildStickerHTML(s, isSelected, isMulti){
   const absStemH = Math.abs(stemH);
   const stemAbove = stemH < 0;
   const tailStyle = stemAbove ? 'flex-direction:column-reverse;position:absolute;bottom:100%;' : '';
-  const tailHtml = isRoad ? '' : `<div class="sticker-tail" style="${tailStyle}">
+  const hideStem = isRoad || isArea || !!s.hideStem;
+  const tailHtml = hideStem ? '' : `<div class="sticker-tail" style="${tailStyle}">
       <div class="sticker-stem" style="height:${absStemH}px;"></div>
       <div class="sticker-dot"></div>
     </div><div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>`;
+  const arrowHtml = s.showArrow ? `<div class="sticker-arrow">${s.flipped ? '←' : '→'}</div>` : '';
 
-  return `<div class="markup-sticker${selClass}${flipClass}${noIcClass}${roadClass}${propClass}${ptClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
+  return `<div class="markup-sticker${selClass}${flipClass}${noIcClass}${roadClass}${propClass}${areaClass}${ptClass}" id="ms-${s.id}" data-id="${s.id}" style="left:${s.x}px;top:${s.y}px;">
     <div class="sticker-body">
       ${effNoIcon ? '' : '<div class="sticker-icon-box">'+iconContent+'</div>'}
       <div class="sticker-label">${labelInner}</div>
+      ${arrowHtml}
       <button class="sticker-del" onclick="deleteSticker('${s.id}')">✕</button>
     </div>
     ${tailHtml}
@@ -2941,6 +2965,7 @@ function showProps(s){
   const isNoIcon  = !!s.noIcon;
   const isRoad    = !!s.roadLabel;
   const isProp    = !!s.propLabel;
+  const isArea    = !!s.areaLabel;
 
   scroll.innerHTML = `
     ${!isProp ? '<div class=\"pf\"><label>Label</label>'
@@ -2955,7 +2980,10 @@ function showProps(s){
       + '<div class="pf" style="margin-top:6px;"><label>Street Address</label><input id="prop-line1-input" type="text" value="'+escHtml(s.propLine1||'')+'" oninput="updatePropLine(1,this.value)" placeholder="Street name..."></div>'
       + '<div class="pf" style="margin-top:4px;"><label>Suburb</label><input type="text" value="'+escHtml(s.propLine2||'')+'" oninput="updatePropLine(2,this.value)" placeholder="Address..."></div>'
       : ''}
-    ${!isProp && isRoad
+    ${isArea
+      ? '<div style="margin-top:6px;padding:6px 8px;background:#0a2010;border:1px solid rgb(23,232,143);border-radius:2px;font-size:9px;color:rgb(23,232,143);">Property Area Label — green, no pin</div>'
+      : ''}
+    ${!isProp && !isArea && isRoad
       ? '<div style="margin-top:6px;padding:6px 8px;background:#1a3530;border:1px solid #4a7a72;border-radius:2px;font-size:9px;color:#80BBad;">Road Label — teal, no pin</div>'
       : '<div class="sec">Icon Position</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px;">'
@@ -2990,6 +3018,21 @@ function showProps(s){
       <div class="pf" style="flex:1;"><label>Y</label><input type="number" value="${Math.round(s.y)}" oninput="updateStickerPos('y',+this.value)"></div>
     </div>
 
+    <div class="sec">Options</div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:4px;">
+      <button onclick="toggleStickerArrow()"
+        style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
+               border:1px solid ${s.showArrow?'#5bbf7a':'#333'};background:${s.showArrow?'#003f2d':'#242424'};
+               color:${s.showArrow?'#5bbf7a':'#888'};font-family:inherit;text-align:left;">
+        ${s.showArrow?'☑':'□'} Show Arrow ${s.showArrow?(s.flipped?'(←)':'(→)'):''}
+      </button>
+      ${!isArea && !isRoad ? \`<button onclick="toggleStickerHideStem()"
+        style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;
+               border:1px solid \${s.hideStem?'#5bbf7a':'#333'};background:\${s.hideStem?'#003f2d':'#242424'};
+               color:\${s.hideStem?'#5bbf7a':'#888'};font-family:inherit;text-align:left;">
+        \${s.hideStem?'☑':'□'} Hide Stem / Pin
+      </button>\` : ''}
+    </div>
     <button class="props-del-btn" onclick="deleteSticker('${s.id}')">🗑 Delete Markup</button>
 
     <div class="sec" style="margin-top:10px;">Page Markups</div>
@@ -3071,6 +3114,22 @@ function toggleStickerNoIcon(){
   pushUndo();
   s.noIcon = !s.noIcon;
   _rerenderSticker(s); showProps(s); refreshMarkupList(); scheduleSave();
+}
+
+function toggleStickerArrow(){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  pushUndo();
+  s.showArrow = !s.showArrow;
+  _rerenderSticker(s); showProps(s); scheduleSave();
+}
+
+function toggleStickerHideStem(){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  pushUndo();
+  s.hideStem = !s.hideStem;
+  _rerenderSticker(s); showProps(s); scheduleSave();
 }
 
 // Switch to a different library icon
@@ -3669,6 +3728,35 @@ function placePropLabel(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+function placeAreaLabel(){
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
+    alert('Maximum '+MAX_MARKUPS+' markups per page.');
+    return;
+  }
+  pushUndo();
+  var s = {
+    id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
+    markupId: '_area',
+    x: 600, y: 400,
+    label: 'SITE AREA
+1,000 SQM*',
+    subLabel: '',
+    noIcon: true,
+    flipped: false,
+    areaLabel: true,
+    hideStem: true,
+    stemHeight: 26
+  };
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  selectSticker(s.id, false);
+  setTimeout(function(){ var i=document.getElementById('prop-label'); if(i){i.focus();i.select();} }, 120);
+  refreshMarkupList();
+  scheduleSave();
+}
+
 function placeMultiLabel(){
   if((pages[currentPage].stickers||[]).length>=MAX_MARKUPS){alert('Maximum '+MAX_MARKUPS+' markups per page.');return;}
   pushUndo();
@@ -3801,15 +3889,31 @@ function _attachInlineEdit(el, s){
 }
 
 
+var _tenantPickerSelected = [];
+
 function openTenantPicker(){
+  _tenantPickerSelected = [];
   var picker = document.getElementById('tenant-picker');
   picker.style.display = 'flex';
+  document.getElementById('tenant-search').value = '';
   filterTenantPicker('');
+  _updateTenantPickerCount();
   setTimeout(function(){ document.getElementById('tenant-search').focus(); }, 50);
 }
 
 function closeTenantPicker(){
   document.getElementById('tenant-picker').style.display = 'none';
+  _tenantPickerSelected = [];
+}
+
+function _updateTenantPickerCount(){
+  var n = _tenantPickerSelected.length;
+  var title = document.getElementById('tenant-picker-title');
+  var count = document.getElementById('tenant-sel-count');
+  var btn   = document.getElementById('tenant-apply-btn');
+  if(title) title.textContent = n > 0 ? 'Tenant Label ('+n+' selected)' : 'Tenant Label';
+  if(count) count.textContent = n > 0 ? n+' logo'+(n===1?'':'s')+' selected' : '';
+  if(btn)   btn.textContent   = n > 1 ? 'Place Label ('+n+' logos)' : 'Place Label';
 }
 
 function filterTenantPicker(q){
@@ -3821,27 +3925,85 @@ function filterTenantPicker(q){
     list.innerHTML = '<div style="padding:16px;text-align:center;color:#555;font-size:11px;">No results</div>';
     return;
   }
-  list.innerHTML = items.map(function(m){
-    var thumb = m.iconUrl
-      ? '<img src="'+escHtml(m.iconUrl)+'" style="width:28px;height:28px;object-fit:contain;border-radius:2px;">'
-      : '<span style="font-size:20px;line-height:28px;width:28px;display:inline-block;text-align:center;">'+(m.emoji||'□')+'</span>';
-    return '<div data-mid="'+escHtml(m.id)+'" class="tp-item" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-bottom:1px solid #222;">'
-      + '<div style="width:32px;height:32px;background:#fff;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+thumb+'</div>'
-      + '<div><div style="font-size:11px;font-weight:600;color:#ccc;">'+escHtml(m.name)+'</div>'
-      + '<div style="font-size:9px;color:#555;">'+escHtml(m.cat||'')+'</div></div>'
-      + '</div>';
-  }).join('');
-  // Wire clicks via event delegation
-  list.querySelectorAll('.tp-item').forEach(function(el){
-    el.addEventListener('mouseover', function(){ el.style.background='#1a2a1a'; });
-    el.addEventListener('mouseout',  function(){ el.style.background=''; });
-    el.addEventListener('click', function(){ tenantPickerSelect(el.dataset.mid); });
+  var cats = {};
+  items.forEach(function(m){ (cats[m.cat||'Other'] = cats[m.cat||'Other']||[]).push(m); });
+  var html = '';
+  Object.keys(cats).sort().forEach(function(cat){
+    html += '<div style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;padding:8px 4px 4px;">'+escHtml(cat)+'</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;margin-bottom:8px;">';
+    cats[cat].forEach(function(m){
+      var isSel = _tenantPickerSelected.indexOf(m.id) >= 0;
+      var thumb = m.iconUrl
+        ? '<img src="'+escHtml(m.iconUrl)+'" style="width:34px;height:34px;object-fit:contain;display:block;">'
+        : '<span style="font-size:26px;line-height:34px;display:block;text-align:center;">'+(m.emoji||'□')+'</span>';
+      html += '<div data-mid="'+escHtml(m.id)+'" class="tp-item" style="'
+        +'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:3px;cursor:pointer;'
+        +'border:2px solid '+(isSel?'#5bbf7a':'transparent')+';'
+        +'background:'+(isSel?'#003f2d':'#242424')+';">'
+        + '<div style="width:40px;height:40px;background:#fff;border-radius:2px;display:flex;align-items:center;justify-content:center;">'+thumb+'</div>'
+        + '<div style="font-size:8px;color:'+(isSel?'#5bbf7a':'#888')+';text-align:center;line-height:1.2;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(m.name)+'</div>'
+        + '</div>';
+    });
+    html += '</div>';
   });
+  list.innerHTML = html;
+  list.querySelectorAll('.tp-item').forEach(function(el){
+    el.addEventListener('click', function(e){
+      var mid = el.dataset.mid;
+      var idx = _tenantPickerSelected.indexOf(mid);
+      if(idx >= 0){ _tenantPickerSelected.splice(idx,1); }
+      else { _tenantPickerSelected.push(mid); }
+      _updateTenantPickerCount();
+      filterTenantPicker(document.getElementById('tenant-search').value||'');
+    });
+  });
+}
+
+function confirmTenantPicker(){
+  if(!_tenantPickerSelected.length){ closeTenantPicker(); return; }
+  var ids = _tenantPickerSelected.slice();
+  closeTenantPicker();
+  placeMultiIconMarkup(ids);
 }
 
 function tenantPickerSelect(markupId){
   closeTenantPicker();
   placeMarkup(markupId);
+}
+
+function placeMultiIconMarkup(iconIds){
+  if(!iconIds||!iconIds.length) return;
+  if((pages[currentPage].stickers||[]).length >= MAX_MARKUPS){
+    alert('Maximum '+MAX_MARKUPS+' markups per page.');
+    return;
+  }
+  pushUndo();
+  var label = iconIds.length === 1
+    ? ((LIBRARY.find(function(x){ return x.id===iconIds[0]; })||{}).name || 'Location')
+    : iconIds.map(function(id){ var l=LIBRARY.find(function(x){return x.id===id;}); return l?l.name:''; }).filter(Boolean).join(' / ');
+  var iconUrls = {};
+  iconIds.forEach(function(id){
+    var lib = LIBRARY.find(function(x){ return x.id===id; });
+    if(lib && lib.iconUrl) iconUrls[id] = lib.iconUrl;
+  });
+  var s = {
+    id: 'ms'+Date.now()+Math.random().toString(36).slice(2,5),
+    markupId: iconIds[0],
+    x: 600, y: 400,
+    label: label,
+    flipped: false,
+    noIcon: false,
+    iconIds: iconIds,
+    iconUrls: iconUrls,
+    stemHeight: 26
+  };
+  pages[currentPage].stickers.push(s);
+  renderPage(currentPage);
+  attachArtboardEvents(pages[currentPage]);
+  attachStickerEvents();
+  selectSticker(s.id, false);
+  refreshMarkupList();
+  scheduleSave();
 }
 
 function _updateBoundaryDisclaimer(p){
