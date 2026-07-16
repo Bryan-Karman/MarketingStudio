@@ -899,11 +899,13 @@ async function loadIconDB(){
       // Icons loaded - reinject all multi-label stickers on ALL pages
       _iconsLoaded = true;
       _reinjectAllMultiGlobal();
+      _rerenderAllStickers();
     }
   } catch(e){
     console.log('markup_icons table not available:', e.message);
     _iconsLoaded = true; // even on error, stop waiting
     _reinjectAllMultiGlobal();
+    _rerenderAllStickers();
   }
 }
 
@@ -1423,8 +1425,11 @@ function _buildStickerHTML(s, isSelected, isMulti){
   if(!noIcon && !isRoad){
     const iconIds = (s.iconIds && s.iconIds.length) ? s.iconIds : [s.markupId];
     iconContent = iconIds.map(iid=>{
-      const lib = LIBRARY.find(x=>x.id===iid);
       if(iid==='_custom' && s.customIconUrl){ hasRealIcon=true; return `<img src="${escHtml(s.customIconUrl)}" crossorigin="anonymous" alt="">`; }
+      // Use cached iconUrls on sticker first — available instantly before DB query completes
+      const _cu = s.iconUrls && s.iconUrls[iid];
+      if(_cu){ hasRealIcon=true; return `<img src="${escHtml(_cu)}" crossorigin="anonymous" alt="">`; }
+      const lib = LIBRARY.find(x=>x.id===iid);
       if(lib){
         if(lib.iconUrl){ hasRealIcon=true; return `<img src="${escHtml(lib.iconUrl)}" crossorigin="anonymous" alt="${escHtml(lib.name)}">` ; }
         if(lib.emoji && lib.emoji!=='□' && lib.emoji!=='■'){ hasRealIcon=true; return `<span class="st-emoji">${lib.emoji}</span>`; }
@@ -3905,6 +3910,39 @@ function _reinjectAllMultiGlobal(){
     var el = document.getElementById('ms-'+s.id);
     if(el) _injectMultiIcons(el, s);
   });
+}
+
+function _rerenderAllStickers(){
+  // Called after loadIconDB — rebuild any sticker that was rendered without icons.
+  // Also caches iconUrls onto sticker data for instant future loads.
+  var p = pages[currentPage];
+  if(!p) return;
+  var needsRender = false;
+  (p.stickers||[]).forEach(function(s){
+    if(s.multiLabel) return; // handled by _reinjectAllMultiGlobal
+    // Cache iconUrls from LIBRARY onto the sticker so next load is instant
+    var ids = (s.iconIds && s.iconIds.length) ? s.iconIds : (s.markupId ? [s.markupId] : []);
+    ids.forEach(function(iid){
+      if(iid === '_custom') return;
+      if(s.iconUrls && s.iconUrls[iid]) return; // already cached
+      var lib = LIBRARY.find(function(x){ return x.id===iid; });
+      if(lib && lib.iconUrl){
+        if(!s.iconUrls) s.iconUrls = {};
+        s.iconUrls[iid] = lib.iconUrl;
+        needsRender = true;
+      }
+    });
+  });
+  if(needsRender){
+    // Re-render stickers that now have icon data
+    (p.stickers||[]).forEach(function(s){
+      if(s.multiLabel) return;
+      var el = document.getElementById('ms-'+s.id);
+      if(el) _rerenderSticker(s);
+    });
+    // Persist updated iconUrls so they load instantly next session
+    scheduleSave();
+  }
 }
 
 
