@@ -104,6 +104,10 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .property-card{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);}
 .property-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px);border-color:var(--gb);}
 .property-card-thumb{height:100px;background:var(--dk);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;}
+.property-card-thumb img.thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .3s;}
+.property-card-thumb img.thumb-img.loaded{opacity:1;}
+.property-card-thumb .property-card-thumb-label{position:relative;z-index:1;transition:opacity .3s;}
+.property-card-thumb img.thumb-img.loaded ~ .property-card-thumb-label{opacity:0;}
 .property-card-thumb:hover .property-thumb-overlay{opacity:1;}
 .property-thumb-overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
 .property-thumb-overlay-label{font-size:11px;font-weight:700;color:#fff;letter-spacing:.06em;text-transform:uppercase;}
@@ -684,6 +688,7 @@ function renderProperties() {
     } else {
       return '<div class="property-card" id="pcard-'+pr.id+'">'
         +'<div class="property-card-thumb prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">'
+        +'<img class="thumb-img" id="thumb-img-'+pr.id+'" src="" alt="">'
         +'<div class="property-card-thumb-label">'+escHtml(PROPERTY_LABEL)+'</div>'
         +'<div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>'
         +'<div class="property-thumb-bar"></div>'
@@ -698,6 +703,43 @@ function renderProperties() {
         +'</div></div>';
     }
   }).join('');
+  // Load thumbnails asynchronously — fetch first page imageUrl from aerials_projects
+  if(!isList) _loadPropertyThumbnails(props);
+}
+
+// Cache thumbnails so we don't re-fetch on every render
+const _thumbCache = {};
+
+async function _loadPropertyThumbnails(props) {
+  for(const pr of props) {
+    const imgEl = document.getElementById('thumb-img-'+pr.id);
+    if(!imgEl) continue;
+    // Use cached URL if available
+    if(_thumbCache[pr.id]) {
+      imgEl.src = _thumbCache[pr.id];
+      imgEl.onload = () => imgEl.classList.add('loaded');
+      if(imgEl.complete) imgEl.classList.add('loaded');
+      continue;
+    }
+    try {
+      const rows = await SB.get('aerials_projects',
+        '?portfolio_id=eq.'+pr.portfolioId+'&property_id=eq.'+pr.id+'&select=state_json&limit=1');
+      if(!rows || !rows.length || !rows[0].state_json) continue;
+      const state = typeof rows[0].state_json === 'string'
+        ? JSON.parse(rows[0].state_json) : rows[0].state_json;
+      // state is the pages array — get first page imageUrl
+      const pages = Array.isArray(state) ? state : (state.pages || []);
+      const firstUrl = pages.length && pages[0].imageUrl ? pages[0].imageUrl : null;
+      if(!firstUrl) continue;
+      _thumbCache[pr.id] = firstUrl;
+      const imgEl2 = document.getElementById('thumb-img-'+pr.id);
+      if(!imgEl2) continue;
+      imgEl2.src = firstUrl;
+      imgEl2.onload = () => imgEl2.classList.add('loaded');
+    } catch(e) {
+      // No project saved yet for this property — silently skip
+    }
+  }
 }
 
 function openNewPropertyModal() {
