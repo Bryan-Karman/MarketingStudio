@@ -377,9 +377,7 @@ body.is-admin .admin-only-inline{display:inline;}
   <div class="mast-divider"></div>
   <span onclick="showHubScreen()" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;cursor:pointer;padding:0 10px 0 4px;" title="Home">Studio</span>
   <div class="mast-divider"></div>
-  <span id="mast-product-label" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;display:none;"></span>
   <nav class="mast-nav">
-    <a id="nav-hub" style="display:none;" onclick="showHubScreen()">← Products</a>
     <a onclick="showPage('portfolios')" id="nav-portfolios" style="display:none;">Portfolios</a>
     <span id="nav-portfolio-crumb" style="display:none;padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;pointer-events:none;">›</span>
     <a id="nav-portfolio-name" style="display:none;" onclick="showPage('portfolios')"></a>
@@ -1407,7 +1405,6 @@ function showHubScreen(){
   document.getElementById('hub-screen').classList.add('active');
 
   // Update nav: show ← Products hidden (we are on hub), hide portfolios nav
-  document.getElementById('nav-hub').style.display = 'none';
   document.getElementById('nav-portfolios').style.display = 'none';
   const navUsers = document.getElementById('nav-users');
   if(navUsers) navUsers.style.display = currentUser&&currentUser.role==='admin' ? 'flex' : 'none';
@@ -1415,7 +1412,6 @@ function showHubScreen(){
   if(navAgents) navAgents.style.display = currentUser&&currentUser.role==='admin' ? 'flex' : 'none';
 
   // Update product label
-  document.getElementById('mast-product-label').style.display = 'none';
 
   // Greeting
   const greetEl = document.getElementById('hub-greeting');
@@ -1435,7 +1431,6 @@ function openProduct(product){
   document.getElementById('hub-screen').classList.remove('active');
 
   // Show nav items for within-marketing navigation
-  document.getElementById('nav-hub').style.display = 'flex';
   document.getElementById('nav-portfolios').style.display = 'flex';
   if(currentUser && currentUser.role === 'admin'){
     const navUsers = document.getElementById('nav-users');
@@ -1445,8 +1440,6 @@ function openProduct(product){
   }
 
   // Show product label in masthead
-  const lbl = document.getElementById('mast-product-label');
-  if(lbl){ lbl.textContent = 'Marketing'; lbl.style.display = 'inline'; }
 
   // Show admin bar on portfolios
   const adminBar = document.getElementById('admin-bar');
