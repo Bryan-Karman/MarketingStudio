@@ -722,22 +722,29 @@ async function _loadPropertyThumbnails(props) {
       continue;
     }
     try {
+      // First try the lightweight thumbnail_url column (saved by builder on image upload)
       const rows = await SB.get('aerials_projects',
-        '?portfolio_id=eq.'+pr.portfolioId+'&property_id=eq.'+pr.id+'&select=state_json&limit=1');
-      if(!rows || !rows.length || !rows[0].state_json) continue;
-      const state = typeof rows[0].state_json === 'string'
-        ? JSON.parse(rows[0].state_json) : rows[0].state_json;
-      // state is the pages array — get first page imageUrl
-      const pages = Array.isArray(state) ? state : (state.pages || []);
-      const firstUrl = pages.length && pages[0].imageUrl ? pages[0].imageUrl : null;
+        '?portfolio_id=eq.'+pr.portfolioId+'&property_id=eq.'+pr.id+'&select=thumbnail_url,state_json');
+      if(!rows || !rows.length) continue;
+      const row = rows[0];
+      let firstUrl = row.thumbnail_url || null;
+      // Fall back to extracting from state_json if no dedicated thumbnail_url
+      if(!firstUrl && row.state_json) {
+        // Use regex to extract first imageUrl without parsing the full (potentially huge) JSON
+        const raw = typeof row.state_json === 'string' ? row.state_json : JSON.stringify(row.state_json);
+        const m = raw.match(/"imageUrl"\s*:\s*"(https?:\/\/[^"]+)"/);
+        if(m) firstUrl = m[1];
+      }
       if(!firstUrl) continue;
       _thumbCache[pr.id] = firstUrl;
       const imgEl2 = document.getElementById('thumb-img-'+pr.id);
       if(!imgEl2) continue;
-      imgEl2.src = firstUrl;
       imgEl2.onload = () => imgEl2.classList.add('loaded');
+      imgEl2.onerror = () => console.warn('Thumbnail load error for', pr.id, firstUrl);
+      imgEl2.src = firstUrl;
+      if(imgEl2.complete && imgEl2.naturalWidth) imgEl2.classList.add('loaded');
     } catch(e) {
-      // No project saved yet for this property — silently skip
+      console.warn('Thumbnail fetch failed for', pr.id, e.message);
     }
   }
 }
