@@ -181,8 +181,6 @@ body.is-admin .admin-only{display:flex;}
   <span onclick="window.location.href='index.html'" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;cursor:pointer;padding:0 10px 0 4px;" title="Back to Hub">Studio</span>
   <div class="mast-divider"></div>
   <nav class="mast-nav">
-    <a onclick="window.location.href='index.html'" title="Back to Hub" style="font-size:10px;font-weight:700;">← Hub</a>
-    <span style="padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;">›</span>
     <a onclick="showPage('portfolios')" id="nav-portfolios" class="active">Aerials</a>
     <span id="nav-crumb-sep" style="display:none;padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;">›</span>
     <a id="nav-portfolio-name" style="display:none;"></a>
@@ -205,7 +203,7 @@ body.is-admin .admin-only{display:flex;}
     <div class="page-header">
       <div>
         <div class="page-title">Portfolios</div>
-        <div class="page-sub">Select a portfolio to view its propertys</div>
+        <div class="page-sub">Select a portfolio to view its properties</div>
       </div>
     </div>
     <div class="portfolio-grid" id="portfolio-grid">
@@ -712,41 +710,43 @@ const _thumbCache = {};
 
 async function _loadPropertyThumbnails(props) {
   for(const pr of props) {
-    const imgEl = document.getElementById('thumb-img-'+pr.id);
-    if(!imgEl) continue;
-    // Use cached URL if available
     if(_thumbCache[pr.id]) {
-      imgEl.src = _thumbCache[pr.id];
-      imgEl.onload = () => imgEl.classList.add('loaded');
-      if(imgEl.complete) imgEl.classList.add('loaded');
+      _applyThumb(pr.id, _thumbCache[pr.id]);
       continue;
     }
     try {
-      // First try the lightweight thumbnail_url column (saved by builder on image upload)
       const rows = await SB.get('aerials_projects',
-        '?portfolio_id=eq.'+pr.portfolioId+'&property_id=eq.'+pr.id+'&select=thumbnail_url,state_json');
-      if(!rows || !rows.length) continue;
-      const row = rows[0];
-      let firstUrl = row.thumbnail_url || null;
-      // Fall back to extracting from state_json if no dedicated thumbnail_url
-      if(!firstUrl && row.state_json) {
-        // Use regex to extract first imageUrl without parsing the full (potentially huge) JSON
-        const raw = typeof row.state_json === 'string' ? row.state_json : JSON.stringify(row.state_json);
-        const m = raw.match(/"imageUrl"\s*:\s*"(https?:\/\/[^"]+)"/);
+        '?portfolio_id=eq.'+pr.portfolioId+'&property_id=eq.'+pr.id+'&select=state_json');
+      if(!rows || !rows.length || !rows[0].state_json) continue;
+      const raw = rows[0].state_json;
+      // state_json may come back as already-parsed object (JSONB) or as a string
+      let firstUrl = null;
+      if(typeof raw === 'object' && raw !== null) {
+        // Already parsed — walk pages array directly
+        const pagesArr = Array.isArray(raw) ? raw : (raw.pages || []);
+        for(const pg of pagesArr){ if(pg && pg.imageUrl){ firstUrl = pg.imageUrl; break; } }
+      } else if(typeof raw === 'string') {
+        // Extract imageUrl via regex — avoids parsing a potentially huge string
+        const m = raw.match(/"imageUrl":"(https?:\/\/[^"]+)"/);
         if(m) firstUrl = m[1];
       }
       if(!firstUrl) continue;
       _thumbCache[pr.id] = firstUrl;
-      const imgEl2 = document.getElementById('thumb-img-'+pr.id);
-      if(!imgEl2) continue;
-      imgEl2.onload = () => imgEl2.classList.add('loaded');
-      imgEl2.onerror = () => console.warn('Thumbnail load error for', pr.id, firstUrl);
-      imgEl2.src = firstUrl;
-      if(imgEl2.complete && imgEl2.naturalWidth) imgEl2.classList.add('loaded');
+      _applyThumb(pr.id, firstUrl);
     } catch(e) {
-      console.warn('Thumbnail fetch failed for', pr.id, e.message);
+      console.warn('Thumbnail fetch failed for property', pr.id, ':', e.message);
     }
   }
+}
+
+function _applyThumb(propId, url) {
+  const imgEl = document.getElementById('thumb-img-'+propId);
+  if(!imgEl) return;
+  imgEl.onload = function(){ imgEl.classList.add('loaded'); };
+  imgEl.onerror = function(){ console.warn('Thumb img failed to load:', url); };
+  imgEl.src = url;
+  // Handle already-cached browser images
+  if(imgEl.complete && imgEl.naturalWidth > 0) imgEl.classList.add('loaded');
 }
 
 function openNewPropertyModal() {
