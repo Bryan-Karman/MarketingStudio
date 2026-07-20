@@ -4389,11 +4389,15 @@ function scheduleSave(){
 }
 
 async function doSave(){
+  // Extract thumbnail from first page that has an image (lightweight field for overview)
+  let _thumbUrl = null;
+  for(const pg of pages){ if(pg && pg.imageUrl){ _thumbUrl = pg.imageUrl; break; } }
   const payload = {
-    portfolio_id: portfolioId,
-    property_id:  propertyId,
-    state_json:   JSON.stringify({pages, status}),
-    updated_at:   new Date().toISOString()
+    portfolio_id:  portfolioId,
+    property_id:   propertyId,
+    state_json:    JSON.stringify({pages, status}),
+    thumbnail_url: _thumbUrl || null,
+    updated_at:    new Date().toISOString()
   };
   try {
     const existing = await sbGet('aerials_projects',`?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}&select=id`);
