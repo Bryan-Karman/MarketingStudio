@@ -795,7 +795,7 @@ async function loadUsers(){
   try {
     const rows = await SB.get('users', '?order=name.asc&select=id,name,email,password,role,last_login,last_seen');
     if(Array.isArray(rows)){
-      allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, password:u.password, role:u.role}));
+      allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, password:u.password, role:u.role, last_login:u.last_login||null, last_seen:u.last_seen||null}));
     }
   } catch(e){
     console.warn('Could not load users from Supabase:', e);
