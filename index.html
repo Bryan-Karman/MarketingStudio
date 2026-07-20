@@ -957,7 +957,7 @@ async function doLogin(){
         currentUser = {id: match.id, name: match.name, email: match.email, role: match.role};
         lsSet('session', currentUser);
         // Record last login time — non-blocking, won't affect login if it fails
-        try { await SB.patch('users', `?id=eq.${match.id}`, {last_login: new Date().toISOString()}); } catch(e){}
+        try { await SB.patch('users', `?id=eq.${match.id}`, {last_login: new Date().toISOString()}); } catch(e){ console.warn('last_login update failed:', e.message); }
         await onLoginSuccess();
         return;
       }
@@ -971,7 +971,7 @@ async function doLogin(){
   if(fallback){
     currentUser = {id: fallback.id||'local', name: fallback.name, email: fallback.email, role: fallback.role};
     lsSet('session', currentUser);
-    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_login: new Date().toISOString()}); } catch(e){}
+    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_login: new Date().toISOString()}); } catch(e){ console.warn('last_login fallback failed:', e.message); }
     await onLoginSuccess();
     return;
   }
@@ -990,7 +990,7 @@ function startLastSeenHeartbeat(){
   if(_lastSeenTimer) clearInterval(_lastSeenTimer);
   _lastSeenTimer = setInterval(async function(){
     if(!currentUser || !currentUser.id) return;
-    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_seen: new Date().toISOString()}); } catch(e){}
+    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_seen: new Date().toISOString()}); } catch(e){ console.warn('last_seen update failed:', e.message); }
   }, 120000); // every 2 minutes
 }
 function stopLastSeenHeartbeat(){ clearInterval(_lastSeenTimer); _lastSeenTimer = null; }
