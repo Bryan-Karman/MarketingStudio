@@ -170,6 +170,16 @@ body.exporting .svg-ghost-group{display:none!important;}
 body.exporting #anchor-dots{display:none!important;}
 body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{display:none!important;}
 body.exporting .stem-drag-handle{display:none!important;}
+
+/* ── LIVE SYNC TOAST ── */
+#live-sync-toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#003f2d;color:#fff;font-size:12px;font-weight:600;
+  padding:8px 18px;border-radius:20px;opacity:0;pointer-events:none;
+  transition:all .3s;z-index:9999;white-space:nowrap;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+#live-sync-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 .ab-img-layer.panning{cursor:grabbing;}
 .ab-bg{position:absolute;transform-origin:0 0;user-select:none;}
 .ab-bg img{display:block;max-width:none;pointer-events:all;user-select:none;cursor:grab;}
@@ -595,6 +605,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
 </head>
 <body>
+<div id="live-sync-toast">↻ Updated by another user</div>
 
 <!-- ── MASTHEAD ── -->
 <div class="masthead">
@@ -4630,6 +4641,85 @@ renderLibrary();
 setTool('select');
 loadProject();
 loadIconDB();
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE SYNC — poll every 5s for changes by other users
+// ═══════════════════════════════════════════════════════════════
+let _lastKnownUpdatedAt = null;
+let _liveSyncTimer = null;
+let _toastTimer = null;
+
+function _showSyncToast(msg){
+  const t = document.getElementById('live-sync-toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function _isUserBusy(){
+  // Don't sync while user is actively editing
+  const active = document.activeElement;
+  if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA')) return true;
+  if(active && active.contentEditable==='true') return true;
+  if(_saveTimer !== null) return true; // save in flight
+  return false;
+}
+
+async function _liveSyncTick(){
+  if(_isUserBusy()) return;
+  try {
+    // Lightweight check — only fetch updated_at
+    const rows = await sbGet('aerials_projects',
+      `?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}&select=updated_at`);
+    if(!rows || !rows.length) return;
+    const remoteTs = rows[0].updated_at;
+    // First tick — just record timestamp, don't reload
+    if(!_lastKnownUpdatedAt){ _lastKnownUpdatedAt = remoteTs; return; }
+    // No change
+    if(remoteTs === _lastKnownUpdatedAt) return;
+    if(_isUserBusy()) return;
+    // Something changed — fetch full state
+    const fullRows = await sbGet('aerials_projects',
+      `?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}&select=state_json`);
+    if(!fullRows || !fullRows.length || !fullRows[0].state_json) return;
+    if(_isUserBusy()) return;
+    const saved = typeof fullRows[0].state_json === 'string'
+      ? JSON.parse(fullRows[0].state_json) : fullRows[0].state_json;
+    if(saved.pages && saved.pages.length){
+      pages = saved.pages;
+      if(saved.status) status = saved.status;
+    }
+    _lastKnownUpdatedAt = remoteTs;
+    // Re-render current page
+    renderTabs();
+    renderPage(currentPage);
+    attachArtboardEvents(pages[currentPage]);
+    attachStickerEvents();
+    refreshMarkupList();
+    // Update status button
+    const btn = document.getElementById('btn-status');
+    if(btn){
+      btn.textContent = status==='approved' ? '✓ APPROVED' : '● IN PROGRESS';
+      btn.classList.toggle('approved', status==='approved');
+    }
+    _showSyncToast('↻ Updated by another user');
+  } catch(e){
+    console.warn('[Aerials] Live sync error:', e.message);
+  }
+}
+
+function startLiveSync(){ _liveSyncTimer = setInterval(_liveSyncTick, 5000); }
+function stopLiveSync(){ clearInterval(_liveSyncTimer); }
+
+// Pause sync when tab is hidden, resume when visible
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) stopLiveSync(); else startLiveSync();
+});
+
+// Start after initial load settles
+setTimeout(startLiveSync, 3000);
 </script>
 </body>
 </html>
