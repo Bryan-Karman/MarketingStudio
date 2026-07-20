@@ -468,6 +468,8 @@ body.is-admin .admin-only-inline{display:inline;}
             <th>Email</th>
             <th>Password</th>
             <th>Role</th>
+            <th>Last Login</th>
+            <th>Last Seen</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -791,7 +793,7 @@ async function saveDemoData(){
 // ═══════════════════════════════════════════════════════════════
 async function loadUsers(){
   try {
-    const rows = await SB.get('users', '?order=name.asc');
+    const rows = await SB.get('users', '?order=name.asc&select=id,name,email,password,role,last_login,last_seen');
     if(Array.isArray(rows)){
       allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, password:u.password, role:u.role}));
     }
@@ -799,6 +801,18 @@ async function loadUsers(){
     console.warn('Could not load users from Supabase:', e);
     allUsers = [...FALLBACK_USERS];
   }
+}
+
+function _fmtTime(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if(diff < 60) return 'Just now';
+  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  if(diff < 604800) return Math.floor(diff/86400) + 'd ago';
+  return d.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 }
 
 function renderUsers(){
@@ -813,6 +827,8 @@ function renderUsers(){
       <td>${escHtml(u.email)}</td>
       <td><span style="font-family:monospace;letter-spacing:.05em;">${'•'.repeat(Math.min(u.password?u.password.length:8, 12))}</span></td>
       <td><span class="role-badge ${u.role}">${u.role}</span></td>
+      <td style="font-size:11px;color:#666;">${u.last_login ? _fmtTime(u.last_login) : '<span style="color:#bbb;">Never</span>'}</td>
+      <td style="font-size:11px;color:#666;">${u.last_seen ? _fmtTime(u.last_seen) : '<span style="color:#bbb;">—</span>'}</td>
       <td>
         <div class="user-actions">
           <button class="tbl-btn" onclick="openUserModal('${u.id}')">Edit</button>
@@ -940,6 +956,8 @@ async function doLogin(){
       if(match){
         currentUser = {id: match.id, name: match.name, email: match.email, role: match.role};
         lsSet('session', currentUser);
+        // Record last login time — non-blocking, won't affect login if it fails
+        try { await SB.patch('users', `?id=eq.${match.id}`, {last_login: new Date().toISOString()}); } catch(e){}
         await onLoginSuccess();
         return;
       }
@@ -953,6 +971,7 @@ async function doLogin(){
   if(fallback){
     currentUser = {id: fallback.id||'local', name: fallback.name, email: fallback.email, role: fallback.role};
     lsSet('session', currentUser);
+    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_login: new Date().toISOString()}); } catch(e){}
     await onLoginSuccess();
     return;
   }
@@ -964,6 +983,23 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Enter' && !currentUser) doLogin();
 });
 
+// ── LAST SEEN HEARTBEAT ──────────────────────────────────────
+// Updates last_seen every 2 minutes while the user is logged in
+let _lastSeenTimer = null;
+function startLastSeenHeartbeat(){
+  if(_lastSeenTimer) clearInterval(_lastSeenTimer);
+  _lastSeenTimer = setInterval(async function(){
+    if(!currentUser || !currentUser.id) return;
+    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_seen: new Date().toISOString()}); } catch(e){}
+  }, 120000); // every 2 minutes
+}
+function stopLastSeenHeartbeat(){ clearInterval(_lastSeenTimer); _lastSeenTimer = null; }
+// Pause when tab hidden
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden) stopLastSeenHeartbeat();
+  else if(currentUser) startLastSeenHeartbeat();
+});
+
 function doLogout(){
   currentUser = null;
   lsSet('session', null);
@@ -971,6 +1007,7 @@ function doLogout(){
 }
 
 async function onLoginSuccess(){
+  startLastSeenHeartbeat();
   document.getElementById('login-screen').style.opacity = '0';
   setTimeout(()=>{ document.getElementById('login-screen').style.display = 'none'; }, 400);
   document.getElementById('masthead').style.display = 'flex';
