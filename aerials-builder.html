@@ -1235,6 +1235,8 @@ function renderPage(i){
 
   attachArtboardEvents(p);
   attachStickerEvents();
+  // Render fill zones onto their canvas now that the canvas element exists
+  requestAnimationFrame(function(){ _renderFillZones(p); });
   _updateBoundaryDisclaimer(p);
   // Rerender prop-tenant stickers so filter applies via _buildStickerHTML
   (p.stickers||[]).forEach(function(s){
@@ -1444,32 +1446,43 @@ function _finaliseFillZone(){
   _fz.isDrawing = false;
   _fz.anchors   = [];
   _fz.pendingAnchor = null;
+  setTool('select');
   _fz.selectedFillId = zone.id;
   _renderFillZones(pages[currentPage]);
   _showFillProps(zone);
+  refreshMarkupList();
   scheduleSave();
-  // Auto-switch back to select tool
-  setTool('select');
 }
 
 // ── Props panel for selected fill zone ───────────────────────────
 function _showFillProps(zone){
-  const panel = document.getElementById('props-content');
-  if(!panel) return;
+  if(!zone) return;
+  const scroll = document.getElementById('props-scroll');
+  if(!scroll) return;
   const zid = zone.id;
+  const anchorCount = (zone.anchors||zone.points||[]).length;
+  const badge = '<span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0/15</span>';
   const swatches = FILL_COLOURS.map(function(c,i){
-    const sel = i === zone.colourIdx;
+    const sel = i === (zone.colourIdx||0);
     return '<div data-zid="'+zid+'" data-ci="'+i+'" onclick="_fillSwatchClick(this)" style="'
-      +'width:32px;height:32px;border-radius:50%;cursor:pointer;'
+      +'width:30px;height:30px;border-radius:50%;cursor:pointer;flex-shrink:0;'
       +'background:rgb('+c.r+','+c.g+','+c.b+');'
-      +'border:3px solid '+(sel?'#fff':'transparent')+';'
+      +'border:3px solid '+(sel?'#fff':'rgba(0,0,0,0)')+';'
       +'box-shadow:'+(sel?'0 0 0 2px #5bbf7a':'none')+';'
       +'transition:all .15s;"></div>';
   }).join('');
-  panel.innerHTML = '<div class="sec">Fill Zone</div>'
-    +'<label style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;">Colour</label>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">'+swatches+'</div>'
-    +'<div data-delzid="'+zid+'" onclick="_fillDeleteClick(this)" style="width:100%;padding:8px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;background:#3a1515;border:1px solid #f44;color:#f66;font-family:inherit;text-align:center;">🗑 Delete Fill Zone</div>';
+  scroll.innerHTML = '<div style="font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Fill Zone</div>'
+    +'<div style="font-size:11px;color:#888;margin-bottom:10px;">'+anchorCount+' anchor points</div>'
+    +'<div style="font-size:10px;color:#555;line-height:1.8;margin-bottom:10px;"><b style="color:#aaa;">Click</b> to select · <b style="color:#aaa;">Double-click</b> to edit anchors.<br><b style="color:#aaa;">Delete</b> key to remove.</div>'
+    +'<label style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Colour</label>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">'+swatches+'</div>'
+    +'<button id="fill-del-btn" class="props-del-btn">Delete Fill Zone</button>'
+    +'<div class="sec" style="margin-top:10px;">Page Markups</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:#555;">All markups</span>'+badge+'</div>'
+    +'<div id="markup-list-scroll" style="display:flex;flex-direction:column;gap:2px;"></div>';
+  var delBtn = document.getElementById('fill-del-btn');
+  if(delBtn) delBtn.addEventListener('click', function(){ _deleteFillZone(zid); });
+  refreshMarkupList();
 }
 
 function _fillSwatchClick(el){
@@ -1494,21 +1507,27 @@ function _deleteFillZone(zoneId){
   pages[currentPage].fillZones = (pages[currentPage].fillZones||[]).filter(function(z){ return z.id!==zoneId; });
   _fz.selectedFillId = null;
   _renderFillZones(pages[currentPage]);
-  document.getElementById('props-content').innerHTML = '';
+  showProps(null);
   scheduleSave();
 }
 
 // ── Click-to-select existing fill zones in select mode ───────────
+function _selectFillZone(zid){
+  const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===zid; });
+  if(!z) return;
+  deselectSticker();
+  deselectPath();
+  _fz.selectedFillId = zid;
+  _renderFillZones(pages[currentPage]);
+  _showFillProps(z);
+}
+
 function _fillZoneHitTest(x, y){
   const zones = pages[currentPage].fillZones || [];
   for(let i=zones.length-1;i>=0;i--){
     const pts = zones[i].anchors || zones[i].points;
     if(_pointInPolygon(x,y,pts)){
-      _fz.selectedFillId = zones[i].id;
-      _renderFillZones(pages[currentPage]);
-      // Use setTimeout so this fires after any showProps(null) from mousedown
-      const z = zones[i];
-      setTimeout(function(){ _showFillProps(z); }, 0);
+      _selectFillZone(zones[i].id);
       return true;
     }
   }
@@ -2091,8 +2110,10 @@ function attachArtboardEvents(pageObj){
         _pen.active=false; _pen.anchors=[]; _pen.dragging=false; _pen.pendingAnchor=null;
         _clearLivePen();
       }
-      if(_editPath.active) exitPathEditMode();
+      if(_fzEditId !== null) exitFillZoneEditMode();
+      else if(_editPath.active) exitPathEditMode();
       if(tool==='fill' && _fz.isDrawing){ _fz.isDrawing=false; _fz.anchors=[]; _fz.pendingAnchor=null; _renderFillZones(pages[currentPage]); }
+      if(e.key==='Delete' && _fz.selectedFillId && !_fz.isDrawing){ _deleteFillZone(_fz.selectedFillId); }
     }
   });
 
@@ -2654,6 +2675,21 @@ function _attachPathOverlayEvents(){
   // ── DBLCLICK: enter anchor edit mode ──
   overlay.addEventListener('dblclick', e=>{
     if(tool !== 'select') return;
+    // Check fill zones first
+    const pt3 = artboardPt(e);
+    if(pt3 && _fz.selectedFillId){
+      const zones = pages[currentPage].fillZones||[];
+      const z = zones.find(function(z){ return z.id===_fz.selectedFillId; });
+      if(z){
+        const pts = z.anchors||z.points;
+        if(pts && _pointInPolygon(pt3.x, pt3.y, pts)){
+          e.stopPropagation();
+          if(_fzEditId === _fz.selectedFillId){ exitFillZoneEditMode(); }
+          else { enterFillZoneEditMode(_fz.selectedFillId); }
+          return;
+        }
+      }
+    }
     const hit = _hitTestPaths(artboardPt(e));
     if(hit >= 0){
       e.stopPropagation();
@@ -2706,6 +2742,46 @@ function _svgDblClick(e){ /* replaced by _attachPathOverlayEvents */ }
 // PATH EDIT MODE — double-click a path to enter, Esc/click-away to exit
 // ═══════════════════════════════════════════════════════════════
 
+// ── Fill Zone anchor edit mode ─────────────────────────────────
+let _fzEditId = null; // id of fill zone currently being anchor-edited
+let _fzTempPathIdx = -1; // index of the temporary path entry
+
+function enterFillZoneEditMode(zid){
+  // Cleanup any existing edit
+  exitFillZoneEditMode();
+  const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===zid; });
+  if(!z) return;
+  _fzEditId = zid;
+  // Inject a temporary path entry so enterPathEditMode works
+  const tempPath = {
+    anchors: JSON.parse(JSON.stringify(z.anchors||[])),
+    closed: true,
+    isRoadLine: false,
+    _isFillZoneEdit: true,
+    _fillZoneId: zid
+  };
+  pages[currentPage].paths.push(tempPath);
+  _fzTempPathIdx = pages[currentPage].paths.length - 1;
+  enterPathEditMode(_fzTempPathIdx);
+}
+
+function exitFillZoneEditMode(){
+  if(_fzEditId === null || _fzTempPathIdx < 0) return;
+  // Sync anchor edits back to fill zone
+  const tempPath = pages[currentPage].paths[_fzTempPathIdx];
+  if(tempPath && tempPath._isFillZoneEdit){
+    const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===_fzEditId; });
+    if(z) z.anchors = JSON.parse(JSON.stringify(tempPath.anchors));
+    // Remove temp path
+    pages[currentPage].paths.splice(_fzTempPathIdx, 1);
+  }
+  _fzEditId = null;
+  _fzTempPathIdx = -1;
+  exitPathEditMode();
+  _renderFillZones(pages[currentPage]);
+  scheduleSave();
+}
+
 function enterPathEditMode(pathIdx){
   _editPath.active = true;
   _editPath.pathIdx = pathIdx;
@@ -2718,6 +2794,11 @@ function enterPathEditMode(pathIdx){
 }
 
 function exitPathEditMode(){
+  // If this was a fill zone edit, sync back (unless exitFillZoneEditMode already handled it)
+  if(_fzTempPathIdx >= 0 && _fzEditId !== null){
+    exitFillZoneEditMode();
+    return;
+  }
   _editPath.active = false;
   _editPath.pathIdx = -1;
   _editPath.draggingAnchorIdx = -1;
@@ -3541,14 +3622,15 @@ function refreshMarkupList(){
   if(!scroll) return;
   const stickers = (pages[currentPage]&&pages[currentPage].stickers)||[];
   const paths    = (pages[currentPage]&&pages[currentPage].paths)||[];
-  const totalCount = stickers.length + paths.length;
+  const fillZonesAll = (pages[currentPage]&&pages[currentPage].fillZones)||[];
+  const totalCount = stickers.length + paths.length + fillZonesAll.length;
   if(badge){
     badge.textContent = `${stickers.length} / ${MAX_MARKUPS}`;
     badge.style.background = stickers.length>=MAX_MARKUPS ? '#3a1515' : '#242424';
     badge.style.borderColor = stickers.length>=MAX_MARKUPS ? '#7a2222' : '#333';
     badge.style.color       = stickers.length>=MAX_MARKUPS ? '#e06060' : '#777';
   }
-  if(!totalCount){ scroll.innerHTML='<div class="ml-empty">No markups on this page</div>'; return; }
+  if(!totalCount && !fillZonesAll.length){ scroll.innerHTML='<div class="ml-empty">No markups on this page</div>'; return; }
 
   // Build sticker rows
   let html = stickers.map(s=>{
@@ -3582,6 +3664,20 @@ function refreshMarkupList(){
     </div>`;
   }).join('');
 
+  // Build fill zone rows
+  const fillZones = fillZonesAll;
+  html += fillZones.map((z,zi)=>{
+    const hl = _fz.selectedFillId === z.id;
+    const c  = FILL_COLOURS[z.colourIdx||0];
+    return `<div class="ml-item${hl?' highlighted':''}" data-fzi="${zi}" data-fzid="${z.id}" data-type="fillzone">
+      <span style="font-size:11px;flex-shrink:0;width:18px;text-align:center;">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:rgb(${c.r},${c.g},${c.b});vertical-align:middle;"></span>
+      </span>
+      <span class="ml-path-label" style="flex:1;font-size:10px;color:#aaa;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Fill Zone (${(z.anchors||z.points||[]).length} pts)</span>
+      <button class="ml-del-btn" data-fzid="${z.id}" title="Delete">✕</button>
+    </div>`;
+  }).join('');
+
   scroll.innerHTML = html;
 
   // Wire sticker row clicks
@@ -3589,6 +3685,20 @@ function refreshMarkupList(){
     row.addEventListener('mousedown', e=>{
       if(e.target.classList.contains('ml-label-input')||e.target.classList.contains('ml-del-btn')) return;
       selectSticker(row.dataset.id, false);
+    });
+  });
+
+  // Wire fill zone row clicks
+  scroll.querySelectorAll('.ml-item[data-type="fillzone"]').forEach(row=>{
+    const zid = row.dataset.fzid;
+    row.addEventListener('mousedown', e=>{
+      if(e.target.classList.contains('ml-del-btn')) return;
+      _selectFillZone(zid);
+    });
+    const delBtn = row.querySelector('.ml-del-btn');
+    if(delBtn) delBtn.addEventListener('click', e=>{
+      e.stopPropagation();
+      _deleteFillZone(zid);
     });
   });
 
