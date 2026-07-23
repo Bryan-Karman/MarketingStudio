@@ -131,6 +131,14 @@ body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic M
 .canvas-wrap{position:relative;display:inline-block;}
 
 /* ── ROAD LINE CANVAS ── */
+/* ── FILL ZONE CANVAS ── */
+#fill-zone-canvas{
+  position:absolute;inset:0;width:1500px;height:1129px;
+  pointer-events:none;z-index:5; /* below road lines and SVG */
+}
+.artboard.fill-mode{ cursor:crosshair; }
+.artboard.fill-mode .ab-img-layer{ cursor:inherit !important; }
+
 #road-line-canvas{
   position:absolute;
   inset:0;
@@ -703,6 +711,9 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
     <div style="padding:6px 10px 4px;flex-shrink:0;"><span style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;">Property Boundary</span></div>
     <div style="padding:4px 10px 8px;flex-shrink:0;border-bottom:1px solid #2a2a2a;display:flex;gap:6px;">
       <button id="btn-pen" onclick="setTool('pen')" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;background:#003f2d;color:#5bbf7a;font-family:inherit;" title="Draw a boundary around the property">✏ Draw Boundary</button>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:4px;">
+      <button id="btn-fill" onclick="setTool('fill')" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a4a6a;background:#1a0a2a;color:#b08ad0;font-family:inherit;" title="Draw a soft-edge coloured fill zone">◉ Fill Zone</button>
       <button onclick="clearAllPaths()" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a2222;background:#3a1515;color:#e06060;font-family:inherit;" title="Clear all drawn lines">✕ Clear Lines</button>
     </div>
 
@@ -1024,6 +1035,7 @@ function setTool(t){
   const artboard = document.getElementById('artboard');
   if(artboard){
     artboard.classList.toggle('pen-mode', t==='pen');
+    artboard.classList.toggle('fill-mode', t==='fill');
     artboard.style.cursor = '';
   }
   // Toggle the path hit overlay (only active in select mode)
@@ -1054,7 +1066,8 @@ function newPage(label){
     imageContrast:   1,   // 1 = 100%, range 0.3–2.0
     imageSaturation: 1,   // 1 = 100%, range 0–3.0
     stickers: [],
-    paths: []
+    paths: [],
+    fillZones: []
   };
 }
 
@@ -1104,6 +1117,8 @@ function duplicatePage(){
   // Give it a new id and label
   clone.id = 'pg'+Date.now()+Math.random().toString(36).slice(2,6);
   clone.label = src.label + ' (copy)';
+  // Give every fill zone a new id
+  (clone.fillZones||[]).forEach(function(z){ z.id = 'fz'+Date.now()+Math.random().toString(36).slice(2,5); });
   // Give every sticker a new id so they don't collide with originals
   const idMap = {};
   (clone.stickers||[]).forEach(function(s){
@@ -1118,6 +1133,7 @@ function duplicatePage(){
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
   attachStickerEvents();
+  _renderFillZones(pages[currentPage]);
   refreshMarkupList();
   scheduleSave();
 }
@@ -1162,6 +1178,8 @@ function renderPage(i){
             : '<div style="width:1500px;height:1129px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px;font-weight:600;letter-spacing:.05em;">Upload an aerial image to get started</div>'}
         </div>
       </div>
+      <!-- Fill zone canvas: soft-edge coloured fills, below everything else -->
+      <canvas id="fill-zone-canvas" width="1500" height="1129"></canvas>
       <!-- Road line canvas: drawn below all layers -->
       <canvas id="road-line-canvas" width="1500" height="1129"></canvas>
       <!-- SVG overlay: ghost outline + pen paths + live drawing -->
@@ -1261,6 +1279,216 @@ function renderPaths(p){
   }).join('');
   requestAnimationFrame(()=>_renderCanvasGlows(p));
   return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILL ZONE TOOL — soft-edge coloured polygon fills, below all layers
+// ═══════════════════════════════════════════════════════════════
+const FILL_COLOURS = [
+  {r:23,  g:232, b:143, label:'Green'},
+  {r:83,  g:129, b:132, label:'Teal'},
+  {r:219, g:217, b:154, label:'Yellow'},
+  {r:163, g:136, b:191, label:'Lavender'},
+  {r:136, g:81,  b:116, label:'Plum'},
+  {r:64,  g:125, b:166, label:'Blue'},
+];
+const FILL_ALPHA   = 0.5;   // 50% transparent fill
+const FILL_FEATHER = 22;    // blur radius for soft edges (px at artboard scale)
+let _fz = {
+  isDrawing: false,
+  points:    [],            // [{x,y}] raw polygon points
+  activeColourIdx: 0,
+  selectedFillId: null,
+};
+
+function _newFillId(){ return 'fz'+Date.now()+Math.random().toString(36).slice(2,5); }
+
+// ── Render all fill zones onto the dedicated canvas ──────────────
+function _renderFillZones(p){
+  const cv = document.getElementById('fill-zone-canvas');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const zones = p.fillZones || [];
+  zones.forEach(function(z){
+    if(!z.points || z.points.length < 3) return;
+    ctx.save();
+    // Build path
+    ctx.beginPath();
+    ctx.moveTo(z.points[0].x, z.points[0].y);
+    for(let i=1;i<z.points.length;i++) ctx.lineTo(z.points[i].x, z.points[i].y);
+    ctx.closePath();
+    // Clip to the polygon, then draw a blurred fill inside
+    ctx.clip();
+    const c = FILL_COLOURS[z.colourIdx || 0];
+    // Draw the fill with a feathered edge using shadow blur trick
+    ctx.shadowBlur  = FILL_FEATHER * 2;
+    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},${FILL_ALPHA})`;
+    ctx.fillStyle   = `rgba(${c.r},${c.g},${c.b},${FILL_ALPHA})`;
+    // Shrink inner fill slightly so blur creates the fade at edges
+    const inset = FILL_FEATHER;
+    // Compute centroid to scale inward
+    let cx=0, cy=0;
+    z.points.forEach(function(pt){ cx+=pt.x; cy+=pt.y; });
+    cx/=z.points.length; cy/=z.points.length;
+    ctx.beginPath();
+    z.points.forEach(function(pt, i){
+      const ix = cx + (pt.x - cx) * (1 - inset/Math.max(cv.width,cv.height)*2);
+      const iy = cy + (pt.y - cy) * (1 - inset/Math.max(cv.width,cv.height)*2);
+      i===0 ? ctx.moveTo(ix,iy) : ctx.lineTo(ix,iy);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    // Draw selection ring if selected (editor only)
+    if(z.id === _fz.selectedFillId && !document.body.classList.contains('exporting')){
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(z.points[0].x, z.points[0].y);
+      for(let i=1;i<z.points.length;i++) ctx.lineTo(z.points[i].x, z.points[i].y);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth   = 2;
+      ctx.setLineDash([6,4]);
+      ctx.stroke();
+      ctx.restore();
+    }
+  });
+  // Draw in-progress polygon preview
+  if(_fz.isDrawing && _fz.points.length > 0 && tool === 'fill'){
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(_fz.points[0].x, _fz.points[0].y);
+    for(let i=1;i<_fz.points.length;i++) ctx.lineTo(_fz.points[i].x, _fz.points[i].y);
+    const c = FILL_COLOURS[_fz.activeColourIdx];
+    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.8)`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5,4]);
+    ctx.stroke();
+    // Draw anchor dots
+    _fz.points.forEach(function(pt){
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 5, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},1)`;
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+}
+
+// ── Fill zone artboard mouse handlers ───────────────────────────
+function _fillZoneMousedown(e){
+  if(tool !== 'fill') return;
+  const ab = document.getElementById('artboard');
+  const zoom = parseFloat(document.getElementById('canvas-wrap').style.transform.match(/scale\(([^)]+)\)/)?.[1] || 1);
+  const rect = ab.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / zoom;
+  const y = (e.clientY - rect.top)  / zoom;
+  // Check if closing (click near first point)
+  if(_fz.isDrawing && _fz.points.length >= 3){
+    const first = _fz.points[0];
+    const dist  = Math.hypot(x - first.x, y - first.y);
+    if(dist < 18){ _finaliseFillZone(); return; }
+  }
+  if(!_fz.isDrawing){ _fz.isDrawing = true; _fz.points = []; }
+  _fz.points.push({x, y});
+  _renderFillZones(pages[currentPage]);
+}
+
+function _fillZoneDblclick(e){
+  if(tool !== 'fill' || !_fz.isDrawing || _fz.points.length < 3) return;
+  e.preventDefault();
+  // Remove last point (dblclick fires two clicks, last is duplicate)
+  _fz.points.pop();
+  _finaliseFillZone();
+}
+
+function _finaliseFillZone(){
+  if(_fz.points.length < 3){ _fz.isDrawing=false; _fz.points=[]; return; }
+  pushUndo();
+  const zone = {
+    id: _newFillId(),
+    points: _fz.points.slice(),
+    colourIdx: _fz.activeColourIdx,
+  };
+  if(!pages[currentPage].fillZones) pages[currentPage].fillZones = [];
+  pages[currentPage].fillZones.push(zone);
+  _fz.isDrawing = false;
+  _fz.points    = [];
+  _fz.selectedFillId = zone.id;
+  _renderFillZones(pages[currentPage]);
+  _showFillProps(zone);
+  scheduleSave();
+}
+
+// ── Props panel for selected fill zone ───────────────────────────
+function _showFillProps(zone){
+  const panel = document.getElementById('props-content');
+  if(!panel) return;
+  const zid = zone.id;
+  const swatches = FILL_COLOURS.map(function(c,i){
+    const sel = i === zone.colourIdx;
+    return '<div data-zid="'+zid+'" data-ci="'+i+'" onclick="_fillSwatchClick(this)" style="'
+      +'width:32px;height:32px;border-radius:50%;cursor:pointer;'
+      +'background:rgb('+c.r+','+c.g+','+c.b+');'
+      +'border:3px solid '+(sel?'#fff':'transparent')+';'
+      +'box-shadow:'+(sel?'0 0 0 2px #5bbf7a':'none')+';'
+      +'transition:all .15s;"></div>';
+  }).join('');
+  panel.innerHTML = '<div class="sec">Fill Zone</div>'
+    +'<label style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;">Colour</label>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">'+swatches+'</div>'
+    +'<div data-delzid="'+zid+'" onclick="_fillDeleteClick(this)" style="width:100%;padding:8px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;background:#3a1515;border:1px solid #f44;color:#f66;font-family:inherit;text-align:center;">🗑 Delete Fill Zone</div>';
+}
+
+function _fillSwatchClick(el){
+  _fillSetColour(el.dataset.zid, parseInt(el.dataset.ci));
+}
+function _fillDeleteClick(el){
+  _deleteFillZone(el.dataset.delzid);
+}
+
+function _fillSetColour(zoneId, colourIdx){
+  const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===zoneId; });
+  if(!z) return;
+  pushUndo();
+  z.colourIdx = colourIdx;
+  _renderFillZones(pages[currentPage]);
+  _showFillProps(z);
+  scheduleSave();
+}
+
+function _deleteFillZone(zoneId){
+  pushUndo();
+  pages[currentPage].fillZones = (pages[currentPage].fillZones||[]).filter(function(z){ return z.id!==zoneId; });
+  _fz.selectedFillId = null;
+  _renderFillZones(pages[currentPage]);
+  document.getElementById('props-content').innerHTML = '';
+  scheduleSave();
+}
+
+// ── Click-to-select existing fill zones in select mode ───────────
+function _fillZoneHitTest(x, y){
+  const zones = pages[currentPage].fillZones || [];
+  // Test in reverse so topmost (last drawn) is selected first
+  for(let i=zones.length-1;i>=0;i--){
+    if(_pointInPolygon(x,y,zones[i].points)){
+      _fz.selectedFillId = zones[i].id;
+      _renderFillZones(pages[currentPage]);
+      _showFillProps(zones[i]);
+      return true;
+    }
+  }
+  return false;
+}
+
+function _pointInPolygon(x, y, pts){
+  let inside = false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i].x, yi=pts[i].y, xj=pts[j].x, yj=pts[j].y;
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
 }
 
 function _renderRoadLinePaths(p){
@@ -1637,6 +1865,12 @@ function attachArtboardEvents(pageObj){
       return;
     }
 
+    // ── FILL ZONE TOOL ──
+    if(tool==='fill'){
+      _fillZoneMousedown(e);
+      return;
+    }
+
     // ── BEZIER PEN TOOL ──
     if(tool==='pen'){
       if(onSticker) return;
@@ -1807,6 +2041,9 @@ function attachArtboardEvents(pageObj){
       e.preventDefault();
       _finalisePath(false);
     }
+    if(tool==='fill'){
+      _fillZoneDblclick(e);
+    }
   });
 
   // Escape key = cancel current path
@@ -1817,6 +2054,7 @@ function attachArtboardEvents(pageObj){
         _clearLivePen();
       }
       if(_editPath.active) exitPathEditMode();
+      if(tool==='fill' && _fz.isDrawing){ _fz.isDrawing=false; _fz.points=[]; _renderFillZones(pages[currentPage]); }
     }
   });
 
@@ -2363,9 +2601,13 @@ function _attachPathOverlayEvents(){
       // Click on path — keep it selected (double-click enters edit mode)
       if(selectedPath !== hit) selectPath(hit);
     } else {
-      // Clicked empty space — deselect
+      // Clicked empty space — check fill zones first, then deselect
+      const pt2 = artboardPt(e);
+      if(pt2 && _fillZoneHitTest(pt2.x, pt2.y)) return;
       if(_editPath.active) exitPathEditMode();
       if(selectedPath >= 0) deselectPath();
+      _fz.selectedFillId = null;
+      _renderFillZones(pages[currentPage]);
     }
   });
 
@@ -4461,7 +4703,9 @@ async function captureArtboard(){
   // 1. Deselect everything (stickers AND paths so no anchor dots appear in export)
   deselectSticker();
   const _prevSelectedPath = selectedPath;
-  selectedPath = -1;
+  const _prevFillSel = _fz.selectedFillId;
+  selectedPath = -1; _fz.selectedFillId = null;
+  _renderFillZones(pages[currentPage]); // hide selection ring
   _renderRoadLinePaths(pages[currentPage]); // re-render without selection dots
 
   // 2. Exporting class — hides editor chrome
@@ -4572,6 +4816,8 @@ async function captureArtboard(){
     document.body.classList.remove('exporting');
     // Restore path selection and re-render road lines with dots if needed
     selectedPath = _prevSelectedPath;
+    _fz.selectedFillId = _prevFillSel;
+    _renderFillZones(pages[currentPage]);
     _renderRoadLinePaths(pages[currentPage]);
   }
 }
@@ -4704,6 +4950,7 @@ async function _liveSyncTick(){
       btn.textContent = status==='approved' ? '✓ APPROVED' : '● IN PROGRESS';
       btn.classList.toggle('approved', status==='approved');
     }
+    _renderFillZones(pages[currentPage]);
     _showSyncToast('↻ Updated by another user');
   } catch(e){
     console.warn('[Aerials] Live sync error:', e.message);
