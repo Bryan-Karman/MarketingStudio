@@ -2283,7 +2283,8 @@ function deselectPath(){
   selectedPath = -1;
   _updatePathHighlights();
   _renderRoadLinePaths(pages[currentPage]);
-  showProps(null);
+  // Don't wipe props if a fill zone is selected
+  if(!_fz.selectedFillId) showProps(null);
 }
 
 function _updatePathHighlights(){
@@ -2575,7 +2576,8 @@ function _attachPathOverlayEvents(){
     if(hit < 0){
       // Check fill zones FIRST before image pan
       if(pt && _fillZoneHitTest(pt.x, pt.y)){
-        // Consumed by fill zone — don't pan
+        // Consumed by fill zone — set flag so click event doesn't deselect
+        _pathJustSelected = true;
         return;
       }
       if(selectedPath >= 0) deselectPath();
@@ -2667,6 +2669,8 @@ function _attachPathOverlayEvents(){
       // Click on path — keep it selected (double-click enters edit mode)
       if(selectedPath !== hit) selectPath(hit);
     } else {
+      // Don't clear if a fill zone is selected — fill zone hit test already ran in mousedown
+      if(_fz.selectedFillId) return;
       if(_editPath.active) exitPathEditMode();
       if(selectedPath >= 0) deselectPath();
     }
