@@ -2552,7 +2552,14 @@ function _attachPathOverlayEvents(){
     }
 
     if(hit < 0){
+      // Check fill zones FIRST before image pan
+      if(pt && _fillZoneHitTest(pt.x, pt.y)){
+        // Consumed by fill zone — don't pan
+        return;
+      }
       if(selectedPath >= 0) deselectPath();
+      _fz.selectedFillId = null;
+      _renderFillZones(pages[currentPage]);
       // Handle image pan directly here — no re-dispatch needed
       if(tool === 'select' && pages[currentPage].imageUrl){
         e.preventDefault();
@@ -2639,13 +2646,8 @@ function _attachPathOverlayEvents(){
       // Click on path — keep it selected (double-click enters edit mode)
       if(selectedPath !== hit) selectPath(hit);
     } else {
-      // Clicked empty space — check fill zones first, then deselect
-      const pt2 = artboardPt(e);
-      if(pt2 && _fillZoneHitTest(pt2.x, pt2.y)) return;
       if(_editPath.active) exitPathEditMode();
       if(selectedPath >= 0) deselectPath();
-      _fz.selectedFillId = null;
-      _renderFillZones(pages[currentPage]);
     }
   });
 
