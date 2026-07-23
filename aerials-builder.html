@@ -3332,6 +3332,10 @@ function showPropsMulti(){
 function showProps(s){
   const scroll = document.getElementById('props-scroll');
   if(!s){
+    if(_fz.selectedFillId){
+      console.warn('[showProps null blocked] fill zone selected, ignoring. Caller:', new Error().stack.split('\n')[2]);
+      return; // Never clear props while fill zone is selected
+    }
     scroll.innerHTML = `
       <div class="props-empty">Select a markup to edit its label.<br><br>Use the pen tool to draw a boundary.<br><br>Click a business in the library to place it.</div>
       <div class="sec" style="margin-top:0;border-top:none;">Page Markups</div>
