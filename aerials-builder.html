@@ -713,7 +713,6 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
       <button id="btn-pen" onclick="setTool('pen')" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;background:#003f2d;color:#5bbf7a;font-family:inherit;" title="Draw a boundary around the property">✏ Draw Boundary</button>
     </div>
     <div style="display:flex;gap:4px;margin-top:4px;">
-      <button id="btn-fill" onclick="setTool('fill')" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a4a6a;background:#1a0a2a;color:#b08ad0;font-family:inherit;" title="Draw a soft-edge coloured fill zone">◉ Fill Zone</button>
       <button onclick="clearAllPaths()" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a2222;background:#3a1515;color:#e06060;font-family:inherit;" title="Clear all drawn lines">✕ Clear Lines</button>
     </div>
 
@@ -772,6 +771,12 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
                cursor:pointer;border-radius:2px;border:1px solid #0aaa66;
                background:#0a2010;color:rgb(23,232,143);font-family:inherit;letter-spacing:.04em;
                text-align:left;">+ Property Area</button>
+    </div>
+
+    <!-- Fill Zone tool (bottom of sidebar) -->
+    <div style="padding:6px 10px 4px;flex-shrink:0;margin-top:4px;"><span style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;">Fill Zone</span></div>
+    <div style="padding:4px 10px 8px;flex-shrink:0;border-bottom:1px solid #2a2a2a;">
+      <button id="btn-fill" onclick="setTool('fill')" style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a4a6a;background:#1a0a2a;color:#b08ad0;font-family:inherit;text-align:left;" title="Click to place points, double-click to close. Curved handles like boundary tool.">◉ Draw Fill Zone</button>
     </div>
 
     <!-- Property Tenant picker modal (hidden) -->
@@ -1032,6 +1037,8 @@ function setTool(t){
   tool = t;
   document.getElementById('btn-select').classList.toggle('active', t==='select');
   document.getElementById('btn-pen').classList.toggle('active',    t==='pen');
+  const btnFill = document.getElementById('btn-fill');
+  if(btnFill) btnFill.classList.toggle('active', t==='fill');
   const artboard = document.getElementById('artboard');
   if(artboard){
     artboard.classList.toggle('pen-mode', t==='pen');
@@ -1296,7 +1303,9 @@ const FILL_ALPHA   = 0.5;   // 50% transparent fill
 const FILL_FEATHER = 22;    // blur radius for soft edges (px at artboard scale)
 let _fz = {
   isDrawing: false,
-  points:    [],            // [{x,y}] raw polygon points
+  anchors:   [],            // [{x,y,cpIn,cpOut}] bezier anchors (same format as boundary paths)
+  dragging:  false,         // dragging a cp handle
+  pendingAnchor: null,
   activeColourIdx: 0,
   selectedFillId: null,
 };
@@ -1311,42 +1320,35 @@ function _renderFillZones(p){
   ctx.clearRect(0, 0, cv.width, cv.height);
   const zones = p.fillZones || [];
   zones.forEach(function(z){
-    if(!z.points || z.points.length < 3) return;
+    const pts = z.anchors || z.points; // backward compat with old straight-line saves
+    if(!pts || pts.length < 3) return;
+    // Helper: build bezier path on ctx
+    function _bzPath(){
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++){
+        const prev=pts[i-1], curr=pts[i];
+        const cp1=prev.cpOut||prev, cp2=curr.cpIn||curr;
+        ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,curr.x,curr.y);
+      }
+      // Close with bezier back to first
+      const last=pts[pts.length-1], first=pts[0];
+      const cp1=last.cpOut||last, cp2=first.cpIn||first;
+      ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,first.x,first.y);
+      ctx.closePath();
+    }
     ctx.save();
-    // Build path
-    ctx.beginPath();
-    ctx.moveTo(z.points[0].x, z.points[0].y);
-    for(let i=1;i<z.points.length;i++) ctx.lineTo(z.points[i].x, z.points[i].y);
-    ctx.closePath();
-    // Clip to the polygon, then draw a blurred fill inside
-    ctx.clip();
+    ctx.beginPath(); _bzPath(); ctx.clip();
     const c = FILL_COLOURS[z.colourIdx || 0];
-    // Draw the fill with a feathered edge using shadow blur trick
     ctx.shadowBlur  = FILL_FEATHER * 2;
     ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},${FILL_ALPHA})`;
     ctx.fillStyle   = `rgba(${c.r},${c.g},${c.b},${FILL_ALPHA})`;
-    // Shrink inner fill slightly so blur creates the fade at edges
-    const inset = FILL_FEATHER;
-    // Compute centroid to scale inward
-    let cx=0, cy=0;
-    z.points.forEach(function(pt){ cx+=pt.x; cy+=pt.y; });
-    cx/=z.points.length; cy/=z.points.length;
-    ctx.beginPath();
-    z.points.forEach(function(pt, i){
-      const ix = cx + (pt.x - cx) * (1 - inset/Math.max(cv.width,cv.height)*2);
-      const iy = cy + (pt.y - cy) * (1 - inset/Math.max(cv.width,cv.height)*2);
-      i===0 ? ctx.moveTo(ix,iy) : ctx.lineTo(ix,iy);
-    });
-    ctx.closePath();
+    ctx.beginPath(); _bzPath();
     ctx.fill();
     ctx.restore();
-    // Draw selection ring if selected (editor only)
+    // Selection ring
     if(z.id === _fz.selectedFillId && !document.body.classList.contains('exporting')){
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(z.points[0].x, z.points[0].y);
-      for(let i=1;i<z.points.length;i++) ctx.lineTo(z.points[i].x, z.points[i].y);
-      ctx.closePath();
+      ctx.beginPath(); _bzPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.7)';
       ctx.lineWidth   = 2;
       ctx.setLineDash([6,4]);
@@ -1355,18 +1357,23 @@ function _renderFillZones(p){
     }
   });
   // Draw in-progress polygon preview
-  if(_fz.isDrawing && _fz.points.length > 0 && tool === 'fill'){
+  if(_fz.isDrawing && _fz.anchors.length > 0 && tool === 'fill'){
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(_fz.points[0].x, _fz.points[0].y);
-    for(let i=1;i<_fz.points.length;i++) ctx.lineTo(_fz.points[i].x, _fz.points[i].y);
     const c = FILL_COLOURS[_fz.activeColourIdx];
+    const a = _fz.anchors;
+    ctx.beginPath();
+    ctx.moveTo(a[0].x, a[0].y);
+    for(let i=1;i<a.length;i++){
+      const prev=a[i-1], curr=a[i];
+      const cp1=prev.cpOut||prev, cp2=curr.cpIn||curr;
+      ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,curr.x,curr.y);
+    }
     ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.8)`;
     ctx.lineWidth = 2;
     ctx.setLineDash([5,4]);
     ctx.stroke();
     // Draw anchor dots
-    _fz.points.forEach(function(pt){
+    a.forEach(function(pt){
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, 5, 0, Math.PI*2);
       ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},1)`;
@@ -1379,46 +1386,70 @@ function _renderFillZones(p){
 // ── Fill zone artboard mouse handlers ───────────────────────────
 function _fillZoneMousedown(e){
   if(tool !== 'fill') return;
-  const ab = document.getElementById('artboard');
-  const zoom = parseFloat(document.getElementById('canvas-wrap').style.transform.match(/scale\(([^)]+)\)/)?.[1] || 1);
-  const rect = ab.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / zoom;
-  const y = (e.clientY - rect.top)  / zoom;
-  // Check if closing (click near first point)
-  if(_fz.isDrawing && _fz.points.length >= 3){
-    const first = _fz.points[0];
+  const pt = artboardPt(e);
+  if(!pt) return;
+  const x = pt.x, y = pt.y;
+  // Check if closing (click near first anchor)
+  if(_fz.isDrawing && _fz.anchors.length >= 3){
+    const first = _fz.anchors[0];
     const dist  = Math.hypot(x - first.x, y - first.y);
-    if(dist < 18){ _finaliseFillZone(); return; }
+    if(dist < 22){ _finaliseFillZone(); return; }
   }
-  if(!_fz.isDrawing){ _fz.isDrawing = true; _fz.points = []; }
-  _fz.points.push({x, y});
+  if(!_fz.isDrawing){ _fz.isDrawing = true; _fz.anchors = []; _fz.dragging=false; _fz.pendingAnchor=null; }
+  // Create anchor — drag to curve (same pattern as pen tool)
+  const anchor = {x, y, cpIn:null, cpOut:null};
+  _fz.pendingAnchor = anchor;
+  _fz.anchors.push(anchor);
   _renderFillZones(pages[currentPage]);
 }
 
+function _fillZoneMousemove(e){
+  if(tool !== 'fill' || !_fz.isDrawing || !_fz.pendingAnchor) return;
+  const pt = artboardPt(e);
+  if(!pt) return;
+  const anchor = _fz.pendingAnchor;
+  const dx = pt.x - anchor.x, dy = pt.y - anchor.y;
+  const dist = Math.hypot(dx, dy);
+  if(dist > 4){
+    // Drag = create bezier handles
+    anchor.cpOut = {x: anchor.x + dx, y: anchor.y + dy};
+    anchor.cpIn  = {x: anchor.x - dx, y: anchor.y - dy};
+    _renderFillZones(pages[currentPage]);
+  }
+}
+
+function _fillZoneMouseup(e){
+  if(tool !== 'fill') return;
+  _fz.pendingAnchor = null;
+}
+
 function _fillZoneDblclick(e){
-  if(tool !== 'fill' || !_fz.isDrawing || _fz.points.length < 3) return;
+  if(tool !== 'fill' || !_fz.isDrawing || _fz.anchors.length < 3) return;
   e.preventDefault();
-  // Remove last point (dblclick fires two clicks, last is duplicate)
-  _fz.points.pop();
+  // Remove last anchor (dblclick fires two clicks)
+  _fz.anchors.pop();
   _finaliseFillZone();
 }
 
 function _finaliseFillZone(){
-  if(_fz.points.length < 3){ _fz.isDrawing=false; _fz.points=[]; return; }
+  if(_fz.anchors.length < 3){ _fz.isDrawing=false; _fz.anchors=[]; return; }
   pushUndo();
   const zone = {
     id: _newFillId(),
-    points: _fz.points.slice(),
+    anchors: _fz.anchors.slice(),
     colourIdx: _fz.activeColourIdx,
   };
   if(!pages[currentPage].fillZones) pages[currentPage].fillZones = [];
   pages[currentPage].fillZones.push(zone);
   _fz.isDrawing = false;
-  _fz.points    = [];
+  _fz.anchors   = [];
+  _fz.pendingAnchor = null;
   _fz.selectedFillId = zone.id;
   _renderFillZones(pages[currentPage]);
   _showFillProps(zone);
   scheduleSave();
+  // Auto-switch back to select tool
+  setTool('select');
 }
 
 // ── Props panel for selected fill zone ───────────────────────────
@@ -1470,12 +1501,14 @@ function _deleteFillZone(zoneId){
 // ── Click-to-select existing fill zones in select mode ───────────
 function _fillZoneHitTest(x, y){
   const zones = pages[currentPage].fillZones || [];
-  // Test in reverse so topmost (last drawn) is selected first
   for(let i=zones.length-1;i>=0;i--){
-    if(_pointInPolygon(x,y,zones[i].points)){
+    const pts = zones[i].anchors || zones[i].points;
+    if(_pointInPolygon(x,y,pts)){
       _fz.selectedFillId = zones[i].id;
       _renderFillZones(pages[currentPage]);
-      _showFillProps(zones[i]);
+      // Use setTimeout so this fires after any showProps(null) from mousedown
+      const z = zones[i];
+      setTimeout(function(){ _showFillProps(z); }, 0);
       return true;
     }
   }
@@ -1946,6 +1979,9 @@ function attachArtboardEvents(pageObj){
       return;
     }
 
+    // ── Fill zone bezier handle drag ──
+    if(tool === 'fill' && _fz.isDrawing){ _fillZoneMousemove(e); }
+
     // ── Pen: hovering (no drag) — update live preview line ──
     if(_pen.active && !_pen.dragging){
       _updateLivePen(e.shiftKey && _pen.anchors.length > 0 ? _shiftConstrain(pt) : pt);
@@ -2020,6 +2056,8 @@ function attachArtboardEvents(pageObj){
       return;
     }
 
+    if(tool === 'fill'){ _fillZoneMouseup(e); }
+
     if(_imgDrag.active){
       _imgDrag.active=false;
       pages[currentPage].imageUserAdjusted = true;
@@ -2054,7 +2092,7 @@ function attachArtboardEvents(pageObj){
         _clearLivePen();
       }
       if(_editPath.active) exitPathEditMode();
-      if(tool==='fill' && _fz.isDrawing){ _fz.isDrawing=false; _fz.points=[]; _renderFillZones(pages[currentPage]); }
+      if(tool==='fill' && _fz.isDrawing){ _fz.isDrawing=false; _fz.anchors=[]; _fz.pendingAnchor=null; _renderFillZones(pages[currentPage]); }
     }
   });
 
