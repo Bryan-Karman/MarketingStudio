@@ -241,6 +241,28 @@ body.admin-mode .cl-limit-wrap{display:flex;}
   pointer-events:none;white-space:nowrap;letter-spacing:.03em;
 }
 #live-sync-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* ── MARKETING SCHEDULE TAB ── */
+#ms-schedule-panel{
+  display:none;flex:1;overflow-y:auto;
+  background:#2a2a2a;
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 20px;gap:20px;box-sizing:border-box;
+}
+#ms-schedule-panel.active{ display:flex; }
+#ms-schedule-panel canvas{ box-shadow:0 2px 12px rgba(0,0,0,.15);max-width:100%; }
+#ms-schedule-upload-btn{
+  padding:18px 32px;background:#3a3a3a;border:2px dashed #666;
+  color:#ccc;font-size:13px;font-weight:600;border-radius:6px;
+  cursor:pointer;text-align:center;width:380px;transition:all .2s;display:block;
+  font-family:Calibre,"Franklin Gothic Medium",Arial,sans-serif;
+}
+#ms-schedule-upload-btn:hover{ background:#444;border-color:#17e88f;color:#17e88f; }
+#ms-schedule-progress{ color:#888;font-size:12px;text-align:center;margin-top:4px; }
+#ms-schedule-clear-btn{
+  padding:6px 16px;background:#fff;border:1px solid #c00;
+  color:#c00;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -409,16 +431,21 @@ Line five</textarea>
   </div>
 
   <!-- CANVAS -->
-  <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
-    <!-- Marketing Schedule PDF viewer panel (tab 9) -->
-    <div id="ms-schedule-panel">
-      <div style="color:#666;font-size:12px;text-align:center;margin-bottom:4px;">Upload a PDF to display it here. It will be saved and visible to all users of this property.</div>
-      <label id="ms-schedule-upload-btn">📄 Click to upload Marketing Schedule PDF
+  <!-- Marketing Schedule PDF viewer panel (tab 9) — sits alongside canvas-area -->
+  <div id="ms-schedule-panel">
+    <div id="ms-schedule-empty" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-size:48px;opacity:.5;">📄</div>
+      <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:.02em;">Marketing Schedule</div>
+      <div style="font-size:13px;color:#888;">No schedule uploaded yet.</div>
+      <label id="ms-schedule-upload-btn">⬆ Upload Marketing Schedule PDF
         <input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">
       </label>
-      <div id="ms-schedule-progress"></div>
-      <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
+      <div style="font-size:10px;color:#555;margin-top:2px;">Saved against this property · visible to all users</div>
     </div>
+    <div id="ms-schedule-progress"></div>
+    <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
+  </div>
+  <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
     <div class="canvas-wrap" id="canvas-wrap">
       <div class="artwork" id="artwork"></div>
     </div>
@@ -2785,33 +2812,28 @@ let _msPdfDoc      = null; // PDF.js document object
 
 // Render the schedule tab (called from switchTab)
 function _renderMarketingScheduleTab(){
-  // Hide canvas, show schedule panel
-  document.getElementById('canvas-wrap').style.display = 'none';
-  const panel = document.getElementById('ms-schedule-panel');
-  panel.classList.add('active');
-  // Load PDF if we have a saved URL
+  document.getElementById('canvas-area').style.display = 'none';
+  document.getElementById('ms-schedule-panel').classList.add('active');
   const saved = savedStates._marketingScheduleUrl;
   if(saved && saved !== _msScheduleUrl){
     _msScheduleUrl = saved;
     _msRenderPDF(saved);
-  } else if(_msScheduleUrl){
-    // Already rendered — nothing to do
   }
   _msUpdateUploadBtn();
 }
 
-// Called when switching AWAY from tab 9
 function _hideMarketingScheduleTab(){
-  document.getElementById('canvas-wrap').style.display = '';
-  const panel = document.getElementById('ms-schedule-panel');
-  panel.classList.remove('active');
+  document.getElementById('canvas-area').style.display = '';
+  document.getElementById('ms-schedule-panel').classList.remove('active');
 }
 
 function _msUpdateUploadBtn(){
-  const btn = document.getElementById('ms-schedule-upload-btn');
-  if(!btn) return;
+  const emptyDiv = document.getElementById('ms-schedule-empty');
   if(_msScheduleUrl){
-    btn.innerHTML = '📄 Replace Marketing Schedule PDF<input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">';
+    // Hide the empty upload prompt once a PDF is loaded
+    if(emptyDiv) emptyDiv.style.display = 'none';
+  } else {
+    if(emptyDiv) emptyDiv.style.display = 'flex';
   }
 }
 
@@ -2877,12 +2899,14 @@ async function _msRenderPDF(url){
       await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
     }
     // Show clear button
+    // Show replace/remove controls above the rendered pages
     let clearBtn = document.getElementById('ms-schedule-clear-btn');
     if(!clearBtn){
-      clearBtn = document.createElement('button');
+      clearBtn = document.createElement('div');
       clearBtn.id = 'ms-schedule-clear-btn';
-      clearBtn.textContent = '✕ Remove Schedule';
-      clearBtn.onclick = _msClearPDF;
+      clearBtn.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:8px;';
+      clearBtn.innerHTML = '<label style="padding:7px 16px;background:#003f2d;border:none;color:#fff;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;">⬆ Replace PDF<input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)"></label>'
+        + '<button onclick="_msClearPDF()" style="padding:7px 14px;background:#fff;border:1px solid #c00;color:#c00;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;">✕ Remove</button>';
       document.getElementById('ms-schedule-panel').insertBefore(clearBtn, pagesDiv);
     }
     const prog = document.getElementById('ms-schedule-progress');
@@ -2906,7 +2930,8 @@ function _msClearPDF(){
   const clearBtn = document.getElementById('ms-schedule-clear-btn');
   if(clearBtn) clearBtn.remove();
   _msUpdateUploadBtn();
-  document.getElementById('ms-schedule-progress').textContent = '';
+  const prog = document.getElementById('ms-schedule-progress');
+  if(prog) prog.textContent = '';
 }
 
 function switchLayoutVariant(variantIdx){
@@ -5041,29 +5066,6 @@ async function exportEDMSections(){
   img{display:block;border:0;outline:none;}
   table{border-collapse:collapse;}
   a img{border:0;}
-</style>
-<style>
-/* ── MARKETING SCHEDULE TAB ── */
-#ms-schedule-panel{
-  display:none;position:absolute;inset:0;
-  background:#f5f5f5;overflow-y:auto;
-  flex-direction:column;align-items:center;
-  padding:30px 20px;gap:16px;z-index:10;
-  font-family:Calibre,"Franklin Gothic Medium",Arial,sans-serif;
-}
-#ms-schedule-panel.active{ display:flex; }
-#ms-schedule-panel canvas{ box-shadow:0 2px 12px rgba(0,0,0,.15);max-width:100%; }
-#ms-schedule-upload-btn{
-  padding:12px 24px;background:#fff;border:2px dashed #003f2d;
-  color:#003f2d;font-size:13px;font-weight:700;border-radius:4px;
-  cursor:pointer;text-align:center;width:340px;transition:background .2s;display:block;
-}
-#ms-schedule-upload-btn:hover{ background:#eafaf2;border-color:#17e88f; }
-#ms-schedule-progress{ color:#666;font-size:12px;text-align:center; }
-#ms-schedule-clear-btn{
-  padding:6px 16px;background:#fff;border:1px solid #c00;
-  color:#c00;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;
-}
 </style>
 </head>
 <body>
