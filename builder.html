@@ -2012,7 +2012,7 @@ function serializeTab(){
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
       if(el.dataset.type==='text'){
-        if(el.dataset.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+        if(el.dataset.bullets==='1'&&[2,3,8].indexOf(currentTab)===-1){
           // Bullet elements use flex div-per-line — read from .bt text spans
           const textSpans = inner.querySelectorAll('span.bt');
           var _rawLines;
@@ -2142,7 +2142,7 @@ function restoreTab(idx){
       }
     }
     // Apply bullets AFTER content is set so prefix isn't overwritten
-    if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+    if(sv.bullets==='1'&&[2,3,8].indexOf(idx)===-1){
       el.dataset.bullets='1';
       // Restore paragraph spacing BEFORE applyBullets so it picks it up
       if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
@@ -2399,14 +2399,11 @@ function globalSync(){
         } else if(field === 'bullets' && [5,8].indexOf(currentTab) > -1){
           // AFR2, Auction: append income as plain last bullet line
           inner.textContent = _fi ? val + '\n' + _fi : val;
-        } else if(field === 'bullets' && currentTab === 6){
-          // AFR4: left bullets box shows bullets only — income goes to right free-text box
+        } else if(field === 'bullets' && (currentTab === 6 || currentTab === 2 || currentTab === 3)){
+          // AFR4/EDM/AsianDesk: bullets only, no income appended (income has own element)
           inner.textContent = val;
         } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
-          inner.textContent = _fi ? val + '\n' + _fi : val;
-        } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
-          // EDM, Asian Desk: append income as last body copy line
           inner.textContent = _fi ? val + '\n' + _fi : val;
         } else {
           inner.textContent = val;
@@ -2476,12 +2473,8 @@ function globalSync(){
       } else if(sv.field === 'income'){
         // Income folded into bullets/bodycopy — skip standalone
         sv._hidden = true;
-      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1 && ti !== 6){
-        // AFR/Auction/Brochure: append income as last bullet (not AFR4 tab 6)
-        const _fi = gv('fi') || '';
-        sv.content = _fi ? val + '\n' + _fi : val;
-      } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
-        // EDM/Asian Desk: append income to bodycopy
+      } else if(sv.field === 'bullets' && [0,1,4,5,8].indexOf(ti) > -1){
+        // Brochure/LinkedIn/AFR2/Auction: append income as last bullet line
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else {
