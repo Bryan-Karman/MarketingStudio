@@ -241,10 +241,6 @@ body.admin-mode .cl-limit-wrap{display:flex;}
   pointer-events:none;white-space:nowrap;letter-spacing:.03em;
 }
 #live-sync-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
-
-/* ── MARKETING SCHEDULE TAB ── */
-/* Marketing Schedule panel - hidden until tab 9 active */
-#ms-schedule-panel{display:none;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -301,7 +297,6 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">AFR 4 Mods</label></div>
         <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
         <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">Auction Poster</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi9" checked="" onchange="toggleMITab(9,this)"><label for="mi9">Marketing Schedule</label></div>
       </div>
     </div>
     <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard" style="display:none;">⊙ Copy Layout</button>
@@ -413,20 +408,6 @@ Line five</textarea>
   </div>
 
   <!-- CANVAS -->
-  <!-- Marketing Schedule PDF viewer panel (tab 9) — sits alongside canvas-area -->
-  <div id="ms-schedule-panel" style="display:none;">
-    <div id="ms-schedule-empty" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-      <div style="font-size:48px;opacity:.5;">📄</div>
-      <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:.02em;">Marketing Schedule</div>
-      <div style="font-size:13px;color:#888;">No schedule uploaded yet.</div>
-      <label id="ms-schedule-upload-btn" style="padding:18px 32px;background:#3a3a3a;border:2px dashed #666;color:#ccc;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;text-align:center;width:340px;display:block;font-family:inherit;">⬆ Upload Marketing Schedule PDF
-        <input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">
-      </label>
-      <div style="font-size:10px;color:#555;margin-top:2px;">Saved against this property · visible to all users</div>
-    </div>
-    <div id="ms-schedule-progress" style="color:#888;font-size:12px;text-align:center;"></div>
-    <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
-  </div>
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
     <div class="canvas-wrap" id="canvas-wrap">
       <div class="artwork" id="artwork"></div>
@@ -482,7 +463,7 @@ const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
 const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420],[210,297]];
-const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule'];
+const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction'];
 const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842]];
 
 
@@ -674,15 +655,14 @@ function setZoom(v){
 // into the visible canvas area, with a small padding margin.
 // Uses requestAnimationFrame to ensure the DOM has painted first.
 function fitZoomToTab(){
-  if(currentTab===9) return; // Marketing Schedule has no canvas
+  if(currentTab===9) return;
   requestAnimationFrame(()=>{
     if(currentTab===9) return;
     const [sw,sh]=SIZES[currentTab]||[595,842];
     const canvasArea=document.getElementById('canvas-area');
-    if(!canvasArea || canvasArea.style.display==='none') return;
     const availH=canvasArea.clientHeight - 48;
     const availW=canvasArea.clientWidth  - 48;
-    if(availH <= 0 || availW <= 0) return;
+    if(availH <= 0 || availW <= 0) return; // not visible yet, skip
     const zoomH=availH/sh;
     const zoomW=availW/sw;
     const fit=Math.min(zoomH, zoomW);
@@ -1455,19 +1435,6 @@ function emptyPropsHTML(){
       <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
     </div>`;
   }
-  // Marketing Schedule tab — show upload controls in props panel
-  if(currentTab===9){
-    html += `<div style="padding:4px 0;">
-      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Marketing Schedule</div>
-      <label style="display:block;width:100%;padding:10px;background:#1a2a1a;border:1px dashed #3a5a3a;border-radius:3px;color:#5bbf7a;font-size:11px;font-weight:700;cursor:pointer;text-align:center;box-sizing:border-box;margin-bottom:6px;">
-        ⬆ ${_msScheduleUrl ? 'Replace PDF' : 'Upload PDF'}
-        <input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">
-      </label>
-      ${_msScheduleUrl ? `<button onclick="_msClearPDF()" style="width:100%;padding:8px;background:#3a1515;border:1px solid #f44;color:#f66;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;font-family:inherit;">✕ Remove Schedule</button>` : ''}
-    </div>`;
-    return html;
-  }
-
   // Layout variant selector — show for any tab that has multiple layouts
   if(TAB_LAYOUTS[currentTab] && TAB_LAYOUTS[currentTab].length > 1){
     const variants=TAB_LAYOUTS[currentTab];
@@ -1996,7 +1963,7 @@ function rgbToHex(str){
 // SAVE / RESTORE STATE
 // ════════════════════════════════════════
 function serializeTab(){
-  if(currentTab===9) return []; // Marketing Schedule has no canvas elements
+  if(currentTab===9) return [];
   const art=document.getElementById('artwork');
   const els=[];
   art.querySelectorAll('.el').forEach(el=>{
@@ -2012,7 +1979,7 @@ function serializeTab(){
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
       if(el.dataset.type==='text'){
-        if(el.dataset.bullets==='1'&&[2,3,8].indexOf(currentTab)===-1){
+        if(el.dataset.bullets==='1'){
           // Bullet elements use flex div-per-line — read from .bt text spans
           const textSpans = inner.querySelectorAll('span.bt');
           var _rawLines;
@@ -2074,7 +2041,6 @@ function serializeTab(){
 }
 
 function restoreTab(idx){
-  if(idx===9){ _renderMarketingScheduleTab(); return true; }
   if(!savedStates[idx]) return false;
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
@@ -2142,7 +2108,7 @@ function restoreTab(idx){
       }
     }
     // Apply bullets AFTER content is set so prefix isn't overwritten
-    if(sv.bullets==='1'&&[2,3,8].indexOf(idx)===-1){
+    if(sv.bullets==='1'){
       el.dataset.bullets='1';
       // Restore paragraph spacing BEFORE applyBullets so it picks it up
       if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
@@ -2236,7 +2202,6 @@ function restoreTab(idx){
 }
 
 function applyTemplateLocks(idx){
-  if(idx===9) return;
   // AFR 4 Mods (tab 6): fix income anchor — must be on the right free-text box (z:50), not left bullets
   if(idx === 6){
     const art = document.getElementById('artwork');
@@ -2316,7 +2281,6 @@ function resetTab(){
 // GLOBAL SYNC (sidebar fields → elements)
 // ════════════════════════════════════════
 function globalSync(){
-  if(currentTab===9) return;
   // 0. Enforce character limits on ALL fields FIRST — before reading any values
   //    This means over-limit text can never reach the canvas under any circumstance
   CL_FIELD_IDS.forEach(id=>{ if(typeof clEnforce==='function') clEnforce(id); });
@@ -2399,11 +2363,14 @@ function globalSync(){
         } else if(field === 'bullets' && [5,8].indexOf(currentTab) > -1){
           // AFR2, Auction: append income as plain last bullet line
           inner.textContent = _fi ? val + '\n' + _fi : val;
-        } else if(field === 'bullets' && (currentTab === 6 || currentTab === 2 || currentTab === 3)){
-          // AFR4/EDM/AsianDesk: bullets only, no income appended (income has own element)
+        } else if(field === 'bullets' && currentTab === 6){
+          // AFR4: left bullets box shows bullets only — income goes to right free-text box
           inner.textContent = val;
         } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
+          inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
+          // EDM, Asian Desk: append income as last body copy line
           inner.textContent = _fi ? val + '\n' + _fi : val;
         } else {
           inner.textContent = val;
@@ -2473,8 +2440,12 @@ function globalSync(){
       } else if(sv.field === 'income'){
         // Income folded into bullets/bodycopy — skip standalone
         sv._hidden = true;
-      } else if(sv.field === 'bullets' && [0,1,4,5,8].indexOf(ti) > -1){
-        // Brochure/LinkedIn/AFR2/Auction: append income as last bullet line
+      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1 && ti !== 6){
+        // AFR/Auction/Brochure: append income as last bullet (not AFR4 tab 6)
+        const _fi = gv('fi') || '';
+        sv.content = _fi ? val + '\n' + _fi : val;
+      } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
+        // EDM/Asian Desk: append income to bodycopy
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else {
@@ -2796,157 +2767,6 @@ function addCBRELogos(W, H, positions){
 
 function mkLine(x,y,w,h,bg){
   return mkR(x,y,w,h,bg,{z:10});
-}
-
-// ════════════════════════════════════════
-// MARKETING SCHEDULE TAB (tab 9)
-// ════════════════════════════════════════
-let _msScheduleUrl = null; // Supabase URL of the uploaded PDF
-let _msPdfDoc      = null; // PDF.js document object
-
-// Render the schedule tab (called from switchTab)
-function _renderMarketingScheduleTab(){
-  // Use requestAnimationFrame to ensure DOM is ready
-  const _doRender = function(){
-    const sb = document.querySelector('.sb');
-    const ca = document.getElementById('canvas-area');
-    const pr = document.querySelector('.props');
-    const panel = document.getElementById('ms-schedule-panel');
-    if(!panel){ setTimeout(_doRender, 50); return; }
-    if(sb) sb.style.display = 'none';
-    if(ca) ca.style.display = 'none';
-    // Keep props panel visible — shows upload controls
-    panel.style.cssText = 'display:flex;flex:1;flex-direction:column;align-items:center;justify-content:flex-start;background:#2a2a2a;overflow-y:auto;padding:40px 20px;gap:20px;box-sizing:border-box;';
-    const saved = savedStates._marketingScheduleUrl;
-    if(saved){
-      const needsRender = (saved !== _msScheduleUrl) || !document.getElementById('ms-schedule-pages').children.length;
-      _msScheduleUrl = saved;
-      if(needsRender) _msRenderPDF(saved);
-    }
-    _msUpdateUploadBtn();
-    // Update props panel with upload controls
-    const pc = document.getElementById('props-content');
-    if(pc) pc.innerHTML = emptyPropsHTML();
-  };
-  requestAnimationFrame(_doRender);
-}
-
-function _hideMarketingScheduleTab(){
-  const sb = document.querySelector('.sb');
-  const ca = document.getElementById('canvas-area');
-  if(sb) sb.style.display = '';
-  if(ca) ca.style.display = '';
-  document.getElementById('ms-schedule-panel').style.display = 'none';
-}
-
-function _msUpdateUploadBtn(){
-  const emptyDiv = document.getElementById('ms-schedule-empty');
-  if(_msScheduleUrl){
-    // Hide the empty upload prompt once a PDF is loaded
-    if(emptyDiv) emptyDiv.style.display = 'none';
-  } else {
-    if(emptyDiv) emptyDiv.style.display = 'flex';
-  }
-}
-
-async function _msUploadPDF(input){
-  const file = input.files[0];
-  if(!file) return;
-  const prog = document.getElementById('ms-schedule-progress');
-  if(prog) prog.textContent = 'Uploading…';
-  try {
-    const path = `${_portfolioId}/${_propertyId}/marketing-schedule_${Date.now()}.pdf`;
-    const res = await fetch(`${SUPA_URL}/storage/v1/object/assets/${path}`,{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/pdf','x-upsert':'true'},
-      body: file
-    });
-    if(!res.ok) throw new Error(await res.text());
-    // Delete old PDF if exists
-    if(_msScheduleUrl && _msScheduleUrl.includes('/storage/v1/object/public/assets/')){
-      const oldPath = _msScheduleUrl.split('/storage/v1/object/public/assets/')[1];
-      if(oldPath) fetch(`${SUPA_URL}/storage/v1/object/assets/${oldPath}`,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).catch(()=>{});
-    }
-    _msScheduleUrl = `${SUPA_URL}/storage/v1/object/public/assets/${path}`;
-    savedStates._marketingScheduleUrl = _msScheduleUrl;
-    persistAll();
-    _msRenderPDF(_msScheduleUrl);
-    _msUpdateUploadBtn();
-    // Refresh props panel to show Remove button
-    const _pc = document.getElementById('props-content');
-    if(_pc) _pc.innerHTML = emptyPropsHTML();
-    if(prog) prog.textContent = '✓ Uploaded successfully';
-  } catch(e){
-    if(prog) prog.textContent = 'Upload failed: ' + e.message.slice(0,60);
-  }
-  input.value = '';
-}
-
-async function _msRenderPDF(url){
-  const pagesDiv = document.getElementById('ms-schedule-pages');
-  if(!pagesDiv) return;
-  pagesDiv.innerHTML = '<div style="color:#666;font-size:12px;">Loading PDF…</div>';
-  try {
-    // Load PDF.js from CDN if not already loaded
-    if(!window.pdfjsLib){
-      await new Promise(function(resolve, reject){
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-        s.onload = resolve; s.onerror = reject;
-        document.head.appendChild(s);
-      });
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-    _msPdfDoc = await window.pdfjsLib.getDocument(url).promise;
-    pagesDiv.innerHTML = '';
-    const scale = 1.5; // render at 1.5x for sharpness
-    for(let pageNum = 1; pageNum <= _msPdfDoc.numPages; pageNum++){
-      const page    = await _msPdfDoc.getPage(pageNum);
-      const vp      = page.getViewport({scale});
-      const canvas  = document.createElement('canvas');
-      canvas.width  = vp.width;
-      canvas.height = vp.height;
-      canvas.style.width  = Math.round(vp.width / scale * 0.8) + 'px'; // display at 80% of 1.5x = 1.2x
-      canvas.style.height = Math.round(vp.height / scale * 0.8) + 'px';
-      canvas.style.maxWidth = '100%';
-      pagesDiv.appendChild(canvas);
-      await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
-    }
-    // Show clear button
-    // Show replace/remove controls above the rendered pages
-    let clearBtn = document.getElementById('ms-schedule-clear-btn');
-    if(!clearBtn){
-      clearBtn = document.createElement('div');
-      clearBtn.id = 'ms-schedule-clear-btn';
-      clearBtn.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:8px;';
-      clearBtn.innerHTML = '<label style="padding:7px 16px;background:#003f2d;border:none;color:#fff;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;">⬆ Replace PDF<input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)"></label>'
-        + '<button onclick="_msClearPDF()" style="padding:7px 14px;background:#fff;border:1px solid #c00;color:#c00;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;">✕ Remove</button>';
-      document.getElementById('ms-schedule-panel').insertBefore(clearBtn, pagesDiv);
-    }
-    const prog = document.getElementById('ms-schedule-progress');
-    if(prog){ prog.textContent = _msPdfDoc.numPages + ' page' + (_msPdfDoc.numPages>1?'s':'') + ' loaded'; prog.style.color='#003f2d'; }
-  } catch(e){
-    pagesDiv.innerHTML = '<div style="color:#c00;font-size:12px;">Failed to load PDF: ' + e.message + '</div>';
-  }
-}
-
-function _msClearPDF(){
-  if(!confirm('Remove the Marketing Schedule PDF?')) return;
-  if(_msScheduleUrl && _msScheduleUrl.includes('/storage/v1/object/public/assets/')){
-    const oldPath = _msScheduleUrl.split('/storage/v1/object/public/assets/')[1];
-    if(oldPath) fetch(`${SUPA_URL}/storage/v1/object/assets/${oldPath}`,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).catch(()=>{});
-  }
-  _msScheduleUrl = null;
-  _msPdfDoc = null;
-  delete savedStates._marketingScheduleUrl;
-  persistAll();
-  document.getElementById('ms-schedule-pages').innerHTML = '';
-  const clearBtn = document.getElementById('ms-schedule-clear-btn');
-  if(clearBtn) clearBtn.remove();
-  _msUpdateUploadBtn();
-  const prog = document.getElementById('ms-schedule-progress');
-  if(prog) prog.textContent = '';
 }
 
 function switchLayoutVariant(variantIdx){
@@ -3374,7 +3194,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           el.dataset.field=sv.field||''; el.dataset.bullets=sv.bullets||'0';
           el.dataset.combinedAgent=sv.combinedAgent||'0';
           if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
-          // Skip standalone income element - income is shown inside bullets element
+          // Skip standalone income element for non-EDM tabs
           if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
           el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
           const inner=document.createElement('div'); inner.className='el-inner';
@@ -3382,7 +3202,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           if(sv.type==='text'){
             inner.style.overflow='hidden';
             const content=sv.content!==undefined?sv.content:'';
-            if(sv.bullets==='1'){
+            if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
               const spacing=sv.bulletParaSpacing||'0';
               const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
               // Append income for AFR/Auction tabs (5,6,8) on bullets field
@@ -3434,12 +3254,12 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         const phoneMap={agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
         offscreen.querySelectorAll('.el[data-type="text"]').forEach(el=>{
           const field=el.dataset.field; if(!field||!fieldMap[field]) return;
-          // Skip standalone income element - already appended into bullets
-          if(field==='income') return;
+          // Skip standalone income for non-EDM tabs
+          if(field==='income'&&[2,3].indexOf(tabIdx)===-1) return;
           const val=gv(fieldMap[field])||document.getElementById(fieldMap[field])?.value||'';
           const inner=el.querySelector('.el-inner'); if(!inner) return;
           if(el.dataset.combinedAgent==='1'&&phoneMap[field]){const phone=gv(phoneMap[field])||'';inner.textContent=phone?val+' '+phone:(val||'');}
-          else if(el.dataset.bullets==='1'){
+          else if(el.dataset.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
             const spacing=el.dataset.bulletParaSpacing||'0';
             const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
             // Append income for AFR/Auction tabs (5,6,8) on bullets field
@@ -3961,7 +3781,6 @@ function edmMetaHTML(){
 }
 
 function updateEdmMetaVisibility(){
-  if(currentTab===9) return;
   // Refresh the right panel empty state so EDM block appears/disappears with tab switch
   if(!selectedEl){
     document.getElementById('props-content').innerHTML=emptyPropsHTML();
@@ -4009,13 +3828,8 @@ function copyEdmField(id){
 }
 
 function switchTab(idx,btn){
-  // Hide schedule panel if we're leaving tab 9
   if(currentTab===9) _hideMarketingScheduleTab();
-  // Only serialize/persist if leaving a real canvas tab
-  if(currentTab!==9){
-    savedStates[currentTab]=serializeTab();
-    persistAll();
-  }
+  if(currentTab!==9){ savedStates[currentTab]=serializeTab(); persistAll(); }
   currentTab=idx;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
@@ -4088,7 +3902,7 @@ function toggleMITab(idx,cb){
 }
 
 function collectState(){
-  if(currentTab!==9) savedStates[currentTab]=serializeTab();
+  savedStates[currentTab]=serializeTab();
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
   const _edmS1=(document.getElementById('fedm-link-s1')||{}).value||'';
   const _edmS2=(document.getElementById('fedm-link-s2')||{}).value||'';
@@ -4137,29 +3951,6 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
-    // Validate loaded states — discard any where elements exceed the tab's expected canvas width
-    Object.keys(savedStates).forEach(function(ti){
-      const tidx = parseInt(ti);
-      if(isNaN(tidx)) return; // skip non-numeric keys like _marketingScheduleUrl
-      const expected = SIZES[tidx];
-      if(!expected) return;
-      const st = savedStates[ti];
-      if(!st || !st.length) return;
-      const maxW = expected[0];
-      const oversized = st.some(function(sv){
-        return (parseFloat(sv.x)||0)+(parseFloat(sv.w)||0) > maxW * 1.5;
-      });
-      if(oversized){
-        console.warn('Discarding corrupt state for tab '+tidx+' — elements exceed canvas width '+maxW+'px');
-        delete savedStates[ti];
-      }
-    });
-    // Restore marketing schedule PDF URL if saved
-    // Set to null first so _renderMarketingScheduleTab knows to re-render it
-    _msScheduleUrl = null;
-    if(savedStates._marketingScheduleUrl){
-      _msScheduleUrl = savedStates._marketingScheduleUrl;
-    }
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
@@ -4184,7 +3975,6 @@ function applyState(data,skipZoom=false){
 }
 
 async function supabaseSave(state){
-  if(!navigator.onLine) return null; // skip if offline
   try{
     const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:JSON.stringify(state),updated_at:new Date().toISOString()};
     const check=await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${_portfolioId}&property_id=eq.${_propertyId}&select=id`,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
@@ -4202,7 +3992,6 @@ async function supabaseSave(state){
 }
 
 async function supabaseLoad(){
-  if(!navigator.onLine) return null;
   try{
     const url=`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=state_json,updated_at`;
     const res=await fetch(url,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'}});
@@ -4313,17 +4102,6 @@ function loadAsset(e,key){
     const base64=ev.target.result; let finalSrc=base64;
     try{
       const ext=f.name.split('.').pop();
-      // Delete old image from storage before uploading replacement
-      const _oldSrc = assets[key];
-      if(_oldSrc && _oldSrc.includes('/storage/v1/object/public/assets/')){
-        const _oldPath = _oldSrc.split('/storage/v1/object/public/assets/')[1];
-        if(_oldPath){
-          fetch(`${SUPA_URL}/storage/v1/object/assets/${_oldPath}`,{
-            method:'DELETE',
-            headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-          }).catch(()=>{});
-        }
-      }
       const path=`${_portfolioId}/${_propertyId}/${key}_${Date.now()}.${ext}`;
       const uploadRes=await fetch(`${SUPA_URL}/storage/v1/object/assets/${path}`,{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':f.type},body:f});
       if(uploadRes.ok){finalSrc=`${SUPA_URL}/storage/v1/object/public/assets/${path}`;}
@@ -4471,7 +4249,7 @@ const _origApplyState2=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){_pendingAgentSlots=data.agentSlots;}return result;};
 
 function copyLayoutToClipboard(){
-  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule'];
+  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
   const fnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction'];
   const snapshot=serializeTab();
   const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:SIZES[currentTab],elements:snapshot};
@@ -4595,7 +4373,6 @@ async function init(){
     _pendingAgentSlots=null;
   }
   // Restore saved tab, or default to tab 0
-  // Never open on tab 9 (Marketing Schedule) — always start on first real tab
   if(currentTab===9) currentTab=0;
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab));
   requestAnimationFrame(function(){
@@ -4703,7 +4480,6 @@ async function downloadPDF(){
   deselectAll();savedStates[currentTab]=serializeTab();
   _pdfFontCache=null;
   try{
-    if(currentTab===9) return;
     const mm=PDF_MM[currentTab];const{jsPDF}=window.jspdf;
     const isLandscape=mm[0]>mm[1];
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
