@@ -377,7 +377,9 @@ body.is-admin .admin-only-inline{display:inline;}
   <div class="mast-divider"></div>
   <span onclick="showHubScreen()" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;cursor:pointer;padding:0 10px 0 4px;" title="Home">Studio</span>
   <div class="mast-divider"></div>
+  <span id="mast-product-label" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;display:none;"></span>
   <nav class="mast-nav">
+    <a id="nav-hub" style="display:none;" onclick="showHubScreen()">← Products</a>
     <a onclick="showPage('portfolios')" id="nav-portfolios" style="display:none;">Portfolios</a>
     <span id="nav-portfolio-crumb" style="display:none;padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;pointer-events:none;">›</span>
     <a id="nav-portfolio-name" style="display:none;" onclick="showPage('portfolios')"></a>
@@ -468,8 +470,6 @@ body.is-admin .admin-only-inline{display:inline;}
             <th>Email</th>
             <th>Password</th>
             <th>Role</th>
-            <th>Last Login</th>
-            <th>Last Seen</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -696,6 +696,31 @@ let _editingUserId = null; // null = adding new, string = editing existing
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE DATA HELPERS
 // ═══════════════════════════════════════════════════════════════
+// ── Storage cleanup helper ───────────────────────────────────────
+async function _deleteStorageFolder(portfolioId, propId){
+  try {
+    const folder = portfolioId+'/'+propId;
+    const listRes = await fetch(
+      SUPABASE_URL+'/storage/v1/object/list/assets/'+folder,
+      { method:'POST',
+        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+        body: JSON.stringify({limit:1000, offset:0, prefix:''})
+      }
+    );
+    if(!listRes.ok) return;
+    const files = await listRes.json();
+    if(!files || !files.length) return;
+    const paths = files.map(f => folder+'/'+f.name);
+    await fetch(
+      SUPABASE_URL+'/storage/v1/object/assets',
+      { method:'DELETE',
+        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+        body: JSON.stringify({prefixes: paths})
+      }
+    );
+  } catch(e){ console.warn('Storage cleanup failed for '+portfolioId+'/'+propId+':', e.message); }
+}
+
 const SB = {
   headers: {
     'apikey': SUPABASE_ANON_KEY,
@@ -793,26 +818,14 @@ async function saveDemoData(){
 // ═══════════════════════════════════════════════════════════════
 async function loadUsers(){
   try {
-    const rows = await SB.get('users', '?order=name.asc&select=id,name,email,password,role,last_login,last_seen');
+    const rows = await SB.get('users', '?order=name.asc');
     if(Array.isArray(rows)){
-      allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, password:u.password, role:u.role, last_login:u.last_login||null, last_seen:u.last_seen||null}));
+      allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, password:u.password, role:u.role}));
     }
   } catch(e){
     console.warn('Could not load users from Supabase:', e);
     allUsers = [...FALLBACK_USERS];
   }
-}
-
-function _fmtTime(iso){
-  if(!iso) return '—';
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
-  if(diff < 60) return 'Just now';
-  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
-  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
-  if(diff < 604800) return Math.floor(diff/86400) + 'd ago';
-  return d.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 }
 
 function renderUsers(){
@@ -827,8 +840,6 @@ function renderUsers(){
       <td>${escHtml(u.email)}</td>
       <td><span style="font-family:monospace;letter-spacing:.05em;">${'•'.repeat(Math.min(u.password?u.password.length:8, 12))}</span></td>
       <td><span class="role-badge ${u.role}">${u.role}</span></td>
-      <td style="font-size:11px;color:#666;">${u.last_login ? _fmtTime(u.last_login) : '<span style="color:#bbb;">Never</span>'}</td>
-      <td style="font-size:11px;color:#666;">${u.last_seen ? _fmtTime(u.last_seen) : '<span style="color:#bbb;">—</span>'}</td>
       <td>
         <div class="user-actions">
           <button class="tbl-btn" onclick="openUserModal('${u.id}')">Edit</button>
@@ -956,8 +967,6 @@ async function doLogin(){
       if(match){
         currentUser = {id: match.id, name: match.name, email: match.email, role: match.role};
         lsSet('session', currentUser);
-        // Record last login time — non-blocking, won't affect login if it fails
-        try { await SB.patch('users', `?id=eq.${match.id}`, {last_login: new Date().toISOString()}); } catch(e){ console.warn('last_login update failed:', e.message); }
         await onLoginSuccess();
         return;
       }
@@ -971,7 +980,6 @@ async function doLogin(){
   if(fallback){
     currentUser = {id: fallback.id||'local', name: fallback.name, email: fallback.email, role: fallback.role};
     lsSet('session', currentUser);
-    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_login: new Date().toISOString()}); } catch(e){ console.warn('last_login fallback failed:', e.message); }
     await onLoginSuccess();
     return;
   }
@@ -983,23 +991,6 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Enter' && !currentUser) doLogin();
 });
 
-// ── LAST SEEN HEARTBEAT ──────────────────────────────────────
-// Updates last_seen every 2 minutes while the user is logged in
-let _lastSeenTimer = null;
-function startLastSeenHeartbeat(){
-  if(_lastSeenTimer) clearInterval(_lastSeenTimer);
-  _lastSeenTimer = setInterval(async function(){
-    if(!currentUser || !currentUser.id) return;
-    try { await SB.patch('users', `?id=eq.${currentUser.id}`, {last_seen: new Date().toISOString()}); } catch(e){ console.warn('last_seen update failed:', e.message); }
-  }, 120000); // every 2 minutes
-}
-function stopLastSeenHeartbeat(){ clearInterval(_lastSeenTimer); _lastSeenTimer = null; }
-// Pause when tab hidden
-document.addEventListener('visibilitychange', function(){
-  if(document.hidden) stopLastSeenHeartbeat();
-  else if(currentUser) startLastSeenHeartbeat();
-});
-
 function doLogout(){
   currentUser = null;
   lsSet('session', null);
@@ -1007,7 +998,6 @@ function doLogout(){
 }
 
 async function onLoginSuccess(){
-  startLastSeenHeartbeat();
   document.getElementById('login-screen').style.opacity = '0';
   setTimeout(()=>{ document.getElementById('login-screen').style.display = 'none'; }, 400);
   document.getElementById('masthead').style.display = 'flex';
@@ -1139,6 +1129,9 @@ async function createPortfolio(){
 async function deletePortfolio(e, id){
   e.stopPropagation();
   if(!confirm('Delete this portfolio and all its properties? This cannot be undone.')) return;
+  // Delete storage files for ALL properties in this portfolio first
+  const propsInPortfolio = properties[id] || [];
+  propsInPortfolio.forEach(function(pr){ _deleteStorageFolder(id, pr.id); });
   try {
     await SB.delete('properties', `?portfolio_id=eq.${id}`);
     await SB.delete('portfolios', `?id=eq.${id}`);
@@ -1399,6 +1392,8 @@ async function moveProperty(){
 async function deleteProperty(e, portfolioId, propId){
   e.stopPropagation();
   if(!confirm('Delete this property? This cannot be undone.')) return;
+  // Delete storage files FIRST (before local array is modified)
+  _deleteStorageFolder(portfolioId, propId);
   try {
     await SB.delete('properties', `?id=eq.${propId}`);
     // Also delete the builder state for this property
@@ -1442,6 +1437,7 @@ function showHubScreen(){
   document.getElementById('hub-screen').classList.add('active');
 
   // Update nav: show ← Products hidden (we are on hub), hide portfolios nav
+  document.getElementById('nav-hub').style.display = 'none';
   document.getElementById('nav-portfolios').style.display = 'none';
   const navUsers = document.getElementById('nav-users');
   if(navUsers) navUsers.style.display = currentUser&&currentUser.role==='admin' ? 'flex' : 'none';
@@ -1449,6 +1445,7 @@ function showHubScreen(){
   if(navAgents) navAgents.style.display = currentUser&&currentUser.role==='admin' ? 'flex' : 'none';
 
   // Update product label
+  document.getElementById('mast-product-label').style.display = 'none';
 
   // Greeting
   const greetEl = document.getElementById('hub-greeting');
@@ -1468,6 +1465,7 @@ function openProduct(product){
   document.getElementById('hub-screen').classList.remove('active');
 
   // Show nav items for within-marketing navigation
+  document.getElementById('nav-hub').style.display = 'flex';
   document.getElementById('nav-portfolios').style.display = 'flex';
   if(currentUser && currentUser.role === 'admin'){
     const navUsers = document.getElementById('nav-users');
@@ -1477,6 +1475,8 @@ function openProduct(product){
   }
 
   // Show product label in masthead
+  const lbl = document.getElementById('mast-product-label');
+  if(lbl){ lbl.textContent = 'Marketing'; lbl.style.display = 'inline'; }
 
   // Show admin bar on portfolios
   const adminBar = document.getElementById('admin-bar');
