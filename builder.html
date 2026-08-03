@@ -2012,7 +2012,7 @@ function serializeTab(){
     if(inner){
       obj.innerStyle=inner.getAttribute('style')||'';
       if(el.dataset.type==='text'){
-        if(el.dataset.bullets==='1'){
+        if(el.dataset.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
           // Bullet elements use flex div-per-line — read from .bt text spans
           const textSpans = inner.querySelectorAll('span.bt');
           var _rawLines;
@@ -2142,7 +2142,7 @@ function restoreTab(idx){
       }
     }
     // Apply bullets AFTER content is set so prefix isn't overwritten
-    if(sv.bullets==='1'){
+    if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
       el.dataset.bullets='1';
       // Restore paragraph spacing BEFORE applyBullets so it picks it up
       if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
@@ -2427,8 +2427,8 @@ function globalSync(){
       if(el.dataset.bullets==='1'){
         applyBullets(inner, true);
       }
-      // Auction tab (8): bullets field — plain lines with paragraph spacing
-      if(currentTab === 8 && field === 'bullets'){
+      // EDM (tab 2), Asian Desk (tab 3), Auction (tab 8): plain lines
+      if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets'){
         var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
         var _val8 = inner.textContent || '';
         var _lines8 = _val8.split('\n');
@@ -3204,7 +3204,7 @@ function buildEDM(W,H){
   mkT(337,498,238,31,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4,locked:'1'});
-  (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'1',bulletParaSpacing:'10',locked:'1'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4,locked:'1'});
@@ -3382,7 +3382,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           el.dataset.combinedAgent=sv.combinedAgent||'0';
           if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
           // Skip standalone income element - income is shown inside bullets element
-          if(sv.field==='income'){ return; }
+          if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
           el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
           const inner=document.createElement('div'); inner.className='el-inner';
           inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+(sv.innerStyle||''));
