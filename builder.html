@@ -4967,4 +4967,136 @@ function handleRtbKeydown(ev, inner){
   if(ev.key==='Escape'){ ev.preventDefault(); if(inner) inner.blur(); }
 }
 
+// ── MARKETING SCHEDULE TAB (9) ──────────────────────────────
+let _msScheduleUrl=null, _msPdfDoc=null;
+
+function _renderMarketingScheduleTab(){
+  const _doR=function(){
+    const sb=document.querySelector('.sb');
+    const ca=document.getElementById('canvas-area');
+    const panel=document.getElementById('ms-schedule-panel');
+    if(!panel){ setTimeout(_doR,50); return; }
+    if(sb) sb.style.display='none';
+    if(ca) ca.style.display='none';
+    panel.style.cssText='display:flex;flex:1;flex-direction:column;align-items:center;justify-content:flex-start;background:#2a2a2a;overflow-y:auto;padding:40px 20px;gap:20px;box-sizing:border-box;';
+    const saved=savedStates._marketingScheduleUrl;
+    if(saved){
+      const nr=(saved!==_msScheduleUrl)||!document.getElementById('ms-schedule-pages').children.length;
+      _msScheduleUrl=saved;
+      if(nr) _msRenderPDF(saved);
+    }
+    _msUpdateUploadBtn();
+    const pc=document.getElementById('props-content');
+    if(pc) pc.innerHTML=emptyPropsHTML();
+  };
+  requestAnimationFrame(_doR);
+}
+
+function _hideMarketingScheduleTab(){
+  const sb=document.querySelector('.sb');
+  const ca=document.getElementById('canvas-area');
+  if(sb) sb.style.display='';
+  if(ca) ca.style.display='';
+  const p=document.getElementById('ms-schedule-panel');
+  if(p) p.style.display='none';
+}
+
+function _msUpdateUploadBtn(){
+  const e=document.getElementById('ms-schedule-empty');
+  if(e) e.style.display=_msScheduleUrl?'none':'flex';
+}
+
+async function _msUploadPDF(input){
+  const file=input.files[0]; if(!file) return;
+  const prog=document.getElementById('ms-schedule-progress');
+  if(prog) prog.textContent='Uploading…';
+  try{
+    const path=`${_portfolioId}/${_propertyId}/marketing-schedule_${Date.now()}.pdf`;
+    const res=await fetch(`${SUPA_URL}/storage/v1/object/assets/${path}`,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/pdf','x-upsert':'true'},
+      body:file
+    });
+    if(!res.ok) throw new Error(await res.text());
+    if(_msScheduleUrl&&_msScheduleUrl.includes('/storage/v1/object/public/assets/')){
+      const op=_msScheduleUrl.split('/storage/v1/object/public/assets/')[1];
+      if(op) fetch(`${SUPA_URL}/storage/v1/object/assets/${op}`,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).catch(()=>{});
+    }
+    _msScheduleUrl=`${SUPA_URL}/storage/v1/object/public/assets/${path}`;
+    savedStates._marketingScheduleUrl=_msScheduleUrl;
+    persistAll();
+    _msRenderPDF(_msScheduleUrl);
+    _msUpdateUploadBtn();
+    const _pc=document.getElementById('props-content');
+    if(_pc) _pc.innerHTML=emptyPropsHTML();
+    if(prog) prog.textContent='✓ Uploaded successfully';
+  } catch(e){
+    if(prog) prog.textContent='Upload failed: '+e.message.slice(0,60);
+  }
+  input.value='';
+}
+
+async function _msRenderPDF(url){
+  const pagesDiv=document.getElementById('ms-schedule-pages');
+  if(!pagesDiv) return;
+  pagesDiv.innerHTML='<div style="color:#888;font-size:12px;">Loading PDF…</div>';
+  try{
+    if(!window.pdfjsLib){
+      await new Promise(function(res,rej){
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    _msPdfDoc=await window.pdfjsLib.getDocument(url).promise;
+    pagesDiv.innerHTML='';
+    const scale=1.5;
+    for(let p=1;p<=_msPdfDoc.numPages;p++){
+      const page=await _msPdfDoc.getPage(p);
+      const vp=page.getViewport({scale});
+      const cv=document.createElement('canvas');
+      cv.width=vp.width; cv.height=vp.height;
+      cv.style.width=Math.round(vp.width/scale*0.8)+'px';
+      cv.style.height=Math.round(vp.height/scale*0.8)+'px';
+      cv.style.maxWidth='100%';
+      cv.style.boxShadow='0 2px 12px rgba(0,0,0,.3)';
+      pagesDiv.appendChild(cv);
+      await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+    }
+    let cb=document.getElementById('ms-schedule-clear-btn');
+    if(!cb){
+      cb=document.createElement('div');
+      cb.id='ms-schedule-clear-btn';
+      cb.style.cssText='display:flex;gap:10px;align-items:center;margin-bottom:8px;';
+      cb.innerHTML='<label style="padding:7px 16px;background:#003f2d;color:#fff;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;">⬆ Replace PDF<input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)"></label><button onclick="_msClearPDF()" style="padding:7px 14px;background:#fff;border:1px solid #c00;color:#c00;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;">✕ Remove</button>';
+      document.getElementById('ms-schedule-panel').insertBefore(cb,pagesDiv);
+    }
+    const prog=document.getElementById('ms-schedule-progress');
+    if(prog){ prog.textContent=_msPdfDoc.numPages+' page'+(_msPdfDoc.numPages>1?'s':'')+' loaded'; prog.style.color='#17e88f'; }
+  } catch(e){
+    pagesDiv.innerHTML='<div style="color:#c00;font-size:12px;">Failed to load PDF: '+e.message+'</div>';
+  }
+}
+
+function _msClearPDF(){
+  if(!confirm('Remove the Marketing Schedule PDF?')) return;
+  if(_msScheduleUrl&&_msScheduleUrl.includes('/storage/v1/object/public/assets/')){
+    const op=_msScheduleUrl.split('/storage/v1/object/public/assets/')[1];
+    if(op) fetch(`${SUPA_URL}/storage/v1/object/assets/${op}`,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).catch(()=>{});
+  }
+  _msScheduleUrl=null; _msPdfDoc=null;
+  delete savedStates._marketingScheduleUrl;
+  persistAll();
+  document.getElementById('ms-schedule-pages').innerHTML='';
+  const cb=document.getElementById('ms-schedule-clear-btn');
+  if(cb) cb.remove();
+  _msUpdateUploadBtn();
+  const prog=document.getElementById('ms-schedule-progress');
+  if(prog) prog.textContent='';
+  const pc=document.getElementById('props-content');
+  if(pc) pc.innerHTML=emptyPropsHTML();
+}
+
 </script></body></html>
