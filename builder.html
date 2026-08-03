@@ -4095,7 +4095,7 @@ function toggleMITab(idx,cb){
 }
 
 function collectState(){
-  savedStates[currentTab]=serializeTab();
+  if(currentTab!==9) savedStates[currentTab]=serializeTab();
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
   const _edmS1=(document.getElementById('fedm-link-s1')||{}).value||'';
   const _edmS2=(document.getElementById('fedm-link-s2')||{}).value||'';
@@ -4144,6 +4144,23 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
+    // Validate loaded states — discard any where elements exceed the tab's expected canvas width
+    Object.keys(savedStates).forEach(function(ti){
+      const tidx = parseInt(ti);
+      if(isNaN(tidx)) return; // skip non-numeric keys like _marketingScheduleUrl
+      const expected = SIZES[tidx];
+      if(!expected) return;
+      const st = savedStates[ti];
+      if(!st || !st.length) return;
+      const maxW = expected[0];
+      const oversized = st.some(function(sv){
+        return (parseFloat(sv.x)||0)+(parseFloat(sv.w)||0) > maxW * 1.5;
+      });
+      if(oversized){
+        console.warn('Discarding corrupt state for tab '+tidx+' — elements exceed canvas width '+maxW+'px');
+        delete savedStates[ti];
+      }
+    });
     // Restore marketing schedule PDF URL if saved
     // Set to null first so _renderMarketingScheduleTab knows to re-render it
     _msScheduleUrl = null;
