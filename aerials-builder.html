@@ -1075,7 +1075,7 @@ function renderTabs(){
   });
   html += `<button class="tab-add" onclick="addPage()">+ Add Page</button>`;
   html += `<button class="tab-add" onclick="duplicatePage()" title="Duplicate current page with all markups and image" style="background:#0d1f2a;color:#6aaad8;border-left:1px solid #2a2a2a;">⧉ Duplicate Page</button>`;
-  html += `<label class="tab-add" title="Select multiple images to create a page for each" style="background:#0d1f18;color:#17e88f;border-left:1px solid #2a2a2a;cursor:pointer;">⬆ Bulk Upload<input type="file" accept="image/*" multiple style="display:none;" onchange="handleBulkUpload(this)"></label>`;
+  html += `<label class="tab-add" title="Select multiple images to create a page for each" style="background:#0d1f18;color:#17e88f;border-left:1px solid #2a2a2a;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">⬆ Bulk Upload<input type="file" accept="image/*" multiple style="display:none;" onchange="handleBulkUpload(this)"></label>`;
   bar.innerHTML = html;
 }
 
