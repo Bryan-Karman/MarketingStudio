@@ -297,6 +297,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">AFR 4 Mods</label></div>
         <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
         <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">Auction Poster</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi9" checked="" onchange="toggleMITab(9,this)"><label for="mi9">Marketing Schedule</label></div>
       </div>
     </div>
     <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard" style="display:none;">⊙ Copy Layout</button>
@@ -317,6 +318,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(6,this)">AFR 4 Mods</button>
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
     <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
+    <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
   </div>
 </div>
 
@@ -408,6 +410,15 @@ Line five</textarea>
 
   <!-- CANVAS -->
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
+    <!-- Marketing Schedule PDF viewer panel (tab 9) -->
+    <div id="ms-schedule-panel">
+      <div style="color:#888;font-size:11px;text-align:center;margin-bottom:4px;">Upload a PDF to display it here. It will be saved and visible to all users of this property.</div>
+      <label id="ms-schedule-upload-btn">📄 Click to upload Marketing Schedule PDF
+        <input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">
+      </label>
+      <div id="ms-schedule-progress"></div>
+      <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
+    </div>
     <div class="canvas-wrap" id="canvas-wrap">
       <div class="artwork" id="artwork"></div>
     </div>
@@ -462,8 +473,8 @@ const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
 const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420]];
-const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction'];
-const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123]];
+const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule'];
+const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842]];
 
 
 // ═══════════════════════════════════
@@ -1960,6 +1971,7 @@ function rgbToHex(str){
 // SAVE / RESTORE STATE
 // ════════════════════════════════════════
 function serializeTab(){
+  if(currentTab===9) return []; // Marketing Schedule has no canvas elements
   const art=document.getElementById('artwork');
   const els=[];
   art.querySelectorAll('.el').forEach(el=>{
@@ -2763,6 +2775,138 @@ function addCBRELogos(W, H, positions){
 
 function mkLine(x,y,w,h,bg){
   return mkR(x,y,w,h,bg,{z:10});
+}
+
+// ════════════════════════════════════════
+// MARKETING SCHEDULE TAB (tab 9)
+// ════════════════════════════════════════
+let _msScheduleUrl = null; // Supabase URL of the uploaded PDF
+let _msPdfDoc      = null; // PDF.js document object
+
+// Render the schedule tab (called from switchTab)
+function _renderMarketingScheduleTab(){
+  // Hide canvas, show schedule panel
+  document.getElementById('canvas-wrap').style.display = 'none';
+  const panel = document.getElementById('ms-schedule-panel');
+  panel.classList.add('active');
+  // Load PDF if we have a saved URL
+  const saved = savedStates._marketingScheduleUrl;
+  if(saved && saved !== _msScheduleUrl){
+    _msScheduleUrl = saved;
+    _msRenderPDF(saved);
+  } else if(_msScheduleUrl){
+    // Already rendered — nothing to do
+  }
+  _msUpdateUploadBtn();
+}
+
+// Called when switching AWAY from tab 9
+function _hideMarketingScheduleTab(){
+  document.getElementById('canvas-wrap').style.display = '';
+  const panel = document.getElementById('ms-schedule-panel');
+  panel.classList.remove('active');
+}
+
+function _msUpdateUploadBtn(){
+  const btn = document.getElementById('ms-schedule-upload-btn');
+  if(!btn) return;
+  if(_msScheduleUrl){
+    btn.innerHTML = '📄 Replace Marketing Schedule PDF<input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">';
+  }
+}
+
+async function _msUploadPDF(input){
+  const file = input.files[0];
+  if(!file) return;
+  const prog = document.getElementById('ms-schedule-progress');
+  if(prog) prog.textContent = 'Uploading…';
+  try {
+    const path = `${_portfolioId}/${_propertyId}/marketing-schedule_${Date.now()}.pdf`;
+    const res = await fetch(`${SUPA_URL}/storage/v1/object/assets/${path}`,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/pdf','x-upsert':'true'},
+      body: file
+    });
+    if(!res.ok) throw new Error(await res.text());
+    // Delete old PDF if exists
+    if(_msScheduleUrl && _msScheduleUrl.includes('/storage/v1/object/public/assets/')){
+      const oldPath = _msScheduleUrl.split('/storage/v1/object/public/assets/')[1];
+      if(oldPath) fetch(`${SUPA_URL}/storage/v1/object/assets/${oldPath}`,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).catch(()=>{});
+    }
+    _msScheduleUrl = `${SUPA_URL}/storage/v1/object/public/assets/${path}`;
+    savedStates._marketingScheduleUrl = _msScheduleUrl;
+    persistAll();
+    _msRenderPDF(_msScheduleUrl);
+    _msUpdateUploadBtn();
+    if(prog) prog.textContent = '✓ Uploaded successfully';
+  } catch(e){
+    if(prog) prog.textContent = 'Upload failed: ' + e.message.slice(0,60);
+  }
+  input.value = '';
+}
+
+async function _msRenderPDF(url){
+  const pagesDiv = document.getElementById('ms-schedule-pages');
+  if(!pagesDiv) return;
+  pagesDiv.innerHTML = '<div style="color:#888;font-size:12px;">Loading PDF…</div>';
+  try {
+    // Load PDF.js from CDN if not already loaded
+    if(!window.pdfjsLib){
+      await new Promise(function(resolve, reject){
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    _msPdfDoc = await window.pdfjsLib.getDocument(url).promise;
+    pagesDiv.innerHTML = '';
+    const scale = 1.5; // render at 1.5x for sharpness
+    for(let pageNum = 1; pageNum <= _msPdfDoc.numPages; pageNum++){
+      const page    = await _msPdfDoc.getPage(pageNum);
+      const vp      = page.getViewport({scale});
+      const canvas  = document.createElement('canvas');
+      canvas.width  = vp.width;
+      canvas.height = vp.height;
+      canvas.style.width  = Math.round(vp.width / scale * 0.8) + 'px'; // display at 80% of 1.5x = 1.2x
+      canvas.style.height = Math.round(vp.height / scale * 0.8) + 'px';
+      canvas.style.maxWidth = '100%';
+      pagesDiv.appendChild(canvas);
+      await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
+    }
+    // Show clear button
+    let clearBtn = document.getElementById('ms-schedule-clear-btn');
+    if(!clearBtn){
+      clearBtn = document.createElement('button');
+      clearBtn.id = 'ms-schedule-clear-btn';
+      clearBtn.textContent = '✕ Remove Schedule';
+      clearBtn.onclick = _msClearPDF;
+      document.getElementById('ms-schedule-panel').insertBefore(clearBtn, pagesDiv);
+    }
+    const prog = document.getElementById('ms-schedule-progress');
+    if(prog) prog.textContent = _msPdfDoc.numPages + ' page' + (_msPdfDoc.numPages>1?'s':'') + ' loaded';
+  } catch(e){
+    pagesDiv.innerHTML = '<div style="color:#f66;font-size:12px;">Failed to load PDF: ' + e.message + '</div>';
+  }
+}
+
+function _msClearPDF(){
+  if(!confirm('Remove the Marketing Schedule PDF?')) return;
+  if(_msScheduleUrl && _msScheduleUrl.includes('/storage/v1/object/public/assets/')){
+    const oldPath = _msScheduleUrl.split('/storage/v1/object/public/assets/')[1];
+    if(oldPath) fetch(`${SUPA_URL}/storage/v1/object/assets/${oldPath}`,{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}).catch(()=>{});
+  }
+  _msScheduleUrl = null;
+  _msPdfDoc = null;
+  delete savedStates._marketingScheduleUrl;
+  persistAll();
+  document.getElementById('ms-schedule-pages').innerHTML = '';
+  const clearBtn = document.getElementById('ms-schedule-clear-btn');
+  if(clearBtn) clearBtn.remove();
+  _msUpdateUploadBtn();
+  document.getElementById('ms-schedule-progress').textContent = '';
 }
 
 function switchLayoutVariant(variantIdx){
@@ -3823,6 +3967,8 @@ function copyEdmField(id){
 }
 
 function switchTab(idx,btn){
+  // Hide schedule panel if we're leaving tab 9
+  if(currentTab===9) _hideMarketingScheduleTab();
   savedStates[currentTab]=serializeTab();
   persistAll();
   currentTab=idx;
@@ -3830,6 +3976,7 @@ function switchTab(idx,btn){
   btn.classList.add('active');
   deselectAll();
   if((idx===2||idx===3)&&typeof _migrateEDMStates==='function') _migrateEDMStates();
+  if(idx===9){ _renderMarketingScheduleTab(); return; }
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
   // For AFR4: re-run globalSync after restore so income and sale combo re-render
   if(idx===6) setTimeout(function(){ globalSync(); }, 50);
@@ -3945,6 +4092,10 @@ function applyState(data,skipZoom=false){
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
+    // Restore marketing schedule PDF URL if saved
+    if(savedStates._marketingScheduleUrl){
+      _msScheduleUrl = savedStates._marketingScheduleUrl;
+    }
     if(data.fields){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
@@ -4254,7 +4405,7 @@ const _origApplyState2=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){_pendingAgentSlots=data.agentSlots;}return result;};
 
 function copyLayoutToClipboard(){
-  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
+  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule'];
   const fnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction'];
   const snapshot=serializeTab();
   const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:SIZES[currentTab],elements:snapshot};
@@ -4890,6 +5041,29 @@ async function exportEDMSections(){
   img{display:block;border:0;outline:none;}
   table{border-collapse:collapse;}
   a img{border:0;}
+</style>
+<style>
+/* ── MARKETING SCHEDULE TAB ── */
+#ms-schedule-panel{
+  display:none;position:absolute;inset:0;
+  background:#1a1a1a;overflow-y:auto;
+  flex-direction:column;align-items:center;
+  padding:20px;gap:16px;
+  font-family:Calibre,"Franklin Gothic Medium",Arial,sans-serif;
+}
+#ms-schedule-panel.active{ display:flex; }
+#ms-schedule-panel canvas{ box-shadow:0 4px 24px rgba(0,0,0,.5);max-width:100%; }
+#ms-schedule-upload-btn{
+  padding:12px 24px;background:#003f2d;border:2px dashed #17e88f;
+  color:#17e88f;font-size:13px;font-weight:700;border-radius:4px;
+  cursor:pointer;text-align:center;width:340px;transition:background .2s;display:block;
+}
+#ms-schedule-upload-btn:hover{ background:#004f3a; }
+#ms-schedule-progress{ color:#888;font-size:12px;text-align:center; }
+#ms-schedule-clear-btn{
+  padding:6px 16px;background:#3a1515;border:1px solid #f44;
+  color:#f66;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;
+}
 </style>
 </head>
 <body>
