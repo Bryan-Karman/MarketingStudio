@@ -104,10 +104,6 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .property-card{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.04);}
 .property-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px);border-color:var(--gb);}
 .property-card-thumb{height:100px;background:var(--dk);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;}
-.property-card-thumb img.thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .3s;}
-.property-card-thumb img.thumb-img.loaded{opacity:1;}
-.property-card-thumb .property-card-thumb-label{position:relative;z-index:1;transition:opacity .3s;}
-.property-card-thumb img.thumb-img.loaded ~ .property-card-thumb-label{opacity:0;}
 .property-card-thumb:hover .property-thumb-overlay{opacity:1;}
 .property-thumb-overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
 .property-thumb-overlay-label{font-size:11px;font-weight:700;color:#fff;letter-spacing:.06em;text-transform:uppercase;}
@@ -181,6 +177,8 @@ body.is-admin .admin-only{display:flex;}
   <span onclick="window.location.href='index.html'" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;cursor:pointer;padding:0 10px 0 4px;" title="Back to Hub">Studio</span>
   <div class="mast-divider"></div>
   <nav class="mast-nav">
+    <a onclick="window.location.href='index.html'" title="Back to Hub" style="font-size:10px;font-weight:700;">← Hub</a>
+    <span style="padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;">›</span>
     <a onclick="showPage('portfolios')" id="nav-portfolios" class="active">Aerials</a>
     <span id="nav-crumb-sep" style="display:none;padding:0 6px;color:rgba(255,255,255,.25);font-size:10px;">›</span>
     <a id="nav-portfolio-name" style="display:none;"></a>
@@ -203,7 +201,7 @@ body.is-admin .admin-only{display:flex;}
     <div class="page-header">
       <div>
         <div class="page-title">Portfolios</div>
-        <div class="page-sub">Select a portfolio to view its properties</div>
+        <div class="page-sub">Select a portfolio to view its propertys</div>
       </div>
     </div>
     <div class="portfolio-grid" id="portfolio-grid">
@@ -457,12 +455,44 @@ async function savePropertyToSB(prop){
   }
 }
 
-async function deletePropertyFromSB(propId){
+async function deletePropertyFromSB(propId, portfolioId){
+  // 1. Delete property row
   try { await SB.del('properties','?id=eq.'+propId+'&product=eq.aerials'); }
   catch(e){
     try { await SB.del('aerials_properties','?id=eq.'+propId); }
     catch(e2){ console.warn('Property SB delete failed:', e2.message); }
   }
+  // 2. Delete aerials_projects row (saved builder state)
+  try { await SB.del('aerials_projects','?property_id=eq.'+propId); }
+  catch(e){ console.warn('aerials_projects delete failed:', e.message); }
+  // 3. Delete all files in storage for this property
+  try {
+    // portfolioId passed directly — avoids lookup failing after local array update
+    if(portfolioId){
+      const folder = portfolioId+'/'+propId;
+      // List all files in the folder
+      const listRes = await fetch(
+        SUPABASE_URL+'/storage/v1/object/list/assets/'+folder,
+        { method:'POST',
+          headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+          body: JSON.stringify({limit:1000, offset:0, prefix:''})
+        }
+      );
+      if(listRes.ok){
+        const files = await listRes.json();
+        if(files && files.length){
+          const paths = files.map(f => folder+'/'+f.name);
+          await fetch(
+            SUPABASE_URL+'/storage/v1/object/assets',
+            { method:'DELETE',
+              headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+              body: JSON.stringify({prefixes: paths})
+            }
+          );
+        }
+      }
+    }
+  } catch(e){ console.warn('Storage cleanup failed:', e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -686,7 +716,6 @@ function renderProperties() {
     } else {
       return '<div class="property-card" id="pcard-'+pr.id+'">'
         +'<div class="property-card-thumb prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">'
-        +'<img class="thumb-img" id="thumb-img-'+pr.id+'" src="" alt="">'
         +'<div class="property-card-thumb-label">'+escHtml(PROPERTY_LABEL)+'</div>'
         +'<div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>'
         +'<div class="property-thumb-bar"></div>'
@@ -701,52 +730,6 @@ function renderProperties() {
         +'</div></div>';
     }
   }).join('');
-  // Load thumbnails asynchronously — fetch first page imageUrl from aerials_projects
-  if(!isList) _loadPropertyThumbnails(props);
-}
-
-// Cache thumbnails so we don't re-fetch on every render
-const _thumbCache = {};
-
-async function _loadPropertyThumbnails(props) {
-  for(const pr of props) {
-    if(_thumbCache[pr.id]) {
-      _applyThumb(pr.id, _thumbCache[pr.id]);
-      continue;
-    }
-    try {
-      const rows = await SB.get('aerials_projects',
-        '?portfolio_id=eq.'+pr.portfolioId+'&property_id=eq.'+pr.id+'&select=state_json');
-      if(!rows || !rows.length || !rows[0].state_json) continue;
-      const raw = rows[0].state_json;
-      // state_json may come back as already-parsed object (JSONB) or as a string
-      let firstUrl = null;
-      if(typeof raw === 'object' && raw !== null) {
-        // Already parsed — walk pages array directly
-        const pagesArr = Array.isArray(raw) ? raw : (raw.pages || []);
-        for(const pg of pagesArr){ if(pg && pg.imageUrl){ firstUrl = pg.imageUrl; break; } }
-      } else if(typeof raw === 'string') {
-        // Extract imageUrl via regex — avoids parsing a potentially huge string
-        const m = raw.match(/"imageUrl":"(https?:\/\/[^"]+)"/);
-        if(m) firstUrl = m[1];
-      }
-      if(!firstUrl) continue;
-      _thumbCache[pr.id] = firstUrl;
-      _applyThumb(pr.id, firstUrl);
-    } catch(e) {
-      console.warn('Thumbnail fetch failed for property', pr.id, ':', e.message);
-    }
-  }
-}
-
-function _applyThumb(propId, url) {
-  const imgEl = document.getElementById('thumb-img-'+propId);
-  if(!imgEl) return;
-  imgEl.onload = function(){ imgEl.classList.add('loaded'); };
-  imgEl.onerror = function(){ console.warn('Thumb img failed to load:', url); };
-  imgEl.src = url;
-  // Handle already-cached browser images
-  if(imgEl.complete && imgEl.naturalWidth > 0) imgEl.classList.add('loaded');
 }
 
 function openNewPropertyModal() {
@@ -774,8 +757,9 @@ function createProperty() {
 function deleteProperty(e, portfolioId, propId) {
   e.stopPropagation();
   if(!confirm('Delete this '+PROPERTY_LABEL.toLowerCase()+'? This cannot be undone.')) return;
+  // Pass portfolioId BEFORE removing from local array so storage cleanup can find the folder
+  deletePropertyFromSB(propId, portfolioId);
   properties[portfolioId] = (properties[portfolioId]||[]).filter(p => p.id!==propId);
-  deletePropertyFromSB(propId);
   saveData();
   renderProperties();
 }
