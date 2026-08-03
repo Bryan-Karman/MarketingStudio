@@ -412,7 +412,7 @@ Line five</textarea>
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
     <!-- Marketing Schedule PDF viewer panel (tab 9) -->
     <div id="ms-schedule-panel">
-      <div style="color:#888;font-size:11px;text-align:center;margin-bottom:4px;">Upload a PDF to display it here. It will be saved and visible to all users of this property.</div>
+      <div style="color:#666;font-size:12px;text-align:center;margin-bottom:4px;">Upload a PDF to display it here. It will be saved and visible to all users of this property.</div>
       <label id="ms-schedule-upload-btn">📄 Click to upload Marketing Schedule PDF
         <input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">
       </label>
@@ -2848,7 +2848,7 @@ async function _msUploadPDF(input){
 async function _msRenderPDF(url){
   const pagesDiv = document.getElementById('ms-schedule-pages');
   if(!pagesDiv) return;
-  pagesDiv.innerHTML = '<div style="color:#888;font-size:12px;">Loading PDF…</div>';
+  pagesDiv.innerHTML = '<div style="color:#666;font-size:12px;">Loading PDF…</div>';
   try {
     // Load PDF.js from CDN if not already loaded
     if(!window.pdfjsLib){
@@ -2886,9 +2886,9 @@ async function _msRenderPDF(url){
       document.getElementById('ms-schedule-panel').insertBefore(clearBtn, pagesDiv);
     }
     const prog = document.getElementById('ms-schedule-progress');
-    if(prog) prog.textContent = _msPdfDoc.numPages + ' page' + (_msPdfDoc.numPages>1?'s':'') + ' loaded';
+    if(prog){ prog.textContent = _msPdfDoc.numPages + ' page' + (_msPdfDoc.numPages>1?'s':'') + ' loaded'; prog.style.color='#003f2d'; }
   } catch(e){
-    pagesDiv.innerHTML = '<div style="color:#f66;font-size:12px;">Failed to load PDF: ' + e.message + '</div>';
+    pagesDiv.innerHTML = '<div style="color:#c00;font-size:12px;">Failed to load PDF: ' + e.message + '</div>';
   }
 }
 
@@ -5046,23 +5046,23 @@ async function exportEDMSections(){
 /* ── MARKETING SCHEDULE TAB ── */
 #ms-schedule-panel{
   display:none;position:absolute;inset:0;
-  background:#1a1a1a;overflow-y:auto;
+  background:#f5f5f5;overflow-y:auto;
   flex-direction:column;align-items:center;
-  padding:20px;gap:16px;
+  padding:30px 20px;gap:16px;z-index:10;
   font-family:Calibre,"Franklin Gothic Medium",Arial,sans-serif;
 }
 #ms-schedule-panel.active{ display:flex; }
-#ms-schedule-panel canvas{ box-shadow:0 4px 24px rgba(0,0,0,.5);max-width:100%; }
+#ms-schedule-panel canvas{ box-shadow:0 2px 12px rgba(0,0,0,.15);max-width:100%; }
 #ms-schedule-upload-btn{
-  padding:12px 24px;background:#003f2d;border:2px dashed #17e88f;
-  color:#17e88f;font-size:13px;font-weight:700;border-radius:4px;
+  padding:12px 24px;background:#fff;border:2px dashed #003f2d;
+  color:#003f2d;font-size:13px;font-weight:700;border-radius:4px;
   cursor:pointer;text-align:center;width:340px;transition:background .2s;display:block;
 }
-#ms-schedule-upload-btn:hover{ background:#004f3a; }
-#ms-schedule-progress{ color:#888;font-size:12px;text-align:center; }
+#ms-schedule-upload-btn:hover{ background:#eafaf2;border-color:#17e88f; }
+#ms-schedule-progress{ color:#666;font-size:12px;text-align:center; }
 #ms-schedule-clear-btn{
-  padding:6px 16px;background:#3a1515;border:1px solid #f44;
-  color:#f66;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;
+  padding:6px 16px;background:#fff;border:1px solid #c00;
+  color:#c00;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer;
 }
 </style>
 </head>
