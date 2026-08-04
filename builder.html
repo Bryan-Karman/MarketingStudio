@@ -408,6 +408,20 @@ Line five</textarea>
   </div>
 
   <!-- CANVAS -->
+  <!-- Marketing Schedule PDF viewer (tab 9) -->
+  <div id="ms-schedule-panel" style="display:none;">
+    <div id="ms-schedule-empty" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-size:48px;opacity:.5;">&#128196;</div>
+      <div style="font-size:20px;font-weight:700;color:#fff;">Marketing Schedule</div>
+      <div style="font-size:13px;color:#888;">No schedule uploaded yet.</div>
+      <label id="ms-schedule-upload-btn" style="padding:18px 32px;background:#3a3a3a;border:2px dashed #666;color:#ccc;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;text-align:center;width:340px;display:block;box-sizing:border-box;">&#11014; Upload Marketing Schedule PDF
+        <input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)">
+      </label>
+      <div style="font-size:10px;color:#555;">Saved against this property &#183; visible to all users</div>
+    </div>
+    <div id="ms-schedule-progress" style="color:#888;font-size:12px;text-align:center;"></div>
+    <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
+  </div>
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
     <div class="canvas-wrap" id="canvas-wrap">
       <div class="artwork" id="artwork"></div>
@@ -1434,6 +1448,13 @@ function emptyPropsHTML(){
       <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">&#9881; Artboard Size</div>
       <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
     </div>`;
+  }
+  // Marketing Schedule tab — show upload controls
+  if(currentTab===9){
+    html += '<div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Marketing Schedule</div>';
+    html += '<label style="display:block;width:100%;padding:10px;background:#1a2a1a;border:1px dashed #3a5a3a;border-radius:3px;color:#5bbf7a;font-size:11px;font-weight:700;cursor:pointer;text-align:center;box-sizing:border-box;margin-bottom:6px;">&#11014; '+(savedStates._marketingScheduleUrl?'Replace PDF':'Upload PDF')+'<input type="file" accept="application/pdf" style="display:none;" onchange="_msUploadPDF(this)"></label>';
+    if(savedStates._marketingScheduleUrl) html += '<button onclick="_msClearPDF()" style="width:100%;padding:8px;background:#3a1515;border:1px solid #f44;color:#f66;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;font-family:inherit;">&#10005; Remove Schedule</button>';
+    return html;
   }
   // Layout variant selector — show for any tab that has multiple layouts
   if(TAB_LAYOUTS[currentTab] && TAB_LAYOUTS[currentTab].length > 1){
