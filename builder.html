@@ -73,7 +73,25 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
 
 /* RIGHT PROPERTIES PANEL */
 .props{width:220px;min-width:200px;background:#191919;border-left:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
-.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;}
+.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;}
+.assist-btn{padding:3px 8px;font-size:9px;font-weight:700;background:#3a1a00;color:#f0a030;border:1px solid #7a4a00;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;}
+.assist-btn:hover{background:#4a2600;color:#ffb84d;}
+/* ASSISTANCE MODAL */
+.assist-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;}
+.assist-modal-bg.open{display:flex;}
+.assist-modal{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;padding:22px;width:380px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.assist-modal-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;letter-spacing:-.01em;}
+.assist-modal-sub{font-size:10px;color:#666;margin-bottom:16px;line-height:1.5;}
+.assist-field{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;}
+.assist-field label{font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;}
+.assist-field input,.assist-field textarea{padding:7px 9px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-size:11px;font-family:inherit;outline:none;resize:vertical;}
+.assist-field input:focus,.assist-field textarea:focus{border-color:#f0a030;}
+.assist-field textarea{min-height:90px;line-height:1.5;}
+.assist-modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.assist-cancel{padding:7px 14px;font-size:11px;font-weight:700;background:transparent;color:#777;border:1px solid #333;border-radius:2px;cursor:pointer;}
+.assist-cancel:hover{background:#2a2a2a;color:#ccc;}
+.assist-send{padding:7px 14px;font-size:11px;font-weight:700;background:#f0a030;color:#111;border:none;border-radius:2px;cursor:pointer;}
+.assist-send:hover{background:#ffb84d;}
 .props-scroll{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:8px;}
 .props-empty{padding:14px 10px;font-size:11px;color:#555;line-height:1.6;}
 .pf{display:flex;flex-direction:column;gap:3px;}
@@ -430,9 +448,36 @@ Line five</textarea>
 
   <!-- RIGHT PROPERTIES PANEL -->
   <div class="props" id="props">
-    <div class="props-head">Properties</div>
+    <div class="props-head">
+      <span>Properties</span>
+      <button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team">Request Assistance</button>
+    </div>
     <div class="props-scroll" id="props-content">
       <div class="props-empty">Select an element on the canvas to edit its properties here.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ASSISTANCE MODAL -->
+<div class="assist-modal-bg" id="assist-modal-bg">
+  <div class="assist-modal">
+    <div class="assist-modal-title">Request Assistance</div>
+    <div class="assist-modal-sub">Describe what you need help with and we'll reach out to you shortly.</div>
+    <div class="assist-field">
+      <label>Your Name</label>
+      <input type="text" id="assist-name" placeholder="e.g. Jane Smith" readonly>
+    </div>
+    <div class="assist-field">
+      <label>Project</label>
+      <input type="text" id="assist-project" placeholder="Project link" readonly>
+    </div>
+    <div class="assist-field">
+      <label>What do you need help with?</label>
+      <textarea id="assist-message" placeholder="Describe what changes or assistance you need…"></textarea>
+    </div>
+    <div class="assist-modal-actions">
+      <button class="assist-cancel" onclick="closeAssistModal()">Cancel</button>
+      <button class="assist-send" onclick="sendAssistRequest()">Send Request</button>
     </div>
   </div>
 </div>
@@ -5119,5 +5164,64 @@ function _msClearPDF(){
   const pc=document.getElementById('props-content');
   if(pc) pc.innerHTML=emptyPropsHTML();
 }
+
+// ════════════════════════════════════════
+// REQUEST ASSISTANCE
+// ════════════════════════════════════════
+function openAssistModal(){
+  const nameEl = document.getElementById('assist-name');
+  const projEl = document.getElementById('assist-project');
+  const msgEl  = document.getElementById('assist-message');
+  // Get user name from masthead or localStorage session
+  const mastName = (document.getElementById('mast-usr-name')||{}).textContent||'';
+  let userName = mastName.trim();
+  if(!userName){
+    try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s&&s.name) userName=s.name; }catch(e){}
+  }
+  if(nameEl) nameEl.value = userName || '';
+  // Build project link from current URL params
+  const _pLink = window.location.origin + window.location.pathname +
+    '?portfolioId=' + encodeURIComponent(_portfolioId) +
+    '&propertyId='  + encodeURIComponent(_propertyId) +
+    '&portfolioName=' + encodeURIComponent(_portfolioName) +
+    '&propertyName='  + encodeURIComponent(_propertyName);
+  if(projEl) projEl.value = _pLink;
+  if(msgEl) msgEl.value = '';
+  document.getElementById('assist-modal-bg').classList.add('open');
+  setTimeout(function(){ if(msgEl) msgEl.focus(); }, 60);
+}
+
+function closeAssistModal(){
+  document.getElementById('assist-modal-bg').classList.remove('open');
+}
+
+function sendAssistRequest(){
+  const name    = (document.getElementById('assist-name')||{}).value||'';
+  const project = (document.getElementById('assist-project')||{}).value||'';
+  const message = (document.getElementById('assist-message')||{}).value||'';
+  if(!message.trim()){ document.getElementById('assist-message').focus(); return; }
+  const to      = 'bryan.karman@cbre.com';
+  const subject = encodeURIComponent('Studio Assistance Request \u2014 ' + (_propertyName||'Project'));
+  const body    = encodeURIComponent(
+    'Hi Bryan,\n\n' +
+    'I need some assistance with the following:\n\n' +
+    message + '\n\n' +
+    '\u2014 Details \u2014\n' +
+    'Name: ' + name + '\n' +
+    'Project Link: ' + project + '\n'
+  );
+  window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + body;
+  closeAssistModal();
+}
+
+// Close assist modal on background click or Escape
+document.getElementById('assist-modal-bg').addEventListener('click', function(e){
+  if(e.target === this) closeAssistModal();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && document.getElementById('assist-modal-bg').classList.contains('open')){
+    closeAssistModal();
+  }
+});
 
 </script></body></html>
