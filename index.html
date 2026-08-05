@@ -1788,6 +1788,131 @@ async function confirmAgentImport(){
   saveBtn.disabled=false; saveBtn.textContent='Import';
   if(failed) alert('Imported '+imported+' agents. '+failed+' failed.');
 }
+
+// ═══════════════════════════════════════════════════════════════
+// ASSISTANCE REQUESTS
+// ═══════════════════════════════════════════════════════════════
+let _allRequests = [];
+
+async function loadRequests(){
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/assistance_requests?order=created_at.desc&limit=200', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    if(!res.ok) throw new Error(await res.text());
+    _allRequests = await res.json();
+  } catch(e) {
+    console.warn('Could not load requests:', e);
+    _allRequests = [];
+  }
+}
+
+async function loadRequestsBadge(){
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/assistance_requests?status=eq.new&select=id', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    if(!res.ok) return;
+    const rows = await res.json();
+    const badge = document.getElementById('nav-requests-badge');
+    if(badge){
+      if(rows.length > 0){ badge.textContent = rows.length; badge.style.display = 'inline'; }
+      else { badge.style.display = 'none'; }
+    }
+  } catch(e) {}
+}
+
+async function renderRequests(){
+  if(!_allRequests.length) await loadRequests();
+  const statusFilter  = (document.getElementById('requests-filter-status')||{}).value  || '';
+  const productFilter = (document.getElementById('requests-filter-product')||{}).value || '';
+  let list = _allRequests;
+  if(statusFilter)  list = list.filter(r => r.status === statusFilter);
+  if(productFilter) list = list.filter(r => r.product === productFilter);
+
+  const container = document.getElementById('requests-list');
+  if(!list.length){
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📬</div><div class="empty-title">No requests yet</div><div class="empty-sub">Assistance requests from agents will appear here.</div></div>';
+    return;
+  }
+
+  const statusColors = { new:'#b85c00', in_progress:'#1a5a9a', done:'#1a7a3a' };
+  const statusLabels = { new:'New', in_progress:'In Progress', done:'Done' };
+
+  container.innerHTML = `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:4px;overflow:hidden;">
+      <table class="users-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Agent</th>
+            <th>Property</th>
+            <th>Product</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.map(r => {
+            const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+            const statusCol = statusColors[r.status] || '#666';
+            const statusLbl = statusLabels[r.status] || r.status;
+            const productBadge = r.product === 'aerials'
+              ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:2px;background:#e8f0fe;color:#1a5abf;text-transform:uppercase;letter-spacing:.05em;">Aerials</span>'
+              : '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:2px;background:#e8f5ee;color:#006A4D;text-transform:uppercase;letter-spacing:.05em;">Marketing</span>';
+            return `<tr id="req-row-${r.id}">
+              <td style="font-size:11px;color:var(--muted);white-space:nowrap;">${date}</td>
+              <td>
+                <div style="font-weight:700;font-size:12px;">${escHtml(r.agent_name||'—')}</div>
+                <div style="font-size:10px;color:var(--muted);">${escHtml(r.agent_email||'')}</div>
+              </td>
+              <td>
+                <div style="font-size:12px;">${escHtml(r.property_name||'—')}</div>
+                <div style="font-size:10px;color:var(--muted);">${escHtml(r.portfolio_name||'')}</div>
+                ${r.project_link ? `<a href="${escHtml(r.project_link)}" target="_blank" style="font-size:10px;color:var(--g);font-weight:700;">Open Project →</a>` : ''}
+              </td>
+              <td>${productBadge}</td>
+              <td style="max-width:280px;">
+                <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${escHtml(r.message||'')}</div>
+              </td>
+              <td>
+                <span style="font-size:10px;font-weight:700;color:${statusCol};">${statusLbl}</span>
+              </td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  ${r.status !== 'in_progress' ? `<button class="tbl-btn" onclick="updateRequestStatus('${r.id}','in_progress')">In Progress</button>` : ''}
+                  ${r.status !== 'done' ? `<button class="tbl-btn" onclick="updateRequestStatus('${r.id}','done')" style="color:#1a7a3a;">Mark Done</button>` : ''}
+                  ${r.agent_email ? `<a href="mailto:${escHtml(r.agent_email)}?subject=Re: Your Studio Assistance Request — ${encodeURIComponent(r.property_name||'Project')}" class="tbl-btn" style="text-align:center;text-decoration:none;">Reply</a>` : ''}
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function updateRequestStatus(id, status){
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/assistance_requests?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type':  'application/json',
+        'Prefer':        'return=minimal'
+      },
+      body: JSON.stringify({ status })
+    });
+    const r = _allRequests.find(x => x.id === id);
+    if(r) r.status = status;
+    renderRequests();
+    loadRequestsBadge();
+  } catch(e) {
+    alert('Could not update status — check connection.');
+  }
+}
 </script>
 
 <!-- ═══════════════════════════════════════
@@ -1927,134 +2052,5 @@ async function confirmAgentImport(){
     <div id="requests-list"></div>
   </div>
 </div>
-
-<script>
-// ═══════════════════════════════════════════════════════════════
-// ASSISTANCE REQUESTS
-// ═══════════════════════════════════════════════════════════════
-let _allRequests = [];
-
-async function loadRequests(){
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/assistance_requests?order=created_at.desc&limit=200', {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-    });
-    if(!res.ok) throw new Error(await res.text());
-    _allRequests = await res.json();
-  } catch(e) {
-    console.warn('Could not load requests:', e);
-    _allRequests = [];
-  }
-}
-
-async function loadRequestsBadge(){
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/assistance_requests?status=eq.new&select=id', {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-    });
-    if(!res.ok) return;
-    const rows = await res.json();
-    const badge = document.getElementById('nav-requests-badge');
-    if(badge){
-      if(rows.length > 0){ badge.textContent = rows.length; badge.style.display = 'inline'; }
-      else { badge.style.display = 'none'; }
-    }
-  } catch(e) {}
-}
-
-async function renderRequests(){
-  if(!_allRequests.length) await loadRequests();
-  const statusFilter  = (document.getElementById('requests-filter-status')||{}).value  || '';
-  const productFilter = (document.getElementById('requests-filter-product')||{}).value || '';
-  let list = _allRequests;
-  if(statusFilter)  list = list.filter(r => r.status === statusFilter);
-  if(productFilter) list = list.filter(r => r.product === productFilter);
-
-  const container = document.getElementById('requests-list');
-  if(!list.length){
-    container.innerHTML = '<div class="empty"><div class="empty-icon">📬</div><div class="empty-title">No requests yet</div><div class="empty-sub">Assistance requests from agents will appear here.</div></div>';
-    return;
-  }
-
-  const statusColors = { new:'#b85c00', in_progress:'#1a5a9a', done:'#1a7a3a' };
-  const statusLabels = { new:'New', in_progress:'In Progress', done:'Done' };
-
-  container.innerHTML = `
-    <div style="background:#fff;border:1px solid var(--border);border-radius:4px;overflow:hidden;">
-      <table class="users-table" style="width:100%;">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Agent</th>
-            <th>Property</th>
-            <th>Product</th>
-            <th>Message</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${list.map(r => {
-            const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-            const statusCol = statusColors[r.status] || '#666';
-            const statusLbl = statusLabels[r.status] || r.status;
-            const productBadge = r.product === 'aerials'
-              ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:2px;background:#e8f0fe;color:#1a5abf;text-transform:uppercase;letter-spacing:.05em;">Aerials</span>'
-              : '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:2px;background:#e8f5ee;color:#006A4D;text-transform:uppercase;letter-spacing:.05em;">Marketing</span>';
-            return `<tr id="req-row-${r.id}">
-              <td style="font-size:11px;color:var(--muted);white-space:nowrap;">${date}</td>
-              <td>
-                <div style="font-weight:700;font-size:12px;">${escHtml(r.agent_name||'—')}</div>
-                <div style="font-size:10px;color:var(--muted);">${escHtml(r.agent_email||'')}</div>
-              </td>
-              <td>
-                <div style="font-size:12px;">${escHtml(r.property_name||'—')}</div>
-                <div style="font-size:10px;color:var(--muted);">${escHtml(r.portfolio_name||'')}</div>
-                ${r.project_link ? `<a href="${escHtml(r.project_link)}" target="_blank" style="font-size:10px;color:var(--g);font-weight:700;">Open Project →</a>` : ''}
-              </td>
-              <td>${productBadge}</td>
-              <td style="max-width:280px;">
-                <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${escHtml(r.message||'')}</div>
-              </td>
-              <td>
-                <span style="font-size:10px;font-weight:700;color:${statusCol};">${statusLbl}</span>
-              </td>
-              <td>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                  ${r.status !== 'in_progress' ? `<button class="tbl-btn" onclick="updateRequestStatus('${r.id}','in_progress')">In Progress</button>` : ''}
-                  ${r.status !== 'done' ? `<button class="tbl-btn" onclick="updateRequestStatus('${r.id}','done')" style="color:#1a7a3a;">Mark Done</button>` : ''}
-                  ${r.agent_email ? `<a href="mailto:${escHtml(r.agent_email)}?subject=Re: Your Studio Assistance Request — ${encodeURIComponent(r.property_name||'Project')}" class="tbl-btn" style="text-align:center;text-decoration:none;">Reply</a>` : ''}
-                </div>
-              </td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-async function updateRequestStatus(id, status){
-  try {
-    await fetch(SUPABASE_URL + '/rest/v1/assistance_requests?id=eq.' + id, {
-      method: 'PATCH',
-      headers: {
-        'apikey':        SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'Content-Type':  'application/json',
-        'Prefer':        'return=minimal'
-      },
-      body: JSON.stringify({ status })
-    });
-    // Update local cache
-    const r = _allRequests.find(x => x.id === id);
-    if(r) r.status = status;
-    renderRequests();
-    loadRequestsBadge();
-  } catch(e) {
-    alert('Could not update status — check connection.');
-  }
-}
-</script>
-
 </body>
 </html>
