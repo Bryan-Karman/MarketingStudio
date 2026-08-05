@@ -477,6 +477,10 @@ Line five</textarea>
         <input type="text" id="assist-project" placeholder="Project link" readonly>
       </div>
       <div class="assist-field">
+        <label>Referring To</label>
+        <input type="text" id="assist-context" placeholder="e.g. Brochure tab" readonly style="color:#f0a030;">
+      </div>
+      <div class="assist-field">
         <label>What do you need help with?</label>
         <textarea id="assist-message" placeholder="Describe what changes or assistance you need…"></textarea>
       </div>
@@ -5211,6 +5215,10 @@ function openAssistModal(){
     '&portfolioName=' + encodeURIComponent(_portfolioName) +
     '&propertyName='  + encodeURIComponent(_propertyName);
   if(projEl) projEl.value = _pLink;
+  // Capture current tab context
+  const _tabLabels = ['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule'];
+  const _ctxEl = document.getElementById('assist-context');
+  if(_ctxEl) _ctxEl.value = 'Tab: ' + (_tabLabels[currentTab] || 'Tab ' + (currentTab+1));
   if(msgEl)  msgEl.value  = '';
   document.getElementById('assist-modal-bg').classList.add('open');
   setTimeout(function(){ if(msgEl) msgEl.focus(); }, 60);
@@ -5224,6 +5232,7 @@ async function sendAssistRequest(){
   const name    = (document.getElementById('assist-name')||{}).value||'';
   const email   = (document.getElementById('assist-email')||{}).value||'';
   const project = (document.getElementById('assist-project')||{}).value||'';
+  const context = (document.getElementById('assist-context')||{}).value||'';
   const message = (document.getElementById('assist-message')||{}).value||'';
   const errEl   = document.getElementById('assist-error');
   const sendBtn = document.getElementById('assist-send-btn');
@@ -5238,6 +5247,7 @@ async function sendAssistRequest(){
       property_name:  _propertyName || '',
       portfolio_name: _portfolioName || '',
       project_link:   project,
+      context:        context,
       message:        message,
       status:         'new',
       product:        'marketing'

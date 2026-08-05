@@ -294,8 +294,8 @@ body.is-admin .admin-only-inline{display:inline;}
   max-width:420px;line-height:1.6;
 }
 .hub-products{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
-  width:100%;max-width:860px;
+  display:grid;grid-template-columns:repeat(2,1fr);gap:20px;
+  width:100%;max-width:580px;
 }
 @media(max-width:720px){.hub-products{grid-template-columns:1fr;max-width:380px;}}
 .hub-card{
@@ -1875,6 +1875,7 @@ async function renderRequests(){
               </td>
               <td>${productBadge}</td>
               <td style="max-width:280px;">
+                ${r.context ? `<div style="font-size:10px;font-weight:700;color:#f0a030;margin-bottom:4px;">📍 ${escHtml(r.context)}</div>` : ''}
                 <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${escHtml(r.message||'')}</div>
               </td>
               <td>

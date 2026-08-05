@@ -4867,6 +4867,9 @@ function openAssistModal(){
     '&portfolioName=' + encodeURIComponent(portfolioName) +
     '&propertyName='  + encodeURIComponent(propertyName);
   if(projEl) projEl.value = _pLink;
+  // Capture current page context
+  const _ctxEl = document.getElementById('assist-context');
+  if(_ctxEl) _ctxEl.value = 'Page: ' + (currentPage + 1) + ' of ' + pages.length;
   if(msgEl)  msgEl.value  = '';
   document.getElementById('assist-modal-bg').classList.add('open');
   setTimeout(function(){ if(msgEl) msgEl.focus(); }, 60);
@@ -4880,6 +4883,7 @@ async function sendAssistRequest(){
   const name    = (document.getElementById('assist-name')||{}).value||'';
   const email   = (document.getElementById('assist-email')||{}).value||'';
   const project = (document.getElementById('assist-project')||{}).value||'';
+  const context = (document.getElementById('assist-context')||{}).value||'';
   const message = (document.getElementById('assist-message')||{}).value||'';
   const errEl   = document.getElementById('assist-error');
   const sendBtn = document.getElementById('assist-send-btn');
@@ -4894,6 +4898,7 @@ async function sendAssistRequest(){
       property_name:  propertyName || '',
       portfolio_name: portfolioName || '',
       project_link:   project,
+      context:        context,
       message:        message,
       status:         'new',
       product:        'aerials'
@@ -4948,8 +4953,8 @@ document.addEventListener('keydown', function(e){
         <input type="text" id="assist-project" placeholder="Project link" readonly>
       </div>
       <div class="assist-field">
-        <label>What do you need help with?</label>
-        <textarea id="assist-message" placeholder="Describe what changes or assistance you need…"></textarea>
+        <label>Referring To</label>
+        <input type="text" id="assist-context" placeholder="e.g. Page 2" readonly style="color:#f0a030;">
       </div>
       <div id="assist-error" style="font-size:11px;color:#e06060;min-height:16px;margin-bottom:4px;"></div>
       <div class="assist-modal-actions">
