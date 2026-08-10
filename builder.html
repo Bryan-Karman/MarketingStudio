@@ -4931,10 +4931,6 @@ function repackEDMAgents(){
   var hiddenCount = 4 - activeCount;
   var shift = hiddenCount * SLOT_H;
 
-  // Only reposition agentBelow elements if we have NO saved state
-  // (i.e. fresh build). If we have savedState, those positions are already correct.
-  const _hasSavedState = savedStates[currentTab] && savedStates[currentTab].length > 0;
-
   art.querySelectorAll('.el').forEach(function(el){
     var field = el.dataset.field||'';
     var ak = el.dataset.assetKey||'';
@@ -4965,8 +4961,7 @@ function repackEDMAgents(){
         var offsetInSlot = origY - SLOT_BASE[slotNum-1];
         el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
-    } else if(el.dataset.agentBelow === '1' && !_hasSavedState){
-      // Only reposition buttons/footer on fresh build — savedState positions are already correct
+    } else if(el.dataset.agentBelow === '1'){
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
         el.style.top = (belowOrigY - shift) + 'px';
