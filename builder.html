@@ -3846,6 +3846,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       if([5,6,8].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n\u2013 '+fi : '\u2013 '+fi; }
       else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n'+fi : fi; }
     }
+    // EDM/Asian Desk: append income as last line of bodycopy
+    if(field==='bodycopy' && [2,3].indexOf(tabIdx)>-1 && fi){
+      if(!text.trim().endsWith(fi)) text = text ? text+'\n'+fi : fi;
+    }
     return text;
   }
 
@@ -3919,7 +3923,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
 
   // Render each element
   for(const sv of sorted){
-    if(sv.field==='income') continue;
+    if(sv.field==='income') continue; // income is merged into bodycopy for EDM
     const ex=parseFloat(sv.x)*scaleX, ey=parseFloat(sv.y)*scaleY;
     const ew=parseFloat(sv.w)*scaleX, eh=parseFloat(sv.h)*scaleY;
     if(ew<=0||eh<=0) continue;
@@ -3967,10 +3971,21 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
 
       const rawText=resolveText(sv);
       const lines=rawText.split('\n');
-      const maxW=ew*1.01; // jsPDF measures text slightly narrower than browser, so give extra room
+      const maxW=ew*1.01;
+
+      // Detect if this is an EDM button text element (field btn1/btn2/btn3)
+      const isBtn=sv.field==='btn1'||sv.field==='btn2'||sv.field==='btn3';
 
       // Starting Y — vertically centre single-line text, or start near top for multi-line
-      let curY=ey+fsMm*0.85;
+      let curY;
+      if(isBtn){
+        // Find the matching rect element at same agentBelowY to get true button bounds
+        const btnRectY = parseFloat(sv.agentBelowY||sv.y)*scaleY;
+        const btnH = 85*scaleY;
+        curY = btnRectY + (btnH/2) + (fsMm*0.35);
+      } else {
+        curY = ey+fsMm*0.85;
+      }
 
       // For banner: centre text vertically in the pill and horizontally in the pill
       let textX, jsPdfAlign;
