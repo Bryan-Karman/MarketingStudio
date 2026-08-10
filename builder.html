@@ -3936,8 +3936,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       const ist=parseStyle(sv.innerStyle||'');
       const [r,g,b]=parseRgbStr(ist.background||'#000');
       pdf.setFillColor(r,g,b);
-      // For EDM footer rect (agentBelow, full-width, dark): extend to bottom of page
-      const isFooterRect = sv.agentBelow==='1' && parseFloat(sv.x)===0 && parseFloat(sv.w)>=590;
+      // For EDM footer rect (agentBelow=1, full-width, not the main background at y≈0):
+      // extend to bottom of page so CBRE + disclaimer always have a full dark bg
+      const rawY = parseFloat(sv.y)||0;
+      const isFooterRect = sv.agentBelow==='1' && parseFloat(sv.x)===0 && parseFloat(sv.w)>=590 && rawY > 100;
       const drawH = isFooterRect ? (pageH - ey) : eh;
       pdf.rect(ex,ey,ew,drawH,'F');
 
@@ -3984,10 +3986,15 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       // Detect if this is an EDM button text element (field btn1/btn2/btn3)
       const isBtn=sv.field==='btn1'||sv.field==='btn2'||sv.field==='btn3';
 
-      // Starting Y — vertically centre button text, top-aligned for everything else
+      // Starting Y — vertically centre button text using fixed 85px button height
+      const BTN_H_MM = 85 * scaleY;
       let curY;
       if(isBtn){
-        curY = ey + (eh/2) + (fsMm*0.35);
+        // Use agentBelowY as the true top of the button rect, not sv.y (which may be shifted)
+        const trueTopY = parseFloat(sv.agentBelowY||sv.y) * scaleY;
+        // But we need the actual rendered top from repackEDMAgents shift
+        // sv.y in savedState IS the already-shifted position, so use ey directly
+        curY = ey + (BTN_H_MM/2) + (fsMm*0.35);
       } else {
         curY = ey+fsMm*0.85;
       }
