@@ -3555,6 +3555,49 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
         (_vFn||_allFns[tabIdx])(canvasW,canvasH);
         globalSync();
+        // For EDM tabs: apply saved state on top so user changes (deletions, moves, image swaps) are reflected
+        if((tabIdx===2||tabIdx===3) && savedStates[tabIdx] && savedStates[tabIdx].length){
+          const _svMap={};
+          savedStates[tabIdx].forEach(function(sv){ _svMap[sv.eid]=sv; });
+          // Remove elements the user deleted (not in savedStates)
+          Array.from(realArt.querySelectorAll('.el')).forEach(function(el){
+            if(!_svMap[el.dataset.eid]) el.remove();
+          });
+          // Apply position/style/content changes from savedStates
+          savedStates[tabIdx].forEach(function(sv){
+            const el=realArt.querySelector('.el[data-eid="'+sv.eid+'"]');
+            if(!el) return;
+            el.style.left=sv.x; el.style.top=sv.y;
+            el.style.width=sv.w; el.style.height=sv.h;
+            const inner=el.querySelector('.el-inner');
+            if(inner && sv.innerStyle) inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+sv.innerStyle);
+            if(inner && sv.type==='text' && sv.content!==undefined){
+              if(sv.richHtml && sv.bullets!=='1') inner.innerHTML=sv.richHtml;
+              else if(sv.bullets!=='1') inner.textContent=sv.content;
+            }
+            if(sv.type==='img' && sv.imgSrc && !sv.svgKey){
+              var img=el.querySelector('img');
+              if(img) img.src=sv.imgSrc;
+              else if(sv.assetKey && assets[sv.assetKey]){
+                img=el.querySelector('img');
+                if(img) img.src=assets[sv.assetKey];
+              }
+            }
+            if(sv.type==='img' && sv.assetKey && assets[sv.assetKey]){
+              var img2=el.querySelector('img');
+              if(img2) img2.src=assets[sv.assetKey];
+            }
+          });
+          // Re-apply income field if present
+          const _fiVal=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+          if(_fiVal){
+            realArt.querySelectorAll('.el[data-field="income"]').forEach(function(el){
+              const inner=el.querySelector('.el-inner'); if(inner) inner.textContent=_fiVal;
+              el.style.display='';
+            });
+          }
+          repackEDMAgents();
+        }
         offscreen.innerHTML=realArt.innerHTML;
         realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
         realArt.style.background=pbg; realArt.style.transform=pt;
@@ -4743,7 +4786,8 @@ async function downloadPDF(){
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
     btn.textContent='Generating…';
     await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false);
-    pdf.save(`CBRE_${TAB_NAMES[currentTab]}.pdf`);
+    const _propSlug = (_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
+    pdf.save(`${_propSlug}_${TAB_NAMES[currentTab]}.pdf`);
   }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
@@ -4774,7 +4818,8 @@ async function downloadAllSelectedPDF(){
     const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
     for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
-    pdf.save('CBRE_All_Selected.pdf');
+    const _propSlugAll = (_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
+    pdf.save(`${_propSlugAll}_All_Selected.pdf`);
   }catch(err){alert('PDF error: '+err.message);}
   btn.disabled=false;btn.textContent='⬇ All PDFs';
 }
