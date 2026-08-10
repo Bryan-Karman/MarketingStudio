@@ -3305,13 +3305,13 @@ function buildEDM(W,H){
     tagAgent(mkT(184,3433,402,40,gv('fn4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3}),4,3433);
     tagAgent(mkT(184,3478,402,40,gv('fp4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3}),4,3478);
     tagBelow(mkR(34,3594,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}),3594);
-    tagBelow((function(){ var _e=mkT(59,3594,440,85,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3594);
+    tagBelow((function(){ var _e=mkT(59,3609,440,55,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3594);
     tagBelow((function(){ var _e=mkI(501,3594,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3594);
     tagBelow(mkR(34,3701,532,85,'rgb(15, 42, 45)',{z:3,locked:'1'}),3701);
-    tagBelow((function(){ var _e=mkT(59,3701,440,85,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3701);
+    tagBelow((function(){ var _e=mkT(59,3716,440,55,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3701);
     tagBelow((function(){ var _e=mkI(501,3701,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3701);
     tagBelow(mkR(34,3808,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}),3808);
-    tagBelow((function(){ var _e=mkT(59,3808,440,85,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3808);
+    tagBelow((function(){ var _e=mkT(59,3823,440,55,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3808);
     tagBelow((function(){ var _e=mkI(501,3808,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3808);
     tagBelow(mkR(0,3930,600,113,'rgb(1, 42, 45)',{z:3,locked:'1'}),3930);
     tagBelow(mkSVGLogo(40,3961,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3961);
@@ -3588,12 +3588,32 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               if(img2) img2.src=assets[sv.assetKey];
             }
           });
-          // Re-apply income field if present
+          // Re-apply income — for EDM it's appended to bodycopy, not a standalone element
           const _fiVal=(gv('fi')||document.getElementById('fi')?.value||'').trim();
           if(_fiVal){
-            realArt.querySelectorAll('.el[data-field="income"]').forEach(function(el){
-              const inner=el.querySelector('.el-inner'); if(inner) inner.textContent=_fiVal;
-              el.style.display='';
+            realArt.querySelectorAll('.el[data-field="bodycopy"]').forEach(function(el){
+              const inner=el.querySelector('.el-inner');
+              if(!inner) return;
+              // Get current text content without any previously appended income
+              const _lines=inner.querySelectorAll('div.plain-line');
+              let _baseText='';
+              if(_lines.length){
+                _baseText=Array.from(_lines).map(function(d){return d.textContent;}).join('\n');
+              } else {
+                _baseText=inner.textContent||'';
+              }
+              // Strip old income if already appended
+              const _fiPrefix=_fiVal.split(':')[0].trim().toLowerCase();
+              const _baseLines=_baseText.split('\n').filter(function(l){
+                return !(_fiPrefix&&l.trim().toLowerCase().startsWith(_fiPrefix+':'));
+              });
+              _baseLines.push(_fiVal);
+              const _ps=parseFloat(el.dataset.bulletParaSpacing||'17');
+              inner.innerHTML=_baseLines.map(function(l,i){
+                var mb=(i<_baseLines.length-1)?'margin-bottom:'+_ps+'px;':'';
+                return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+              }).join('');
+              inner.style.whiteSpace='normal';
             });
           }
           repackEDMAgents();
