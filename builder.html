@@ -4137,12 +4137,14 @@ function switchTab(idx,btn){
   deselectAll();
   if((idx===2||idx===3)&&typeof _migrateEDMStates==='function') _migrateEDMStates();
   if(idx===9){ _renderMarketingScheduleTab(); return; }
-  if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
+  const _hasState = savedStates[idx]&&savedStates[idx].length;
+  if(_hasState){ restoreTab(idx); } else { buildTemplate(idx); }
   // For AFR4: re-run globalSync after restore so income and sale combo re-render
   if(idx===6) setTimeout(function(){ globalSync(); }, 50);
   fitZoomToTab();
   updateEdmMetaVisibility();
-  if(idx===2||idx===3) setTimeout(repackEDMAgents,80);
+  // Only repack EDM agents if we built fresh — restoreTab already has correct positions
+  if((idx===2||idx===3) && !_hasState) setTimeout(repackEDMAgents,80);
   if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
   _updateEDMHtmlBtn();
 }
@@ -4882,6 +4884,10 @@ function repackEDMAgents(){
   var hiddenCount = 4 - activeCount;
   var shift = hiddenCount * SLOT_H;
 
+  // Only reposition agentBelow elements if we have NO saved state
+  // (i.e. fresh build). If we have savedState, those positions are already correct.
+  const _hasSavedState = savedStates[currentTab] && savedStates[currentTab].length > 0;
+
   art.querySelectorAll('.el').forEach(function(el){
     var field = el.dataset.field||'';
     var ak = el.dataset.assetKey||'';
@@ -4903,7 +4909,6 @@ function repackEDMAgents(){
         // Always position from agentOrigY — never from current top (prevents compounding)
         var origY = parseFloat(el.dataset.agentOrigY);
         if(isNaN(origY)){
-          // Old save without agentOrigY — infer from slot base + field type offset
           var inferOffset = 0;
           if(field.endsWith('num')) inferOffset = currentTab===3 ? 18 : 17;
           else if(field.endsWith('name')) inferOffset = currentTab===3 ? 6 : 1;
@@ -4913,8 +4918,8 @@ function repackEDMAgents(){
         var offsetInSlot = origY - SLOT_BASE[slotNum-1];
         el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
-    } else if(el.dataset.agentBelow === '1'){
-      // Always reposition from original Y — never current top
+    } else if(el.dataset.agentBelow === '1' && !_hasSavedState){
+      // Only reposition buttons/footer on fresh build — savedState positions are already correct
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
         el.style.top = (belowOrigY - shift) + 'px';
