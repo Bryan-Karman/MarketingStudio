@@ -1053,6 +1053,10 @@ function createElement(cfg){
       ? _selectedEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
       : null;
 
+    // Start mouse position and drag state
+    const sx = e.clientX, sy = e.clientY;
+    let committed = false;
+
     function mv(e){
       let dx=e.clientX-sx, dy=e.clientY-sy;
       if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
@@ -3305,13 +3309,13 @@ function buildEDM(W,H){
     tagAgent(mkT(184,3433,402,40,gv('fn4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',z:3}),4,3433);
     tagAgent(mkT(184,3478,402,40,gv('fp4')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4num',z:3}),4,3478);
     tagBelow(mkR(34,3594,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}),3594);
-    tagBelow((function(){ var _e=mkT(59,3609,440,55,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3594);
+    tagBelow((function(){ var _e=mkT(59,3594,440,85,'Request Information Memorandum',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn1',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3594);
     tagBelow((function(){ var _e=mkI(501,3594,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3594);
     tagBelow(mkR(34,3701,532,85,'rgb(15, 42, 45)',{z:3,locked:'1'}),3701);
-    tagBelow((function(){ var _e=mkT(59,3716,440,55,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3701);
+    tagBelow((function(){ var _e=mkT(59,3701,440,85,'View Listing',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn2',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3701);
     tagBelow((function(){ var _e=mkI(501,3701,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3701);
     tagBelow(mkR(34,3808,532,85,'rgb(1, 42, 45)',{z:3,locked:'1'}),3808);
-    tagBelow((function(){ var _e=mkT(59,3823,440,55,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3808);
+    tagBelow((function(){ var _e=mkT(59,3808,440,85,'View Full Portfolio Line Up',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'btn3',z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.height='100%'; } return _e; })(),3808);
     tagBelow((function(){ var _e=mkI(501,3808,51,85,'','',{z:4}); var _i=_e.querySelector('.el-inner'); if(_i){ _i.style.display='flex'; _i.style.alignItems='center'; _i.style.justifyContent='center'; _i.style.height='100%'; var _im=document.createElement('img'); _im.src=SVG_ARROW_WHITE; _im.style.cssText='width:51px;height:51px;object-fit:contain;display:block;flex-shrink:0;'; _i.innerHTML=''; _i.style.background='transparent'; _i.appendChild(_im); } return _e; })(),3808);
     tagBelow(mkR(0,3930,600,113,'rgb(1, 42, 45)',{z:3,locked:'1'}),3930);
     tagBelow(mkSVGLogo(40,3961,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3961);
@@ -3980,13 +3984,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       // Detect if this is an EDM button text element (field btn1/btn2/btn3)
       const isBtn=sv.field==='btn1'||sv.field==='btn2'||sv.field==='btn3';
 
-      // Starting Y — vertically centre single-line text, or start near top for multi-line
+      // Starting Y — vertically centre button text, top-aligned for everything else
       let curY;
       if(isBtn){
-        // Find the matching rect element at same agentBelowY to get true button bounds
-        const btnRectY = parseFloat(sv.agentBelowY||sv.y)*scaleY;
-        const btnH = 85*scaleY;
-        curY = btnRectY + (btnH/2) + (fsMm*0.35);
+        curY = ey + (eh/2) + (fsMm*0.35);
       } else {
         curY = ey+fsMm*0.85;
       }
