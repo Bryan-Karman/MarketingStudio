@@ -3919,10 +3919,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   const imgMap={};
   imgResults.forEach(r=>{ if(r) imgMap[r.eid]=r.dataUrl; });
 
-  // Draw background
-  const bgSv=sorted.find(sv=>sv.type==='rect'&&parseFloat(sv.x)===0&&parseFloat(sv.y)===0&&parseFloat(sv.w)>=pxW*0.9);
-  if(bgSv){ const ist=parseStyle(bgSv.innerStyle||''); const [r,g,b]=parseRgbStr(ist.background||'#fff'); pdf.setFillColor(r,g,b); }
-  else { pdf.setFillColor(255,255,255); }
+  // Draw white page background first, then let all rects draw themselves
+  pdf.setFillColor(255,255,255);
   pdf.rect(0,0,pageW,pageH,'F');
 
   // Render each element
@@ -3936,12 +3934,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       const ist=parseStyle(sv.innerStyle||'');
       const [r,g,b]=parseRgbStr(ist.background||'#000');
       pdf.setFillColor(r,g,b);
-      // For EDM footer rect (agentBelow=1, full-width, not the main background at y≈0):
-      // extend to bottom of page so CBRE + disclaimer always have a full dark bg
-      const rawY = parseFloat(sv.y)||0;
-      const isFooterRect = sv.agentBelow==='1' && parseFloat(sv.x)===0 && parseFloat(sv.w)>=590 && rawY > 100;
-      const drawH = isFooterRect ? (pageH - ey) : eh;
-      pdf.rect(ex,ey,ew,drawH,'F');
+      pdf.rect(ex,ey,ew,eh,'F');
 
     } else if(sv.type==='img'){
       const du=imgMap[sv.eid];
