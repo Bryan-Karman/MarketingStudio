@@ -4712,11 +4712,18 @@ function _migrateEDMStates(){
   if(typeof savedStates === 'undefined') return;
   [2,3].forEach(function(ti){
     if(!savedStates[ti]||!savedStates[ti].length) return;
-    var isOld = savedStates[ti].some(function(sv){
+    // Old EDM states had a canvas width of 212px — detect by checking if the
+    // background rect (first locked rect, type=rect, full-width) is ≤ 212px wide.
+    // Current EDM canvas is 600px wide, so any state with max element width < 300 is old.
+    var maxW = 0;
+    savedStates[ti].forEach(function(sv){
       var w = parseFloat(sv.w||0);
-      return w > 0 && w <= 220;
+      if(w > maxW) maxW = w;
     });
-    if(isOld){ console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti); delete savedStates[ti]; }
+    if(maxW > 0 && maxW < 300){
+      console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti);
+      delete savedStates[ti];
+    }
   });
 }
 
