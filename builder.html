@@ -3931,7 +3931,11 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
     if(sv.type==='rect'){
       const ist=parseStyle(sv.innerStyle||'');
       const [r,g,b]=parseRgbStr(ist.background||'#000');
-      pdf.setFillColor(r,g,b); pdf.rect(ex,ey,ew,eh,'F');
+      pdf.setFillColor(r,g,b);
+      // For EDM footer rect (agentBelow, full-width, dark): extend to bottom of page
+      const isFooterRect = sv.agentBelow==='1' && parseFloat(sv.x)===0 && parseFloat(sv.w)>=590;
+      const drawH = isFooterRect ? (pageH - ey) : eh;
+      pdf.rect(ex,ey,ew,drawH,'F');
 
     } else if(sv.type==='img'){
       const du=imgMap[sv.eid];
