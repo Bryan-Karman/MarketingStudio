@@ -73,25 +73,7 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
 
 /* RIGHT PROPERTIES PANEL */
 .props{width:220px;min-width:200px;background:#191919;border-left:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
-.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;}
-.assist-btn{padding:3px 8px;font-size:9px;font-weight:700;background:#3a1a00;color:#f0a030;border:1px solid #7a4a00;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;}
-.assist-btn:hover{background:#4a2600;color:#ffb84d;}
-/* ASSISTANCE MODAL */
-.assist-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;}
-.assist-modal-bg.open{display:flex;}
-.assist-modal{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;padding:22px;width:380px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.6);}
-.assist-modal-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;letter-spacing:-.01em;}
-.assist-modal-sub{font-size:10px;color:#666;margin-bottom:16px;line-height:1.5;}
-.assist-field{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;}
-.assist-field label{font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;}
-.assist-field input,.assist-field textarea{padding:7px 9px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-size:11px;font-family:inherit;outline:none;resize:vertical;}
-.assist-field input:focus,.assist-field textarea:focus{border-color:#f0a030;}
-.assist-field textarea{min-height:90px;line-height:1.5;}
-.assist-modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
-.assist-cancel{padding:7px 14px;font-size:11px;font-weight:700;background:transparent;color:#777;border:1px solid #333;border-radius:2px;cursor:pointer;}
-.assist-cancel:hover{background:#2a2a2a;color:#ccc;}
-.assist-send{padding:7px 14px;font-size:11px;font-weight:700;background:#f0a030;color:#111;border:none;border-radius:2px;cursor:pointer;}
-.assist-send:hover{background:#ffb84d;}
+.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;}
 .props-scroll{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:8px;}
 .props-empty{padding:14px 10px;font-size:11px;color:#555;line-height:1.6;}
 .pf{display:flex;flex-direction:column;gap:3px;}
@@ -448,55 +430,9 @@ Line five</textarea>
 
   <!-- RIGHT PROPERTIES PANEL -->
   <div class="props" id="props">
-    <div class="props-head">
-      <span>Properties</span>
-      <button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team">Request Assistance</button>
-    </div>
+    <div class="props-head">Properties</div>
     <div class="props-scroll" id="props-content">
       <div class="props-empty">Select an element on the canvas to edit its properties here.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ASSISTANCE MODAL -->
-<div class="assist-modal-bg" id="assist-modal-bg">
-  <div class="assist-modal">
-    <div class="assist-modal-title">Request Assistance</div>
-    <div class="assist-modal-sub">Describe what you need help with and the studio team will get back to you.</div>
-    <div id="assist-form-body">
-      <div class="assist-field">
-        <label>Your Name</label>
-        <input type="text" id="assist-name" placeholder="e.g. Jane Smith" readonly>
-      </div>
-      <div class="assist-field">
-        <label>Your Email</label>
-        <input type="email" id="assist-email" placeholder="your.email@cbre.com">
-      </div>
-      <div class="assist-field">
-        <label>Project</label>
-        <input type="text" id="assist-project" placeholder="Project link" readonly>
-      </div>
-      <div class="assist-field">
-        <label>Referring To</label>
-        <input type="text" id="assist-context" placeholder="e.g. Brochure tab" readonly style="color:#f0a030;">
-      </div>
-      <div class="assist-field">
-        <label>What do you need help with?</label>
-        <textarea id="assist-message" placeholder="Describe what changes or assistance you need…"></textarea>
-      </div>
-      <div id="assist-error" style="font-size:11px;color:#e06060;min-height:16px;margin-bottom:4px;"></div>
-      <div class="assist-modal-actions">
-        <button class="assist-cancel" onclick="closeAssistModal()">Cancel</button>
-        <button class="assist-send" id="assist-send-btn" onclick="sendAssistRequest()">Send Request</button>
-      </div>
-    </div>
-    <div id="assist-success" style="display:none;text-align:center;padding:24px 0 8px;">
-      <div style="font-size:28px;margin-bottom:12px;">✅</div>
-      <div style="font-size:13px;font-weight:700;color:#5bbf7a;margin-bottom:6px;">Request Sent!</div>
-      <div style="font-size:11px;color:#888;line-height:1.6;">Your request has been logged and the studio team has been notified. We'll be in touch shortly.</div>
-      <div class="assist-modal-actions" style="justify-content:center;margin-top:20px;">
-        <button class="assist-send" onclick="closeAssistModal()">Close</button>
-      </div>
     </div>
   </div>
 </div>
@@ -1053,10 +989,6 @@ function createElement(cfg){
       ? _selectedEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
       : null;
 
-    // Start mouse position and drag state
-    const sx = e.clientX, sy = e.clientY;
-    let committed = false;
-
     function mv(e){
       let dx=e.clientX-sx, dy=e.clientY-sy;
       if(Math.sqrt(dx*dx+dy*dy) < DRAG_THRESHOLD) return;
@@ -1279,10 +1211,11 @@ function enterCropMode(el){
 
   img.style.cssText = `position:absolute;left:${ix}px;top:${iy}px;width:${iw}px;height:${ih}px;object-fit:fill;display:block;cursor:grab;`;
 
-  // Dark overlay to show crop boundary
-  const overlay = document.createElement('div');
-  overlay.className = 'crop-overlay';
-  inner.appendChild(overlay);
+  // Full-screen ghost overlay — darkens everything OUTSIDE the element box
+  _showCropGhostOverlay(el);
+
+  // Allow image to overflow the element box so cropped-off areas are visible
+  inner.style.overflow = 'visible';
 
   // Dashed outline showing the full image edges (editor-only visual guide)
   const imgOutline = document.createElement('div');
@@ -1472,14 +1405,51 @@ function exitCropMode(){
   // Remove crop UI (including the image outline guide)
   el.querySelectorAll('.crop-img-rh, .crop-label, .crop-overlay, .crop-img-outline').forEach(n=>n.remove());
   if(img) img.removeEventListener('mousedown', onCropPan);
+  // Restore inner overflow
+  const inner = el.querySelector('.el-inner');
+  if(inner) inner.style.overflow = '';
   el.classList.remove('crop-mode');
   cropEl = null;
   document.removeEventListener('mousedown', onCropOutsideClick);
+  // Remove full-screen ghost overlay
+  const cgo = document.getElementById('crop-ghost-overlay');
+  if(cgo) cgo.remove();
   debouncedPersist();
 }
 
 // Add double-click to image elements to enter crop mode
 // (called from createElement after img element is created)
+
+function _showCropGhostOverlay(el){
+  const existing = document.getElementById('crop-ghost-overlay');
+  if(existing) existing.remove();
+  const d = document.createElement('div');
+  d.id = 'crop-ghost-overlay';
+  d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9980;';
+  d.innerHTML = `
+    <div id="cgo-top"    style="position:fixed;background:rgba(0,0,0,0.6);"></div>
+    <div id="cgo-bottom" style="position:fixed;background:rgba(0,0,0,0.6);"></div>
+    <div id="cgo-left"   style="position:fixed;background:rgba(0,0,0,0.6);"></div>
+    <div id="cgo-right"  style="position:fixed;background:rgba(0,0,0,0.6);"></div>
+  `;
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ _updateCropGhostOverlay(el); }); });
+}
+
+function _updateCropGhostOverlay(el){
+  if(!el) return;
+  const top    = document.getElementById('cgo-top');
+  const bottom = document.getElementById('cgo-bottom');
+  const left   = document.getElementById('cgo-left');
+  const right  = document.getElementById('cgo-right');
+  if(!top) return;
+  const r = el.getBoundingClientRect();
+  const W = window.innerWidth, H = window.innerHeight;
+  top.style.cssText    = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:0;width:${W}px;height:${r.top}px;`;
+  bottom.style.cssText = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.bottom}px;width:${W}px;height:${H - r.bottom}px;`;
+  left.style.cssText   = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.top}px;width:${r.left}px;height:${r.height}px;`;
+  right.style.cssText  = `position:fixed;background:rgba(0,0,0,0.6);left:${r.right}px;top:${r.top}px;width:${W - r.right}px;height:${r.height}px;`;
+}
 function selectElement(el){
   if(selectedEl && selectedEl!==el) selectedEl.classList.remove('selected');
   selectedEl=el;
@@ -1503,12 +1473,8 @@ function bgClick(e){
 // Tab layouts: tabIdx -> [{label, buildFn}]
 const TAB_LAYOUTS = {
   1: [
-    {label:'Default',          fn: ()=>buildBrochure2},
-    {label:'3 Images',         fn: ()=>buildBrochure2_v2},
-    {label:'1 Image',          fn: ()=>buildBrochure2_v3},
-    {label:'2 Images',         fn: ()=>buildBrochure2_v4},
-    {label:'2 Properties - A', fn: ()=>buildBrochure2_v5},
-    {label:'2 Properties - B', fn: ()=>buildBrochure2_v6},
+    {label:'Default',     fn: ()=>buildBrochure2},
+    {label:'3 Images',    fn: ()=>buildBrochure2_v2},
   ]
 };
 
@@ -1947,8 +1913,6 @@ function deleteSelected(){
   selectedEl.remove();
   selectedEl=null;
   document.getElementById('props-content').innerHTML=emptyPropsHTML();
-  // Save updated state immediately so tab switches and repacks don't restore the deleted element
-  savedStates[currentTab] = serializeTab();
   debouncedPersist();
 }
 
@@ -3105,173 +3069,6 @@ function buildBrochure2_v2(W,H){
   mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
 }
 
-// ─── BROCHURE 2-PAGE: 2 Images layout ───
-function buildBrochure2_v4(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  mkI(28,65,539,505,'img1','Image',{z:2});
-  mkI(624,66,539,505,'img2','Image',{z:2});
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
-  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(624,657,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(638,657,176,13,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:5,locked:'1'});
-  mkT(638,673,176,14,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:5,locked:'1'});
-  (function(){ var _e=mkT(624,699,169,125,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',field:'bullets',z:5,bulletParaSpacing:'6',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  mkT(808,655,201,169,document.getElementById('fbc').value,{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'});
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
-// ─── BROCHURE 2-PAGE: 2 Properties - B layout ───
-function buildBrochure2_v6(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  // Images — same 4-image layout as Default
-  mkI(28,65,539,505,'img1','Image',{z:2});
-  mkI(624,66,539,300,'img2','Image',{z:2});
-  mkI(624,377,264,194,'img3','Image',{z:2});
-  mkI(900,377,264,194,'img4','Image',{z:2});
-  // Banner
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  // Logo
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  // Divider lines
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  // Left heading + subheading (smaller Financier, not 50px)
-  mkT(28,578,540,36,gv('fh')||'Heading xx',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',field:'heading',z:4,locked:'1'});
-  mkT(28,609,540,36,gv('fs')||'Sub Heading xx',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',field:'subheading',z:4,locked:'1'});
-  // Unlocked label over top bar area
-  mkT(40,40,200,60,'New text',{color:'rgb(17,17,17)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.35',z:50,locked:'0'});
-  // Left property — green bar + address
-  mkR(28,657,3,28,'rgb(23,232,143)',{z:50,locked:'1'});
-  mkT(42,657,176,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:50,locked:'1'});
-  mkT(42,673,176,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:50,locked:'1'});
-  // Left property — plain bullet block
-  (function(){ var _e=mkT(28,699,177,125,'New text\nx\nx\nx\nx\nx\nx',{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',z:50,bulletParaSpacing:'6',locked:'1'}); _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
-  // Left property — wide bullet body copy column
-  (function(){ var _e=mkT(225,655,328,168,'– New text\n– x\n– x\n– x\n– x\n– x\n– x\n– x\n– ',{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',z:50,bullets:'1',bulletParaSpacing:'6',locked:'1'}); _e.dataset.bulletParaSpacing='6'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Income (hidden, linked)
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  // Right Property 1 — green bar + address + bullets
-  mkR(624,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(638,593,170,14,'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(638,610,170,14,'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  (function(){ var _e=mkT(624,655,195,169,'– Point one\n– Point two\n– Point three\n– Point four',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:50,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Right Property 2 — green bar + address + bullets
-  mkR(825,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(840,593,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(840,610,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  (function(){ var _e=mkT(825,655,195,169,'– Text line one\n– Line two\n– Line three\n– Line four\n– Line five',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Contact / Agents
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
-// ─── BROCHURE 2-PAGE: 2 Properties - A layout ───
-function buildBrochure2_v5(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  // Images — same positions as Default
-  mkI(28,65,539,505,'img1','Image',{z:2});
-  mkI(624,66,539,300,'img2','Image',{z:2});
-  mkI(624,377,264,194,'img3','Image',{z:2});
-  mkI(900,377,264,194,'img4','Image',{z:2});
-  // Left panel — heading / subheading
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
-  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
-  // Banner
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  // Logo
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  // Divider lines
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  // Property 1 — left column (green bar + address, no field links)
-  mkR(624,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  (function(){ var _e=mkT(638,593,170,14,'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  (function(){ var _e=mkT(638,610,170,14,'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  // Property 1 — bullet points (no field link — independent)
-  (function(){ var _e=mkT(624,655,195,169,'– Point one\n– Point two\n– Point three\n– Point four',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:50,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Income (hidden, linked)
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  // Property 2 — right column (green bar + address, no field links)
-  mkR(825,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  (function(){ var _e=mkT(840,593,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  (function(){ var _e=mkT(840,610,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  // Property 2 — body copy (no field link — independent)
-  (function(){ var _e=mkT(825,655,195,169,'– Text line one\n– Line two\n– Line three\n– Line four\n– Line five',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Contact / Agents
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
-// ─── BROCHURE 2-PAGE: 1 Image layout ───
-function buildBrochure2_v3(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  mkI(28,65,1136,505,'img1','Image',{z:2});
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
-  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(624,657,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(638,657,176,13,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:5,locked:'1'});
-  mkT(638,673,176,14,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:5,locked:'1'});
-  (function(){ var _e=mkT(624,699,169,125,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',field:'bullets',z:5,bulletParaSpacing:'6',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  mkT(808,655,201,169,document.getElementById('fbc').value,{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'});
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
 function buildEDM(W,H){
   mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkI(0,116,600,425,'img1','Image',{z:2});
@@ -3559,69 +3356,6 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
         (_vFn||_allFns[tabIdx])(canvasW,canvasH);
         globalSync();
-        // For EDM tabs: apply saved state on top so user changes (deletions, moves, image swaps) are reflected
-        if((tabIdx===2||tabIdx===3) && savedStates[tabIdx] && savedStates[tabIdx].length){
-          const _svMap={};
-          savedStates[tabIdx].forEach(function(sv){ _svMap[sv.eid]=sv; });
-          // Remove elements the user deleted (not in savedStates)
-          Array.from(realArt.querySelectorAll('.el')).forEach(function(el){
-            if(!_svMap[el.dataset.eid]) el.remove();
-          });
-          // Apply position/style/content changes from savedStates
-          savedStates[tabIdx].forEach(function(sv){
-            const el=realArt.querySelector('.el[data-eid="'+sv.eid+'"]');
-            if(!el) return;
-            el.style.left=sv.x; el.style.top=sv.y;
-            el.style.width=sv.w; el.style.height=sv.h;
-            const inner=el.querySelector('.el-inner');
-            if(inner && sv.innerStyle) inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+sv.innerStyle);
-            if(inner && sv.type==='text' && sv.content!==undefined){
-              if(sv.richHtml && sv.bullets!=='1') inner.innerHTML=sv.richHtml;
-              else if(sv.bullets!=='1') inner.textContent=sv.content;
-            }
-            if(sv.type==='img' && sv.imgSrc && !sv.svgKey){
-              var img=el.querySelector('img');
-              if(img) img.src=sv.imgSrc;
-              else if(sv.assetKey && assets[sv.assetKey]){
-                img=el.querySelector('img');
-                if(img) img.src=assets[sv.assetKey];
-              }
-            }
-            if(sv.type==='img' && sv.assetKey && assets[sv.assetKey]){
-              var img2=el.querySelector('img');
-              if(img2) img2.src=assets[sv.assetKey];
-            }
-          });
-          // Re-apply income — for EDM it's appended to bodycopy, not a standalone element
-          const _fiVal=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-          if(_fiVal){
-            realArt.querySelectorAll('.el[data-field="bodycopy"]').forEach(function(el){
-              const inner=el.querySelector('.el-inner');
-              if(!inner) return;
-              // Get current text content without any previously appended income
-              const _lines=inner.querySelectorAll('div.plain-line');
-              let _baseText='';
-              if(_lines.length){
-                _baseText=Array.from(_lines).map(function(d){return d.textContent;}).join('\n');
-              } else {
-                _baseText=inner.textContent||'';
-              }
-              // Strip old income if already appended
-              const _fiPrefix=_fiVal.split(':')[0].trim().toLowerCase();
-              const _baseLines=_baseText.split('\n').filter(function(l){
-                return !(_fiPrefix&&l.trim().toLowerCase().startsWith(_fiPrefix+':'));
-              });
-              _baseLines.push(_fiVal);
-              const _ps=parseFloat(el.dataset.bulletParaSpacing||'17');
-              inner.innerHTML=_baseLines.map(function(l,i){
-                var mb=(i<_baseLines.length-1)?'margin-bottom:'+_ps+'px;':'';
-                return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
-              }).join('');
-              inner.style.whiteSpace='normal';
-            });
-          }
-          repackEDMAgents();
-        }
         offscreen.innerHTML=realArt.innerHTML;
         realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
         realArt.style.background=pbg; realArt.style.transform=pt;
@@ -3850,10 +3584,6 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       if([5,6,8].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n\u2013 '+fi : '\u2013 '+fi; }
       else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n'+fi : fi; }
     }
-    // EDM/Asian Desk: append income as last line of bodycopy
-    if(field==='bodycopy' && [2,3].indexOf(tabIdx)>-1 && fi){
-      if(!text.trim().endsWith(fi)) text = text ? text+'\n'+fi : fi;
-    }
     return text;
   }
 
@@ -3919,13 +3649,15 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   const imgMap={};
   imgResults.forEach(r=>{ if(r) imgMap[r.eid]=r.dataUrl; });
 
-  // Draw white page background first, then let all rects draw themselves
-  pdf.setFillColor(255,255,255);
+  // Draw background
+  const bgSv=sorted.find(sv=>sv.type==='rect'&&parseFloat(sv.x)===0&&parseFloat(sv.y)===0&&parseFloat(sv.w)>=pxW*0.9);
+  if(bgSv){ const ist=parseStyle(bgSv.innerStyle||''); const [r,g,b]=parseRgbStr(ist.background||'#fff'); pdf.setFillColor(r,g,b); }
+  else { pdf.setFillColor(255,255,255); }
   pdf.rect(0,0,pageW,pageH,'F');
 
   // Render each element
   for(const sv of sorted){
-    if(sv.field==='income') continue; // income is merged into bodycopy for EDM
+    if(sv.field==='income') continue;
     const ex=parseFloat(sv.x)*scaleX, ey=parseFloat(sv.y)*scaleY;
     const ew=parseFloat(sv.w)*scaleX, eh=parseFloat(sv.h)*scaleY;
     if(ew<=0||eh<=0) continue;
@@ -3933,8 +3665,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
     if(sv.type==='rect'){
       const ist=parseStyle(sv.innerStyle||'');
       const [r,g,b]=parseRgbStr(ist.background||'#000');
-      pdf.setFillColor(r,g,b);
-      pdf.rect(ex,ey,ew,eh,'F');
+      pdf.setFillColor(r,g,b); pdf.rect(ex,ey,ew,eh,'F');
 
     } else if(sv.type==='img'){
       const du=imgMap[sv.eid];
@@ -3974,23 +3705,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
 
       const rawText=resolveText(sv);
       const lines=rawText.split('\n');
-      const maxW=ew*1.01;
+      const maxW=ew*1.01; // jsPDF measures text slightly narrower than browser, so give extra room
 
-      // Detect if this is an EDM button text element (field btn1/btn2/btn3)
-      const isBtn=sv.field==='btn1'||sv.field==='btn2'||sv.field==='btn3';
-
-      // Starting Y — vertically centre button text using fixed 85px button height
-      const BTN_H_MM = 85 * scaleY;
-      let curY;
-      if(isBtn){
-        // Use agentBelowY as the true top of the button rect, not sv.y (which may be shifted)
-        const trueTopY = parseFloat(sv.agentBelowY||sv.y) * scaleY;
-        // But we need the actual rendered top from repackEDMAgents shift
-        // sv.y in savedState IS the already-shifted position, so use ey directly
-        curY = ey + (BTN_H_MM/2) + (fsMm*0.35);
-      } else {
-        curY = ey+fsMm*0.85;
-      }
+      // Starting Y — vertically centre single-line text, or start near top for multi-line
+      let curY=ey+fsMm*0.85;
 
       // For banner: centre text vertically in the pill and horizontally in the pill
       let textX, jsPdfAlign;
@@ -4177,14 +3895,12 @@ function switchTab(idx,btn){
   deselectAll();
   if((idx===2||idx===3)&&typeof _migrateEDMStates==='function') _migrateEDMStates();
   if(idx===9){ _renderMarketingScheduleTab(); return; }
-  const _hasState = savedStates[idx]&&savedStates[idx].length;
-  if(_hasState){ restoreTab(idx); } else { buildTemplate(idx); }
+  if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
   // For AFR4: re-run globalSync after restore so income and sale combo re-render
   if(idx===6) setTimeout(function(){ globalSync(); }, 50);
   fitZoomToTab();
   updateEdmMetaVisibility();
-  // Only repack EDM agents if we built fresh — restoreTab already has correct positions
-  if((idx===2||idx===3) && !_hasState) setTimeout(repackEDMAgents,80);
+  if(idx===2||idx===3) setTimeout(repackEDMAgents,80);
   if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
   _updateEDMHtmlBtn();
 }
@@ -4752,18 +4468,11 @@ function _migrateEDMStates(){
   if(typeof savedStates === 'undefined') return;
   [2,3].forEach(function(ti){
     if(!savedStates[ti]||!savedStates[ti].length) return;
-    // Old EDM states had a canvas width of 212px — detect by checking if the
-    // background rect (first locked rect, type=rect, full-width) is ≤ 212px wide.
-    // Current EDM canvas is 600px wide, so any state with max element width < 300 is old.
-    var maxW = 0;
-    savedStates[ti].forEach(function(sv){
+    var isOld = savedStates[ti].some(function(sv){
       var w = parseFloat(sv.w||0);
-      if(w > maxW) maxW = w;
+      return w > 0 && w <= 220;
     });
-    if(maxW > 0 && maxW < 300){
-      console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti);
-      delete savedStates[ti];
-    }
+    if(isOld){ console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti); delete savedStates[ti]; }
   });
 }
 
@@ -4835,8 +4544,7 @@ async function downloadPDF(){
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
     btn.textContent='Generating…';
     await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false);
-    const _propSlug = (_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
-    pdf.save(`${_propSlug}_${TAB_NAMES[currentTab]}.pdf`);
+    pdf.save(`CBRE_${TAB_NAMES[currentTab]}.pdf`);
   }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
@@ -4867,8 +4575,7 @@ async function downloadAllSelectedPDF(){
     const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
     for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
-    const _propSlugAll = (_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
-    pdf.save(`${_propSlugAll}_All_Selected.pdf`);
+    pdf.save('CBRE_All_Selected.pdf');
   }catch(err){alert('PDF error: '+err.message);}
   btn.disabled=false;btn.textContent='⬇ All PDFs';
 }
@@ -4952,6 +4659,7 @@ function repackEDMAgents(){
         // Always position from agentOrigY — never from current top (prevents compounding)
         var origY = parseFloat(el.dataset.agentOrigY);
         if(isNaN(origY)){
+          // Old save without agentOrigY — infer from slot base + field type offset
           var inferOffset = 0;
           if(field.endsWith('num')) inferOffset = currentTab===3 ? 18 : 17;
           else if(field.endsWith('name')) inferOffset = currentTab===3 ? 6 : 1;
@@ -4962,6 +4670,7 @@ function repackEDMAgents(){
         el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
     } else if(el.dataset.agentBelow === '1'){
+      // Always reposition from original Y — never current top
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
         el.style.top = (belowOrigY - shift) + 'px';
@@ -5448,105 +5157,5 @@ function _msClearPDF(){
   const pc=document.getElementById('props-content');
   if(pc) pc.innerHTML=emptyPropsHTML();
 }
-
-// ════════════════════════════════════════
-// REQUEST ASSISTANCE
-// ════════════════════════════════════════
-function openAssistModal(){
-  const nameEl  = document.getElementById('assist-name');
-  const emailEl = document.getElementById('assist-email');
-  const projEl  = document.getElementById('assist-project');
-  const msgEl   = document.getElementById('assist-message');
-  const errEl   = document.getElementById('assist-error');
-  // Reset to form view
-  document.getElementById('assist-form-body').style.display = '';
-  document.getElementById('assist-success').style.display = 'none';
-  if(errEl) errEl.textContent = '';
-  // Pre-fill name from session
-  const mastName = (document.getElementById('mast-usr-name')||{}).textContent||'';
-  let userName = mastName.trim();
-  let userEmail = '';
-  if(!userName){
-    try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s&&s.name) userName=s.name; if(s&&s.email) userEmail=s.email; }catch(e){}
-  } else {
-    try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s&&s.email) userEmail=s.email; }catch(e){}
-  }
-  if(nameEl)  nameEl.value  = userName  || '';
-  if(emailEl) emailEl.value = userEmail || '';
-  // Build project link
-  const _pLink = window.location.origin + window.location.pathname +
-    '?portfolioId='   + encodeURIComponent(_portfolioId) +
-    '&propertyId='    + encodeURIComponent(_propertyId) +
-    '&portfolioName=' + encodeURIComponent(_portfolioName) +
-    '&propertyName='  + encodeURIComponent(_propertyName);
-  if(projEl) projEl.value = _pLink;
-  // Capture current tab context
-  const _tabLabels = ['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule'];
-  const _ctxEl = document.getElementById('assist-context');
-  if(_ctxEl) _ctxEl.value = 'Tab: ' + (_tabLabels[currentTab] || 'Tab ' + (currentTab+1));
-  if(msgEl)  msgEl.value  = '';
-  document.getElementById('assist-modal-bg').classList.add('open');
-  setTimeout(function(){ if(msgEl) msgEl.focus(); }, 60);
-}
-
-function closeAssistModal(){
-  document.getElementById('assist-modal-bg').classList.remove('open');
-}
-
-async function sendAssistRequest(){
-  const name    = (document.getElementById('assist-name')||{}).value||'';
-  const email   = (document.getElementById('assist-email')||{}).value||'';
-  const project = (document.getElementById('assist-project')||{}).value||'';
-  const context = (document.getElementById('assist-context')||{}).value||'';
-  const message = (document.getElementById('assist-message')||{}).value||'';
-  const errEl   = document.getElementById('assist-error');
-  const sendBtn = document.getElementById('assist-send-btn');
-  if(errEl) errEl.textContent = '';
-  if(!message.trim()){ if(errEl) errEl.textContent = 'Please describe what you need help with.'; document.getElementById('assist-message').focus(); return; }
-  if(!email.trim())  { if(errEl) errEl.textContent = 'Please enter your email so we can get back to you.'; document.getElementById('assist-email').focus(); return; }
-  if(sendBtn){ sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; }
-  try {
-    const payload = {
-      agent_name:     name,
-      agent_email:    email,
-      property_name:  _propertyName || '',
-      portfolio_name: _portfolioName || '',
-      project_link:   project,
-      context:        context,
-      message:        message,
-      status:         'new',
-      product:        'marketing'
-    };
-    const res = await fetch(SUPA_URL + '/rest/v1/assistance_requests', {
-      method: 'POST',
-      headers: {
-        'apikey':        SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type':  'application/json',
-        'Prefer':        'return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok){ const txt = await res.text(); throw new Error(txt); }
-    // Show success state
-    document.getElementById('assist-form-body').style.display = 'none';
-    document.getElementById('assist-success').style.display = '';
-  } catch(e) {
-    console.error('Assistance request failed:', e);
-    if(errEl) errEl.textContent = 'Something went wrong — please try again.';
-  } finally {
-    if(sendBtn){ sendBtn.disabled = false; sendBtn.textContent = 'Send Request'; }
-  }
-}
-
-// Close assist modal on background click or Escape
-document.getElementById('assist-modal-bg').addEventListener('click', function(e){
-  if(e.target === this) closeAssistModal();
-});
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Escape' && document.getElementById('assist-modal-bg').classList.contains('open')){
-    closeAssistModal();
-  }
-});
 
 </script></body></html>

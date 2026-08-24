@@ -2788,7 +2788,12 @@ function _showPanModeHint(){
     overlay = document.createElement('div');
     overlay.id = 'pan-full-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9998;';
-    overlay.innerHTML = '<svg id="pan-overlay-svg" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg"><defs><mask id="pan-hole-mask"><rect width="100%" height="100%" fill="white"/><rect id="pan-hole-rect" fill="black"/></mask></defs><rect width="100%" height="100%" fill="rgba(0,0,0,0.52)" mask="url(#pan-hole-mask)"/></svg>';
+    overlay.innerHTML = `
+    <div id="pgo-top"    style="position:absolute;background:rgba(0,0,0,0.6);"></div>
+    <div id="pgo-bottom" style="position:absolute;background:rgba(0,0,0,0.6);"></div>
+    <div id="pgo-left"   style="position:absolute;background:rgba(0,0,0,0.6);"></div>
+    <div id="pgo-right"  style="position:absolute;background:rgba(0,0,0,0.6);"></div>
+  `;
     document.body.appendChild(overlay);
   }
   _updatePanOverlay();
@@ -2811,13 +2816,18 @@ function _showPanModeHint(){
 
 function _updatePanOverlay(){
   const ab = document.getElementById('artboard');
-  const holeRect = document.getElementById('pan-hole-rect');
-  if(!ab || !holeRect) return;
+  if(!ab) return;
   const r = ab.getBoundingClientRect();
-  holeRect.setAttribute('x', r.left);
-  holeRect.setAttribute('y', r.top);
-  holeRect.setAttribute('width', r.width);
-  holeRect.setAttribute('height', r.height);
+  const W = window.innerWidth, H = window.innerHeight;
+  const top    = document.getElementById('pgo-top');
+  const bottom = document.getElementById('pgo-bottom');
+  const left   = document.getElementById('pgo-left');
+  const right  = document.getElementById('pgo-right');
+  if(!top) return;
+  top.style.cssText    = `position:absolute;background:rgba(0,0,0,0.6);left:0;top:0;width:${W}px;height:${r.top}px;`;
+  bottom.style.cssText = `position:absolute;background:rgba(0,0,0,0.6);left:0;top:${r.bottom}px;width:${W}px;height:${H - r.bottom}px;`;
+  left.style.cssText   = `position:absolute;background:rgba(0,0,0,0.6);left:0;top:${r.top}px;width:${r.left}px;height:${r.height}px;`;
+  right.style.cssText  = `position:absolute;background:rgba(0,0,0,0.6);left:${r.right}px;top:${r.top}px;width:${W - r.right}px;height:${r.height}px;`;
 }
 
 function _updatePanImgHandles(){
