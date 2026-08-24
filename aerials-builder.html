@@ -170,6 +170,9 @@ body.exporting .svg-ghost-group{display:none!important;}
 body.exporting #anchor-dots{display:none!important;}
 body.exporting #cp-line1,body.exporting #cp-line2,body.exporting #close-snap{display:none!important;}
 body.exporting .stem-drag-handle{display:none!important;}
+/* Pan mode — artboard overflow visible so full image shows outside canvas */
+.artboard.img-pan-mode{ overflow:visible !important; outline:2px dashed rgba(91,191,122,0.6); cursor:grab !important; }
+.artboard.img-pan-mode .ab-img-layer{ cursor:grab !important; }
 
 /* ── LIVE SYNC TOAST ── */
 #live-sync-toast{
@@ -264,10 +267,10 @@ body.exporting .stem-drag-handle{display:none!important;}
   font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;
   font-weight:500;
   font-size:18px;
-  line-height:1.25;
+  line-height:1;
   text-transform:uppercase;
   letter-spacing:.1em;
-  padding:10px 16px 6px;
+  padding:9px 16px 7px;
   display:flex;align-items:center;justify-content:center;
   white-space:pre-wrap;
   word-break:break-word;
@@ -345,7 +348,7 @@ body.exporting .stem-drag-handle{display:none!important;}
 .markup-sticker.multi-label{ align-items:flex-start; }
 .markup-sticker.multi-label .sticker-body{ flex-direction:column; align-items:stretch; filter:drop-shadow(0 0 8px rgba(255,255,255,0.5)); }
 .markup-sticker.multi-label .sticker-icon-box{ display:none !important; }
-.markup-sticker.multi-label .sticker-label{ width:100%; min-width:300px; text-align:center; padding:10px 18px 8px; font-size:18px; border-radius:0; flex-shrink:0; white-space:pre-wrap; }
+.markup-sticker.multi-label .sticker-label{ width:100%; min-width:300px; text-align:center; padding:8px 18px; font-size:18px; border-radius:0; flex-shrink:0; white-space:pre-wrap; }
 .markup-sticker.multi-label .sticker-stem{ background:#fff; }
 .markup-sticker.multi-label .sticker-dot{ background:#fff; border:2px solid #fff; }
 .mt-icons-row{ background:#fff; display:flex; align-items:center; justify-content:center; gap:16px; padding:4px 16px; min-height:27px; width:100%; box-sizing:border-box; }
@@ -411,7 +414,7 @@ body.exporting .stem-drag-handle{display:none!important;}
   font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;
   font-weight:500;
   font-size:18px;
-  line-height:1.1;
+  line-height:1;
   text-transform:uppercase;
   letter-spacing:.08em;
   color:#fff;
@@ -435,8 +438,8 @@ body.exporting .stem-drag-handle{display:none!important;}
 
 /* ── SUB-LABEL ── */
 .sticker-label-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; }
-.sticker-label-main{ padding:6px 16px 0px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:500; font-size:18px; line-height:1.1; text-transform:uppercase; letter-spacing:.1em; white-space:pre-wrap; word-break:break-word; text-align:center; }
-.sticker-label-sub{ padding:0 16px 4px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:400; font-size:13px; line-height:1.1; text-transform:uppercase; letter-spacing:.07em; white-space:pre-wrap; word-break:break-word; text-align:center; opacity:0.85; }
+.sticker-label-main{ padding:7px 16px 5px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:500; font-size:18px; line-height:1; text-transform:uppercase; letter-spacing:.1em; white-space:pre-wrap; word-break:break-word; text-align:center; }
+.sticker-label-sub{ padding:2px 16px 7px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:400; font-size:13px; line-height:1; text-transform:uppercase; letter-spacing:.07em; white-space:pre-wrap; word-break:break-word; text-align:center; opacity:0.85; }
 
 /* ── ICON DATABASE MODAL ── */
 .icon-modal-overlay{
@@ -506,24 +509,7 @@ body.exporting .stem-drag-handle{display:none!important;}
 
 /* ── RIGHT PANEL ── */
 .props{width:220px;min-width:200px;background:#191919;border-left:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
-.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;}
-.assist-btn{padding:3px 8px;font-size:9px;font-weight:700;background:#3a1a00;color:#f0a030;border:1px solid #7a4a00;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;}
-.assist-btn:hover{background:#4a2600;color:#ffb84d;}
-.assist-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;}
-.assist-modal-bg.open{display:flex;}
-.assist-modal{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;padding:22px;width:380px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.6);}
-.assist-modal-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;letter-spacing:-.01em;}
-.assist-modal-sub{font-size:10px;color:#666;margin-bottom:16px;line-height:1.5;}
-.assist-field{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;}
-.assist-field label{font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;}
-.assist-field input,.assist-field textarea{padding:7px 9px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-size:11px;font-family:inherit;outline:none;resize:vertical;}
-.assist-field input:focus,.assist-field textarea:focus{border-color:#f0a030;}
-.assist-field textarea{min-height:90px;line-height:1.5;}
-.assist-modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
-.assist-cancel{padding:7px 14px;font-size:11px;font-weight:700;background:transparent;color:#777;border:1px solid #333;border-radius:2px;cursor:pointer;}
-.assist-cancel:hover{background:#2a2a2a;color:#ccc;}
-.assist-send{padding:7px 14px;font-size:11px;font-weight:700;background:#f0a030;color:#111;border:none;border-radius:2px;cursor:pointer;}
-.assist-send:hover{background:#ffb84d;}
+.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;}
 .props-scroll{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:10px;}
 .props-empty{padding:14px 10px;font-size:11px;color:#555;line-height:1.6;}
 .pf{display:flex;flex-direction:column;gap:3px;}
@@ -540,6 +526,7 @@ body.exporting .stem-drag-handle{display:none!important;}
 
 /* ── EXPORT: hide editor chrome ── */
 body.exporting .img-rh{display:none!important;}
+body.exporting .pan-img-rh{display:none!important;}
 body.exporting .sticker-del{display:none!important;}
 body.exporting .img-ghost{display:none!important;}
 body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
@@ -830,10 +817,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
   <!-- RIGHT PANEL -->
   <div class="props">
-    <div class="props-head" id="props-head">
-      <span>PROPERTIES</span>
-      <button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team">Request Assistance</button>
-    </div>
+    <div class="props-head" id="props-head">PROPERTIES</div>
     <div class="props-scroll" id="props-scroll">
       <div class="props-empty" id="props-empty">
         Select a markup on the canvas to edit its label.<br><br>
@@ -1100,6 +1084,7 @@ function renderTabs(){
 }
 
 function switchPage(i){
+  if(_imgPanMode) _exitImgPanMode();
   savePageState();
   currentPage = i;
   selectedSticker = null;
@@ -1627,6 +1612,7 @@ let _pen = {
   pendingAnchor: null // anchor being placed (before mouseup)
 };
 let _imgDrag = {active:false, startX:0, startY:0, origX:0, origY:0};
+let _imgPanMode = false; // true only after double-clicking the image
 let _imgResize = {active:false, corner:'', origScale:1, origX:0, origY:0, origW:0, origH:0};
 
 function attachArtboardEvents(pageObj){
@@ -1700,11 +1686,11 @@ function attachArtboardEvents(pageObj){
   imgLyr.addEventListener('mousedown', e=>{
     if(tool !== 'select') return;
     if(!pages[currentPage].imageUrl) return;
-    // Only pan if the click target is the image or its container — not a sticker
     if(e.target.closest('.markup-sticker')) return;
     if(e.target.closest('#path-hit-overlay')) return;
     if(e.target.closest('.img-rh')) return;
     if(e.target.closest('#path-edit-html-layer')) return;
+    if(!_imgPanMode) return; // must double-click first to enter pan mode
     e.preventDefault();
     _imgDrag.active = true;
     _imgDrag.startX = e.clientX;
@@ -1712,6 +1698,27 @@ function attachArtboardEvents(pageObj){
     _imgDrag.origX  = pages[currentPage].imagePos.x;
     _imgDrag.origY  = pages[currentPage].imagePos.y;
     artboard.style.cursor = 'grabbing';
+  });
+
+  // Double-click on image layer enters pan mode — shows ghost and allows dragging
+  imgLyr.addEventListener('dblclick', e=>{
+    if(tool !== 'select') return;
+    if(!pages[currentPage].imageUrl) return;
+    if(e.target.closest('.markup-sticker')) return;
+    if(e.target.closest('.img-rh')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    _imgPanMode = true;
+    artboard.style.overflow = 'visible';
+    artboard.style.cursor = 'grab';
+    artboard.classList.add('img-pan-mode');
+    // Show hint
+    _showPanModeHint();
+  });
+
+  // Click outside artboard or press Escape to exit pan mode
+  document.addEventListener('keydown', e=>{
+    if(e.key === 'Escape' && _imgPanMode) _exitImgPanMode();
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -1756,6 +1763,7 @@ function attachArtboardEvents(pageObj){
       pages[currentPage].imagePos.y=_imgDrag.origY+(nowPt.y-origPt.y);
       applyImgTransform();
       updateGhost();
+      if(_imgPanMode) { _updatePanImgHandles(); _updatePanOverlay(); }
       return;
     }
 
@@ -1773,6 +1781,7 @@ function attachArtboardEvents(pageObj){
       pages[currentPage].imageScale=Math.max(0.05,_imgResize.origScale+delta/ARTBOARD_W);
       applyImgTransform();
       updateGhost();
+      if(_imgPanMode) { _updatePanImgHandles(); _updatePanOverlay(); }
     }
   };
 
@@ -1811,7 +1820,7 @@ function attachArtboardEvents(pageObj){
       _imgDrag.active=false;
       pages[currentPage].imageUserAdjusted = true;
       const ab2=document.getElementById('artboard');
-      if(ab2) ab2.style.cursor = '';
+      if(ab2) ab2.style.cursor = _imgPanMode ? 'grab' : '';
       scheduleSave();
     }
     if(_imgResize.active){
@@ -1820,6 +1829,13 @@ function attachArtboardEvents(pageObj){
       scheduleSave();
     }
   };
+
+  // Click outside the artboard exits pan mode
+  document.addEventListener('mousedown', e=>{
+    if(_imgPanMode && !e.target.closest('#artboard') && !e.target.closest('.img-rh')){
+      _exitImgPanMode();
+    }
+  });
 
   // Double-click in pen mode = finalise open path
   // (path dblclick in select mode handled by path-hit-overlay)
@@ -2282,7 +2298,7 @@ function _attachPathOverlayEvents(){
         selectPath(hit);
       } else {
         // Handle image pan directly
-        if(tool === 'select' && pages[currentPage].imageUrl){
+        if(tool === 'select' && pages[currentPage].imageUrl && _imgPanMode){
           e.preventDefault();
           _imgDrag.active = true;
           _imgDrag.startX = e.clientX;
@@ -2299,7 +2315,7 @@ function _attachPathOverlayEvents(){
     if(hit < 0){
       if(selectedPath >= 0) deselectPath();
       // Handle image pan directly here — no re-dispatch needed
-      if(tool === 'select' && pages[currentPage].imageUrl){
+      if(tool === 'select' && pages[currentPage].imageUrl && _imgPanMode){
         e.preventDefault();
         _imgDrag.active = true;
         _imgDrag.startX = e.clientX;
@@ -2390,7 +2406,7 @@ function _attachPathOverlayEvents(){
     }
   });
 
-  // ── DBLCLICK: enter anchor edit mode ──
+  // ── DBLCLICK: enter anchor edit mode OR image pan mode ──
   overlay.addEventListener('dblclick', e=>{
     if(tool !== 'select') return;
     const hit = _hitTestPaths(artboardPt(e));
@@ -2405,6 +2421,16 @@ function _attachPathOverlayEvents(){
       }
     } else if(_editPath.active){
       exitPathEditMode();
+    } else {
+      // No path hit — enter image pan mode if image exists
+      if(pages[currentPage].imageUrl){
+        e.preventDefault();
+        e.stopPropagation();
+        _imgPanMode = true;
+        const ab = document.getElementById('artboard');
+        if(ab){ ab.style.overflow='visible'; ab.style.cursor='grab'; ab.classList.add('img-pan-mode'); }
+        _showPanModeHint();
+      }
     }
   });
 }
@@ -2730,6 +2756,115 @@ function syncBrightnessSlider(){
 }
 
 // ── Ghost: shows dotted SVG rect at real image boundary (editor-only) ──
+function _exitImgPanMode(){
+  _imgPanMode = false;
+  _imgDrag.active = false;
+  const ab = document.getElementById('artboard');
+  if(ab){ ab.style.overflow=''; ab.style.cursor=''; ab.classList.remove('img-pan-mode'); }
+  const fo = document.getElementById('pan-full-overlay');
+  if(fo) fo.remove();
+  ['pan-overlay-top','pan-overlay-bottom','pan-overlay-left','pan-overlay-right'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.remove();
+  });
+  document.querySelectorAll('.pan-img-rh').forEach(el=>el.remove());
+  const hint = document.getElementById('pan-mode-hint');
+  if(hint) hint.remove();
+}
+
+function _showPanModeHint(){
+  const ab = document.getElementById('artboard');
+  const img = document.getElementById('bg-img');
+  if(!ab || !img) return;
+
+  // Remove old panels
+  ['pan-overlay-top','pan-overlay-bottom','pan-overlay-left','pan-overlay-right'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.remove();
+  });
+
+  // Use a single fixed full-screen overlay with an SVG cutout hole for the artboard
+  // This correctly handles any zoom/scroll position
+  let overlay = document.getElementById('pan-full-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'pan-full-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9998;';
+    overlay.innerHTML = '<svg id="pan-overlay-svg" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg"><defs><mask id="pan-hole-mask"><rect width="100%" height="100%" fill="white"/><rect id="pan-hole-rect" fill="black"/></mask></defs><rect width="100%" height="100%" fill="rgba(0,0,0,0.52)" mask="url(#pan-hole-mask)"/></svg>';
+    document.body.appendChild(overlay);
+  }
+  _updatePanOverlay();
+
+  // Add image-edge resize handles
+  _updatePanImgHandles();
+
+  // Hint toast
+  let hint = document.getElementById('pan-mode-hint');
+  if(!hint){
+    hint = document.createElement('div');
+    hint.id = 'pan-mode-hint';
+    hint.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:11px;font-weight:600;padding:8px 18px;border-radius:20px;z-index:99999;pointer-events:none;letter-spacing:.04em;white-space:nowrap;';
+    hint.textContent = '🖼 Image Pan Mode — drag image to reposition · drag corners to resize · Esc to exit';
+    document.body.appendChild(hint);
+  }
+  clearTimeout(hint._timer);
+  hint._timer = setTimeout(()=>{ if(hint&&hint.parentNode) hint.remove(); }, 5000);
+}
+
+function _updatePanOverlay(){
+  const ab = document.getElementById('artboard');
+  const holeRect = document.getElementById('pan-hole-rect');
+  if(!ab || !holeRect) return;
+  const r = ab.getBoundingClientRect();
+  holeRect.setAttribute('x', r.left);
+  holeRect.setAttribute('y', r.top);
+  holeRect.setAttribute('width', r.width);
+  holeRect.setAttribute('height', r.height);
+}
+
+function _updatePanImgHandles(){
+  const ab = document.getElementById('artboard');
+  const img = document.getElementById('bg-img');
+  if(!ab || !img) return;
+  const p = pages[currentPage];
+  const imgW = (img.naturalWidth  || 0) * p.imageScale;
+  const imgH = (img.naturalHeight || 0) * p.imageScale;
+  const zoom = _zoom || 1;
+  // Image corners in artboard px
+  const ix = p.imagePos.x, iy = p.imagePos.y;
+  const corners = {
+    nw:{x:ix,          y:iy          },
+    ne:{x:ix+imgW,     y:iy          },
+    sw:{x:ix,          y:iy+imgH     },
+    se:{x:ix+imgW,     y:iy+imgH     },
+  };
+  // Remove old
+  document.querySelectorAll('.pan-img-rh').forEach(el=>el.remove());
+  // Add new handles positioned relative to artboard
+  Object.entries(corners).forEach(([corner, pos])=>{
+    const h = document.createElement('div');
+    h.className = 'pan-img-rh';
+    h.dataset.corner = corner;
+    h.style.cssText = `position:absolute;width:20px;height:20px;background:#17E88F;border:2px solid #fff;border-radius:3px;z-index:300;cursor:${corner}-resize;transform:translate(-50%,-50%);left:${pos.x}px;top:${pos.y}px;box-shadow:0 2px 8px rgba(0,0,0,.5);`;
+    h.title = 'Drag to resize image';
+    ab.appendChild(h);
+    // Attach resize drag to these handles using existing _imgResize logic
+    h.addEventListener('mousedown', e=>{
+      e.preventDefault(); e.stopPropagation();
+      const abRect = ab.getBoundingClientRect();
+      const scaleX = abRect.width  / ARTBOARD_W;
+      _imgResize.active    = true;
+      _imgResize.corner    = corner;
+      _imgResize.origScale = p.imageScale;
+      _imgResize.origX     = p.imagePos.x;
+      _imgResize.origY     = p.imagePos.y;
+      _imgResize.origW     = img.naturalWidth  * p.imageScale;
+      _imgResize.origH     = img.naturalHeight * p.imageScale;
+      _imgResize.startX    = e.clientX;
+      _imgResize.startY    = e.clientY;
+      ab.style.cursor = corner+'-resize';
+    });
+  });
+}
+
 function updateGhost(){
   const rect = document.getElementById('ghost-rect');
   const img  = document.getElementById('bg-img');
@@ -3864,7 +3999,7 @@ function showMultiProps(s){
   const unselStyle='flex:1;padding:7px 4px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;font-family:inherit;border:1px solid #333;background:#242424;color:#888;';
   scroll.innerHTML=''
     +'<div style="padding:6px 8px;background:#0d1f18;border:1px solid #4a6a5a;border-radius:2px;font-size:9px;color:#aaddcc;margin-bottom:8px;">Multi Tenanted Label</div>'
-    +'<div class="pf"><label>Title</label><input type="text" id="mt-title" value="'+escHtml(s.label||'')+'" oninput="updateStickerLabel(this.value)" placeholder="Multi Tenanted..."></div>'
+    +'<div class="pf"><label>Title</label><textarea id="mt-title" rows="2" oninput="updateStickerLabel(this.value)" onkeydown="handleLabelKeydown(event)" placeholder="Multi Tenanted..." style="resize:vertical;min-height:36px;">'+escHtml(s.label||'')+'</textarea></div>'
     +'<div class="sec">Orientation</div>'
     +'<div style="display:flex;gap:6px;margin-top:2px;">'
     +'<button style="'+(iF?unselStyle:selStyle)+'" onclick="setStickerFlip(false)">Left'+(!iF?' \u2713':'')+'</button>'
@@ -4840,142 +4975,6 @@ document.addEventListener('visibilitychange', () => {
 
 // Start after initial load settles
 setTimeout(startLiveSync, 3000);
-
-// ════════════════════════════════════════
-// REQUEST ASSISTANCE
-// ════════════════════════════════════════
-function openAssistModal(){
-  const nameEl  = document.getElementById('assist-name');
-  const emailEl = document.getElementById('assist-email');
-  const projEl  = document.getElementById('assist-project');
-  const msgEl   = document.getElementById('assist-message');
-  const errEl   = document.getElementById('assist-error');
-  document.getElementById('assist-form-body').style.display = '';
-  document.getElementById('assist-success').style.display = 'none';
-  if(errEl) errEl.textContent = '';
-  // Pre-fill from session
-  const mastName = (document.getElementById('mast-usr-name')||{}).textContent||'';
-  let userName = mastName.trim();
-  let userEmail = '';
-  try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s&&s.name&&!userName) userName=s.name; if(s&&s.email) userEmail=s.email; }catch(e){}
-  if(nameEl)  nameEl.value  = userName  || '';
-  if(emailEl) emailEl.value = userEmail || '';
-  // Build project link
-  const _pLink = window.location.origin + window.location.pathname +
-    '?portfolioId='   + encodeURIComponent(portfolioId) +
-    '&propertyId='    + encodeURIComponent(propertyId) +
-    '&portfolioName=' + encodeURIComponent(portfolioName) +
-    '&propertyName='  + encodeURIComponent(propertyName);
-  if(projEl) projEl.value = _pLink;
-  // Capture current page context
-  const _ctxEl = document.getElementById('assist-context');
-  if(_ctxEl) _ctxEl.value = 'Page: ' + (currentPage + 1) + ' of ' + pages.length;
-  if(msgEl)  msgEl.value  = '';
-  document.getElementById('assist-modal-bg').classList.add('open');
-  setTimeout(function(){ if(msgEl) msgEl.focus(); }, 60);
-}
-
-function closeAssistModal(){
-  document.getElementById('assist-modal-bg').classList.remove('open');
-}
-
-async function sendAssistRequest(){
-  const name    = (document.getElementById('assist-name')||{}).value||'';
-  const email   = (document.getElementById('assist-email')||{}).value||'';
-  const project = (document.getElementById('assist-project')||{}).value||'';
-  const context = (document.getElementById('assist-context')||{}).value||'';
-  const message = (document.getElementById('assist-message')||{}).value||'';
-  const errEl   = document.getElementById('assist-error');
-  const sendBtn = document.getElementById('assist-send-btn');
-  if(errEl) errEl.textContent = '';
-  if(!message.trim()){ if(errEl) errEl.textContent = 'Please describe what you need help with.'; document.getElementById('assist-message').focus(); return; }
-  if(!email.trim())  { if(errEl) errEl.textContent = 'Please enter your email so we can get back to you.'; document.getElementById('assist-email').focus(); return; }
-  if(sendBtn){ sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; }
-  try {
-    const payload = {
-      agent_name:     name,
-      agent_email:    email,
-      property_name:  propertyName || '',
-      portfolio_name: portfolioName || '',
-      project_link:   project,
-      context:        context,
-      message:        message,
-      status:         'new',
-      product:        'aerials'
-    };
-    const res = await fetch(SUPABASE_URL + '/rest/v1/assistance_requests', {
-      method: 'POST',
-      headers: {
-        'apikey':        SUPABASE_ANON,
-        'Authorization': 'Bearer ' + SUPABASE_ANON,
-        'Content-Type':  'application/json',
-        'Prefer':        'return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok){ const txt = await res.text(); throw new Error(txt); }
-    document.getElementById('assist-form-body').style.display = 'none';
-    document.getElementById('assist-success').style.display = '';
-  } catch(e) {
-    console.error('Assistance request failed:', e);
-    if(errEl) errEl.textContent = 'Something went wrong — please try again.';
-  } finally {
-    if(sendBtn){ sendBtn.disabled = false; sendBtn.textContent = 'Send Request'; }
-  }
-}
-
-document.getElementById('assist-modal-bg').addEventListener('click', function(e){
-  if(e.target === this) closeAssistModal();
-});
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Escape' && document.getElementById('assist-modal-bg').classList.contains('open')){
-    closeAssistModal();
-  }
-});
 </script>
-
-<!-- ASSISTANCE MODAL -->
-<div class="assist-modal-bg" id="assist-modal-bg">
-  <div class="assist-modal">
-    <div class="assist-modal-title">Request Assistance</div>
-    <div class="assist-modal-sub">Describe what you need help with and the studio team will get back to you.</div>
-    <div id="assist-form-body">
-      <div class="assist-field">
-        <label>Your Name</label>
-        <input type="text" id="assist-name" placeholder="e.g. Jane Smith" readonly>
-      </div>
-      <div class="assist-field">
-        <label>Your Email</label>
-        <input type="email" id="assist-email" placeholder="your.email@cbre.com">
-      </div>
-      <div class="assist-field">
-        <label>Project</label>
-        <input type="text" id="assist-project" placeholder="Project link" readonly>
-      </div>
-      <div class="assist-field">
-        <label>Referring To</label>
-        <input type="text" id="assist-context" placeholder="e.g. Page 2" readonly style="color:#f0a030;">
-      </div>
-      <div class="assist-field">
-        <label>What do you need help with?</label>
-        <textarea id="assist-message" placeholder="Describe what changes or assistance you need…"></textarea>
-      </div>
-      <div id="assist-error" style="font-size:11px;color:#e06060;min-height:16px;margin-bottom:4px;"></div>
-      <div class="assist-modal-actions">
-        <button class="assist-cancel" onclick="closeAssistModal()">Cancel</button>
-        <button class="assist-send" id="assist-send-btn" onclick="sendAssistRequest()">Send Request</button>
-      </div>
-    </div>
-    <div id="assist-success" style="display:none;text-align:center;padding:24px 0 8px;">
-      <div style="font-size:28px;margin-bottom:12px;">✅</div>
-      <div style="font-size:13px;font-weight:700;color:#5bbf7a;margin-bottom:6px;">Request Sent!</div>
-      <div style="font-size:11px;color:#888;line-height:1.6;">Your request has been logged and the studio team has been notified. We'll be in touch shortly.</div>
-      <div class="assist-modal-actions" style="justify-content:center;margin-top:20px;">
-        <button class="assist-send" onclick="closeAssistModal()">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
