@@ -3354,7 +3354,9 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
         var _vFn=null;
         if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
-        (_vFn||_allFns[tabIdx])(canvasW,canvasH);
+        const _buildFn = _vFn || _allFns[tabIdx];
+        if(typeof _buildFn !== 'function'){ offscreen.innerHTML=''; realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh; realArt.style.background=pbg; realArt.style.transform=pt; return; }
+        _buildFn(canvasW,canvasH);
         globalSync();
         offscreen.innerHTML=realArt.innerHTML;
         realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
@@ -4565,7 +4567,7 @@ async function loadApprovalStatus(){
   updateApproveBtn();
 }
 
-function getSelectedTabIndices(){const tabs=document.querySelectorAll('.tab');const selected=[];tabs.forEach((tab,i)=>{if(tab.style.display!=='none')selected.push(i);});return selected;}
+function getSelectedTabIndices(){const tabs=document.querySelectorAll('.tab');const selected=[];tabs.forEach((tab,i)=>{if(tab.style.display!=='none' && i!==9) selected.push(i);});return selected;}
 
 async function downloadAllSelectedPDF(){
   const btn=document.getElementById('dl-all-tb-btn');btn.disabled=true;btn.textContent='Building…';

@@ -131,6 +131,13 @@ body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic M
 .canvas-wrap{position:relative;display:inline-block;}
 
 /* ── ROAD LINE CANVAS ── */
+#fill-zone-canvas{
+  position:absolute;inset:0;width:1500px;height:1129px;
+  pointer-events:none;z-index:5;
+}
+.artboard.fill-mode{ cursor:crosshair; }
+.artboard.fill-mode .ab-img-layer{ cursor:inherit !important; }
+
 #road-line-canvas{
   position:absolute;
   inset:0;
@@ -710,6 +717,12 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
       <button onclick="clearAllPaths()" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a2222;background:#3a1515;color:#e06060;font-family:inherit;" title="Clear all drawn lines">✕ Clear Lines</button>
     </div>
 
+    <!-- Fill Zone tool -->
+    <div style="padding:6px 10px 4px;flex-shrink:0;margin-top:4px;"><span style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;">Fill Zone</span></div>
+    <div style="padding:4px 10px 8px;flex-shrink:0;border-bottom:1px solid #2a2a2a;">
+      <button id="btn-fill" onclick="setTool('fill')" style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a4a6a;background:#1a0a2a;color:#b08ad0;font-family:inherit;text-align:left;" title="Click to place points, double-click to close. Curved handles like boundary tool.">◉ Draw Fill Zone</button>
+    </div>
+
     <!-- Spacer -->
     <div style="height:12px;background:#111;border-bottom:1px solid #2a2a2a;flex-shrink:0;"></div>
 
@@ -1025,9 +1038,12 @@ function setTool(t){
   tool = t;
   document.getElementById('btn-select').classList.toggle('active', t==='select');
   document.getElementById('btn-pen').classList.toggle('active',    t==='pen');
+  const btnFill = document.getElementById('btn-fill');
+  if(btnFill) btnFill.classList.toggle('active', t==='fill');
   const artboard = document.getElementById('artboard');
   if(artboard){
-    artboard.classList.toggle('pen-mode', t==='pen');
+    artboard.classList.toggle('pen-mode',  t==='pen');
+    artboard.classList.toggle('fill-mode', t==='fill');
     artboard.style.cursor = '';
   }
   // Toggle the path hit overlay (only active in select mode)
@@ -1035,6 +1051,7 @@ function setTool(t){
   if(overlay) overlay.classList.toggle('active', t === 'select');
   if(t==='select'){
     if(_pen.active){ _pen.active=false; _pen.anchors=[]; _pen.dragging=false; _pen.pendingAnchor=null; _clearLivePen(); }
+    if(typeof _fz !== 'undefined' && _fz.isDrawing){ _fz.isDrawing=false; _fz.anchors=[]; _fz.pendingAnchor=null; if(typeof _renderFillZones==='function') _renderFillZones(pages[currentPage]); }
     deselectSticker();
   }
   if(t==='pen'){
@@ -1058,7 +1075,8 @@ function newPage(label){
     imageContrast:   1,   // 1 = 100%, range 0.3–2.0
     imageSaturation: 1,   // 1 = 100%, range 0–3.0
     stickers: [],
-    paths: []
+    paths: [],
+    fillZones: []
   };
 }
 
@@ -1110,6 +1128,8 @@ function duplicatePage(){
   // Give it a new id and label
   clone.id = 'pg'+Date.now()+Math.random().toString(36).slice(2,6);
   clone.label = src.label + ' (copy)';
+  // Give every fill zone a new id
+  (clone.fillZones||[]).forEach(function(z){ z.id = 'fz'+Date.now()+Math.random().toString(36).slice(2,5); });
   // Give every sticker a new id so they don't collide with originals
   const idMap = {};
   (clone.stickers||[]).forEach(function(s){
@@ -1168,6 +1188,8 @@ function renderPage(i){
             : '<div style="width:1500px;height:1129px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px;font-weight:600;letter-spacing:.05em;">Upload an aerial image to get started</div>'}
         </div>
       </div>
+      <!-- Fill zone canvas: soft-edge coloured fills, below everything else -->
+      <canvas id="fill-zone-canvas" width="1500" height="1129"></canvas>
       <!-- Road line canvas: drawn below all layers -->
       <canvas id="road-line-canvas" width="1500" height="1129"></canvas>
       <!-- SVG overlay: ghost outline + pen paths + live drawing -->
@@ -1256,6 +1278,8 @@ function renderPage(i){
   refreshMarkupList();
   // Render road lines on canvas (stored as paths with isRoadLine:true)
   requestAnimationFrame(function(){ _renderRoadLinePaths(p); });
+  // Render fill zones on their dedicated canvas
+  requestAnimationFrame(function(){ _renderFillZones(p); });
 }
 
 function renderPaths(p){
@@ -1269,6 +1293,239 @@ function renderPaths(p){
   return html;
 }
 
+// ── Fill Zone constants, state, and functions ─────────────────────
+const FILL_COLOURS = [
+  {r:23,  g:232, b:143, label:'Green'},
+  {r:83,  g:129, b:132, label:'Teal'},
+  {r:219, g:217, b:154, label:'Yellow'},
+  {r:163, g:136, b:191, label:'Lavender'},
+  {r:136, g:81,  b:116, label:'Plum'},
+  {r:64,  g:125, b:166, label:'Blue'},
+];
+const FILL_ALPHA   = 0.5;
+const FILL_FEATHER = 22;
+let _fz = {
+  isDrawing: false,
+  anchors:   [],
+  dragging:  false,
+  pendingAnchor: null,
+  activeColourIdx: 0,
+  selectedFillId: null,
+};
+
+function _newFillId(){ return 'fz'+Date.now()+Math.random().toString(36).slice(2,5); }
+
+function _renderFillZones(p){
+  const cv = document.getElementById('fill-zone-canvas');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const zones = p.fillZones || [];
+  zones.forEach(function(z){
+    const pts = z.anchors || z.points;
+    if(!pts || pts.length < 3) return;
+    function _bzPath(){
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++){
+        const prev=pts[i-1], curr=pts[i];
+        const cp1=prev.cpOut||prev, cp2=curr.cpIn||curr;
+        ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,curr.x,curr.y);
+      }
+      const last=pts[pts.length-1], first=pts[0];
+      const cp1=last.cpOut||last, cp2=first.cpIn||first;
+      ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,first.x,first.y);
+      ctx.closePath();
+    }
+    ctx.save();
+    ctx.beginPath(); _bzPath(); ctx.clip();
+    const c = FILL_COLOURS[z.colourIdx || 0];
+    ctx.shadowBlur  = FILL_FEATHER * 2;
+    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},${FILL_ALPHA})`;
+    ctx.fillStyle   = `rgba(${c.r},${c.g},${c.b},${FILL_ALPHA})`;
+    ctx.beginPath(); _bzPath();
+    ctx.fill();
+    ctx.restore();
+    if(z.id === _fz.selectedFillId && !document.body.classList.contains('exporting')){
+      ctx.save();
+      ctx.beginPath(); _bzPath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth   = 2;
+      ctx.setLineDash([6,4]);
+      ctx.stroke();
+      ctx.restore();
+    }
+  });
+  if(_fz.isDrawing && _fz.anchors.length > 0 && tool === 'fill'){
+    ctx.save();
+    const c = FILL_COLOURS[_fz.activeColourIdx];
+    const a = _fz.anchors;
+    ctx.beginPath();
+    ctx.moveTo(a[0].x, a[0].y);
+    for(let i=1;i<a.length;i++){
+      const prev=a[i-1], curr=a[i];
+      const cp1=prev.cpOut||prev, cp2=curr.cpIn||curr;
+      ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,curr.x,curr.y);
+    }
+    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.8)`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5,4]);
+    ctx.stroke();
+    a.forEach(function(pt){
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 5, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},1)`;
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+}
+
+function _fillZoneMousedown(e){
+  if(tool !== 'fill') return;
+  const pt = artboardPt(e);
+  if(!pt) return;
+  const x = pt.x, y = pt.y;
+  if(_fz.isDrawing && _fz.anchors.length >= 3){
+    const first = _fz.anchors[0];
+    const dist  = Math.hypot(x - first.x, y - first.y);
+    if(dist < 22){ _finaliseFillZone(); return; }
+  }
+  if(!_fz.isDrawing){ _fz.isDrawing = true; _fz.anchors = []; _fz.dragging=false; _fz.pendingAnchor=null; }
+  const anchor = {x, y, cpIn:null, cpOut:null};
+  _fz.pendingAnchor = anchor;
+  _fz.anchors.push(anchor);
+  _renderFillZones(pages[currentPage]);
+}
+
+function _fillZoneMousemove(e){
+  if(tool !== 'fill' || !_fz.isDrawing || !_fz.pendingAnchor) return;
+  const pt = artboardPt(e);
+  if(!pt) return;
+  const anchor = _fz.pendingAnchor;
+  const dx = pt.x - anchor.x, dy = pt.y - anchor.y;
+  const dist = Math.hypot(dx, dy);
+  if(dist > 4){
+    anchor.cpOut = {x: anchor.x + dx, y: anchor.y + dy};
+    anchor.cpIn  = {x: anchor.x - dx, y: anchor.y - dy};
+    _renderFillZones(pages[currentPage]);
+  }
+}
+
+function _fillZoneMouseup(e){
+  if(tool !== 'fill') return;
+  _fz.pendingAnchor = null;
+}
+
+function _fillZoneDblclick(e){
+  if(tool !== 'fill' || !_fz.isDrawing || _fz.anchors.length < 3) return;
+  e.preventDefault();
+  _fz.anchors.pop();
+  _finaliseFillZone();
+}
+
+function _finaliseFillZone(){
+  if(_fz.anchors.length < 3){ _fz.isDrawing=false; _fz.anchors=[]; return; }
+  pushUndo();
+  const zone = {
+    id: _newFillId(),
+    anchors: _fz.anchors.slice(),
+    colourIdx: _fz.activeColourIdx,
+  };
+  if(!pages[currentPage].fillZones) pages[currentPage].fillZones = [];
+  pages[currentPage].fillZones.push(zone);
+  _fz.isDrawing = false;
+  _fz.anchors   = [];
+  _fz.pendingAnchor = null;
+  setTool('select');
+  _fz.selectedFillId = zone.id;
+  _renderFillZones(pages[currentPage]);
+  _showFillProps(zone);
+  refreshMarkupList();
+  scheduleSave();
+}
+
+function _showFillProps(zone){
+  if(!zone) return;
+  const scroll = document.getElementById('props-scroll');
+  if(!scroll) return;
+  const zid = zone.id;
+  const anchorCount = (zone.anchors||zone.points||[]).length;
+  const badge = '<span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0/15</span>';
+  const swatches = FILL_COLOURS.map(function(c,i){
+    const sel = i === (zone.colourIdx||0);
+    return '<div data-zid="'+zid+'" data-ci="'+i+'" onclick="_fillSwatchClick(this)" style="'
+      +'width:30px;height:30px;border-radius:50%;cursor:pointer;flex-shrink:0;'
+      +'background:rgb('+c.r+','+c.g+','+c.b+');'
+      +'border:3px solid '+(sel?'#fff':'rgba(0,0,0,0)')+';'
+      +'box-shadow:'+(sel?'0 0 0 2px #5bbf7a':'none')+';'
+      +'transition:all .15s;"></div>';
+  }).join('');
+  scroll.innerHTML = '<div style="font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Fill Zone</div>'
+    +'<div style="font-size:11px;color:#888;margin-bottom:10px;">'+anchorCount+' anchor points</div>'
+    +'<div style="font-size:10px;color:#555;line-height:1.8;margin-bottom:10px;"><b style="color:#aaa;">Click</b> to select · <b style="color:#aaa;">Double-click</b> to edit anchors.<br><b style="color:#aaa;">Delete</b> key to remove.</div>'
+    +'<label style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Colour</label>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">'+swatches+'</div>'
+    +'<button id="fill-del-btn" class="props-del-btn">Delete Fill Zone</button>'
+    +'<div class="sec" style="margin-top:10px;">Page Markups</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:#555;">All markups</span>'+badge+'</div>'
+    +'<div id="markup-list-scroll" style="display:flex;flex-direction:column;gap:2px;"></div>';
+  var delBtn = document.getElementById('fill-del-btn');
+  if(delBtn) delBtn.addEventListener('click', function(){ _deleteFillZone(zid); });
+  refreshMarkupList();
+}
+
+function _fillSwatchClick(el){ _fillSetColour(el.dataset.zid, parseInt(el.dataset.ci)); }
+
+function _fillSetColour(zoneId, colourIdx){
+  const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===zoneId; });
+  if(!z) return;
+  pushUndo();
+  z.colourIdx = colourIdx;
+  _renderFillZones(pages[currentPage]);
+  _showFillProps(z);
+  scheduleSave();
+}
+
+function _deleteFillZone(zoneId){
+  pushUndo();
+  pages[currentPage].fillZones = (pages[currentPage].fillZones||[]).filter(function(z){ return z.id!==zoneId; });
+  _fz.selectedFillId = null;
+  _renderFillZones(pages[currentPage]);
+  showProps(null);
+  scheduleSave();
+}
+
+function _selectFillZone(zid){
+  const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===zid; });
+  if(!z) return;
+  deselectSticker();
+  deselectPath();
+  _fz.selectedFillId = zid;
+  _renderFillZones(pages[currentPage]);
+  _showFillProps(z);
+}
+
+function _fillZoneHitTest(x, y){
+  const zones = pages[currentPage].fillZones || [];
+  for(let i=zones.length-1;i>=0;i--){
+    const pts = zones[i].anchors || zones[i].points;
+    if(_pointInPolygon(x,y,pts)){
+      _selectFillZone(zones[i].id);
+      return true;
+    }
+  }
+  return false;
+}
+
+function _pointInPolygon(x, y, pts){
+  let inside = false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i].x, yi=pts[i].y, xj=pts[j].x, yj=pts[j].y;
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+// ── End Fill Zone ─────────────────────────────────────────────────
 function _renderRoadLinePaths(p){
   var cv = document.getElementById('road-line-canvas');
   if(!cv) return;
@@ -1424,9 +1681,7 @@ function anchorsToPathEl(path, _pathIdx=0){
   for(let i=1;i<a.length;i++){
     const prev = a[i-1];
     const curr = a[i];
-    // cp1 = outgoing handle of prev anchor (reflected from cpIn, or same as point if none)
     const cp1 = prev.cpOut || prev;
-    // cp2 = incoming handle of curr anchor (mirror of cpOut, or same as point)
     const cp2 = curr.cpIn  || curr;
     d += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${curr.x} ${curr.y}`;
   }
@@ -1437,13 +1692,12 @@ function anchorsToPathEl(path, _pathIdx=0){
     const cp2  = curr.cpIn  || curr;
     d += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${curr.x} ${curr.y} Z`;
   }
-  // Glow is rendered via canvas (_renderCanvasGlows) after DOM insertion.
-  // Just return a placeholder glow layer + the green line.
+
+  // Standard boundary line
   const line = `<path fill="none" stroke="${PEN_COLOUR}" stroke-width="${PEN_WIDTH}"
     stroke-linecap="round" stroke-linejoin="round"
     d="${d}" style="pointer-events:visiblePainted;cursor:pointer;"
     title="Double-click to edit anchors" class="path-line-layer"/>`;
-
   return `<g class="path-group"><g class="path-glow-layer" style="pointer-events:none;"></g>${line}</g>`;
 }
 
@@ -1644,6 +1898,14 @@ function attachArtboardEvents(pageObj){
       return;
     }
 
+    // ── FILL ZONE TOOL ──
+    if(tool==='fill'){
+      if(onSticker) return;
+      e.preventDefault();
+      _fillZoneMousedown(e);
+      return;
+    }
+
     // ── BEZIER PEN TOOL ──
     if(tool==='pen'){
       if(onSticker) return;
@@ -1755,6 +2017,9 @@ function attachArtboardEvents(pageObj){
       return;
     }
 
+    // ── Fill zone drawing ──
+    if(tool === 'fill' && _fz.isDrawing){ _fillZoneMousemove(e); }
+
     // ── Image pan ──
     if(_imgDrag.active){
       const nowPt=artboardPt(e);
@@ -1825,9 +2090,10 @@ function attachArtboardEvents(pageObj){
     }
     if(_imgResize.active){
       _imgResize.active=false;
-      pages[currentPage].imageUserAdjusted = true; // user has manually resized
+      pages[currentPage].imageUserAdjusted = true;
       scheduleSave();
     }
+    if(tool === 'fill'){ _fillZoneMouseup(e); }
   };
 
   // Click outside the artboard exits pan mode
@@ -1837,21 +2103,26 @@ function attachArtboardEvents(pageObj){
     }
   });
 
-  // Double-click in pen mode = finalise open path
-  // (path dblclick in select mode handled by path-hit-overlay)
+  // Double-click in pen mode = finalise open path; fill mode = finalise fill zone
   artboard.addEventListener('dblclick', e=>{
+    if(tool==='fill'){ _fillZoneDblclick(e); return; }
     if(tool==='pen' && _pen.active && _pen.anchors.length>=2){
       e.preventDefault();
       _finalisePath(false);
     }
   });
 
-  // Escape key = cancel current path
+  // Escape key = cancel current path or fill zone
   document.addEventListener('keydown', _penEscHandler = e=>{
     if(e.key==='Escape'){
       if(tool==='pen' && _pen.active){
         _pen.active=false; _pen.anchors=[]; _pen.dragging=false; _pen.pendingAnchor=null;
         _clearLivePen();
+      }
+      if(tool==='fill' && _fz.isDrawing){
+        _fz.isDrawing=false; _fz.anchors=[]; _fz.pendingAnchor=null;
+        _renderFillZones(pages[currentPage]);
+        setTool('select');
       }
       if(_editPath.active) exitPathEditMode();
     }
@@ -2023,7 +2294,8 @@ function deselectPath(){
   selectedPath = -1;
   _updatePathHighlights();
   _renderRoadLinePaths(pages[currentPage]);
-  showProps(null);
+  // Don't wipe props if a fill zone is currently selected
+  if(!_fz.selectedFillId) showProps(null);
 }
 
 function _updatePathHighlights(){
@@ -2314,6 +2586,8 @@ function _attachPathOverlayEvents(){
 
     if(hit < 0){
       if(selectedPath >= 0) deselectPath();
+      // Check for fill zone hit
+      if(tool === 'select' && pt && _fillZoneHitTest(pt.x, pt.y)) return;
       // Handle image pan directly here — no re-dispatch needed
       if(tool === 'select' && pages[currentPage].imageUrl && _imgPanMode){
         e.preventDefault();
@@ -2392,15 +2666,25 @@ function _attachPathOverlayEvents(){
     // If mousedown just handled a selection, consume this click and reset flag
     if(_pathJustSelected){
       _pathJustSelected = false;
-      return; // don't deselect
+      return;
     }
 
     const hit = _hitTestPaths(artboardPt(e));
     if(hit >= 0){
-      // Click on path — keep it selected (double-click enters edit mode)
       if(selectedPath !== hit) selectPath(hit);
     } else {
-      // Clicked empty space — deselect
+      const pt = artboardPt(e);
+      // Check if clicking on a fill zone — don't deselect if so
+      if(pt && _fz.selectedFillId){
+        const zones = pages[currentPage].fillZones || [];
+        const hitFz = zones.find(function(z){
+          const pts = z.anchors || z.points;
+          return pts && _pointInPolygon(pt.x, pt.y, pts);
+        });
+        if(hitFz) return; // keep fill zone selected
+      }
+      // Clicked empty space — deselect everything
+      if(_fz.selectedFillId){ _fz.selectedFillId = null; _renderFillZones(pages[currentPage]); showProps(null); }
       if(_editPath.active) exitPathEditMode();
       if(selectedPath >= 0) deselectPath();
     }
@@ -2422,7 +2706,21 @@ function _attachPathOverlayEvents(){
     } else if(_editPath.active){
       exitPathEditMode();
     } else {
-      // No path hit — enter image pan mode if image exists
+      // Check if double-clicking a fill zone — enter anchor edit mode
+      const pt = artboardPt(e);
+      if(pt){
+        const zones = pages[currentPage].fillZones || [];
+        for(let i=zones.length-1;i>=0;i--){
+          const pts = zones[i].anchors || zones[i].points;
+          if(pts && _pointInPolygon(pt.x, pt.y, pts)){
+            e.preventDefault(); e.stopPropagation();
+            _selectFillZone(zones[i].id);
+            enterFillZoneEditMode(zones[i].id);
+            return;
+          }
+        }
+      }
+      // No path or fill zone hit — enter image pan mode
       if(pages[currentPage].imageUrl){
         e.preventDefault();
         e.stopPropagation();
@@ -2471,6 +2769,41 @@ function _svgDblClick(e){ /* replaced by _attachPathOverlayEvents */ }
 // PATH EDIT MODE — double-click a path to enter, Esc/click-away to exit
 // ═══════════════════════════════════════════════════════════════
 
+let _fzEditId = null;
+let _fzTempPathIdx = -1;
+
+function enterFillZoneEditMode(zid){
+  exitFillZoneEditMode();
+  const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===zid; });
+  if(!z) return;
+  _fzEditId = zid;
+  const tempPath = {
+    anchors: JSON.parse(JSON.stringify(z.anchors||[])),
+    closed: true,
+    isRoadLine: false,
+    _isFillZoneEdit: true,
+    _fillZoneId: zid
+  };
+  pages[currentPage].paths.push(tempPath);
+  _fzTempPathIdx = pages[currentPage].paths.length - 1;
+  enterPathEditMode(_fzTempPathIdx);
+}
+
+function exitFillZoneEditMode(){
+  if(_fzEditId === null || _fzTempPathIdx < 0) return;
+  const tempPath = pages[currentPage].paths[_fzTempPathIdx];
+  if(tempPath && tempPath._isFillZoneEdit){
+    const z = (pages[currentPage].fillZones||[]).find(function(z){ return z.id===_fzEditId; });
+    if(z) z.anchors = JSON.parse(JSON.stringify(tempPath.anchors));
+    pages[currentPage].paths.splice(_fzTempPathIdx, 1);
+  }
+  _fzEditId = null;
+  _fzTempPathIdx = -1;
+  exitPathEditMode();
+  _renderFillZones(pages[currentPage]);
+  scheduleSave();
+}
+
 function enterPathEditMode(pathIdx){
   _editPath.active = true;
   _editPath.pathIdx = pathIdx;
@@ -2483,21 +2816,23 @@ function enterPathEditMode(pathIdx){
 }
 
 function exitPathEditMode(){
+  // If editing a fill zone, sync anchors back first
+  if(_fzEditId !== null && _fzTempPathIdx >= 0){
+    exitFillZoneEditMode();
+    return;
+  }
   _editPath.active = false;
   _editPath.pathIdx = -1;
   _editPath.draggingAnchorIdx = -1;
   _editPath.draggingHandle = null;
   const artboard = document.getElementById('artboard');
   if(artboard) artboard.classList.remove('path-edit-mode');
-  // Remove HTML handle layer and canvas
   const hl = document.getElementById('path-edit-html-layer');
   if(hl) hl.remove();
   const hc = document.getElementById('path-edit-canvas');
   if(hc) hc.remove();
-  // Also remove old SVG group if it exists
   const svgLayer = document.getElementById('path-edit-layer');
   if(svgLayer) svgLayer.remove();
-  // Re-render paths
   const svg = document.getElementById('ab-svg');
   const p   = pages[currentPage];
   if(svg){
@@ -3088,7 +3423,7 @@ function deselectSticker(){
   selectedSticker = null;
   selectedStickers.clear();
   document.querySelectorAll('.markup-sticker').forEach(el=>el.classList.remove('selected','multi-selected'));
-  showProps(null);
+  if(!_fz.selectedFillId) showProps(null);
   refreshMarkupList();
 }
 
@@ -3423,9 +3758,10 @@ function refreshMarkupList(){
   const scroll = document.getElementById('markup-list-scroll');
   const badge  = document.getElementById('markup-count-badge');
   if(!scroll) return;
-  const stickers = (pages[currentPage]&&pages[currentPage].stickers)||[];
-  const paths    = (pages[currentPage]&&pages[currentPage].paths)||[];
-  const totalCount = stickers.length + paths.length;
+  const stickers  = (pages[currentPage]&&pages[currentPage].stickers)||[];
+  const paths     = (pages[currentPage]&&pages[currentPage].paths)||[];
+  const fillZones = (pages[currentPage]&&pages[currentPage].fillZones)||[];
+  const totalCount = stickers.length + paths.length + fillZones.length;
   if(badge){
     badge.textContent = `${stickers.length} / ${MAX_MARKUPS}`;
     badge.style.background = stickers.length>=MAX_MARKUPS ? '#3a1515' : '#242424';
@@ -3466,6 +3802,19 @@ function refreshMarkupList(){
     </div>`;
   }).join('');
 
+  // Build fill zone rows
+  html += fillZones.map((z,zi)=>{
+    const hl = _fz.selectedFillId === z.id;
+    const c  = FILL_COLOURS[z.colourIdx||0];
+    return `<div class="ml-item${hl?' highlighted':''}" data-fzi="${zi}" data-fzid="${z.id}" data-type="fillzone">
+      <span style="font-size:11px;flex-shrink:0;width:18px;text-align:center;">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:rgb(${c.r},${c.g},${c.b});vertical-align:middle;"></span>
+      </span>
+      <span class="ml-path-label" style="flex:1;font-size:10px;color:#aaa;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Fill Zone (${(z.anchors||z.points||[]).length} pts)</span>
+      <button class="ml-del-btn" data-fzid="${z.id}" title="Delete">✕</button>
+    </div>`;
+  }).join('');
+
   scroll.innerHTML = html;
 
   // Wire sticker row clicks
@@ -3495,6 +3844,19 @@ function refreshMarkupList(){
       attachStickerEvents();
       showProps(null);
       scheduleSave();
+    });
+  });
+
+  // Wire fill zone row clicks
+  scroll.querySelectorAll('.ml-item[data-type="fillzone"]').forEach(row=>{
+    row.addEventListener('mousedown', e=>{
+      if(e.target.classList.contains('ml-del-btn')) return;
+      _selectFillZone(row.dataset.fzid);
+    });
+    const delBtn = row.querySelector('.ml-del-btn');
+    if(delBtn) delBtn.addEventListener('click', e=>{
+      e.stopPropagation();
+      _deleteFillZone(row.dataset.fzid);
     });
   });
 }
@@ -4548,6 +4910,8 @@ document.addEventListener('keydown',e=>{
       deleteSticker(selectedSticker);
     } else if(selectedPath >= 0){
       deleteSelectedPath();
+    } else if(_fz.selectedFillId){
+      _deleteFillZone(_fz.selectedFillId);
     }
   }
 });
