@@ -743,7 +743,7 @@ function setZoom(v){
   zoom=v/100;
   document.getElementById('zoom-pct').textContent=v+'%';
   document.getElementById('zoom-range').value=v;
-  const [sw,sh]=SIZES[currentTab];
+  const [sw,sh]=getTabSize(currentTab);
   const cw=document.getElementById('canvas-wrap');
   cw.style.width=Math.round(sw*zoom)+'px';
   cw.style.height=Math.round(sh*zoom)+'px';
@@ -3203,27 +3203,27 @@ function buildAFR10x7(W,H){
   mkR(669,8,307,362,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkSVGLogo(19,8,123,55,SVG_CBRE_WHITE,'cbre-white',{z:200});
   mkR(159,35,607,3,'rgb(23, 232, 143)',{z:3});
-  mkT(740,29,226,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
-  mkT(821,48,145,12,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
-  mkI(19,73,380,277,'img1','img1',{z:2});
-  mkI(406,73,247,135,'img2','img2',{z:2});
-  mkI(406,215,247,135,'img3','img3',{z:2});
-  mkT(437,331,216,20,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
-  mkT(19,360,300,10,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35'});
-  mkT(682,67,282,52,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1',field:'heading'});
-  mkI(903,111,90,35,'logo','logo',{z:3});
-  mkT(682,127,275,12,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'subheading'});
+  mkT(740,29,226,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(821,48,145,12,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkI(19,73,380,277,'img1','Image',{z:2});
+  mkI(406,73,247,135,'img2','Image',{z:2});
+  mkI(406,215,247,135,'img3','Image',{z:2});
+  mkBanner(437,331,216,20,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
+  mkT(19,360,300,10,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
+  mkT(682,67,282,52,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(903,111,90,35,'logo','Image',{z:3});
+  mkT(682,127,275,12,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
   mkT(682,150,282,136,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
-  mkT(682,292,230,12,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'salemethod'});
-  mkT(682,307,230,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'saledate'});
+  mkT(682,292,230,12,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
+  mkT(682,307,230,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
   mkR(682,325,283,1.5,'rgb(1, 42, 45)',{z:3});
   mkI(915,269,48,48,'','Image',{z:3});
-  mkT(682,333,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
-  mkT(682,348,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
-  mkT(783,333,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
-  mkT(783,348,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
-  mkT(882,333,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
-  mkT(882,348,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+  mkT(682,333,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(682,348,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(783,333,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(783,348,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(882,333,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(882,348,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
 }
 
 
@@ -3232,24 +3232,24 @@ function buildAFRM3x3WA(W,H){
   mkR(8,110,493,230,'rgb(255, 255, 255)',{z:1,locked:'1'});
   mkSVGLogo(19,8,100,40,SVG_CBRE_WHITE,'cbre-white',{z:200});
   mkR(132,27,168,2,'rgb(23, 232, 143)',{z:3});
-  mkT(268,21,230,19,gv('fm')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
-  mkT(288,40,210,16,gv('fa1')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
-  mkT(19,70,476,36,gv('fh')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1.1',field:'heading'});
-  mkI(14,116,255,152,'img1','img1',{z:2});
-  mkT(119,248,150,20,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
+  mkT(268,21,230,19,gv('fm')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(288,40,210,16,gv('fa1')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkT(19,70,476,36,gv('fh')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(14,116,255,152,'img1','Image',{z:2});
+  mkBanner(119,248,150,20,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
   mkT(278,121,216,157,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
   mkR(19,298,415,1.5,'rgb(1, 42, 45)',{z:3});
-  mkT(19,279,412,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'saledate'});
-  mkT(393,326,44,12,'*Approx',{z:3,color:'rgb(0, 0, 0)',fontSize:'7px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right'});
+  mkT(19,279,412,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
+  mkT(393,326,44,12,'*Approx',{z:3,color:'rgb(0, 0, 0)',fontSize:'7px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right'});
   mkI(448,287,48,48,'','Image',{z:3});
-  mkT(19,305,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
-  mkT(19,320,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
-  mkT(119,305,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
-  mkT(119,320,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
-  mkT(221,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
-  mkT(221,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
-  mkT(320,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
-  mkT(320,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+  mkT(19,305,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(19,320,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(119,305,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(119,320,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(221,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(221,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(320,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(320,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
 }
 
 
@@ -3258,25 +3258,25 @@ function buildAFRM3x6(W,H){
   mkR(573,8,409,331,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkSVGLogo(19,8,113,69,SVG_CBRE_WHITE,'cbre-white',{z:200});
   mkR(156,40,586,3,'rgb(23, 232, 143)',{z:4});
-  mkT(573,35,400,16,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
-  mkT(592,59,382,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
-  mkI(19,83,535,237,'img1','img1',{z:2});
-  mkT(340,300,214,22,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
-  mkT(20,330,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35'});
-  mkT(585,76,317,62,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'28px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1',field:'heading'});
-  mkI(892,85,100,44,'logo','logo',{z:3});
+  mkT(573,35,400,16,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(592,59,382,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkI(19,83,535,237,'img1','Image',{z:2});
+  mkBanner(340,300,214,22,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
+  mkT(20,330,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
+  mkT(585,76,317,62,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'28px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(892,85,100,44,'logo','Image',{z:3});
   mkT(585,145,381,125,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
-  mkT(585,277,340,14,gv('fm')||'',{z:3,color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'salemethod'});
+  mkT(585,277,340,14,gv('fm')||'',{z:3,color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
   mkR(586,297,381,1.5,'rgb(1, 42, 45)',{z:3});
   mkI(918,241,48,48,'','Image',{z:3});
-  mkT(585,304,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
-  mkT(585,319,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
-  mkT(689,304,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
-  mkT(689,319,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
-  mkT(788,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
-  mkT(788,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
-  mkT(889,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
-  mkT(889,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+  mkT(585,304,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(585,319,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(689,304,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(689,319,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(788,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(788,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(889,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(889,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
 }
 
 
@@ -3285,27 +3285,27 @@ function buildAFRT44(W,H){
   mkR(566,9,408,685,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkSVGLogo(19,8,136,74,SVG_CBRE_WHITE,'cbre-white',{z:200});
   mkR(177,44,555,3,'rgb(23, 232, 143)',{z:3});
-  mkT(681,38,278,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
-  mkT(588,63,369,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
-  mkI(19,91,530,356,'img1','img1',{z:2});
-  mkT(298,423,252,27,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
-  mkI(19,456,260,209,'img2','img2',{z:2});
-  mkI(289,456,260,209,'img3','img3',{z:2});
-  mkT(22,681,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35'});
-  mkT(584,84,377,92,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'40px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1.1',field:'heading'});
-  mkI(866,168,117,52,'logo','logo',{z:3});
-  mkT(584,191,311,19,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'subheading'});
-  mkT(584,232,367,302,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'bodycopy',bullets:'1',bulletParaSpacing:'8'});
-  mkT(584,597,300,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'salemethod'});
-  mkT(584,615,300,16,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'saledate'});
+  mkT(681,38,278,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(588,63,369,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkI(19,91,530,356,'img1','Image',{z:2});
+  mkBanner(298,423,252,27,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'5px 10px 4px'});
+  mkI(19,456,260,209,'img2','Image',{z:2});
+  mkI(289,456,260,209,'img3','Image',{z:2});
+  mkT(22,681,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
+  mkT(584,84,377,92,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'40px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(866,168,117,52,'logo','Image',{z:3});
+  mkT(584,191,311,19,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
+  mkT(584,232,367,302,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',bullets:'1',bulletParaSpacing:'8'});
+  mkT(584,597,300,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
+  mkT(584,615,300,16,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
   mkR(584,638,374,2,'rgb(1, 42, 45)',{z:3});
   mkI(883,553,72,71,'','Image',{z:3});
-  mkT(584,652,104,16,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
-  mkT(584,668,104,18,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
-  mkT(701,668,104,18,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
-  mkT(701,652,104,16,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
-  mkT(824,668,104,18,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
-  mkT(824,652,104,16,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+  mkT(584,652,104,16,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(584,668,104,18,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(701,668,104,18,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(701,652,104,16,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(824,668,104,18,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(824,652,104,16,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
 }
 
 
@@ -3710,7 +3710,7 @@ function _rgb(str){
 
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  const [canvasW, canvasH] = SIZES[tabIdx];
+  const [canvasW, canvasH] = getTabSize(tabIdx);
   return new Promise(async (resolve, reject) => {
     const offscreen = document.createElement('div');
     offscreen.style.cssText = ['position:fixed','top:0','left:0','width:'+canvasW+'px','height:'+canvasH+'px','overflow:hidden','z-index:-99999','pointer-events:none','background:'+(tabIdx===4?DK:'#ffffff')].join(';');
@@ -4030,7 +4030,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   if(fonts.length > 0) registerPdfFonts(pdf, fonts);
   const hasFonts = fonts.length > 0;
 
-  const [pxW, pxH] = SIZES[tabIdx];
+  const [pxW, pxH] = getTabSize(tabIdx);
   const scaleX = pageW / pxW;
   const scaleY = pageH / pxH;
 
@@ -4790,7 +4790,7 @@ function copyLayoutToClipboard(){
   const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule','Press Ad 10x7','Press Ad M3x3 WA','Press Ad M3x6','Press Ad T44'];
   const fnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction'];
   const snapshot=serializeTab();
-  const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:SIZES[currentTab],elements:snapshot};
+  const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:getTabSize(currentTab),elements:snapshot};
   const json=JSON.stringify(output,null,2);
   const existing=document.getElementById('copy-layout-dialog');if(existing)existing.remove();
   const overlay=document.createElement('div');overlay.id='copy-layout-dialog';
@@ -5182,7 +5182,7 @@ async function exportEDMSections(){
 
   try{
     const isAsian = (currentTab===3);
-    const [CANVAS_W, CANVAS_H] = SIZES[currentTab]; // 600 x 4387
+    const [CANVAS_W, CANVAS_H] = getTabSize(currentTab); // EDM canvas size
     const EMAIL_W = 600;
     const RENDER_SCALE = 3;
 
