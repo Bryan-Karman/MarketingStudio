@@ -318,6 +318,10 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
     <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
     <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
+    <button class="tab" onclick="switchTab(10,this)">Press Ad 10x7</button>
+    <button class="tab" onclick="switchTab(11,this)">Press Ad M3x3 WA</button>
+    <button class="tab" onclick="switchTab(12,this)">Press Ad M3x6</button>
+    <button class="tab" onclick="switchTab(13,this)">Press Ad T44</button>
   </div>
 </div>
 
@@ -476,9 +480,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420],[210,297]];
-const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction'];
-const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842]];
+const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186]];
+const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule','PressAd10x7','PressAdM3x3WA','PressAdM3x6','PressAdT44'];
+const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703]];
 
 
 // ═══════════════════════════════════
@@ -534,6 +538,92 @@ const _deletedLogos = {};
 // ════════════════════════════════════════
 const UNDO_MAX = 50;
 let undoStacks = {}; // { tabIdx: [snapshot, snapshot, ...] }
+
+// ── Cross-tab element copy/paste ──────────────────────────────────
+let _elClipboard = [];
+
+function copySelected(){
+  const els = _selectedEls.length > 1 ? _selectedEls : (selectedEl ? [selectedEl] : []);
+  if(!els.length) return;
+  _elClipboard = els.map(function(el){
+    const inner = el.querySelector('.el-inner');
+    const img   = el.querySelector('img');
+    return {
+      type:      el.dataset.type || 'text',
+      x:         parseFloat(el.style.left) || 0,
+      y:         parseFloat(el.style.top)  || 0,
+      w:         parseFloat(el.style.width)  || 100,
+      h:         parseFloat(el.style.height) || 30,
+      z:         parseInt(el.style.zIndex)   || 2,
+      innerStyle: inner ? inner.getAttribute('style') : '',
+      content:   inner ? (inner.textContent || '') : '',
+      field:     el.dataset.field || '',
+      assetKey:  el.dataset.assetKey || '',
+      imgSrc:    img ? img.src : '',
+      svgKey:    el.dataset.svgKey || '',
+      banner:    el.dataset.banner || '0',
+      bannerPad: el.dataset.bannerPad || '',
+      bullets:   el.dataset.bullets || '0',
+      bulletParaSpacing: el.dataset.bulletParaSpacing || '0',
+      combinedAgent: el.dataset.combinedAgent || '0',
+    };
+  });
+  const count = _elClipboard.length;
+  const flash = document.createElement('div');
+  flash.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:11px;font-weight:600;padding:7px 16px;border-radius:20px;z-index:99999;pointer-events:none;white-space:nowrap;';
+  flash.textContent='📋 Copied '+count+' element'+(count>1?'s':'')+' — switch tabs and paste with Cmd+V';
+  document.body.appendChild(flash);
+  setTimeout(function(){ if(flash.parentNode) flash.remove(); }, 2500);
+}
+
+function pasteSelected(){
+  if(!_elClipboard.length) return;
+  const OFFSET = 20;
+  deselectAll();
+  const newEls = [];
+  _elClipboard.forEach(function(sv){
+    var el = null;
+    if(sv.type === 'img'){
+      el = mkI(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, sv.assetKey||'', 'Image', {z:sv.z});
+      if(el && sv.imgSrc && !sv.svgKey){
+        const img = el.querySelector('img');
+        if(img) img.src = sv.imgSrc;
+      }
+    } else if(sv.type === 'rect'){
+      // Extract background from innerStyle
+      const bgMatch = (sv.innerStyle||'').match(/background:\s*([^;]+)/);
+      const bg = bgMatch ? bgMatch[1].trim() : 'rgb(0,0,0)';
+      el = mkR(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, bg, {z:sv.z});
+    } else {
+      // text element
+      el = mkT(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, sv.content||'', {z:sv.z, field:sv.field||''});
+      if(el){
+        const inner = el.querySelector('.el-inner');
+        if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
+        el.dataset.banner         = sv.banner;
+        el.dataset.bannerPad      = sv.bannerPad;
+        el.dataset.bullets        = sv.bullets;
+        el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+        el.dataset.combinedAgent  = sv.combinedAgent;
+        if(sv.bullets==='1' && inner) applyBullets(inner, true);
+        if(sv.bulletParaSpacing && sv.bulletParaSpacing!=='0' && inner){
+          applyPlainParaSpacing(inner, parseInt(sv.bulletParaSpacing));
+        }
+      }
+    }
+    if(el){
+      el.dataset.locked = '0'; // pasted elements always unlocked
+      newEls.push(el);
+    }
+  });
+  if(newEls.length===1){
+    selectEl(newEls[0]);
+  } else if(newEls.length>1){
+    newEls.forEach(function(e){ _selectedEls.push(e); e.classList.add('selected'); });
+    selectedEl = newEls[0];
+  }
+  debouncedPersist();
+}
 
 function undoSnapshot(){
   const idx = currentTab;
@@ -668,15 +758,46 @@ function setZoom(v){
 // Calculate and apply the zoom that fits the current tab's height
 // into the visible canvas area, with a small padding margin.
 // Uses requestAnimationFrame to ensure the DOM has painted first.
+// Per-project custom artboard sizes — keyed by tab index, resets on page reload
+// Stored in savedStates so they persist with the project save/load
+let _customSizes = {}; // { tabIdx: [w, h] }
+
+function applyCustomArtboardSize(){
+  const PX_PER_MM = 3.7795;
+  const wEl = document.getElementById('ab-w-input');
+  const hEl = document.getElementById('ab-h-input');
+  if(!wEl || !hEl) return;
+  const wmm = Math.max(10, Math.min(2000, parseFloat(wEl.value)||SIZES[currentTab][0]/PX_PER_MM));
+  const hmm = Math.max(10, Math.min(2000, parseFloat(hEl.value)||SIZES[currentTab][1]/PX_PER_MM));
+  wEl.value = Math.round(wmm*10)/10;
+  hEl.value = Math.round(hmm*10)/10;
+  // Convert to px
+  const w = Math.round(wmm * PX_PER_MM);
+  const h = Math.round(hmm * PX_PER_MM);
+  // Store override for this tab
+  _customSizes[currentTab] = [w, h];
+  // Apply to the artboard immediately
+  const art = document.getElementById('artwork');
+  if(art){ art.style.width=w+'px'; art.style.height=h+'px'; }
+  // Refit zoom
+  fitZoomToTab();
+  // Persist with project
+  debouncedPersist();
+}
+
+function getTabSize(idx){
+  return _customSizes[idx] || SIZES[idx] || [595,842];
+}
+
 function fitZoomToTab(){
   if(currentTab===9) return;
   requestAnimationFrame(()=>{
     if(currentTab===9) return;
-    const [sw,sh]=SIZES[currentTab]||[595,842];
+    const [sw,sh]=getTabSize(currentTab);
     const canvasArea=document.getElementById('canvas-area');
     const availH=canvasArea.clientHeight - 48;
     const availW=canvasArea.clientWidth  - 48;
-    if(availH <= 0 || availW <= 0) return; // not visible yet, skip
+    if(availH <= 0 || availW <= 0) return;
     const zoomH=availH/sh;
     const zoomW=availW/sw;
     const fit=Math.min(zoomH, zoomW);
@@ -958,7 +1079,16 @@ function createElement(cfg){
     if(e.target.classList.contains('crop-img-rh')) return;
     if(el.classList.contains('crop-mode')) return;
     e.stopPropagation();
-    selectElement(el);
+
+    // If this element is already part of a multi-selection and shift is NOT held,
+    // don't re-select (that would clear others) — just let the drag proceed.
+    // If shift IS held, always call selectElement so the toggle logic runs.
+    const alreadyInMulti = _selectedEls.length > 1 && _selectedEls.includes(el);
+    if(!alreadyInMulti || e.shiftKey){
+      selectElement(el, e.shiftKey);
+    }
+    // If shift-click removed this element from selection, stop here
+    if(e.shiftKey && !_selectedEls.includes(el) && selectedEl !== el) return;
 
     const isImg = el.dataset.type==='img';
     const img   = isImg ? el.querySelector('img') : null;
@@ -985,9 +1115,13 @@ function createElement(cfg){
     }
 
     // Capture start positions of all selected elements for group move
-    const groupStarts = (_selectedEls.length > 1 && _selectedEls.includes(el))
-      ? _selectedEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
+    const multiEls = _selectedEls.length > 1 ? _selectedEls : (_selectedEls.length === 1 && _selectedEls[0] !== el ? [..._selectedEls, el] : null);
+    const groupStarts = multiEls
+      ? multiEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
       : null;
+
+    const sx = e.clientX, sy = e.clientY;
+    let committed = false;
 
     function mv(e){
       let dx=e.clientX-sx, dy=e.clientY-sy;
@@ -1028,10 +1162,13 @@ function createElement(cfg){
       if(committed){
         if(shouldPan){
           saveCropData(img);
-          debouncedPersist(); // also persist after panning so position is saved
+          debouncedPersist();
         } else {
           debouncedPersist();
         }
+      } else if(alreadyInMulti && !e.shiftKey){
+        // Click (no drag) on a multi-selected element without shift = collapse to single select
+        selectElement(el, false);
       }
       window.removeEventListener('mousemove',mv);
       window.removeEventListener('mouseup',up);
@@ -1450,11 +1587,43 @@ function _updateCropGhostOverlay(el){
   left.style.cssText   = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.top}px;width:${r.left}px;height:${r.height}px;`;
   right.style.cssText  = `position:fixed;background:rgba(0,0,0,0.6);left:${r.right}px;top:${r.top}px;width:${W - r.right}px;height:${r.height}px;`;
 }
-function selectElement(el){
-  if(selectedEl && selectedEl!==el) selectedEl.classList.remove('selected');
-  selectedEl=el;
-  el.classList.add('selected');
-  showProps(el);
+function selectElement(el, shiftHeld){
+  if(shiftHeld && (selectedEl || _selectedEls.length > 0)){
+    // Build the multi-select set from scratch if needed
+    if(_selectedEls.length === 0 && selectedEl){
+      _selectedEls = [selectedEl];
+    }
+    // Toggle: if already in set, remove it; otherwise add it
+    const idx = _selectedEls.indexOf(el);
+    if(idx > -1){
+      _selectedEls.splice(idx, 1);
+      el.classList.remove('selected');
+      // If only one left, revert to single selection
+      if(_selectedEls.length === 1){
+        selectedEl = _selectedEls[0];
+        _selectedEls = [];
+        showProps(selectedEl);
+      } else if(_selectedEls.length === 0){
+        selectedEl = null;
+        document.getElementById('props-content').innerHTML = emptyPropsHTML();
+      } else {
+        showProps(null); // multi-select: no single props
+      }
+    } else {
+      _selectedEls.push(el);
+      el.classList.add('selected');
+      selectedEl = el; // last clicked is primary
+      showProps(null); // multi-select: no single props
+    }
+  } else {
+    // Normal single select — clear everything first
+    if(selectedEl && selectedEl !== el) selectedEl.classList.remove('selected');
+    _selectedEls.forEach(function(e){ if(e !== el) e.classList.remove('selected'); });
+    _selectedEls = [];
+    selectedEl = el;
+    el.classList.add('selected');
+    showProps(el);
+  }
 }
 
 function deselectAll(){
@@ -1486,9 +1655,31 @@ function emptyPropsHTML(){
   let html='';
   if(_adminMode){
     const mm=PDF_MM[currentTab];
+    const sz=getTabSize(currentTab);
+    const PX_PER_MM = 3.7795;
+    // Show current size in mm (convert from px, round to 1 decimal)
+    const curWmm = mm ? mm[0] : Math.round(sz[0]/PX_PER_MM*10)/10;
+    const curHmm = mm ? mm[1] : Math.round(sz[1]/PX_PER_MM*10)/10;
+    const defWmm = Math.round(SIZES[currentTab][0]/PX_PER_MM*10)/10;
+    const defHmm = Math.round(SIZES[currentTab][1]/PX_PER_MM*10)/10;
     if(mm) html+=`<div style="background:#0d1f17;border:1px solid #1e4a2e;border-radius:3px;padding:7px 10px;margin-bottom:2px;">
-      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">&#9881; Artboard Size</div>
-      <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
+      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">&#9881; Artboard Size <span style="font-weight:400;color:#3a7a4a;font-size:8px;">(this project only)</span></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <div style="flex:1;">
+          <div style="font-size:8px;color:#555;margin-bottom:2px;">WIDTH mm</div>
+          <input type="number" id="ab-w-input" value="${curWmm}" min="10" max="2000" step="0.5"
+            style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #2a3a2a;border-radius:2px;background:#141f14;color:#ccc;outline:none;font-family:inherit;box-sizing:border-box;"
+            onchange="applyCustomArtboardSize()">
+        </div>
+        <div style="color:#555;font-size:12px;margin-top:12px;">×</div>
+        <div style="flex:1;">
+          <div style="font-size:8px;color:#555;margin-bottom:2px;">HEIGHT mm</div>
+          <input type="number" id="ab-h-input" value="${curHmm}" min="10" max="2000" step="0.5"
+            style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #2a3a2a;border-radius:2px;background:#141f14;color:#ccc;outline:none;font-family:inherit;box-sizing:border-box;"
+            onchange="applyCustomArtboardSize()">
+        </div>
+      </div>
+      <div style="font-size:9px;color:#3a6a3a;">Default: ${defWmm}×${defHmm}mm &nbsp;·&nbsp; ${sz[0]}×${sz[1]}px</div>
     </div>`;
   }
   // Marketing Schedule tab — show upload controls
@@ -2107,10 +2298,10 @@ function restoreTab(idx){
   if(!savedStates[idx]) return false;
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
-  const s=SIZES[idx];
+  const s=getTabSize(idx);
   art.style.width=s[0]+'px';
   art.style.height=s[1]+'px';
-  art.style.background=idx===4?DK:'#fff';
+  art.style.background=(idx===4||idx===10||idx===11||idx===12||idx===13)?DK:'#fff';
   art.style.transform=`scale(${zoom})`;
   art.style.transformOrigin='top left';
   art.style.position='absolute';
@@ -2849,11 +3040,11 @@ function buildTemplate(idx){
   if(idx===9){ _renderMarketingScheduleTab(); return; }
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
-  const s=SIZES[idx];
+  const s=getTabSize(idx);
   // Immediately set size + background BEFORE clearing innerHTML to avoid flash
   art.style.width=s[0]+'px';
   art.style.height=s[1]+'px';
-  art.style.background=idx===4?DK:'#fff';
+  art.style.background=(idx===4||idx===10||idx===11||idx===12||idx===13)?DK:'#fff';
   art.style.transform=`scale(${zoom})`;
   art.style.transformOrigin='top left';
   art.style.position='absolute';
@@ -2868,7 +3059,7 @@ function buildTemplate(idx){
   deselectAll();
   document.getElementById('props-content').innerHTML=emptyPropsHTML();
   // For tabs with layout variants, call the selected variant's builder
-  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
+  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44];
   var _variantFn=null;
   if(TAB_LAYOUTS[idx]){
     var _vi=_layoutVariants[idx]||0;
@@ -3006,6 +3197,118 @@ function buildBrochure1(W,H){
   mkSVGLogo(450,17,117,36,SVG_CBRE_GREEN,'cbre-green',{z:200,locked:'1'});
   mkSVGLogo(27,9,137,44,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200,locked:'1'});
 }
+
+function buildAFR10x7(W,H){
+  mkR(0,0,983,378,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(669,8,307,362,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkSVGLogo(19,8,123,55,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkR(159,35,607,3,'rgb(23, 232, 143)',{z:3});
+  mkT(740,29,226,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
+  mkT(821,48,145,12,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
+  mkI(19,73,380,277,'img1','img1',{z:2});
+  mkI(406,73,247,135,'img2','img2',{z:2});
+  mkI(406,215,247,135,'img3','img3',{z:2});
+  mkT(437,331,216,20,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
+  mkT(19,360,300,10,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35'});
+  mkT(682,67,282,52,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1',field:'heading'});
+  mkI(903,111,90,35,'logo','logo',{z:3});
+  mkT(682,127,275,12,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'subheading'});
+  mkT(682,150,282,136,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
+  mkT(682,292,230,12,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'salemethod'});
+  mkT(682,307,230,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'saledate'});
+  mkR(682,325,283,1.5,'rgb(1, 42, 45)',{z:3});
+  mkI(915,269,48,48,'','Image',{z:3});
+  mkT(682,333,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
+  mkT(682,348,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
+  mkT(783,333,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
+  mkT(783,348,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
+  mkT(882,333,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+  mkT(882,348,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+}
+
+
+function buildAFRM3x3WA(W,H){
+  mkR(0,0,509,348,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(8,110,493,230,'rgb(255, 255, 255)',{z:1,locked:'1'});
+  mkSVGLogo(19,8,100,40,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkR(132,27,168,2,'rgb(23, 232, 143)',{z:3});
+  mkT(268,21,230,19,gv('fm')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
+  mkT(288,40,210,16,gv('fa1')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
+  mkT(19,70,476,36,gv('fh')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1.1',field:'heading'});
+  mkI(14,116,255,152,'img1','img1',{z:2});
+  mkT(119,248,150,20,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
+  mkT(278,121,216,157,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
+  mkR(19,298,415,1.5,'rgb(1, 42, 45)',{z:3});
+  mkT(19,279,412,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'saledate'});
+  mkT(393,326,44,12,'*Approx',{z:3,color:'rgb(0, 0, 0)',fontSize:'7px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right'});
+  mkI(448,287,48,48,'','Image',{z:3});
+  mkT(19,305,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
+  mkT(19,320,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
+  mkT(119,305,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
+  mkT(119,320,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
+  mkT(221,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+  mkT(221,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+  mkT(320,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+  mkT(320,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+}
+
+
+function buildAFRM3x6(W,H){
+  mkR(0,0,991,348,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(573,8,409,331,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkSVGLogo(19,8,113,69,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkR(156,40,586,3,'rgb(23, 232, 143)',{z:4});
+  mkT(573,35,400,16,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
+  mkT(592,59,382,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
+  mkI(19,83,535,237,'img1','img1',{z:2});
+  mkT(340,300,214,22,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
+  mkT(20,330,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35'});
+  mkT(585,76,317,62,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'28px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1',field:'heading'});
+  mkI(892,85,100,44,'logo','logo',{z:3});
+  mkT(585,145,381,125,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
+  mkT(585,277,340,14,gv('fm')||'',{z:3,color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'salemethod'});
+  mkR(586,297,381,1.5,'rgb(1, 42, 45)',{z:3});
+  mkI(918,241,48,48,'','Image',{z:3});
+  mkT(585,304,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
+  mkT(585,319,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
+  mkT(689,304,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
+  mkT(689,319,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
+  mkT(788,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+  mkT(788,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+  mkT(889,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+  mkT(889,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+}
+
+
+function buildAFRT44(W,H){
+  mkR(0,0,983,703,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(566,9,408,685,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkSVGLogo(19,8,136,74,SVG_CBRE_WHITE,'cbre-white',{z:200});
+  mkR(177,44,555,3,'rgb(23, 232, 143)',{z:3});
+  mkT(681,38,278,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'salemethod'});
+  mkT(588,63,369,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',textAlign:'right',field:'address1'});
+  mkI(19,91,530,356,'img1','img1',{z:2});
+  mkT(298,423,252,27,gv('fb')||'',{z:5,color:'rgb(255, 255, 255)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1',textAlign:'right',field:'banner',banner:'1'});
+  mkI(19,456,260,209,'img2','img2',{z:2});
+  mkI(289,456,260,209,'img3','img3',{z:2});
+  mkT(22,681,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35'});
+  mkT(584,84,377,92,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'40px',fontFamily:'\"Financier Display\", Georgia, serif',lineHeight:'1.1',field:'heading'});
+  mkI(866,168,117,52,'logo','logo',{z:3});
+  mkT(584,191,311,19,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'subheading'});
+  mkT(584,232,367,302,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'bodycopy',bullets:'1',bulletParaSpacing:'8'});
+  mkT(584,597,300,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'salemethod'});
+  mkT(584,615,300,16,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'saledate'});
+  mkR(584,638,374,2,'rgb(1, 42, 45)',{z:3});
+  mkI(883,553,72,71,'','Image',{z:3});
+  mkT(584,652,104,16,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1name'});
+  mkT(584,668,104,18,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent1num'});
+  mkT(701,668,104,18,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2num'});
+  mkT(701,652,104,16,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent2name'});
+  mkT(824,668,104,18,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3num'});
+  mkT(824,652,104,16,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.35',field:'agent3name'});
+}
+
+
 function buildBrochure2(W,H){
   mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
   mkI(28,65,539,505,'img1','Image',{z:2});
@@ -3523,7 +3826,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         realArt.innerHTML=''; nextId=1;
         realArt.style.width=canvasW+'px'; realArt.style.height=canvasH+'px';
         realArt.style.background=tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
-        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
+        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44];
         var _vFn=null;
         if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
         const _buildFn = _vFn || _allFns[tabIdx];
@@ -4160,6 +4463,7 @@ function collectState(){
   return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmS1:_edmS1,edmS2:_edmS2,edmS3:_edmS3,edmS4:_edmS4,edmS5:_edmS5,edmBtn2:_edmBtn2,edmBtn3:_edmBtn3,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
+    customSizes:JSON.parse(JSON.stringify(_customSizes)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
       fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd'),fn1:gv('fn1'),fp1:gv('fp1'),fn2:gv('fn2'),fp2:gv('fp2'),fn3:gv('fn3'),fp3:gv('fp3'),fn4:gv('fn4'),fp4:gv('fp4')} };
@@ -4173,6 +4477,7 @@ function applyState(data,skipZoom=false){
     setTimeout(function(){ renderImgUploadSlots(); renderLogoUploadSlots(); }, 0);
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
+    if(data.customSizes){ Object.assign(_customSizes, data.customSizes); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
     const _edmMap={edmS1:'fedm-link-s1',edmS2:'fedm-link-s2',edmS3:'fedm-link-s3',edmS4:'fedm-link-s4',edmS5:'fedm-link-s5',edmBtn2:'fedm-link-btn2',edmBtn3:'fedm-link-btn3'};
     Object.keys(_edmMap).forEach(function(k){ if(data[k]!=null){ const el=document.getElementById(_edmMap[k]); if(el) el.value=data[k]; }});
@@ -4482,7 +4787,7 @@ const _origApplyState2=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){_pendingAgentSlots=data.agentSlots;}return result;};
 
 function copyLayoutToClipboard(){
-  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster'];
+  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule','Press Ad 10x7','Press Ad M3x3 WA','Press Ad M3x6','Press Ad T44'];
   const fnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction'];
   const snapshot=serializeTab();
   const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:SIZES[currentTab],elements:snapshot};
