@@ -3712,7 +3712,10 @@ function _rgb(str){
 
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  const [canvasW, canvasH] = getTabSize(tabIdx);
+  // For EDM tabs, always use the standard canvas size — custom artboard resizing
+  // should not affect the PDF capture dimensions (it breaks the html2canvas capture)
+  const isEDMTab = (tabIdx===2||tabIdx===3);
+  const [canvasW, canvasH] = isEDMTab ? (SIZES[tabIdx]||[600,4387]) : getTabSize(tabIdx);
   // Always use white as the offscreen background — the canvas elements
   // draw their own coloured rects on top. Dark bg only for LinkedIn (tab 4).
   const isDarkTab = (tabIdx===4);
@@ -3756,11 +3759,12 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
                 if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
               }
               const lines=_svBVal.split('\n');
-              // Use padding-left + text-indent for proper hanging indent on wrapped lines
+              // Use display:table for reliable hanging indent in html2canvas
               inner.innerHTML=lines.map(l=>{
                 const text=l.startsWith('\u2013 ')?l.slice(2):l;
                 if(!text.trim()) return '<div style="min-height:0.5em;"></div>';
-                return '<div style="padding-left:1em;text-indent:-1em'+mb+'">'+'\u2013 '+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+                const mbStyle=mb?'margin-bottom:'+spacing+'px;':'';
+                return '<div style="display:table;width:100%;'+mbStyle+'"><span style="display:table-cell;width:1em;white-space:nowrap;">\u2013</span><span style="display:table-cell;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
               }).join('');
             } else {
               const _ps=parseFloat(sv.bulletParaSpacing||'0');
@@ -3813,7 +3817,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
             }
             const lines=_bVal.split('\n');
-            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="min-height:0.5em;"></div>';return'<div style="padding-left:1em;text-indent:-1em'+mb+'">'+'\u2013 '+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';}).join('');
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="min-height:0.5em;"></div>';const mbStyle=mb?'margin-bottom:'+spacing+'px;':'';return'<div style="display:table;width:100%;'+mbStyle+'"><span style="display:table-cell;width:1em;white-space:nowrap;">\u2013</span><span style="display:table-cell;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
           } else {
             const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
             // Append income for brochure tabs (0,1) on bullets field
