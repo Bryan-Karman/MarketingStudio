@@ -3712,242 +3712,110 @@ function _rgb(str){
 
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  // Always use the actual canvas size — including any custom artboard resize
   const [canvasW, canvasH] = getTabSize(tabIdx);
-  // Always use white as the offscreen background — the canvas elements
-  // draw their own coloured rects on top. Dark bg only for LinkedIn (tab 4).
   const isDarkTab = (tabIdx===4);
   const bgColor = isDarkTab ? DK : '#ffffff';
+
   return new Promise(async (resolve, reject) => {
-    const offscreen = document.createElement('div');
-    offscreen.style.cssText = ['position:fixed','top:0','left:'+(-canvasW-20)+'px','width:'+canvasW+'px','height:'+canvasH+'px','overflow:visible','z-index:-99999','pointer-events:none','background:'+bgColor].join(';');
-    document.body.appendChild(offscreen);
-    const prevNextId = nextId;
-    const prevTab    = currentTab;
-    nextId    = 1;
-    currentTab = tabIdx;
+    const art = document.getElementById('artwork');
+    if(!art){ reject(new Error('No artwork')); return; }
+
+    // Save current tab state and switch to target tab if needed
+    const prevTab = currentTab;
+    const prevState = savedStates[prevTab] ? JSON.parse(JSON.stringify(savedStates[prevTab])) : null;
+
     try {
-      if(savedStates[tabIdx] && savedStates[tabIdx].length){
-        // Get current income value to decide if income element should show
-        const _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
-        savedStates[tabIdx].forEach(sv => {
-          const el = document.createElement('div');
-          el.className = 'el';
-          el.dataset.type=sv.type; el.dataset.assetKey=sv.assetKey||''; el.dataset.svgKey=sv.svgKey||'';
-          el.dataset.field=sv.field||''; el.dataset.bullets=sv.bullets||'0';
-          el.dataset.combinedAgent=sv.combinedAgent||'0';
-          if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
-          // Skip standalone income element for non-EDM tabs
-          if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
-          // For EDM: hide income element completely — income is appended to bodycopy
-          if(sv.field==='income'){ return; }
-          el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
-          const inner=document.createElement('div'); inner.className='el-inner';
-          inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+(sv.innerStyle||''));
-          // Ensure bullets text wraps rather than clips
-          if(sv.bullets==='1') inner.style.overflow='visible';
-          if(sv.type==='text'){
-            inner.style.overflow='hidden';
-            const content=sv.content!==undefined?sv.content:'';
-            if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
-              const spacing=sv.bulletParaSpacing||'0';
-              const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
-              var _svBVal=content;
-              var _svBFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-              if(sv.field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_svBFi){
-                var _alreadyHas=_svBVal.trim().endsWith(_svBFi);
-                if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
-              }
-              const lines=_svBVal.split('\n');
-              // Use applyBullets-compatible HTML — same as live canvas
-              // dash in fixed-width flex span, text in .bt span
-              const spaceVal=parseFloat(spacing)||0;
-              const _mb2=spaceVal>0?';margin-bottom:'+spaceVal+'px':'';
-              inner.innerHTML=lines.map(l=>{
-                const text=l.startsWith('\u2013 ')?l.slice(2):l;
-                if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
-                return '<div style="display:flex;align-items:baseline'+_mb2+'">'
-                  +'<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>'
-                  +'<span class="bt">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>'
-                  +'</div>';
-              }).join('');
-              inner.style.whiteSpace='normal';
-            } else {
-              const _ps=parseFloat(sv.bulletParaSpacing||'0');
-              const _svFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-              const _svIncome=(sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_svFi);
-              // Income may already be in content (from serializeTab) - don't double-add
-              var _svContent=content;
-              if(_svIncome&&_svContent&&!_svContent.trim().endsWith(_svFi)){
-                _svContent=_svContent+'\n'+_svFi;
-              }
-              if(_ps>0){
-                const _svLines=_svContent.split('\n');
-                inner.innerHTML=_svLines.map(function(l,li){
-                  var isBold=_svIncome&&li===_svLines.length-1;
-                  return '<div class="plain-line" style="display:block;margin-bottom:'+_ps+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
-                }).join('');
-              } else { inner.textContent=_svContent; }
-            }
-          } else if(sv.type==='img'){
-            const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
-            const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
-            inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5';
-            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
-            if(src){
-              const imgEl=document.createElement('img'); imgEl.src=src; imgEl.crossOrigin='anonymous';
-              const _hasRealCrop=sv.cropW&&!isLogo&&!isSvg&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0;
-              if(_hasRealCrop){imgEl.style.cssText='position:absolute;left:'+sv.cropX+';top:'+sv.cropY+';width:'+sv.cropW+';height:'+sv.cropH+';object-fit:fill;display:block;';}
-              else{imgEl.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:'+(isLogo||isSvg?'contain':'cover')+';display:block;';}
-              inner.appendChild(imgEl);
-            }
-          }
-          el.appendChild(inner); offscreen.appendChild(el);
-        });
-        const fieldMap={heading:'fh',subheading:'fs',address1:'fa1',address2:'fa2',banner:'fb',income:'fi',salemethod:'fm',saledate:'fd',bullets:'fbull',bodycopy:'fbc',agent1name:'fn1',agent2name:'fn2',agent3name:'fn3',agent4name:'fn4',agent1num:'fp1',agent2num:'fp2',agent3num:'fp3',agent4num:'fp4'};
-        const phoneMap={agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
-        offscreen.querySelectorAll('.el[data-type="text"]').forEach(el=>{
-          const field=el.dataset.field; if(!field||!fieldMap[field]) return;
-          // Skip standalone income for non-EDM tabs
-          if(field==='income'&&[2,3].indexOf(tabIdx)===-1) return;
-          const val=gv(fieldMap[field])||document.getElementById(fieldMap[field])?.value||'';
-          const inner=el.querySelector('.el-inner'); if(!inner) return;
-          if(el.dataset.combinedAgent==='1'&&phoneMap[field]){const phone=gv(phoneMap[field])||'';inner.textContent=phone?val+' '+phone:(val||'');}
-          else if(el.dataset.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
-            const spacing=el.dataset.bulletParaSpacing||'0';
-            const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
-            // Append income for AFR/Auction tabs (5,6,8) on bullets field
-            var _bVal=val;
-            var _bFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-            if(field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_bFi){
-              _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
-            }
-            const lines=_bVal.split('\n');
-            const _sp3=parseFloat(spacing)||0;
-            const _mb3=_sp3>0?';margin-bottom:'+_sp3+'px':'';
-            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+_mb3+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
-            inner.style.whiteSpace='normal';
-          } else {
-            const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
-            // Append income for brochure tabs (0,1) on bullets field
-            var _pdfVal=val;
-            var _pdfFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-            var _isIncomeBullets=(field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_pdfFi);
-            if(_isIncomeBullets) _pdfVal=_pdfVal?_pdfVal+'\n'+_pdfFi:_pdfFi;
-            if(ps2>0){
-              const lines2=_pdfVal.split('\n');
-              inner.innerHTML=lines2.map(function(l,li){
-                var isBold=_isIncomeBullets&&li===lines2.length-1;
-                return '<div class="plain-line" style="display:block;margin-bottom:'+ps2+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
-              }).join('');
-            } else { inner.textContent=_pdfVal; }
-          }
-        });
-      } else {
-        const realArt=document.getElementById('artwork');
-        const ph=realArt.innerHTML,pw=realArt.style.width,phh=realArt.style.height,pbg=realArt.style.background,pt=realArt.style.transform;
-        realArt.innerHTML=''; nextId=1;
-        realArt.style.width=canvasW+'px'; realArt.style.height=canvasH+'px';
-        realArt.style.background=tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
-        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44];
-        var _vFn=null;
-        if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
-        const _buildFn = _vFn || _allFns[tabIdx];
-        if(typeof _buildFn !== 'function'){ offscreen.innerHTML=''; realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh; realArt.style.background=pbg; realArt.style.transform=pt; return; }
-        _buildFn(canvasW,canvasH);
+      // If not already on this tab, switch to it so the live canvas is correct
+      if(currentTab !== tabIdx){
+        savedStates[currentTab] = serializeTab();
+        currentTab = tabIdx;
+        if(savedStates[tabIdx] && savedStates[tabIdx].length){
+          restoreTab(tabIdx);
+        } else {
+          buildTemplate(tabIdx);
+        }
         globalSync();
-        offscreen.innerHTML=realArt.innerHTML;
-        realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
-        realArt.style.background=pbg; realArt.style.transform=pt;
+        // Wait for images to load and layout to settle
+        await new Promise(r=>setTimeout(r,400));
       }
-      // Pre-convert SVG images to PNG canvas so html2canvas can render them
-      await Promise.all([...offscreen.querySelectorAll('.el[data-type="img"] img')].map(img=>new Promise(resolve=>{
-        if(!img.src||!img.src.startsWith('data:image/svg')){resolve();return;}
-        const el=img.closest('.el');
-        const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
-        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
-        const svgImg=new Image();
-        svgImg.onload=function(){
-          const c=document.createElement('canvas');c.width=cw;c.height=ch;
-          const ctx=c.getContext('2d');
-          // Use contain fit for SVG logos
-          const nw=svgImg.naturalWidth||cw,nh=svgImg.naturalHeight||ch;
-          const s=Math.min(cw/nw,ch/nh);
-          const dw=nw*s,dh=nh*s,dx=(cw-dw)/2,dy=(ch-dh)/2;
-          ctx.drawImage(svgImg,dx,dy,dw,dh);
-          c.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
-          img.closest('.el-inner').style.background='transparent';
-          img.replaceWith(c);
-          resolve();
-        };
-        svgImg.onerror=function(){resolve();};
-        svgImg.src=img.src;
-      })));
-      const allImgEls=[...offscreen.querySelectorAll('.el[data-type="img"] .el-inner')];
-      await Promise.all(allImgEls.map(inner=>new Promise(resolve=>{
-        const img=inner.querySelector('img');
-        if(!img||!img.src){resolve();return;}
-        const el=inner.closest('.el');
-        const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
-        const fit=img.style.objectFit||'cover';
-        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
-        const loader=new Image(cw,ch);
-        // Only set crossOrigin for external URLs, not data URLs (data URLs don't need CORS)
-        if(!img.src.startsWith('data:')) loader.crossOrigin='anonymous';
-        loader.onload=function(){
-          const c=document.createElement('canvas'); c.width=cw; c.height=ch;
-          const ctx=c.getContext('2d'); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
-          const nw=loader.naturalWidth>0?loader.naturalWidth:cw,nh=loader.naturalHeight>0?loader.naturalHeight:ch;
-          let dx,dy,dw,dh;
-          if(fit==='fill'&&!img.style.width.includes('%')&&parseFloat(img.style.width)>0){
-            const il=parseFloat(img.style.left)||0,it=parseFloat(img.style.top)||0,iw=parseFloat(img.style.width)||fw,ih=parseFloat(img.style.height)||fh;
-            dw=iw*SCALE;dh=ih*SCALE;dx=il*SCALE;dy=it*SCALE;
-          } else if(fit==='contain'){const s=Math.min(cw/nw,ch/nh);dw=nw*s;dh=nh*s;dx=(cw-dw)/2;dy=(ch-dh)/2;}
-          else{const s=Math.max(cw/nw,ch/nh);dw=nw*s;dh=nh*s;dx=(cw-dw)/2;dy=(ch-dh)/2;}
-          try{ctx.drawImage(loader,dx,dy,dw,dh);}catch(e){resolve();return;}
-          c.style.cssText='position:absolute;left:0;top:0;width:'+fw+'px;height:'+fh+'px;display:block;';
-          inner.style.background='transparent'; img.replaceWith(c); resolve();
-        };
-        loader.onerror=function(){
-          // On CORS failure for external URL, try without crossOrigin
-          if(loader.crossOrigin){
-            const loader2=new Image(cw,ch);
-            loader2.onload=function(){
-              const c=document.createElement('canvas'); c.width=cw; c.height=ch;
-              const ctx=c.getContext('2d');
-              const nw=loader2.naturalWidth>0?loader2.naturalWidth:cw,nh=loader2.naturalHeight>0?loader2.naturalHeight:ch;
-              const s=fit==='contain'?Math.min(cw/nw,ch/nh):Math.max(cw/nw,ch/nh);
-              const dw=nw*s,dh=nh*s,dx=(cw-dw)/2,dy=(ch-dh)/2;
-              try{ctx.drawImage(loader2,dx,dy,dw,dh);}catch(e){resolve();return;}
-              c.style.cssText='position:absolute;left:0;top:0;width:'+fw+'px;height:'+fh+'px;display:block;';
-              inner.style.background='transparent'; img.replaceWith(c); resolve();
-            };
-            loader2.onerror=function(){resolve();};
-            loader2.src=img.src;
-          } else { resolve(); }
-        };
-        setTimeout(resolve,10000);
-        loader.src=img.src;
-      })));
+
+      // Temporarily remove transform/scale so html2canvas captures at 1:1
+      const prevTransform = art.style.transform;
+      const prevTop = art.style.top;
+      const prevLeft = art.style.left;
+      art.style.transform = 'none';
+      art.style.top = '0';
+      art.style.left = '0';
+
+      // Move artwork temporarily to a fixed position so html2canvas can see it
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:fixed;top:0;left:0;width:'+canvasW+'px;height:'+canvasH+'px;overflow:visible;z-index:-99999;pointer-events:none;background:'+bgColor+';';
+      document.body.appendChild(wrapper);
+      wrapper.appendChild(art);
+
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:bgColor,logging:false,width:canvasW,height:canvasH,windowWidth:canvasW+200,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
-      const imgData=canvas.toDataURL('image/jpeg',0.95);
-      // Scale to fit PDF page preserving aspect ratio — don't stretch/squeeze
+
+      const canvas = await html2canvas(wrapper, {
+        scale:3, useCORS:true, allowTaint:true,
+        backgroundColor:bgColor, logging:false,
+        width:canvasW, height:canvasH,
+        windowWidth:canvasW, windowHeight:canvasH,
+        x:0, y:0, scrollX:0, scrollY:0,
+        imageTimeout:15000,
+        ignoreElements: el => el.classList.contains('img-ghost')
+          || el.id==='svg-ghost' || el.id==='ghost-rect'
+          || el.classList.contains('crop-label')
+          || el.classList.contains('crop-img-rh')
+          || el.classList.contains('assist-btn')
+          || (el.classList.contains('rh') && !el.closest('.crop-mode'))
+      });
+
+      // Put artwork back
+      const canvasArea = document.getElementById('canvas-area') || document.getElementById('canvas-wrap')?.parentElement;
+      const canvasWrap = document.getElementById('canvas-wrap');
+      if(canvasWrap) canvasWrap.appendChild(art);
+      else document.body.appendChild(art);
+      document.body.removeChild(wrapper);
+
+      // Restore transform
+      art.style.transform = prevTransform;
+      art.style.top = prevTop;
+      art.style.left = prevLeft;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      // Scale to fit PDF page preserving aspect ratio
       const canvasAspect = canvasW / canvasH;
       const pageAspect   = pageW / pageH;
       let drawW = pageW, drawH = pageH, drawX = 0, drawY = 0;
       if(Math.abs(canvasAspect - pageAspect) > 0.01){
-        // Fit width, adjust height
         drawH = pageW / canvasAspect;
         drawY = (pageH - drawH) / 2;
       }
       pdf.addImage(imgData,'JPEG',drawX,drawY,drawW,drawH,undefined,'FAST');
+
+      // Restore previous tab if we switched
+      if(prevTab !== tabIdx){
+        currentTab = prevTab;
+        if(prevState) savedStates[prevTab] = prevState;
+        if(savedStates[prevTab] && savedStates[prevTab].length) restoreTab(prevTab);
+        else buildTemplate(prevTab);
+        globalSync();
+      }
+
       resolve();
-    } catch(err){ reject(err); }
-    finally {
-      if(offscreen&&offscreen.parentNode) document.body.removeChild(offscreen);
-      document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
-      nextId=prevNextId; currentTab=prevTab;
+    } catch(err){
+      // Ensure artwork is restored on error
+      const canvasWrap = document.getElementById('canvas-wrap');
+      if(canvasWrap && !canvasWrap.contains(art)) canvasWrap.appendChild(art);
+      const wrapper2 = document.querySelector('div[style*="z-index:-99999"]');
+      if(wrapper2 && wrapper2.parentNode) wrapper2.parentNode.removeChild(wrapper2);
+      art.style.transform = art.style.transform || '';
+      if(prevTab !== tabIdx){
+        currentTab = prevTab;
+        if(savedStates[prevTab] && savedStates[prevTab].length) restoreTab(prevTab);
+        else buildTemplate(prevTab);
+      }
+      reject(err);
     }
   });
 }
