@@ -4052,6 +4052,13 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
 async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
+  // EDM tabs (2 & 3) are too complex for the native text renderer —
+  // they have images, video thumbnails, logos, coloured bands.
+  // Always use the raster (html2canvas) renderer for them.
+  if(tabIdx === 2 || tabIdx === 3){
+    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
+  }
+
   let fonts = [];
   try { fonts = await loadPdfFonts(); } catch(e){ console.warn('Font load error',e); }
   if(fonts.length > 0) registerPdfFonts(pdf, fonts);
