@@ -3744,6 +3744,8 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
           const inner=document.createElement('div'); inner.className='el-inner';
           inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+(sv.innerStyle||''));
+          // Ensure bullets text wraps rather than clips
+          if(sv.bullets==='1') inner.style.overflow='visible';
           if(sv.type==='text'){
             inner.style.overflow='hidden';
             const content=sv.content!==undefined?sv.content:'';
@@ -3757,18 +3759,19 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
                 if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
               }
               const lines=_svBVal.split('\n');
-              // Build bullet HTML with hanging indent
-              // Each line: dash fixed-width left, text indented right
+              // Use applyBullets-compatible HTML — same as live canvas
+              // dash in fixed-width flex span, text in .bt span
               const spaceVal=parseFloat(spacing)||0;
+              const _mb2=spaceVal>0?';margin-bottom:'+spaceVal+'px':'';
               inner.innerHTML=lines.map(l=>{
                 const text=l.startsWith('\u2013 ')?l.slice(2):l;
-                if(!text.trim()) return '<div style="height:'+(spaceVal||4)+'px;"></div>';
-                const mbStyle=spaceVal>0?'margin-bottom:'+spaceVal+'px;':'';
-                return '<div style="'+mbStyle+'overflow:hidden;">'
-                  +'<span style="float:left;width:1em;margin-right:0.2em;">\u2013</span>'
-                  +'<span style="display:block;overflow:hidden;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>'
+                if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+                return '<div style="display:flex;align-items:baseline'+_mb2+'">'
+                  +'<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>'
+                  +'<span class="bt">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>'
                   +'</div>';
               }).join('');
+              inner.style.whiteSpace='normal';
             } else {
               const _ps=parseFloat(sv.bulletParaSpacing||'0');
               const _svFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
@@ -3820,8 +3823,10 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
             }
             const lines=_bVal.split('\n');
-            const _sp2=parseFloat(spacing)||0;
-            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="height:'+(_sp2||4)+'px;"></div>';const mbStyle=_sp2>0?'margin-bottom:'+_sp2+'px;':'';return'<div style="'+mbStyle+'overflow:hidden;"><span style="float:left;width:1em;margin-right:0.2em;">\u2013</span><span style="display:block;overflow:hidden;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+            const _sp3=parseFloat(spacing)||0;
+            const _mb3=_sp3>0?';margin-bottom:'+_sp3+'px':'';
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+_mb3+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+            inner.style.whiteSpace='normal';
           } else {
             const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
             // Append income for brochure tabs (0,1) on bullets field
