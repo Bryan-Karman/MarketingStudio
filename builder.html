@@ -3755,6 +3755,35 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
 
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
 
+      // Pre-convert SVG data URL images to canvas elements so html2canvas renders them correctly
+      const svgImgs = [...wrapper.querySelectorAll('.el[data-type="img"] img')].filter(img=>
+        img.src && img.src.startsWith('data:image/svg')
+      );
+      await Promise.all(svgImgs.map(img=>new Promise(resolve=>{
+        const el  = img.closest('.el');
+        const fw  = parseFloat(el.style.width)||100;
+        const fh  = parseFloat(el.style.height)||60;
+        const SCALE = 3;
+        const cw  = Math.round(fw*SCALE), ch = Math.round(fh*SCALE);
+        const tmp = new Image();
+        tmp.onload = function(){
+          const c   = document.createElement('canvas');
+          c.width   = cw; c.height = ch;
+          const ctx = c.getContext('2d');
+          const nw  = tmp.naturalWidth||cw, nh = tmp.naturalHeight||ch;
+          const s   = Math.min(cw/nw, ch/nh);
+          const dw  = nw*s, dh = nh*s;
+          const dx  = (cw-dw)/2, dy = (ch-dh)/2;
+          ctx.drawImage(tmp, dx, dy, dw, dh);
+          c.style.cssText = 'position:absolute;inset:0;width:'+fw+'px;height:'+fh+'px;display:block;';
+          img.closest('.el-inner').style.background = 'transparent';
+          img.replaceWith(c);
+          resolve();
+        };
+        tmp.onerror = resolve;
+        tmp.src = img.src;
+      })));
+
       const canvas = await html2canvas(wrapper, {
         scale:3, useCORS:true, allowTaint:true,
         backgroundColor:bgColor, logging:false,
