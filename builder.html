@@ -3712,10 +3712,8 @@ function _rgb(str){
 
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  // For EDM tabs, always use the standard canvas size — custom artboard resizing
-  // should not affect the PDF capture dimensions (it breaks the html2canvas capture)
-  const isEDMTab = (tabIdx===2||tabIdx===3);
-  const [canvasW, canvasH] = isEDMTab ? (SIZES[tabIdx]||[600,4387]) : getTabSize(tabIdx);
+  // Always use the actual canvas size — including any custom artboard resize
+  const [canvasW, canvasH] = getTabSize(tabIdx);
   // Always use white as the offscreen background — the canvas elements
   // draw their own coloured rects on top. Dark bg only for LinkedIn (tab 4).
   const isDarkTab = (tabIdx===4);
@@ -3759,12 +3757,17 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
                 if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
               }
               const lines=_svBVal.split('\n');
-              // Use display:table for reliable hanging indent in html2canvas
+              // Build bullet HTML with hanging indent
+              // Each line: dash fixed-width left, text indented right
+              const spaceVal=parseFloat(spacing)||0;
               inner.innerHTML=lines.map(l=>{
                 const text=l.startsWith('\u2013 ')?l.slice(2):l;
-                if(!text.trim()) return '<div style="min-height:0.5em;"></div>';
-                const mbStyle=mb?'margin-bottom:'+spacing+'px;':'';
-                return '<div style="display:table;width:100%;'+mbStyle+'"><span style="display:table-cell;width:1em;white-space:nowrap;">\u2013</span><span style="display:table-cell;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+                if(!text.trim()) return '<div style="height:'+(spaceVal||4)+'px;"></div>';
+                const mbStyle=spaceVal>0?'margin-bottom:'+spaceVal+'px;':'';
+                return '<div style="'+mbStyle+'overflow:hidden;">'
+                  +'<span style="float:left;width:1em;margin-right:0.2em;">\u2013</span>'
+                  +'<span style="display:block;overflow:hidden;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>'
+                  +'</div>';
               }).join('');
             } else {
               const _ps=parseFloat(sv.bulletParaSpacing||'0');
@@ -3817,7 +3820,8 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
             }
             const lines=_bVal.split('\n');
-            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="min-height:0.5em;"></div>';const mbStyle=mb?'margin-bottom:'+spacing+'px;':'';return'<div style="display:table;width:100%;'+mbStyle+'"><span style="display:table-cell;width:1em;white-space:nowrap;">\u2013</span><span style="display:table-cell;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+            const _sp2=parseFloat(spacing)||0;
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="height:'+(_sp2||4)+'px;"></div>';const mbStyle=_sp2>0?'margin-bottom:'+_sp2+'px;':'';return'<div style="'+mbStyle+'overflow:hidden;"><span style="float:left;width:1em;margin-right:0.2em;">\u2013</span><span style="display:block;overflow:hidden;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
           } else {
             const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
             // Append income for brochure tabs (0,1) on bullets field
@@ -5073,12 +5077,18 @@ async function downloadPDF(){
   deselectAll();savedStates[currentTab]=serializeTab();
   _pdfFontCache=null;
   try{
-    const mm=PDF_MM[currentTab];const{jsPDF}=window.jspdf;
-    const isLandscape=mm[0]>mm[1];
-    const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
+    const PX_PER_MM=3.7795;
+    // Use actual canvas size (respects custom artboard resize) converted to mm
+    const [pxW,pxH]=getTabSize(currentTab);
+    const mmW=Math.round(pxW/PX_PER_MM*10)/10;
+    const mmH=Math.round(pxH/PX_PER_MM*10)/10;
+    const isLandscape=mmW>mmH;
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mmW,mmH]});
     btn.textContent='Generating…';
-    await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false);
-    pdf.save(`CBRE_${TAB_NAMES[currentTab]}.pdf`);
+    await renderTabToPdf(pdf,currentTab,mmW,mmH,false);
+    const _propSlug=(_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
+    pdf.save(`${_propSlug}_${TAB_NAMES[currentTab]}.pdf`);
   }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
@@ -5105,11 +5115,14 @@ async function downloadAllSelectedPDF(){
   const btn=document.getElementById('dl-all-tb-btn');btn.disabled=true;btn.textContent='Building…';
   deselectAll();savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){btn.disabled=false;btn.textContent='⬇ All PDFs';return;}
+  const PX_PER_MM=3.7795;
+  function getMM(tabIdx){ const [w,h]=getTabSize(tabIdx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
   try{
-    const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
+    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
-    pdf.save('CBRE_All_Selected.pdf');
+    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    const _propSlug=(_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
+    pdf.save(`${_propSlug}_All_Selected.pdf`);
   }catch(err){alert('PDF error: '+err.message);}
   btn.disabled=false;btn.textContent='⬇ All PDFs';
 }
@@ -5119,10 +5132,12 @@ showAllArtworks=async function(){
   savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){alert('No marketing items selected.');return;}
   const btn=document.getElementById('view-all-tb-btn');if(btn){btn.disabled=true;btn.textContent='Building…';}
+  const PX_PER_MM=3.7795;
+  function getMM(tabIdx){ const [w,h]=getTabSize(tabIdx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
   try{
-    const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
+    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
     const blob=pdf.output('blob');const url=URL.createObjectURL(blob);window.open(url,'_blank');
   }catch(err){alert('Error: '+err.message);}
   if(btn){btn.disabled=false;btn.textContent='⊞ View All';}
