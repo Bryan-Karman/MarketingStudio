@@ -2739,13 +2739,15 @@ function getFieldVal(field){
   return map[field]??null;
 }
 
-// When bullets/income/bodycopy change, tabs that expand them into
-// multiple unlabelled elements need a full rebuild on next visit.
-// We clear their savedStates so buildTemplate() runs fresh.
+// When bullets/income/bodycopy change, sync field values into other tabs'
+// saved states rather than deleting them (deleting causes layout resets)
 function onBulletFieldChange(){
-  for(let i=0;i<8;i++){
+  // Update field values in all other saved states so they render correctly
+  // when the user switches to those tabs — WITHOUT wiping the layout
+  for(let i=0;i<14;i++){
     if(i===currentTab) continue;
-    if(savedStates[i]) delete savedStates[i]; // force rebuild on next visit
+    if(i===9) continue; // marketing schedule has no savedState
+    syncTabOnEntry(i);
   }
   globalSync();
 }
@@ -4947,11 +4949,17 @@ function _migrateEDMStates(){
   if(typeof savedStates === 'undefined') return;
   [2,3].forEach(function(ti){
     if(!savedStates[ti]||!savedStates[ti].length) return;
-    var isOld = savedStates[ti].some(function(sv){
+    // Old EDM states had canvas width of 212px — all elements were ≤212px wide
+    // Current canvas is 600px wide, so if max element width < 300 it's old
+    var maxW = 0;
+    savedStates[ti].forEach(function(sv){
       var w = parseFloat(sv.w||0);
-      return w > 0 && w <= 220;
+      if(w > maxW) maxW = w;
     });
-    if(isOld){ console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti); delete savedStates[ti]; }
+    if(maxW > 0 && maxW < 300){
+      console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti);
+      delete savedStates[ti];
+    }
   });
 }
 
