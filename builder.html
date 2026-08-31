@@ -3719,7 +3719,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   const bgColor = isDarkTab ? DK : '#ffffff';
   return new Promise(async (resolve, reject) => {
     const offscreen = document.createElement('div');
-    offscreen.style.cssText = ['position:absolute','top:0','left:'+(-canvasW-20)+'px','width:'+canvasW+'px','height:'+canvasH+'px','overflow:visible','z-index:-99999','pointer-events:none','background:'+bgColor].join(';');
+    offscreen.style.cssText = ['position:fixed','top:0','left:'+(-canvasW-20)+'px','width:'+canvasW+'px','height:'+canvasH+'px','overflow:visible','z-index:-99999','pointer-events:none','background:'+bgColor].join(';');
     document.body.appendChild(offscreen);
     const prevNextId = nextId;
     const prevTab    = currentTab;
@@ -3738,8 +3738,8 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
           // Skip standalone income element for non-EDM tabs
           if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
-          // For EDM: hide income element if no income value (matches live canvas behaviour)
-          if(sv.field==='income'&&[2,3].indexOf(tabIdx)>-1&&!_fiVal){ return; }
+          // For EDM: hide income element completely — income is appended to bodycopy
+          if(sv.field==='income'){ return; }
           el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
           const inner=document.createElement('div'); inner.className='el-inner';
           inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+(sv.innerStyle||''));
@@ -3749,7 +3749,6 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
             if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
               const spacing=sv.bulletParaSpacing||'0';
               const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
-              // Append income for AFR/Auction tabs (5,6,8) on bullets field
               var _svBVal=content;
               var _svBFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
               if(sv.field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_svBFi){
@@ -3757,10 +3756,11 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
                 if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
               }
               const lines=_svBVal.split('\n');
+              // Use padding-left + text-indent for proper hanging indent on wrapped lines
               inner.innerHTML=lines.map(l=>{
                 const text=l.startsWith('\u2013 ')?l.slice(2):l;
-                if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
-                return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+                if(!text.trim()) return '<div style="min-height:0.5em;"></div>';
+                return '<div style="padding-left:1em;text-indent:-1em'+mb+'">'+'\u2013 '+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
               }).join('');
             } else {
               const _ps=parseFloat(sv.bulletParaSpacing||'0');
@@ -3813,7 +3813,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
             }
             const lines=_bVal.split('\n');
-            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="min-height:0.5em;"></div>';return'<div style="padding-left:1em;text-indent:-1em'+mb+'">'+'\u2013 '+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';}).join('');
           } else {
             const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
             // Append income for brochure tabs (0,1) on bullets field
@@ -3917,7 +3917,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         loader.src=img.src;
       })));
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:bgColor,logging:false,width:canvasW,height:canvasH,windowWidth:canvasW+200,windowHeight:canvasH+200,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
+      const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:bgColor,logging:false,width:canvasW,height:canvasH,windowWidth:canvasW+200,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
       const imgData=canvas.toDataURL('image/jpeg',0.95);
       // Scale to fit PDF page preserving aspect ratio — don't stretch/squeeze
       const canvasAspect = canvasW / canvasH;
