@@ -3713,14 +3713,12 @@ function _rgb(str){
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
   const [canvasW, canvasH] = getTabSize(tabIdx);
-  // EDM tabs have dark green background, LinkedIn has dark bg, others white
-  const isEDMTab = (tabIdx===2||tabIdx===3);
+  // Always use white as the offscreen background — the canvas elements
+  // draw their own coloured rects on top. Dark bg only for LinkedIn (tab 4).
   const isDarkTab = (tabIdx===4);
-  const bgColor = (isEDMTab||isDarkTab) ? DK : '#ffffff';
+  const bgColor = isDarkTab ? DK : '#ffffff';
   return new Promise(async (resolve, reject) => {
     const offscreen = document.createElement('div');
-    // Use position:absolute offset far left so it's invisible but fully renderable
-    // position:fixed clips at viewport height — bad for tall EDM (4387px)
     offscreen.style.cssText = ['position:absolute','top:0','left:'+(-canvasW-20)+'px','width:'+canvasW+'px','height:'+canvasH+'px','overflow:visible','z-index:-99999','pointer-events:none','background:'+bgColor].join(';');
     document.body.appendChild(offscreen);
     const prevNextId = nextId;
@@ -3729,6 +3727,8 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
     currentTab = tabIdx;
     try {
       if(savedStates[tabIdx] && savedStates[tabIdx].length){
+        // Get current income value to decide if income element should show
+        const _fiVal = ((document.getElementById('fi')||{}).value||'').trim();
         savedStates[tabIdx].forEach(sv => {
           const el = document.createElement('div');
           el.className = 'el';
@@ -3738,6 +3738,8 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
           // Skip standalone income element for non-EDM tabs
           if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
+          // For EDM: hide income element if no income value (matches live canvas behaviour)
+          if(sv.field==='income'&&[2,3].indexOf(tabIdx)>-1&&!_fiVal){ return; }
           el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
           const inner=document.createElement('div'); inner.className='el-inner';
           inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+(sv.innerStyle||''));
@@ -3917,7 +3919,16 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:bgColor,logging:false,width:canvasW,height:canvasH,windowWidth:canvasW+200,windowHeight:canvasH+200,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
       const imgData=canvas.toDataURL('image/jpeg',0.95);
-      pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'FAST');
+      // Scale to fit PDF page preserving aspect ratio — don't stretch/squeeze
+      const canvasAspect = canvasW / canvasH;
+      const pageAspect   = pageW / pageH;
+      let drawW = pageW, drawH = pageH, drawX = 0, drawY = 0;
+      if(Math.abs(canvasAspect - pageAspect) > 0.01){
+        // Fit width, adjust height
+        drawH = pageW / canvasAspect;
+        drawY = (pageH - drawH) / 2;
+      }
+      pdf.addImage(imgData,'JPEG',drawX,drawY,drawW,drawH,undefined,'FAST');
       resolve();
     } catch(err){ reject(err); }
     finally {
