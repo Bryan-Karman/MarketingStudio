@@ -3713,9 +3713,15 @@ function _rgb(str){
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
   const [canvasW, canvasH] = getTabSize(tabIdx);
+  // EDM tabs have dark green background, LinkedIn has dark bg, others white
+  const isEDMTab = (tabIdx===2||tabIdx===3);
+  const isDarkTab = (tabIdx===4);
+  const bgColor = (isEDMTab||isDarkTab) ? DK : '#ffffff';
   return new Promise(async (resolve, reject) => {
     const offscreen = document.createElement('div');
-    offscreen.style.cssText = ['position:fixed','top:0','left:0','width:'+canvasW+'px','height:'+canvasH+'px','overflow:hidden','z-index:-99999','pointer-events:none','background:'+(tabIdx===4?DK:'#ffffff')].join(';');
+    // Use position:absolute offset far left so it's invisible but fully renderable
+    // position:fixed clips at viewport height — bad for tall EDM (4387px)
+    offscreen.style.cssText = ['position:absolute','top:0','left:'+(-canvasW-20)+'px','width:'+canvasW+'px','height:'+canvasH+'px','overflow:visible','z-index:-99999','pointer-events:none','background:'+bgColor].join(';');
     document.body.appendChild(offscreen);
     const prevNextId = nextId;
     const prevTab    = currentTab;
@@ -3870,7 +3876,9 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
         const fit=img.style.objectFit||'cover';
         const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
-        const loader=new Image(cw,ch); loader.crossOrigin='anonymous';
+        const loader=new Image(cw,ch);
+        // Only set crossOrigin for external URLs, not data URLs (data URLs don't need CORS)
+        if(!img.src.startsWith('data:')) loader.crossOrigin='anonymous';
         loader.onload=function(){
           const c=document.createElement('canvas'); c.width=cw; c.height=ch;
           const ctx=c.getContext('2d'); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
@@ -3885,12 +3893,29 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           c.style.cssText='position:absolute;left:0;top:0;width:'+fw+'px;height:'+fh+'px;display:block;';
           inner.style.background='transparent'; img.replaceWith(c); resolve();
         };
-        loader.onerror=function(){resolve();};
-        setTimeout(resolve,8000);
+        loader.onerror=function(){
+          // On CORS failure for external URL, try without crossOrigin
+          if(loader.crossOrigin){
+            const loader2=new Image(cw,ch);
+            loader2.onload=function(){
+              const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+              const ctx=c.getContext('2d');
+              const nw=loader2.naturalWidth>0?loader2.naturalWidth:cw,nh=loader2.naturalHeight>0?loader2.naturalHeight:ch;
+              const s=fit==='contain'?Math.min(cw/nw,ch/nh):Math.max(cw/nw,ch/nh);
+              const dw=nw*s,dh=nh*s,dx=(cw-dw)/2,dy=(ch-dh)/2;
+              try{ctx.drawImage(loader2,dx,dy,dw,dh);}catch(e){resolve();return;}
+              c.style.cssText='position:absolute;left:0;top:0;width:'+fw+'px;height:'+fh+'px;display:block;';
+              inner.style.background='transparent'; img.replaceWith(c); resolve();
+            };
+            loader2.onerror=function(){resolve();};
+            loader2.src=img.src;
+          } else { resolve(); }
+        };
+        setTimeout(resolve,10000);
         loader.src=img.src;
       })));
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:tabIdx===4?DK:'#ffffff',logging:false,width:canvasW,height:canvasH,windowWidth:canvasW,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
+      const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:bgColor,logging:false,width:canvasW,height:canvasH,windowWidth:canvasW+200,windowHeight:canvasH+200,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
       const imgData=canvas.toDataURL('image/jpeg',0.95);
       pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'FAST');
       resolve();
