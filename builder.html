@@ -1093,9 +1093,10 @@ function createElement(cfg){
     const isImg = el.dataset.type==='img';
     const img   = isImg ? el.querySelector('img') : null;
     const hasVisibleImg = img && img.src && img.style.display !== 'none';
+    const isSVGLogo = !!el.dataset.svgKey;
 
-    // Locked non-image elements: block all interaction
-    if(el.dataset.locked==='1' && !isImg) return;
+    // Locked non-image elements: block all interaction UNLESS it's an SVG logo
+    if(el.dataset.locked==='1' && !isImg && !isSVGLogo) return;
     // Locked image elements: allow pan/crop inside but not moving the box
     const _lockedImg = el.dataset.locked==='1' && isImg;
 
@@ -1203,7 +1204,7 @@ function applyTextStyle(inner, cfg){
 const DRAG_THRESHOLD = 4; // px — must move this far before drag begins
 
 function startDrag(e, el){
-  if(el.dataset.locked==='1') return;
+  if(el.dataset.locked==='1' && !el.dataset.svgKey) return;
   const sx=e.clientX, sy=e.clientY;
   const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
   let dragging = false;
@@ -2907,8 +2908,8 @@ function mkSVGLogo(x,y,w,h,uri,svgKey,cfg){
   el.addEventListener('mousedown',e=>{
     if(e.target.classList.contains('rh')) return;
     e.stopPropagation();
-    selectElement(el);
-    if(el.dataset.locked==='1') return;
+    selectElement(el, e.shiftKey);
+    // SVG logos are always draggable even when locked
     const sx=e.clientX, sy=e.clientY;
     const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
     let committed=false;
