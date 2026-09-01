@@ -370,81 +370,8 @@ body.is-admin .admin-only-inline{display:inline;}
 </div>
 
 <!-- ═══════════════════════════════════════
-     PASSWORD RESET SCREEN
+     MASTHEAD
 ════════════════════════════════════════ -->
-<div id="reset-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;display:none;align-items:center;justify-content:center;">
-  <div class="login-box">
-    <div class="login-head">
-      <div class="login-logo"><img src="" id="reset-logo" alt="CBRE" style="height:36px;width:auto;display:inline-block;"></div>
-      <div class="login-sub">Set Your Password</div>
-    </div>
-    <div class="login-body">
-      <p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;">Welcome! Please set a new password to continue. Your temporary password will no longer work after this.</p>
-      <div class="lf">
-        <label>New Password</label>
-        <input type="password" id="reset-pass1" placeholder="Min. 8 characters" autocomplete="new-password">
-      </div>
-      <div class="lf">
-        <label>Confirm New Password</label>
-        <input type="password" id="reset-pass2" placeholder="Re-enter your password" autocomplete="new-password">
-      </div>
-      <button class="login-btn" onclick="doPasswordReset()">Set Password &amp; Sign In</button>
-      <div class="login-err" id="reset-err"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-let _resetUser = null; // holds the user object waiting for password reset
-
-function showPasswordResetScreen(user){
-  _resetUser = user;
-  // Copy the CBRE logo from the login screen
-  const loginLogo = document.querySelector('#login-screen .login-logo img');
-  const resetLogo = document.getElementById('reset-logo');
-  if(loginLogo && resetLogo) resetLogo.src = loginLogo.src;
-  document.getElementById('login-screen').style.display = 'none';
-  const rs = document.getElementById('reset-screen');
-  rs.style.display = 'flex';
-  document.getElementById('reset-pass1').value = '';
-  document.getElementById('reset-pass2').value = '';
-  document.getElementById('reset-err').textContent = '';
-  setTimeout(function(){ document.getElementById('reset-pass1').focus(); }, 60);
-}
-
-async function doPasswordReset(){
-  const p1 = document.getElementById('reset-pass1').value;
-  const p2 = document.getElementById('reset-pass2').value;
-  const err = document.getElementById('reset-err');
-  err.textContent = '';
-  if(!p1 || p1.length < 8){ err.textContent = 'Password must be at least 8 characters.'; return; }
-  if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
-  if(p1 === _resetUser.password){ err.textContent = 'New password must be different from your temporary password.'; return; }
-  const btn = document.querySelector('#reset-screen .login-btn');
-  if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
-  try {
-    await SB.patch('users', `?id=eq.${_resetUser.id}`, { password: p1, must_change_password: false });
-    // Log them in
-    currentUser = { id: _resetUser.id, name: _resetUser.name, email: _resetUser.email, role: _resetUser.role };
-    lsSet('session', currentUser);
-    document.getElementById('reset-screen').style.display = 'none';
-    await onLoginSuccess();
-  } catch(e) {
-    err.textContent = 'Could not save password — please try again.';
-    console.error('Password reset failed:', e);
-  } finally {
-    if(btn){ btn.disabled = false; btn.textContent = 'Set Password & Sign In'; }
-  }
-}
-
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Enter' && document.getElementById('reset-screen').style.display === 'flex'){
-    doPasswordReset();
-  }
-});
-</script>
-
-<!-- MASTHEAD -->
 <div class="masthead" id="masthead" style="display:none;">
   <div class="mast-logo" onclick="showHubScreen()" style="cursor:pointer;" title="Home"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:22px;width:auto;display:block;"></div>
   <div class="mast-divider"></div>
@@ -533,6 +460,10 @@ document.addEventListener('keydown', function(e){
         <div class="page-sub">Add, edit or remove users who can access the Marketing Hub</div>
       </div>
       <div style="display:flex;gap:8px;">
+        <label class="admin-btn" style="cursor:pointer;" title="Import users from a CSV file (name, email, password)">
+          ↑ Import CSV
+          <input type="file" accept=".csv" style="display:none;" onchange="importUsersCSV(this)">
+        </label>
         <button class="admin-btn primary" onclick="openUserModal()">+ Add User</button>
       </div>
     </div>
@@ -582,10 +513,6 @@ document.addEventListener('keydown', function(e){
         <option value="user">User — can view &amp; edit all properties</option>
         <option value="admin">Admin — full access + manage users &amp; settings</option>
       </select>
-    </div>
-    <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px;margin-top:2px;">
-      <input type="checkbox" id="user-must-change" checked style="width:15px;height:15px;cursor:pointer;accent-color:var(--g);flex-shrink:0;">
-      <label for="user-must-change" style="font-size:12px;color:var(--muted);cursor:pointer;margin:0;line-height:1.4;">Require password reset on first login</label>
     </div>
     <div class="login-err" id="user-modal-err"></div>
     <div class="modal-actions">
@@ -947,8 +874,6 @@ function openUserModal(userId){
     document.getElementById('user-email').value = '';
     document.getElementById('user-pass').value  = '';
     document.getElementById('user-role').value  = 'user';
-    const mcc = document.getElementById('user-must-change');
-    if(mcc) mcc.checked = true; // default ON for new users
   }
   document.getElementById('modal-user').classList.add('open');
   setTimeout(()=> document.getElementById('user-name').focus(), 50);
@@ -989,15 +914,13 @@ async function saveUser(){
       }
     } else {
       const id = 'u' + Date.now();
-      const mustChange = (document.getElementById('user-must-change')||{}).checked !== false;
-      await SB.post('users', {id, name, email, password: pass, role, must_change_password: mustChange});
-      allUsers.push({id, name, email, password: pass, role, must_change_password: mustChange});
+      await SB.post('users', {id, name, email, password: pass, role});
+      allUsers.push({id, name, email, password: pass, role});
     }
     closeModal('modal-user');
     renderUsers();
   } catch(e){
     console.error('Save user failed:', e);
-    // Show the actual error from Supabase so we can diagnose it
     const msg = e.message || String(e);
     if(msg.includes('42501') || msg.includes('row-level security') || msg.includes('permission denied')){
       errEl.textContent = 'Permission denied — RLS policy blocking write. See instructions below.';
@@ -1008,6 +931,95 @@ async function saveUser(){
       errEl.textContent = `Save failed: ${msg}`;
     }
   }
+}
+
+// ── User CSV Import ──────────────────────────────────────────────
+function importUsersCSV(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const text = e.target.result;
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(!lines.length){ alert('CSV is empty.'); input.value=''; return; }
+
+    // Detect header row — skip if first line contains 'name' or 'email'
+    let startRow = 0;
+    const firstLine = lines[0].toLowerCase();
+    if(firstLine.includes('name') || firstLine.includes('email')){
+      startRow = 1;
+    }
+
+    // Parse rows — support comma or semicolon delimiters, handle quoted fields
+    function parseCSVLine(line){
+      const result = [];
+      let current = '', inQuote = false;
+      for(let i=0;i<line.length;i++){
+        const ch = line[i];
+        if(ch==='"'){ inQuote=!inQuote; }
+        else if((ch===','||ch===';') && !inQuote){ result.push(current.trim()); current=''; }
+        else { current+=ch; }
+      }
+      result.push(current.trim());
+      return result;
+    }
+
+    // Try to detect column positions from header
+    let nameCol=0, emailCol=1, passCol=2, roleCol=-1, mustChangeCol=-1;
+    if(startRow===1){
+      const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z]/g,''));
+      headers.forEach((h,i)=>{
+        if(h==='name'||h==='fullname') nameCol=i;
+        if(h==='email'||h==='emailaddress') emailCol=i;
+        if(h==='password'||h==='pass') passCol=i;
+        if(h==='role') roleCol=i;
+        if(h==='mustchange'||h==='resetpassword') mustChangeCol=i;
+      });
+    }
+
+    const parsed = [];
+    for(let i=startRow;i<lines.length;i++){
+      const cols = parseCSVLine(lines[i]);
+      const name  = (cols[nameCol]||'').replace(/"/g,'').trim();
+      const email = (cols[emailCol]||'').replace(/"/g,'').trim().toLowerCase();
+      const pass  = (cols[passCol]||'').replace(/"/g,'').trim();
+      const role  = roleCol>=0 ? (cols[roleCol]||'user').toLowerCase().trim() : 'user';
+      const mustChange = mustChangeCol>=0 ? cols[mustChangeCol].toLowerCase().includes('y')||cols[mustChangeCol]==='1'||cols[mustChangeCol].toLowerCase()==='true' : true;
+      if(!name||!email||!pass) continue;
+      parsed.push({name, email, password:pass, role:role==='admin'?'admin':'user', must_change_password:mustChange});
+    }
+
+    if(!parsed.length){ alert('No valid rows found.\n\nExpected columns: name, email, password\nOptional: role, must_change_password'); input.value=''; return; }
+
+    const confirmed = confirm(`Import ${parsed.length} users?\n\nAll new users will be required to reset their password on first login.\n\nExisting users with the same email will be skipped.`);
+    if(!confirmed){ input.value=''; return; }
+
+    // Import with progress
+    let imported=0, skipped=0, failed=0;
+    const existingEmails = new Set(allUsers.map(u=>u.email.toLowerCase()));
+
+    for(const u of parsed){
+      if(existingEmails.has(u.email)){ skipped++; continue; }
+      try{
+        const id = 'u'+Date.now()+Math.random().toString(36).slice(2,6);
+        await SB.post('users', {id, name:u.name, email:u.email, password:u.password, role:u.role, must_change_password:u.must_change_password});
+        allUsers.push({id, ...u});
+        existingEmails.add(u.email);
+        imported++;
+      } catch(err){
+        console.error('Failed to import', u.email, err);
+        failed++;
+      }
+    }
+
+    input.value='';
+    renderUsers();
+    let msg = `✅ Import complete!\n\n${imported} users added`;
+    if(skipped) msg += `\n${skipped} skipped (email already exists)`;
+    if(failed)  msg += `\n${failed} failed (check console)`;
+    alert(msg);
+  };
+  reader.readAsText(file);
 }
 
 async function deleteUser(userId){
@@ -1041,15 +1053,11 @@ async function doLogin(){
   if(!email || !pass){ err.textContent = 'Please enter your email and password.'; return; }
 
   try {
-    const rows = await SB.get('users', `?email=eq.${encodeURIComponent(email)}&select=id,name,email,password,role,must_change_password`);
+    // Fetch by email only, then verify password in JS to avoid URL-encoding mismatches
+    const rows = await SB.get('users', `?email=eq.${encodeURIComponent(email)}&select=id,name,email,password,role`);
     if(Array.isArray(rows) && rows.length){
       const match = rows.find(u => u.password === pass);
       if(match){
-        // Check if password reset is required
-        if(match.must_change_password){
-          showPasswordResetScreen(match);
-          return;
-        }
         currentUser = {id: match.id, name: match.name, email: match.email, role: match.role};
         lsSet('session', currentUser);
         await onLoginSuccess();
