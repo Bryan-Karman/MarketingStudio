@@ -994,22 +994,55 @@ function importUsersCSV(input){
     const confirmed = confirm(`Import ${parsed.length} users?\n\nAll new users will be required to reset their password on first login.\n\nExisting users with the same email will be skipped.`);
     if(!confirmed){ input.value=''; return; }
 
-    // Import with progress
-    let imported=0, skipped=0, failed=0;
+    // Filter out already-existing emails
     const existingEmails = new Set(allUsers.map(u=>u.email.toLowerCase()));
+    const toImport = parsed.filter(u=>!existingEmails.has(u.email)).map(u=>({
+      id: 'u'+Date.now()+Math.random().toString(36).slice(2,6),
+      name: u.name, email: u.email, password: u.password,
+      role: u.role, must_change_password: u.must_change_password
+    }));
+    const skipped = parsed.length - toImport.length;
 
-    for(const u of parsed){
-      if(existingEmails.has(u.email)){ skipped++; continue; }
+    if(!toImport.length){ alert(`Nothing to import — all ${skipped} emails already exist.`); input.value=''; return; }
+
+    // Batch insert in groups of 20 to avoid Supabase rate limits
+    const BATCH = 20;
+    let imported = 0, failed = 0;
+    for(let i=0; i<toImport.length; i+=BATCH){
+      const batch = toImport.slice(i, i+BATCH);
       try{
-        const id = 'u'+Date.now()+Math.random().toString(36).slice(2,6);
-        await SB.post('users', {id, name:u.name, email:u.email, password:u.password, role:u.role, must_change_password:u.must_change_password});
-        allUsers.push({id, ...u});
-        existingEmails.add(u.email);
-        imported++;
-      } catch(err){
-        console.error('Failed to import', u.email, err);
-        failed++;
+        // Supabase supports multi-row insert by posting an array
+        const res = await fetch(SUPABASE_URL+'/rest/v1/users', {
+          method:'POST',
+          headers:{
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer '+SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(batch)
+        });
+        if(!res.ok){
+          const err = await res.text();
+          console.error('Batch insert failed:', err);
+          // Fall back to individual inserts for this batch
+          for(const u of batch){
+            try{
+              await SB.post('users', u);
+              allUsers.push(u);
+              imported++;
+            } catch(e){ console.error('Failed:', u.email, e); failed++; }
+          }
+        } else {
+          batch.forEach(u=>allUsers.push(u));
+          imported += batch.length;
+        }
+      } catch(e){
+        console.error('Batch error:', e);
+        failed += batch.length;
       }
+      // Small pause between batches
+      if(i+BATCH < toImport.length) await new Promise(r=>setTimeout(r,300));
     }
 
     input.value='';
