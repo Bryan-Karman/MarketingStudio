@@ -318,10 +318,6 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
     <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
     <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
-    <button class="tab" onclick="switchTab(10,this)">Press Ad 10x7</button>
-    <button class="tab" onclick="switchTab(11,this)">Press Ad M3x3 WA</button>
-    <button class="tab" onclick="switchTab(12,this)">Press Ad M3x6</button>
-    <button class="tab" onclick="switchTab(13,this)">Press Ad T44</button>
   </div>
 </div>
 
@@ -480,9 +476,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186]];
-const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule','PressAd10x7','PressAdM3x3WA','PressAdM3x6','PressAdT44'];
-const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703]];
+const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420],[210,297]];
+const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction'];
+const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842]];
 
 
 // ═══════════════════════════════════
@@ -538,92 +534,6 @@ const _deletedLogos = {};
 // ════════════════════════════════════════
 const UNDO_MAX = 50;
 let undoStacks = {}; // { tabIdx: [snapshot, snapshot, ...] }
-
-// ── Cross-tab element copy/paste ──────────────────────────────────
-let _elClipboard = [];
-
-function copySelected(){
-  const els = _selectedEls.length > 1 ? _selectedEls : (selectedEl ? [selectedEl] : []);
-  if(!els.length) return;
-  _elClipboard = els.map(function(el){
-    const inner = el.querySelector('.el-inner');
-    const img   = el.querySelector('img');
-    return {
-      type:      el.dataset.type || 'text',
-      x:         parseFloat(el.style.left) || 0,
-      y:         parseFloat(el.style.top)  || 0,
-      w:         parseFloat(el.style.width)  || 100,
-      h:         parseFloat(el.style.height) || 30,
-      z:         parseInt(el.style.zIndex)   || 2,
-      innerStyle: inner ? inner.getAttribute('style') : '',
-      content:   inner ? (inner.textContent || '') : '',
-      field:     el.dataset.field || '',
-      assetKey:  el.dataset.assetKey || '',
-      imgSrc:    img ? img.src : '',
-      svgKey:    el.dataset.svgKey || '',
-      banner:    el.dataset.banner || '0',
-      bannerPad: el.dataset.bannerPad || '',
-      bullets:   el.dataset.bullets || '0',
-      bulletParaSpacing: el.dataset.bulletParaSpacing || '0',
-      combinedAgent: el.dataset.combinedAgent || '0',
-    };
-  });
-  const count = _elClipboard.length;
-  const flash = document.createElement('div');
-  flash.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:11px;font-weight:600;padding:7px 16px;border-radius:20px;z-index:99999;pointer-events:none;white-space:nowrap;';
-  flash.textContent='📋 Copied '+count+' element'+(count>1?'s':'')+' — switch tabs and paste with Cmd+V';
-  document.body.appendChild(flash);
-  setTimeout(function(){ if(flash.parentNode) flash.remove(); }, 2500);
-}
-
-function pasteSelected(){
-  if(!_elClipboard.length) return;
-  const OFFSET = 20;
-  deselectAll();
-  const newEls = [];
-  _elClipboard.forEach(function(sv){
-    var el = null;
-    if(sv.type === 'img'){
-      el = mkI(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, sv.assetKey||'', 'Image', {z:sv.z});
-      if(el && sv.imgSrc && !sv.svgKey){
-        const img = el.querySelector('img');
-        if(img) img.src = sv.imgSrc;
-      }
-    } else if(sv.type === 'rect'){
-      // Extract background from innerStyle
-      const bgMatch = (sv.innerStyle||'').match(/background:\s*([^;]+)/);
-      const bg = bgMatch ? bgMatch[1].trim() : 'rgb(0,0,0)';
-      el = mkR(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, bg, {z:sv.z});
-    } else {
-      // text element
-      el = mkT(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, sv.content||'', {z:sv.z, field:sv.field||''});
-      if(el){
-        const inner = el.querySelector('.el-inner');
-        if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
-        el.dataset.banner         = sv.banner;
-        el.dataset.bannerPad      = sv.bannerPad;
-        el.dataset.bullets        = sv.bullets;
-        el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
-        el.dataset.combinedAgent  = sv.combinedAgent;
-        if(sv.bullets==='1' && inner) applyBullets(inner, true);
-        if(sv.bulletParaSpacing && sv.bulletParaSpacing!=='0' && inner){
-          applyPlainParaSpacing(inner, parseInt(sv.bulletParaSpacing));
-        }
-      }
-    }
-    if(el){
-      el.dataset.locked = '0'; // pasted elements always unlocked
-      newEls.push(el);
-    }
-  });
-  if(newEls.length===1){
-    selectEl(newEls[0]);
-  } else if(newEls.length>1){
-    newEls.forEach(function(e){ _selectedEls.push(e); e.classList.add('selected'); });
-    selectedEl = newEls[0];
-  }
-  debouncedPersist();
-}
 
 function undoSnapshot(){
   const idx = currentTab;
@@ -743,7 +653,7 @@ function setZoom(v){
   zoom=v/100;
   document.getElementById('zoom-pct').textContent=v+'%';
   document.getElementById('zoom-range').value=v;
-  const [sw,sh]=getTabSize(currentTab);
+  const [sw,sh]=SIZES[currentTab];
   const cw=document.getElementById('canvas-wrap');
   cw.style.width=Math.round(sw*zoom)+'px';
   cw.style.height=Math.round(sh*zoom)+'px';
@@ -758,46 +668,15 @@ function setZoom(v){
 // Calculate and apply the zoom that fits the current tab's height
 // into the visible canvas area, with a small padding margin.
 // Uses requestAnimationFrame to ensure the DOM has painted first.
-// Per-project custom artboard sizes — keyed by tab index, resets on page reload
-// Stored in savedStates so they persist with the project save/load
-let _customSizes = {}; // { tabIdx: [w, h] }
-
-function applyCustomArtboardSize(){
-  const PX_PER_MM = 3.7795;
-  const wEl = document.getElementById('ab-w-input');
-  const hEl = document.getElementById('ab-h-input');
-  if(!wEl || !hEl) return;
-  const wmm = Math.max(10, Math.min(2000, parseFloat(wEl.value)||SIZES[currentTab][0]/PX_PER_MM));
-  const hmm = Math.max(10, Math.min(2000, parseFloat(hEl.value)||SIZES[currentTab][1]/PX_PER_MM));
-  wEl.value = Math.round(wmm*10)/10;
-  hEl.value = Math.round(hmm*10)/10;
-  // Convert to px
-  const w = Math.round(wmm * PX_PER_MM);
-  const h = Math.round(hmm * PX_PER_MM);
-  // Store override for this tab
-  _customSizes[currentTab] = [w, h];
-  // Apply to the artboard immediately
-  const art = document.getElementById('artwork');
-  if(art){ art.style.width=w+'px'; art.style.height=h+'px'; }
-  // Refit zoom
-  fitZoomToTab();
-  // Persist with project
-  debouncedPersist();
-}
-
-function getTabSize(idx){
-  return _customSizes[idx] || SIZES[idx] || [595,842];
-}
-
 function fitZoomToTab(){
   if(currentTab===9) return;
   requestAnimationFrame(()=>{
     if(currentTab===9) return;
-    const [sw,sh]=getTabSize(currentTab);
+    const [sw,sh]=SIZES[currentTab]||[595,842];
     const canvasArea=document.getElementById('canvas-area');
     const availH=canvasArea.clientHeight - 48;
     const availW=canvasArea.clientWidth  - 48;
-    if(availH <= 0 || availW <= 0) return;
+    if(availH <= 0 || availW <= 0) return; // not visible yet, skip
     const zoomH=availH/sh;
     const zoomW=availW/sw;
     const fit=Math.min(zoomH, zoomW);
@@ -1079,24 +958,14 @@ function createElement(cfg){
     if(e.target.classList.contains('crop-img-rh')) return;
     if(el.classList.contains('crop-mode')) return;
     e.stopPropagation();
-
-    // If this element is already part of a multi-selection and shift is NOT held,
-    // don't re-select (that would clear others) — just let the drag proceed.
-    // If shift IS held, always call selectElement so the toggle logic runs.
-    const alreadyInMulti = _selectedEls.length > 1 && _selectedEls.includes(el);
-    if(!alreadyInMulti || e.shiftKey){
-      selectElement(el, e.shiftKey);
-    }
-    // If shift-click removed this element from selection, stop here
-    if(e.shiftKey && !_selectedEls.includes(el) && selectedEl !== el) return;
+    selectElement(el);
 
     const isImg = el.dataset.type==='img';
     const img   = isImg ? el.querySelector('img') : null;
     const hasVisibleImg = img && img.src && img.style.display !== 'none';
-    const isSVGLogo = !!el.dataset.svgKey;
 
-    // Locked non-image elements: block all interaction UNLESS it's an SVG logo
-    if(el.dataset.locked==='1' && !isImg && !isSVGLogo) return;
+    // Locked non-image elements: block all interaction
+    if(el.dataset.locked==='1' && !isImg) return;
     // Locked image elements: allow pan/crop inside but not moving the box
     const _lockedImg = el.dataset.locked==='1' && isImg;
 
@@ -1116,13 +985,9 @@ function createElement(cfg){
     }
 
     // Capture start positions of all selected elements for group move
-    const multiEls = _selectedEls.length > 1 ? _selectedEls : (_selectedEls.length === 1 && _selectedEls[0] !== el ? [..._selectedEls, el] : null);
-    const groupStarts = multiEls
-      ? multiEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
+    const groupStarts = (_selectedEls.length > 1 && _selectedEls.includes(el))
+      ? _selectedEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
       : null;
-
-    const sx = e.clientX, sy = e.clientY;
-    let committed = false;
 
     function mv(e){
       let dx=e.clientX-sx, dy=e.clientY-sy;
@@ -1163,13 +1028,10 @@ function createElement(cfg){
       if(committed){
         if(shouldPan){
           saveCropData(img);
-          debouncedPersist();
+          debouncedPersist(); // also persist after panning so position is saved
         } else {
           debouncedPersist();
         }
-      } else if(alreadyInMulti && !e.shiftKey){
-        // Click (no drag) on a multi-selected element without shift = collapse to single select
-        selectElement(el, false);
       }
       window.removeEventListener('mousemove',mv);
       window.removeEventListener('mouseup',up);
@@ -1204,7 +1066,7 @@ function applyTextStyle(inner, cfg){
 const DRAG_THRESHOLD = 4; // px — must move this far before drag begins
 
 function startDrag(e, el){
-  if(el.dataset.locked==='1' && !el.dataset.svgKey) return;
+  if(el.dataset.locked==='1') return;
   const sx=e.clientX, sy=e.clientY;
   const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
   let dragging = false;
@@ -1349,11 +1211,10 @@ function enterCropMode(el){
 
   img.style.cssText = `position:absolute;left:${ix}px;top:${iy}px;width:${iw}px;height:${ih}px;object-fit:fill;display:block;cursor:grab;`;
 
-  // Full-screen ghost overlay — darkens everything OUTSIDE the element box
-  _showCropGhostOverlay(el);
-
-  // Allow image to overflow the element box so cropped-off areas are visible
-  inner.style.overflow = 'visible';
+  // Dark overlay to show crop boundary
+  const overlay = document.createElement('div');
+  overlay.className = 'crop-overlay';
+  inner.appendChild(overlay);
 
   // Dashed outline showing the full image edges (editor-only visual guide)
   const imgOutline = document.createElement('div');
@@ -1543,88 +1404,19 @@ function exitCropMode(){
   // Remove crop UI (including the image outline guide)
   el.querySelectorAll('.crop-img-rh, .crop-label, .crop-overlay, .crop-img-outline').forEach(n=>n.remove());
   if(img) img.removeEventListener('mousedown', onCropPan);
-  // Restore inner overflow
-  const inner = el.querySelector('.el-inner');
-  if(inner) inner.style.overflow = '';
   el.classList.remove('crop-mode');
   cropEl = null;
   document.removeEventListener('mousedown', onCropOutsideClick);
-  // Remove full-screen ghost overlay
-  const cgo = document.getElementById('crop-ghost-overlay');
-  if(cgo) cgo.remove();
   debouncedPersist();
 }
 
 // Add double-click to image elements to enter crop mode
 // (called from createElement after img element is created)
-
-function _showCropGhostOverlay(el){
-  const existing = document.getElementById('crop-ghost-overlay');
-  if(existing) existing.remove();
-  const d = document.createElement('div');
-  d.id = 'crop-ghost-overlay';
-  d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9980;';
-  d.innerHTML = `
-    <div id="cgo-top"    style="position:fixed;background:rgba(0,0,0,0.6);"></div>
-    <div id="cgo-bottom" style="position:fixed;background:rgba(0,0,0,0.6);"></div>
-    <div id="cgo-left"   style="position:fixed;background:rgba(0,0,0,0.6);"></div>
-    <div id="cgo-right"  style="position:fixed;background:rgba(0,0,0,0.6);"></div>
-  `;
-  document.body.appendChild(d);
-  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ _updateCropGhostOverlay(el); }); });
-}
-
-function _updateCropGhostOverlay(el){
-  if(!el) return;
-  const top    = document.getElementById('cgo-top');
-  const bottom = document.getElementById('cgo-bottom');
-  const left   = document.getElementById('cgo-left');
-  const right  = document.getElementById('cgo-right');
-  if(!top) return;
-  const r = el.getBoundingClientRect();
-  const W = window.innerWidth, H = window.innerHeight;
-  top.style.cssText    = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:0;width:${W}px;height:${r.top}px;`;
-  bottom.style.cssText = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.bottom}px;width:${W}px;height:${H - r.bottom}px;`;
-  left.style.cssText   = `position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.top}px;width:${r.left}px;height:${r.height}px;`;
-  right.style.cssText  = `position:fixed;background:rgba(0,0,0,0.6);left:${r.right}px;top:${r.top}px;width:${W - r.right}px;height:${r.height}px;`;
-}
-function selectElement(el, shiftHeld){
-  if(shiftHeld && (selectedEl || _selectedEls.length > 0)){
-    // Build the multi-select set from scratch if needed
-    if(_selectedEls.length === 0 && selectedEl){
-      _selectedEls = [selectedEl];
-    }
-    // Toggle: if already in set, remove it; otherwise add it
-    const idx = _selectedEls.indexOf(el);
-    if(idx > -1){
-      _selectedEls.splice(idx, 1);
-      el.classList.remove('selected');
-      // If only one left, revert to single selection
-      if(_selectedEls.length === 1){
-        selectedEl = _selectedEls[0];
-        _selectedEls = [];
-        showProps(selectedEl);
-      } else if(_selectedEls.length === 0){
-        selectedEl = null;
-        document.getElementById('props-content').innerHTML = emptyPropsHTML();
-      } else {
-        showProps(null); // multi-select: no single props
-      }
-    } else {
-      _selectedEls.push(el);
-      el.classList.add('selected');
-      selectedEl = el; // last clicked is primary
-      showProps(null); // multi-select: no single props
-    }
-  } else {
-    // Normal single select — clear everything first
-    if(selectedEl && selectedEl !== el) selectedEl.classList.remove('selected');
-    _selectedEls.forEach(function(e){ if(e !== el) e.classList.remove('selected'); });
-    _selectedEls = [];
-    selectedEl = el;
-    el.classList.add('selected');
-    showProps(el);
-  }
+function selectElement(el){
+  if(selectedEl && selectedEl!==el) selectedEl.classList.remove('selected');
+  selectedEl=el;
+  el.classList.add('selected');
+  showProps(el);
 }
 
 function deselectAll(){
@@ -1643,12 +1435,8 @@ function bgClick(e){
 // Tab layouts: tabIdx -> [{label, buildFn}]
 const TAB_LAYOUTS = {
   1: [
-    {label:'Default',          fn: ()=>buildBrochure2},
-    {label:'3 Images',         fn: ()=>buildBrochure2_v2},
-    {label:'1 Image',          fn: ()=>buildBrochure2_v3},
-    {label:'2 Images',         fn: ()=>buildBrochure2_v4},
-    {label:'2 Properties - A', fn: ()=>buildBrochure2_v5},
-    {label:'2 Properties - B', fn: ()=>buildBrochure2_v6},
+    {label:'Default',     fn: ()=>buildBrochure2},
+    {label:'3 Images',    fn: ()=>buildBrochure2_v2},
   ]
 };
 
@@ -1656,31 +1444,9 @@ function emptyPropsHTML(){
   let html='';
   if(_adminMode){
     const mm=PDF_MM[currentTab];
-    const sz=getTabSize(currentTab);
-    const PX_PER_MM = 3.7795;
-    // Show current size in mm (convert from px, round to 1 decimal)
-    const curWmm = mm ? mm[0] : Math.round(sz[0]/PX_PER_MM*10)/10;
-    const curHmm = mm ? mm[1] : Math.round(sz[1]/PX_PER_MM*10)/10;
-    const defWmm = Math.round(SIZES[currentTab][0]/PX_PER_MM*10)/10;
-    const defHmm = Math.round(SIZES[currentTab][1]/PX_PER_MM*10)/10;
     if(mm) html+=`<div style="background:#0d1f17;border:1px solid #1e4a2e;border-radius:3px;padding:7px 10px;margin-bottom:2px;">
-      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">&#9881; Artboard Size <span style="font-weight:400;color:#3a7a4a;font-size:8px;">(this project only)</span></div>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-        <div style="flex:1;">
-          <div style="font-size:8px;color:#555;margin-bottom:2px;">WIDTH mm</div>
-          <input type="number" id="ab-w-input" value="${curWmm}" min="10" max="2000" step="0.5"
-            style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #2a3a2a;border-radius:2px;background:#141f14;color:#ccc;outline:none;font-family:inherit;box-sizing:border-box;"
-            onchange="applyCustomArtboardSize()">
-        </div>
-        <div style="color:#555;font-size:12px;margin-top:12px;">×</div>
-        <div style="flex:1;">
-          <div style="font-size:8px;color:#555;margin-bottom:2px;">HEIGHT mm</div>
-          <input type="number" id="ab-h-input" value="${curHmm}" min="10" max="2000" step="0.5"
-            style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #2a3a2a;border-radius:2px;background:#141f14;color:#ccc;outline:none;font-family:inherit;box-sizing:border-box;"
-            onchange="applyCustomArtboardSize()">
-        </div>
-      </div>
-      <div style="font-size:9px;color:#3a6a3a;">Default: ${defWmm}×${defHmm}mm &nbsp;·&nbsp; ${sz[0]}×${sz[1]}px</div>
+      <div style="font-size:9px;font-weight:700;color:#5bbf7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">&#9881; Artboard Size</div>
+      <div style="font-size:12px;font-weight:700;color:#ccc;">${mm[0]} &times; ${mm[1]} mm</div>
     </div>`;
   }
   // Marketing Schedule tab — show upload controls
@@ -2299,10 +2065,10 @@ function restoreTab(idx){
   if(!savedStates[idx]) return false;
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
-  const s=getTabSize(idx);
+  const s=SIZES[idx];
   art.style.width=s[0]+'px';
   art.style.height=s[1]+'px';
-  art.style.background=(idx===4||idx===10||idx===11||idx===12||idx===13)?DK:'#fff';
+  art.style.background=idx===4?DK:'#fff';
   art.style.transform=`scale(${zoom})`;
   art.style.transformOrigin='top left';
   art.style.position='absolute';
@@ -2740,15 +2506,13 @@ function getFieldVal(field){
   return map[field]??null;
 }
 
-// When bullets/income/bodycopy change, sync field values into other tabs'
-// saved states rather than deleting them (deleting causes layout resets)
+// When bullets/income/bodycopy change, tabs that expand them into
+// multiple unlabelled elements need a full rebuild on next visit.
+// We clear their savedStates so buildTemplate() runs fresh.
 function onBulletFieldChange(){
-  // Update field values in all other saved states so they render correctly
-  // when the user switches to those tabs — WITHOUT wiping the layout
-  for(let i=0;i<14;i++){
+  for(let i=0;i<8;i++){
     if(i===currentTab) continue;
-    if(i===9) continue; // marketing schedule has no savedState
-    syncTabOnEntry(i);
+    if(savedStates[i]) delete savedStates[i]; // force rebuild on next visit
   }
   globalSync();
 }
@@ -2908,8 +2672,8 @@ function mkSVGLogo(x,y,w,h,uri,svgKey,cfg){
   el.addEventListener('mousedown',e=>{
     if(e.target.classList.contains('rh')) return;
     e.stopPropagation();
-    selectElement(el, e.shiftKey);
-    // SVG logos are always draggable even when locked
+    selectElement(el);
+    if(el.dataset.locked==='1') return;
     const sx=e.clientX, sy=e.clientY;
     const ox=parseFloat(el.style.left), oy=parseFloat(el.style.top);
     let committed=false;
@@ -3043,11 +2807,11 @@ function buildTemplate(idx){
   if(idx===9){ _renderMarketingScheduleTab(); return; }
   const art=document.getElementById('artwork');
   const cw=document.getElementById('canvas-wrap');
-  const s=getTabSize(idx);
+  const s=SIZES[idx];
   // Immediately set size + background BEFORE clearing innerHTML to avoid flash
   art.style.width=s[0]+'px';
   art.style.height=s[1]+'px';
-  art.style.background=(idx===4||idx===10||idx===11||idx===12||idx===13)?DK:'#fff';
+  art.style.background=idx===4?DK:'#fff';
   art.style.transform=`scale(${zoom})`;
   art.style.transformOrigin='top left';
   art.style.position='absolute';
@@ -3062,7 +2826,7 @@ function buildTemplate(idx){
   deselectAll();
   document.getElementById('props-content').innerHTML=emptyPropsHTML();
   // For tabs with layout variants, call the selected variant's builder
-  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44];
+  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
   var _variantFn=null;
   if(TAB_LAYOUTS[idx]){
     var _vi=_layoutVariants[idx]||0;
@@ -3200,118 +2964,6 @@ function buildBrochure1(W,H){
   mkSVGLogo(450,17,117,36,SVG_CBRE_GREEN,'cbre-green',{z:200,locked:'1'});
   mkSVGLogo(27,9,137,44,SVG_PORTFOLIO_GREEN,'portfolio-green',{z:200,locked:'1'});
 }
-
-function buildAFR10x7(W,H){
-  mkR(0,0,983,378,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(669,8,307,362,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkSVGLogo(19,8,123,55,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(159,35,607,3,'rgb(23, 232, 143)',{z:3});
-  mkT(740,29,226,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(821,48,145,12,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkI(19,73,380,277,'img1','Image',{z:2});
-  mkI(406,73,247,135,'img2','Image',{z:2});
-  mkI(406,215,247,135,'img3','Image',{z:2});
-  mkBanner(437,331,216,20,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
-  mkT(19,360,300,10,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
-  mkT(682,67,282,52,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(903,111,90,35,'logo','Image',{z:3});
-  mkT(682,127,275,12,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
-  mkT(682,150,282,136,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
-  mkT(682,292,230,12,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
-  mkT(682,307,230,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
-  mkR(682,325,283,1.5,'rgb(1, 42, 45)',{z:3});
-  mkI(915,269,48,48,'','Image',{z:3});
-  mkT(682,333,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(682,348,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(783,333,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(783,348,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(882,333,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(882,348,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-}
-
-
-function buildAFRM3x3WA(W,H){
-  mkR(0,0,509,348,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(8,110,493,230,'rgb(255, 255, 255)',{z:1,locked:'1'});
-  mkSVGLogo(19,8,100,40,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(132,27,168,2,'rgb(23, 232, 143)',{z:3});
-  mkT(268,21,230,19,gv('fm')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(288,40,210,16,gv('fa1')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkT(19,70,476,36,gv('fh')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(14,116,255,152,'img1','Image',{z:2});
-  mkBanner(119,248,150,20,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
-  mkT(278,121,216,157,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
-  mkR(19,298,415,1.5,'rgb(1, 42, 45)',{z:3});
-  mkT(19,279,412,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
-  mkT(393,326,44,12,'*Approx',{z:3,color:'rgb(0, 0, 0)',fontSize:'7px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right'});
-  mkI(448,287,48,48,'','Image',{z:3});
-  mkT(19,305,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(19,320,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(119,305,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(119,320,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(221,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(221,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(320,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(320,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-}
-
-
-function buildAFRM3x6(W,H){
-  mkR(0,0,991,348,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(573,8,409,331,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkSVGLogo(19,8,113,69,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(156,40,586,3,'rgb(23, 232, 143)',{z:4});
-  mkT(573,35,400,16,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(592,59,382,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkI(19,83,535,237,'img1','Image',{z:2});
-  mkBanner(340,300,214,22,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
-  mkT(20,330,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
-  mkT(585,76,317,62,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'28px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(892,85,100,44,'logo','Image',{z:3});
-  mkT(585,145,381,125,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
-  mkT(585,277,340,14,gv('fm')||'',{z:3,color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
-  mkR(586,297,381,1.5,'rgb(1, 42, 45)',{z:3});
-  mkI(918,241,48,48,'','Image',{z:3});
-  mkT(585,304,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(585,319,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(689,304,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(689,319,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(788,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(788,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(889,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(889,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-}
-
-
-function buildAFRT44(W,H){
-  mkR(0,0,983,703,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(566,9,408,685,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkSVGLogo(19,8,136,74,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(177,44,555,3,'rgb(23, 232, 143)',{z:3});
-  mkT(681,38,278,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(588,63,369,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkI(19,91,530,356,'img1','Image',{z:2});
-  mkBanner(298,423,252,27,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'5px 10px 4px'});
-  mkI(19,456,260,209,'img2','Image',{z:2});
-  mkI(289,456,260,209,'img3','Image',{z:2});
-  mkT(22,681,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
-  mkT(584,84,377,92,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'40px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(866,168,117,52,'logo','Image',{z:3});
-  mkT(584,191,311,19,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
-  mkT(584,232,367,302,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',bullets:'1',bulletParaSpacing:'8'});
-  mkT(584,597,300,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
-  mkT(584,615,300,16,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
-  mkR(584,638,374,2,'rgb(1, 42, 45)',{z:3});
-  mkI(883,553,72,71,'','Image',{z:3});
-  mkT(584,652,104,16,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(584,668,104,18,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(701,668,104,18,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(701,652,104,16,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(824,668,104,18,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(824,652,104,16,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-}
-
-
 function buildBrochure2(W,H){
   mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
   mkI(28,65,539,505,'img1','Image',{z:2});
@@ -3378,174 +3030,6 @@ function buildBrochure2_v2(W,H){
   mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
   mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
 }
-
-// ─── BROCHURE 2-PAGE: 2 Images layout ───
-function buildBrochure2_v4(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  mkI(28,65,539,505,'img1','Image',{z:2});
-  mkI(624,66,539,505,'img2','Image',{z:2});
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
-  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(624,657,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(638,657,176,13,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:5,locked:'1'});
-  mkT(638,673,176,14,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:5,locked:'1'});
-  (function(){ var _e=mkT(624,699,169,125,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',field:'bullets',z:5,bulletParaSpacing:'6',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  mkT(808,655,201,169,document.getElementById('fbc').value,{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'});
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
-// ─── BROCHURE 2-PAGE: 2 Properties - B layout ───
-function buildBrochure2_v6(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  // Images — same 4-image layout as Default
-  mkI(28,65,539,505,'img1','Image',{z:2});
-  mkI(624,66,539,300,'img2','Image',{z:2});
-  mkI(624,377,264,194,'img3','Image',{z:2});
-  mkI(900,377,264,194,'img4','Image',{z:2});
-  // Banner
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  // Logo
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  // Divider lines
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  // Left heading + subheading (smaller Financier, not 50px)
-  mkT(28,578,540,36,gv('fh')||'Heading xx',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',field:'heading',z:4,locked:'1'});
-  mkT(28,609,540,36,gv('fs')||'Sub Heading xx',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',field:'subheading',z:4,locked:'1'});
-  // Unlocked label over top bar area
-  mkT(40,40,200,60,'New text',{color:'rgb(17,17,17)',fontSize:'14px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.35',z:50,locked:'0'});
-  // Left property — green bar + address
-  mkR(28,657,3,28,'rgb(23,232,143)',{z:50,locked:'1'});
-  mkT(42,657,176,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:50,locked:'1'});
-  mkT(42,673,176,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:50,locked:'1'});
-  // Left property — plain bullet block
-  (function(){ var _e=mkT(28,699,177,125,'New text\nx\nx\nx\nx\nx\nx',{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',z:50,bulletParaSpacing:'6',locked:'1'}); _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
-  // Left property — wide bullet body copy column
-  (function(){ var _e=mkT(225,655,328,168,'– New text\n– x\n– x\n– x\n– x\n– x\n– x\n– x\n– ',{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',z:50,bullets:'1',bulletParaSpacing:'6',locked:'1'}); _e.dataset.bulletParaSpacing='6'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Income (hidden, linked)
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  // Right Property 1 — green bar + address + bullets
-  mkR(624,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(638,593,170,14,'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(638,610,170,14,'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  (function(){ var _e=mkT(624,655,195,169,'– Point one\n– Point two\n– Point three\n– Point four',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:50,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Right Property 2 — green bar + address + bullets
-  mkR(825,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(840,593,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(840,610,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  (function(){ var _e=mkT(825,655,195,169,'– Text line one\n– Line two\n– Line three\n– Line four\n– Line five',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Contact / Agents
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
-// ─── BROCHURE 2-PAGE: 2 Properties - A layout ───
-function buildBrochure2_v5(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  // Images — same positions as Default
-  mkI(28,65,539,505,'img1','Image',{z:2});
-  mkI(624,66,539,300,'img2','Image',{z:2});
-  mkI(624,377,264,194,'img3','Image',{z:2});
-  mkI(900,377,264,194,'img4','Image',{z:2});
-  // Left panel — heading / subheading
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
-  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
-  // Banner
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  // Logo
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  // Divider lines
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  // Property 1 — left column (green bar + address, no field links)
-  mkR(624,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  (function(){ var _e=mkT(638,593,170,14,'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  (function(){ var _e=mkT(638,610,170,14,'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  // Property 1 — bullet points (no field link — independent)
-  (function(){ var _e=mkT(624,655,195,169,'– Point one\n– Point two\n– Point three\n– Point four',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:50,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Income (hidden, linked)
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  // Property 2 — right column (green bar + address, no field links)
-  mkR(825,593,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  (function(){ var _e=mkT(840,593,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  (function(){ var _e=mkT(840,610,170,14,'New text',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'}); return _e; })();
-  // Property 2 — body copy (no field link — independent)
-  (function(){ var _e=mkT(825,655,195,169,'– Text line one\n– Line two\n– Line three\n– Line four\n– Line five',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'}); _e.dataset.bulletParaSpacing='4'; applyBullets(_e.querySelector('.el-inner'),true); return _e; })();
-  // Contact / Agents
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
-// ─── BROCHURE 2-PAGE: 1 Image layout ───
-function buildBrochure2_v3(W,H){
-  mkR(0,0,1191,842,'rgb(1,42,45)',{z:1,locked:'1'});
-  mkI(28,65,1136,505,'img1','Image',{z:2});
-  mkT(66,624,464,107,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'50px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
-  mkT(70,751,479,35,gv('fs')||'Sub Heading',{color:'rgb(91,191,122)',fontSize:'20px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'subheading',z:3,locked:'1'});
-  mkBanner(936,545,228,26,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'8px 11px 6px'});
-  mkT(624,578,441,36,'Xxx Custom Heading Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkT(624,609,441,37,'Xxx Also Type Here',{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.35',z:4,locked:'1'});
-  mkI(1101,575,59,64,'logo','Image',{z:4});
-  mkR(625,825,534,1,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(1023,655,1,159,'rgb(255,255,255)',{z:4,locked:'1'});
-  mkR(624,657,3,28,'rgb(23,232,143)',{z:5,locked:'1'});
-  mkT(638,657,176,13,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:5,locked:'1'});
-  mkT(638,673,176,14,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:5,locked:'1'});
-  (function(){ var _e=mkT(624,699,169,125,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',field:'bullets',z:5,bulletParaSpacing:'6',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),6); return _e; })();
-  (function(){ var _e=mkT(624,793,168,25,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:5}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
-  mkT(808,655,201,169,document.getElementById('fbc').value,{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bodycopy',z:5,bullets:'1',bulletParaSpacing:'4',locked:'1'});
-  mkT(1036,655,132,11,'Contact',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(1037,670,137,13,gv('fn1')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,684,137,13,gv('fn2')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent2name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,699,135,11,gv('fn3')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent3name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,714,143,13,gv('fn4')||'',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent4name',combinedAgent:'1',z:5,locked:'1'});
-  mkT(1037,735,123,26,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:5,locked:'1'});
-  mkT(1037,753,120,29,gv('fd')||'Day Date Month Year',{color:'rgb(255,255,255)',fontSize:'10px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.4',field:'saledate',z:5,locked:'1'});
-  mkT(1037,805,137,8,'*Approx',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:5,locked:'1'});
-  mkT(625,831,540,9,'All precaution has been taken to establish the accuracy of the above information but does not constitute any representation by the Vendor or Agents. The Retail Leases Act 2003 may apply.',{color:'rgb(255,255,255)',fontSize:'6px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:4,locked:'1'});
-  mkR(28,825,538,1,'rgb(255,255,255)',{z:50,locked:'1'});
-  mkSVGLogo(1048,17,117,36,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
-  mkSVGLogo(27,9,132,44,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
-}
-
 
 function buildEDM(W,H){
   mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
@@ -3713,139 +3197,191 @@ function _rgb(str){
 
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  const [canvasW, canvasH] = getTabSize(tabIdx);
-  const isDarkTab = (tabIdx===4);
-  const bgColor = isDarkTab ? DK : '#ffffff';
-
+  const [canvasW, canvasH] = SIZES[tabIdx];
   return new Promise(async (resolve, reject) => {
-    const art = document.getElementById('artwork');
-    if(!art){ reject(new Error('No artwork')); return; }
-
-    // Save current tab state and switch to target tab if needed
-    const prevTab = currentTab;
-    const prevState = savedStates[prevTab] ? JSON.parse(JSON.stringify(savedStates[prevTab])) : null;
-
+    const offscreen = document.createElement('div');
+    offscreen.style.cssText = ['position:fixed','top:0','left:0','width:'+canvasW+'px','height:'+canvasH+'px','overflow:hidden','z-index:-99999','pointer-events:none','background:'+(tabIdx===4?DK:'#ffffff')].join(';');
+    document.body.appendChild(offscreen);
+    const prevNextId = nextId;
+    const prevTab    = currentTab;
+    nextId    = 1;
+    currentTab = tabIdx;
     try {
-      // If not already on this tab, switch to it so the live canvas is correct
-      if(currentTab !== tabIdx){
-        savedStates[currentTab] = serializeTab();
-        currentTab = tabIdx;
-        if(savedStates[tabIdx] && savedStates[tabIdx].length){
-          restoreTab(tabIdx);
-        } else {
-          buildTemplate(tabIdx);
-        }
+      if(savedStates[tabIdx] && savedStates[tabIdx].length){
+        savedStates[tabIdx].forEach(sv => {
+          const el = document.createElement('div');
+          el.className = 'el';
+          el.dataset.type=sv.type; el.dataset.assetKey=sv.assetKey||''; el.dataset.svgKey=sv.svgKey||'';
+          el.dataset.field=sv.field||''; el.dataset.bullets=sv.bullets||'0';
+          el.dataset.combinedAgent=sv.combinedAgent||'0';
+          if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
+          // Skip standalone income element for non-EDM tabs
+          if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
+          el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
+          const inner=document.createElement('div'); inner.className='el-inner';
+          inner.setAttribute('style','position:absolute;inset:0;overflow:hidden;'+(sv.innerStyle||''));
+          if(sv.type==='text'){
+            inner.style.overflow='hidden';
+            const content=sv.content!==undefined?sv.content:'';
+            if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+              const spacing=sv.bulletParaSpacing||'0';
+              const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
+              // Append income for AFR/Auction tabs (5,6,8) on bullets field
+              var _svBVal=content;
+              var _svBFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+              if(sv.field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_svBFi){
+                var _alreadyHas=_svBVal.trim().endsWith(_svBFi);
+                if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
+              }
+              const lines=_svBVal.split('\n');
+              inner.innerHTML=lines.map(l=>{
+                const text=l.startsWith('\u2013 ')?l.slice(2):l;
+                if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+                return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+              }).join('');
+            } else {
+              const _ps=parseFloat(sv.bulletParaSpacing||'0');
+              const _svFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+              const _svIncome=(sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_svFi);
+              // Income may already be in content (from serializeTab) - don't double-add
+              var _svContent=content;
+              if(_svIncome&&_svContent&&!_svContent.trim().endsWith(_svFi)){
+                _svContent=_svContent+'\n'+_svFi;
+              }
+              if(_ps>0){
+                const _svLines=_svContent.split('\n');
+                inner.innerHTML=_svLines.map(function(l,li){
+                  var isBold=_svIncome&&li===_svLines.length-1;
+                  return '<div class="plain-line" style="display:block;margin-bottom:'+_ps+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+                }).join('');
+              } else { inner.textContent=_svContent; }
+            }
+          } else if(sv.type==='img'){
+            const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
+            const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
+            inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5';
+            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
+            if(src){
+              const imgEl=document.createElement('img'); imgEl.src=src; imgEl.crossOrigin='anonymous';
+              const _hasRealCrop=sv.cropW&&!isLogo&&!isSvg&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0;
+              if(_hasRealCrop){imgEl.style.cssText='position:absolute;left:'+sv.cropX+';top:'+sv.cropY+';width:'+sv.cropW+';height:'+sv.cropH+';object-fit:fill;display:block;';}
+              else{imgEl.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:'+(isLogo||isSvg?'contain':'cover')+';display:block;';}
+              inner.appendChild(imgEl);
+            }
+          }
+          el.appendChild(inner); offscreen.appendChild(el);
+        });
+        const fieldMap={heading:'fh',subheading:'fs',address1:'fa1',address2:'fa2',banner:'fb',income:'fi',salemethod:'fm',saledate:'fd',bullets:'fbull',bodycopy:'fbc',agent1name:'fn1',agent2name:'fn2',agent3name:'fn3',agent4name:'fn4',agent1num:'fp1',agent2num:'fp2',agent3num:'fp3',agent4num:'fp4'};
+        const phoneMap={agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
+        offscreen.querySelectorAll('.el[data-type="text"]').forEach(el=>{
+          const field=el.dataset.field; if(!field||!fieldMap[field]) return;
+          // Skip standalone income for non-EDM tabs
+          if(field==='income'&&[2,3].indexOf(tabIdx)===-1) return;
+          const val=gv(fieldMap[field])||document.getElementById(fieldMap[field])?.value||'';
+          const inner=el.querySelector('.el-inner'); if(!inner) return;
+          if(el.dataset.combinedAgent==='1'&&phoneMap[field]){const phone=gv(phoneMap[field])||'';inner.textContent=phone?val+' '+phone:(val||'');}
+          else if(el.dataset.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+            const spacing=el.dataset.bulletParaSpacing||'0';
+            const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
+            // Append income for AFR/Auction tabs (5,6,8) on bullets field
+            var _bVal=val;
+            var _bFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+            if(field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_bFi){
+              _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
+            }
+            const lines=_bVal.split('\n');
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+          } else {
+            const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
+            // Append income for brochure tabs (0,1) on bullets field
+            var _pdfVal=val;
+            var _pdfFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+            var _isIncomeBullets=(field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_pdfFi);
+            if(_isIncomeBullets) _pdfVal=_pdfVal?_pdfVal+'\n'+_pdfFi:_pdfFi;
+            if(ps2>0){
+              const lines2=_pdfVal.split('\n');
+              inner.innerHTML=lines2.map(function(l,li){
+                var isBold=_isIncomeBullets&&li===lines2.length-1;
+                return '<div class="plain-line" style="display:block;margin-bottom:'+ps2+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+              }).join('');
+            } else { inner.textContent=_pdfVal; }
+          }
+        });
+      } else {
+        const realArt=document.getElementById('artwork');
+        const ph=realArt.innerHTML,pw=realArt.style.width,phh=realArt.style.height,pbg=realArt.style.background,pt=realArt.style.transform;
+        realArt.innerHTML=''; nextId=1;
+        realArt.style.width=canvasW+'px'; realArt.style.height=canvasH+'px';
+        realArt.style.background=tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
+        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction];
+        var _vFn=null;
+        if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
+        (_vFn||_allFns[tabIdx])(canvasW,canvasH);
         globalSync();
-        // Wait for images to load and layout to settle
-        await new Promise(r=>setTimeout(r,400));
+        offscreen.innerHTML=realArt.innerHTML;
+        realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
+        realArt.style.background=pbg; realArt.style.transform=pt;
       }
-
-      // Temporarily remove transform/scale so html2canvas captures at 1:1
-      const prevTransform = art.style.transform;
-      const prevTop = art.style.top;
-      const prevLeft = art.style.left;
-      art.style.transform = 'none';
-      art.style.top = '0';
-      art.style.left = '0';
-
-      // Move artwork temporarily to a fixed position so html2canvas can see it
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:fixed;top:0;left:0;width:'+canvasW+'px;height:'+canvasH+'px;overflow:visible;z-index:-99999;pointer-events:none;background:'+bgColor+';';
-      document.body.appendChild(wrapper);
-      wrapper.appendChild(art);
-
-      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-
-      // Pre-convert SVG data URL images to canvas elements so html2canvas renders them correctly
-      const svgImgs = [...wrapper.querySelectorAll('.el[data-type="img"] img')].filter(img=>
-        img.src && img.src.startsWith('data:image/svg')
-      );
-      await Promise.all(svgImgs.map(img=>new Promise(resolve=>{
-        const el  = img.closest('.el');
-        const fw  = parseFloat(el.style.width)||100;
-        const fh  = parseFloat(el.style.height)||60;
-        const SCALE = 3;
-        const cw  = Math.round(fw*SCALE), ch = Math.round(fh*SCALE);
-        const tmp = new Image();
-        tmp.onload = function(){
-          const c   = document.createElement('canvas');
-          c.width   = cw; c.height = ch;
-          const ctx = c.getContext('2d');
-          const nw  = tmp.naturalWidth||cw, nh = tmp.naturalHeight||ch;
-          const s   = Math.min(cw/nw, ch/nh);
-          const dw  = nw*s, dh = nh*s;
-          const dx  = (cw-dw)/2, dy = (ch-dh)/2;
-          ctx.drawImage(tmp, dx, dy, dw, dh);
-          c.style.cssText = 'position:absolute;inset:0;width:'+fw+'px;height:'+fh+'px;display:block;';
-          img.closest('.el-inner').style.background = 'transparent';
+      // Pre-convert SVG images to PNG canvas so html2canvas can render them
+      await Promise.all([...offscreen.querySelectorAll('.el[data-type="img"] img')].map(img=>new Promise(resolve=>{
+        if(!img.src||!img.src.startsWith('data:image/svg')){resolve();return;}
+        const el=img.closest('.el');
+        const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
+        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const svgImg=new Image();
+        svgImg.onload=function(){
+          const c=document.createElement('canvas');c.width=cw;c.height=ch;
+          const ctx=c.getContext('2d');
+          // Use contain fit for SVG logos
+          const nw=svgImg.naturalWidth||cw,nh=svgImg.naturalHeight||ch;
+          const s=Math.min(cw/nw,ch/nh);
+          const dw=nw*s,dh=nh*s,dx=(cw-dw)/2,dy=(ch-dh)/2;
+          ctx.drawImage(svgImg,dx,dy,dw,dh);
+          c.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
+          img.closest('.el-inner').style.background='transparent';
           img.replaceWith(c);
           resolve();
         };
-        tmp.onerror = resolve;
-        tmp.src = img.src;
+        svgImg.onerror=function(){resolve();};
+        svgImg.src=img.src;
       })));
-
-      const canvas = await html2canvas(wrapper, {
-        scale:3, useCORS:true, allowTaint:true,
-        backgroundColor:bgColor, logging:false,
-        width:canvasW, height:canvasH,
-        windowWidth:canvasW, windowHeight:canvasH,
-        x:0, y:0, scrollX:0, scrollY:0,
-        imageTimeout:15000,
-        ignoreElements: el => el.classList.contains('img-ghost')
-          || el.id==='svg-ghost' || el.id==='ghost-rect'
-          || el.classList.contains('crop-label')
-          || el.classList.contains('crop-img-rh')
-          || el.classList.contains('assist-btn')
-          || (el.classList.contains('rh') && !el.closest('.crop-mode'))
-      });
-
-      // Put artwork back
-      const canvasArea = document.getElementById('canvas-area') || document.getElementById('canvas-wrap')?.parentElement;
-      const canvasWrap = document.getElementById('canvas-wrap');
-      if(canvasWrap) canvasWrap.appendChild(art);
-      else document.body.appendChild(art);
-      document.body.removeChild(wrapper);
-
-      // Restore transform
-      art.style.transform = prevTransform;
-      art.style.top = prevTop;
-      art.style.left = prevLeft;
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      // Scale to fit PDF page preserving aspect ratio
-      const canvasAspect = canvasW / canvasH;
-      const pageAspect   = pageW / pageH;
-      let drawW = pageW, drawH = pageH, drawX = 0, drawY = 0;
-      if(Math.abs(canvasAspect - pageAspect) > 0.01){
-        drawH = pageW / canvasAspect;
-        drawY = (pageH - drawH) / 2;
-      }
-      pdf.addImage(imgData,'JPEG',drawX,drawY,drawW,drawH,undefined,'FAST');
-
-      // Restore previous tab if we switched
-      if(prevTab !== tabIdx){
-        currentTab = prevTab;
-        if(prevState) savedStates[prevTab] = prevState;
-        if(savedStates[prevTab] && savedStates[prevTab].length) restoreTab(prevTab);
-        else buildTemplate(prevTab);
-        globalSync();
-      }
-
+      const allImgEls=[...offscreen.querySelectorAll('.el[data-type="img"] .el-inner')];
+      await Promise.all(allImgEls.map(inner=>new Promise(resolve=>{
+        const img=inner.querySelector('img');
+        if(!img||!img.src){resolve();return;}
+        const el=inner.closest('.el');
+        const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
+        const fit=img.style.objectFit||'cover';
+        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const loader=new Image(cw,ch); loader.crossOrigin='anonymous';
+        loader.onload=function(){
+          const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+          const ctx=c.getContext('2d'); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
+          const nw=loader.naturalWidth>0?loader.naturalWidth:cw,nh=loader.naturalHeight>0?loader.naturalHeight:ch;
+          let dx,dy,dw,dh;
+          if(fit==='fill'&&!img.style.width.includes('%')&&parseFloat(img.style.width)>0){
+            const il=parseFloat(img.style.left)||0,it=parseFloat(img.style.top)||0,iw=parseFloat(img.style.width)||fw,ih=parseFloat(img.style.height)||fh;
+            dw=iw*SCALE;dh=ih*SCALE;dx=il*SCALE;dy=it*SCALE;
+          } else if(fit==='contain'){const s=Math.min(cw/nw,ch/nh);dw=nw*s;dh=nh*s;dx=(cw-dw)/2;dy=(ch-dh)/2;}
+          else{const s=Math.max(cw/nw,ch/nh);dw=nw*s;dh=nh*s;dx=(cw-dw)/2;dy=(ch-dh)/2;}
+          try{ctx.drawImage(loader,dx,dy,dw,dh);}catch(e){resolve();return;}
+          c.style.cssText='position:absolute;left:0;top:0;width:'+fw+'px;height:'+fh+'px;display:block;';
+          inner.style.background='transparent'; img.replaceWith(c); resolve();
+        };
+        loader.onerror=function(){resolve();};
+        setTimeout(resolve,8000);
+        loader.src=img.src;
+      })));
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const canvas=await html2canvas(offscreen,{scale:3,useCORS:true,allowTaint:true,backgroundColor:tabIdx===4?DK:'#ffffff',logging:false,width:canvasW,height:canvasH,windowWidth:canvasW,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
+      const imgData=canvas.toDataURL('image/jpeg',0.95);
+      pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'FAST');
       resolve();
-    } catch(err){
-      // Ensure artwork is restored on error
-      const canvasWrap = document.getElementById('canvas-wrap');
-      if(canvasWrap && !canvasWrap.contains(art)) canvasWrap.appendChild(art);
-      const wrapper2 = document.querySelector('div[style*="z-index:-99999"]');
-      if(wrapper2 && wrapper2.parentNode) wrapper2.parentNode.removeChild(wrapper2);
-      art.style.transform = art.style.transform || '';
-      if(prevTab !== tabIdx){
-        currentTab = prevTab;
-        if(savedStates[prevTab] && savedStates[prevTab].length) restoreTab(prevTab);
-        else buildTemplate(prevTab);
-      }
-      reject(err);
+    } catch(err){ reject(err); }
+    finally {
+      if(offscreen&&offscreen.parentNode) document.body.removeChild(offscreen);
+      document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
+      nextId=prevNextId; currentTab=prevTab;
     }
   });
 }
@@ -3974,19 +3510,12 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
 async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
-  // EDM tabs (2 & 3) are too complex for the native text renderer —
-  // they have images, video thumbnails, logos, coloured bands.
-  // Always use the raster (html2canvas) renderer for them.
-  if(tabIdx === 2 || tabIdx === 3){
-    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
-  }
-
   let fonts = [];
   try { fonts = await loadPdfFonts(); } catch(e){ console.warn('Font load error',e); }
   if(fonts.length > 0) registerPdfFonts(pdf, fonts);
   const hasFonts = fonts.length > 0;
 
-  const [pxW, pxH] = getTabSize(tabIdx);
+  const [pxW, pxH] = SIZES[tabIdx];
   const scaleX = pageW / pxW;
   const scaleY = pageH / pxH;
 
@@ -4419,7 +3948,6 @@ function collectState(){
   return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmS1:_edmS1,edmS2:_edmS2,edmS3:_edmS3,edmS4:_edmS4,edmS5:_edmS5,edmBtn2:_edmBtn2,edmBtn3:_edmBtn3,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
-    customSizes:JSON.parse(JSON.stringify(_customSizes)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
       fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd'),fn1:gv('fn1'),fp1:gv('fp1'),fn2:gv('fn2'),fp2:gv('fp2'),fn3:gv('fn3'),fp3:gv('fp3'),fn4:gv('fn4'),fp4:gv('fp4')} };
@@ -4433,7 +3961,6 @@ function applyState(data,skipZoom=false){
     setTimeout(function(){ renderImgUploadSlots(); renderLogoUploadSlots(); }, 0);
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
-    if(data.customSizes){ Object.assign(_customSizes, data.customSizes); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
     const _edmMap={edmS1:'fedm-link-s1',edmS2:'fedm-link-s2',edmS3:'fedm-link-s3',edmS4:'fedm-link-s4',edmS5:'fedm-link-s5',edmBtn2:'fedm-link-btn2',edmBtn3:'fedm-link-btn3'};
     Object.keys(_edmMap).forEach(function(k){ if(data[k]!=null){ const el=document.getElementById(_edmMap[k]); if(el) el.value=data[k]; }});
@@ -4743,10 +4270,14 @@ const _origApplyState2=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){_pendingAgentSlots=data.agentSlots;}return result;};
 
 function copyLayoutToClipboard(){
-  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule','Press Ad 10x7','Press Ad M3x3 WA','Press Ad M3x6','Press Ad T44'];
-  const fnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction'];
+  // Read tab labels dynamically from the DOM — always correct no matter how many tabs exist
+  const tabEls = document.querySelectorAll('.tab:not(.tab-add)');
+  const tabLabels = [...tabEls].map(t=>t.textContent.trim());
+  // Build fnNames from TAB_LAYOUTS + a fallback pattern
+  const defaultFnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction','null','buildAFR10x7','buildAFRM3x3WA','buildAFRM3x6','buildAFRT44'];
+  const fnName = defaultFnNames[currentTab] || ('buildTab'+currentTab);
   const snapshot=serializeTab();
-  const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName:fnNames[currentTab],size:getTabSize(currentTab),elements:snapshot};
+  const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName,size:getTabSize(currentTab),elements:snapshot};
   const json=JSON.stringify(output,null,2);
   const existing=document.getElementById('copy-layout-dialog');if(existing)existing.remove();
   const overlay=document.createElement('div');overlay.id='copy-layout-dialog';
@@ -4903,17 +4434,11 @@ function _migrateEDMStates(){
   if(typeof savedStates === 'undefined') return;
   [2,3].forEach(function(ti){
     if(!savedStates[ti]||!savedStates[ti].length) return;
-    // Old EDM states had canvas width of 212px — all elements were ≤212px wide
-    // Current canvas is 600px wide, so if max element width < 300 it's old
-    var maxW = 0;
-    savedStates[ti].forEach(function(sv){
+    var isOld = savedStates[ti].some(function(sv){
       var w = parseFloat(sv.w||0);
-      if(w > maxW) maxW = w;
+      return w > 0 && w <= 220;
     });
-    if(maxW > 0 && maxW < 300){
-      console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti);
-      delete savedStates[ti];
-    }
+    if(isOld){ console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti); delete savedStates[ti]; }
   });
 }
 
@@ -4980,18 +4505,12 @@ async function downloadPDF(){
   deselectAll();savedStates[currentTab]=serializeTab();
   _pdfFontCache=null;
   try{
-    const PX_PER_MM=3.7795;
-    // Use actual canvas size (respects custom artboard resize) converted to mm
-    const [pxW,pxH]=getTabSize(currentTab);
-    const mmW=Math.round(pxW/PX_PER_MM*10)/10;
-    const mmH=Math.round(pxH/PX_PER_MM*10)/10;
-    const isLandscape=mmW>mmH;
-    const{jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mmW,mmH]});
+    const mm=PDF_MM[currentTab];const{jsPDF}=window.jspdf;
+    const isLandscape=mm[0]>mm[1];
+    const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
     btn.textContent='Generating…';
-    await renderTabToPdf(pdf,currentTab,mmW,mmH,false);
-    const _propSlug=(_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
-    pdf.save(`${_propSlug}_${TAB_NAMES[currentTab]}.pdf`);
+    await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false);
+    pdf.save(`CBRE_${TAB_NAMES[currentTab]}.pdf`);
   }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
@@ -5012,20 +4531,17 @@ async function loadApprovalStatus(){
   updateApproveBtn();
 }
 
-function getSelectedTabIndices(){const tabs=document.querySelectorAll('.tab');const selected=[];tabs.forEach((tab,i)=>{if(tab.style.display!=='none' && i!==9) selected.push(i);});return selected;}
+function getSelectedTabIndices(){const tabs=document.querySelectorAll('.tab');const selected=[];tabs.forEach((tab,i)=>{if(tab.style.display!=='none')selected.push(i);});return selected;}
 
 async function downloadAllSelectedPDF(){
   const btn=document.getElementById('dl-all-tb-btn');btn.disabled=true;btn.textContent='Building…';
   deselectAll();savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){btn.disabled=false;btn.textContent='⬇ All PDFs';return;}
-  const PX_PER_MM=3.7795;
-  function getMM(tabIdx){ const [w,h]=getTabSize(tabIdx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
   try{
-    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
+    const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
-    const _propSlug=(_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
-    pdf.save(`${_propSlug}_All_Selected.pdf`);
+    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    pdf.save('CBRE_All_Selected.pdf');
   }catch(err){alert('PDF error: '+err.message);}
   btn.disabled=false;btn.textContent='⬇ All PDFs';
 }
@@ -5035,12 +4551,10 @@ showAllArtworks=async function(){
   savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){alert('No marketing items selected.');return;}
   const btn=document.getElementById('view-all-tb-btn');if(btn){btn.disabled=true;btn.textContent='Building…';}
-  const PX_PER_MM=3.7795;
-  function getMM(tabIdx){ const [w,h]=getTabSize(tabIdx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
   try{
-    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
+    const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
     const blob=pdf.output('blob');const url=URL.createObjectURL(blob);window.open(url,'_blank');
   }catch(err){alert('Error: '+err.message);}
   if(btn){btn.disabled=false;btn.textContent='⊞ View All';}
@@ -5155,7 +4669,7 @@ async function exportEDMSections(){
 
   try{
     const isAsian = (currentTab===3);
-    const [CANVAS_W, CANVAS_H] = getTabSize(currentTab); // EDM canvas size
+    const [CANVAS_W, CANVAS_H] = SIZES[currentTab]; // 600 x 4387
     const EMAIL_W = 600;
     const RENDER_SCALE = 3;
 
