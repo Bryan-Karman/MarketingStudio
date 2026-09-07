@@ -2413,6 +2413,9 @@ function globalSync(){
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
           // EDM, Asian Desk: append income as last body copy line
           inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else if(field === 'bodycopy' && [10,11,12,13].indexOf(currentTab) > -1){
+          // Press Ads: append income as last body copy line
+          inner.textContent = _fi ? val + '\n' + _fi : val;
         } else {
           inner.textContent = val;
         }
