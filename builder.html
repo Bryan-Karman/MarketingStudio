@@ -3003,7 +3003,7 @@ function buildAFR10x7(W,H){
   mkT(682,67,282,52,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
   mkI(903,111,90,35,'logo','Image',{z:3});
   mkT(682,127,275,12,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
-  mkT(682,150,282,136,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
+  (function(){ var _fi=gv('fi')||''; var _bc=document.getElementById('fbc').value; var _val=_fi?_bc+'\n'+_fi:_bc; var _e=mkT(682,150,282,136,_val,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
   mkT(682,292,230,12,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
   mkT(682,307,230,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
   mkR(682,325,283,1.5,'rgb(1, 42, 45)',{z:3});
@@ -3055,7 +3055,7 @@ function buildAFRM3x6(W,H){
   mkT(20,330,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
   mkT(585,76,317,62,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'28px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
   mkI(892,85,100,44,'logo','Image',{z:3});
-  mkT(585,145,381,125,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'});
+  (function(){ var _fi=gv('fi')||''; var _bc=document.getElementById('fbc').value; var _val=_fi?_bc+'\n'+_fi:_bc; var _e=mkT(585,145,381,125,_val,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
   mkT(585,277,340,14,gv('fm')||'',{z:3,color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
   mkR(586,297,381,1.5,'rgb(1, 42, 45)',{z:3});
   mkI(918,241,48,48,'','Image',{z:3});
