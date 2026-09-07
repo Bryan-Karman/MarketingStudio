@@ -4262,31 +4262,6 @@ function applyState(data,skipZoom=false){
       ? new Set(data.miHidden)
       : new Set(_MI_DEFAULT_HIDDEN);
     _miHidden = _miToApply;
-    const tabs = document.querySelectorAll('.tab:not(.tab-add)');
-    // Map tab index to checkbox by ID
-    _miHidden.forEach(function(idx){
-      // Hide the tab button that calls switchTab(idx,...)
-      tabs.forEach(function(t){
-        if(t.getAttribute('onclick') && t.getAttribute('onclick').includes('switchTab('+idx+',')){
-          t.style.display='none';
-        }
-      });
-      // Uncheck the corresponding checkbox
-      const cb = document.getElementById('mi'+idx);
-      if(cb) cb.checked = false;
-    });
-    // Ensure ON tabs have their checkboxes checked and are visible
-    [0,1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(function(idx){
-      if(!_miHidden.has(idx)){
-        const cb = document.getElementById('mi'+idx);
-        if(cb) cb.checked = true;
-        tabs.forEach(function(t){
-          if(t.getAttribute('onclick') && t.getAttribute('onclick').includes('switchTab('+idx+',')){
-            t.style.display='';
-          }
-        });
-      }
-    });
     return true;
   }catch(e){console.error('applyState failed',e);return false;}
 }
@@ -4664,6 +4639,24 @@ async function syncEDMAsianDesk(){
 let _zhTimer=null;
 function debouncedZhSync(){clearTimeout(_zhTimer);_zhTimer=setTimeout(syncEDMAsianDesk,800);}
 
+function applyMIHidden(){
+  // Apply _miHidden set to DOM — hide tabs and uncheck checkboxes
+  const allTabs = document.querySelectorAll('.tab:not(.tab-add)');
+  allTabs.forEach(function(t){ t.style.display=''; }); // reset first
+  document.querySelectorAll('.mi-di input[type="checkbox"]').forEach(function(cb){
+    const m = cb.getAttribute('onchange').match(/toggleMITab\((\d+),/);
+    if(!m) return;
+    const idx = parseInt(m[1]);
+    cb.checked = !_miHidden.has(idx);
+  });
+  _miHidden.forEach(function(idx){
+    allTabs.forEach(function(t){
+      const oc = t.getAttribute('onclick');
+      if(oc && oc.includes('switchTab('+idx+',')) t.style.display='none';
+    });
+  });
+}
+
 async function init(){
   document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
   setCdtStatus('saving','Loading…');
@@ -4727,6 +4720,7 @@ async function init(){
       if(_h || _s) _edmS.value = _h && _s ? _h+' | '+_s : (_h||_s);
     }
     updateEdmCharCounts();
+    applyMIHidden();
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
