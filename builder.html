@@ -317,11 +317,11 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(6,this)">AFR 4 Mods</button>
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
     <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
-    <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
     <button class="tab" onclick="switchTab(10,this)">Press Ad 10x7</button>
     <button class="tab" onclick="switchTab(11,this)">Press Ad M3x3 WA</button>
     <button class="tab" onclick="switchTab(12,this)">Press Ad M3x6</button>
     <button class="tab" onclick="switchTab(13,this)">Press Ad T44</button>
+    <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
   </div>
 </div>
 
@@ -538,6 +538,86 @@ const _deletedLogos = {};
 // ════════════════════════════════════════
 const UNDO_MAX = 50;
 let undoStacks = {}; // { tabIdx: [snapshot, snapshot, ...] }
+
+// ── Cross-tab element copy/paste ──────────────────────────────────
+let _elClipboard = [];
+
+function copySelected(){
+  const els = _selectedEls.length > 1 ? _selectedEls : (selectedEl ? [selectedEl] : []);
+  if(!els.length) return;
+  _elClipboard = els.map(function(el){
+    const inner = el.querySelector('.el-inner');
+    const img   = el.querySelector('img');
+    return {
+      type:      el.dataset.type || 'text',
+      x:         parseFloat(el.style.left) || 0,
+      y:         parseFloat(el.style.top)  || 0,
+      w:         parseFloat(el.style.width)  || 100,
+      h:         parseFloat(el.style.height) || 30,
+      z:         parseInt(el.style.zIndex)   || 2,
+      innerStyle: inner ? inner.getAttribute('style') : '',
+      content:   inner ? (inner.textContent || '') : '',
+      field:     el.dataset.field || '',
+      assetKey:  el.dataset.assetKey || '',
+      imgSrc:    img ? img.src : '',
+      svgKey:    el.dataset.svgKey || '',
+      banner:    el.dataset.banner || '0',
+      bannerPad: el.dataset.bannerPad || '',
+      bullets:   el.dataset.bullets || '0',
+      bulletParaSpacing: el.dataset.bulletParaSpacing || '0',
+      combinedAgent: el.dataset.combinedAgent || '0',
+    };
+  });
+  const count = _elClipboard.length;
+  const flash = document.createElement('div');
+  flash.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:11px;font-weight:600;padding:7px 16px;border-radius:20px;z-index:99999;pointer-events:none;white-space:nowrap;';
+  flash.textContent='📋 Copied '+count+' element'+(count>1?'s':'')+' — switch tabs and paste with Cmd+V';
+  document.body.appendChild(flash);
+  setTimeout(function(){ if(flash.parentNode) flash.remove(); }, 2500);
+}
+
+function pasteSelected(){
+  if(!_elClipboard.length) return;
+  const OFFSET = 20;
+  deselectAll();
+  const newEls = [];
+  _elClipboard.forEach(function(sv){
+    var el = null;
+    if(sv.type === 'img'){
+      el = mkI(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, sv.assetKey||'', 'Image', {z:sv.z});
+      if(el && sv.imgSrc && !sv.svgKey){
+        const img = el.querySelector('img');
+        if(img) img.src = sv.imgSrc;
+      }
+    } else if(sv.type === 'rect'){
+      const bgMatch = (sv.innerStyle||'').match(/background:\s*([^;]+)/);
+      const bg = bgMatch ? bgMatch[1].trim() : 'rgb(0,0,0)';
+      el = mkR(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, bg, {z:sv.z});
+    } else {
+      el = mkT(sv.x+OFFSET, sv.y+OFFSET, sv.w, sv.h, sv.content||'', {z:sv.z, field:sv.field||''});
+      if(el){
+        const inner = el.querySelector('.el-inner');
+        if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
+        el.dataset.banner = sv.banner;
+        el.dataset.bannerPad = sv.bannerPad;
+        el.dataset.bullets = sv.bullets;
+        el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+        el.dataset.combinedAgent = sv.combinedAgent;
+        if(sv.bullets==='1' && inner) applyBullets(inner, true);
+        if(sv.bulletParaSpacing && sv.bulletParaSpacing!=='0' && inner){
+          applyPlainParaSpacing(inner, parseInt(sv.bulletParaSpacing));
+        }
+      }
+    }
+    if(el){ el.dataset.locked = '0'; newEls.push(el); }
+  });
+  if(newEls.length===1){ selectElement(newEls[0]); }
+  else if(newEls.length>1){
+    newEls.forEach(function(e){ _selectedEls.push(e); e.classList.add('selected'); });
+    selectedEl = newEls[0];
+  }
+  debouncedPersist();
+}
 
 function undoSnapshot(){
   const idx = currentTab;
@@ -981,19 +1061,26 @@ function createElement(cfg){
     if(e.target.classList.contains('crop-img-rh')) return;
     if(el.classList.contains('crop-mode')) return;
     e.stopPropagation();
-    selectElement(el);
 
-    const isImg = el.dataset.type==='img';
-    const img   = isImg ? el.querySelector('img') : null;
+    const isImg    = el.dataset.type==='img';
+    const isSVGLogo = !!el.dataset.svgKey;
+    const img      = isImg ? el.querySelector('img') : null;
     const hasVisibleImg = img && img.src && img.style.display !== 'none';
 
-    // Locked non-image elements: block all interaction
-    if(el.dataset.locked==='1' && !isImg) return;
+    // If already in multi-selection and shift NOT held, don't re-select (preserves others)
+    const alreadyInMulti = _selectedEls.length > 1 && _selectedEls.includes(el);
+    if(!alreadyInMulti || e.shiftKey){
+      selectElement(el, e.shiftKey);
+    }
+    // If shift-click just removed this element, stop here
+    if(e.shiftKey && !_selectedEls.includes(el) && selectedEl !== el) return;
+
+    // Locked non-image, non-logo elements: block drag
+    if(el.dataset.locked==='1' && !isImg && !isSVGLogo) return;
     // Locked image elements: allow pan/crop inside but not moving the box
     const _lockedImg = el.dataset.locked==='1' && isImg;
 
     // For image elements with a loaded photo — always pan on drag
-    // For images with no photo yet, or non-image elements — move the box
     const shouldPan = hasVisibleImg;
 
     const fw = parseFloat(el.style.width);
@@ -1008,8 +1095,11 @@ function createElement(cfg){
     }
 
     // Capture start positions of all selected elements for group move
-    const groupStarts = (_selectedEls.length > 1 && _selectedEls.includes(el))
-      ? _selectedEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
+    const sx = e.clientX, sy = e.clientY;
+    let committed = false;
+    const multiEls = _selectedEls.length > 1 ? _selectedEls : null;
+    const groupStarts = multiEls
+      ? multiEls.map(function(ge){ return {el:ge, ox:parseFloat(ge.style.left)||0, oy:parseFloat(ge.style.top)||0}; })
       : null;
 
     function mv(e){
@@ -1435,11 +1525,29 @@ function exitCropMode(){
 
 // Add double-click to image elements to enter crop mode
 // (called from createElement after img element is created)
-function selectElement(el){
-  if(selectedEl && selectedEl!==el) selectedEl.classList.remove('selected');
-  selectedEl=el;
-  el.classList.add('selected');
-  showProps(el);
+function selectElement(el, shiftHeld){
+  if(shiftHeld && (selectedEl || _selectedEls.length > 0)){
+    if(_selectedEls.length === 0 && selectedEl) _selectedEls = [selectedEl];
+    const idx = _selectedEls.indexOf(el);
+    if(idx > -1){
+      _selectedEls.splice(idx, 1);
+      el.classList.remove('selected');
+      if(_selectedEls.length === 1){
+        selectedEl = _selectedEls[0]; _selectedEls = []; showProps(selectedEl);
+      } else if(_selectedEls.length === 0){
+        selectedEl = null; document.getElementById('props-content').innerHTML = emptyPropsHTML();
+      } else { showProps(null); }
+    } else {
+      _selectedEls.push(el); el.classList.add('selected');
+      selectedEl = el; showProps(null);
+    }
+  } else {
+    if(selectedEl && selectedEl !== el) selectedEl.classList.remove('selected');
+    _selectedEls.forEach(function(e){ if(e !== el) e.classList.remove('selected'); });
+    _selectedEls = [];
+    selectedEl = el; el.classList.add('selected');
+    showProps(el);
+  }
 }
 
 function deselectAll(){
@@ -2416,6 +2524,14 @@ function globalSync(){
         } else if(field === 'bodycopy' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: append income as last body copy line
           inner.textContent = _fi ? val + '\n' + _fi : val;
+        } else if(field === 'address1' && [10,11,12,13].indexOf(currentTab) > -1){
+          // Press Ads: combine address1 + ", " + address2 in one box
+          const _fa2 = gv('fa2') || '';
+          inner.textContent = val + (_fa2 ? ', ' + _fa2 : '');
+        } else if(field === 'address2' && [10,11,12,13].indexOf(currentTab) > -1){
+          // Press Ads: address2 is merged into address1 box — hide standalone
+          el.style.display = 'none';
+          return;
         } else {
           inner.textContent = val;
         }
@@ -2991,55 +3107,55 @@ function buildBrochure1(W,H){
 function buildAFR10x7(W,H){
   mkR(0,0,983,378,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkR(669,8,307,362,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkSVGLogo(19,8,123,55,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(159,35,607,3,'rgb(23, 232, 143)',{z:3});
-  mkT(740,29,226,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(821,48,145,12,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkI(19,73,380,277,'img1','Image',{z:2});
-  mkI(406,73,247,135,'img2','Image',{z:2});
-  mkI(406,215,247,135,'img3','Image',{z:2});
+  mkSVGLogo(19,8,123,55,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  mkR(159,35,607,3,'rgb(23, 232, 143)',{z:3,locked:'1'});
+  mkT(740,29,226,14,gv('fm')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(692,48,274,12,(gv('fa1')||'')+(gv('fa2')?', '+gv('fa2'):''),{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkI(19,73,380,277,'img1','Image',{z:2,locked:'1'});
+  mkI(406,73,247,135,'img2','Image',{z:2,locked:'1'});
+  mkI(406,215,247,135,'img3','Image',{z:2,locked:'1'});
   mkBanner(437,331,216,20,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
-  mkT(19,360,300,10,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
-  mkT(682,67,282,52,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(903,111,90,35,'logo','Image',{z:3});
-  mkT(682,127,275,12,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
-  (function(){ var _e=mkT(682,150,282,136,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
-  mkT(682,292,230,12,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
-  mkT(682,307,230,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
-  mkR(682,325,283,1.5,'rgb(1, 42, 45)',{z:3});
+  mkT(19,360,300,10,'*Approx',{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
+  mkT(682,67,282,56,gv('fh')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'23px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(903,111,66,26,'logo','Image',{z:3});
+  mkT(682,127,275,12,gv('fs')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
+  (function(){ var _e=mkT(682,150,282,143,document.getElementById('fbc').value,{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkT(682,292,230,12,gv('fm')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
+  mkT(682,307,230,14,gv('fd')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
+  mkR(682,325,283,1.5,'rgb(1, 42, 45)',{z:3,locked:'1'});
   mkI(915,269,48,48,'','Image',{z:3});
-  mkT(682,333,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(682,348,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(783,333,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(783,348,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(882,333,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(882,348,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(682,333,104,14,gv('fn1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(682,348,104,13,gv('fp1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(783,333,104,14,gv('fn2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(783,348,104,13,gv('fp2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(882,333,104,14,gv('fn3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(882,348,104,13,gv('fp3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
 }
 
 // Press Ad M3x3
 function buildAFRM3x3WA(W,H){
   mkR(0,0,509,348,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkR(8,110,493,230,'rgb(255, 255, 255)',{z:1,locked:'1'});
-  mkSVGLogo(19,8,100,40,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(132,27,168,2,'rgb(23, 232, 143)',{z:3});
-  mkT(268,21,230,19,gv('fm')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(288,40,210,16,gv('fa1')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkT(19,70,476,36,gv('fh')||'',{z:3,color:'rgb(255, 255, 255)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(14,116,255,152,'img1','Image',{z:2});
+  mkSVGLogo(19,8,100,40,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  mkR(132,27,168,2,'rgb(23, 232, 143)',{z:3,locked:'1'});
+  mkT(268,21,230,19,gv('fm')||'',{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(138,40,360,16,(gv('fa1')||'')+(gv('fa2')?', '+gv('fa2'):''),{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkT(19,70,476,36,gv('fh')||'',{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'26px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(14,116,255,152,'img2','Image',{z:2,locked:'1'});
   mkBanner(119,248,150,20,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
-  (function(){ var _e=mkT(278,121,216,157,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
-  mkR(19,298,415,1.5,'rgb(1, 42, 45)',{z:3});
-  mkT(19,279,412,14,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
-  mkT(393,326,44,12,'*Approx',{z:3,color:'rgb(0, 0, 0)',fontSize:'7px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right'});
+  (function(){ var _e=mkT(278,121,216,157,document.getElementById('fbc').value,{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkR(19,298,415,1.5,'rgb(1, 42, 45)',{z:3,locked:'1'});
+  mkT(19,279,412,14,gv('fd')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
+  mkT(393,326,44,12,'*Approx',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'7px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right'});
   mkI(448,287,48,48,'','Image',{z:3});
-  mkT(19,305,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(19,320,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(119,305,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(119,320,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(221,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(221,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(320,305,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(320,320,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(19,305,104,14,gv('fn1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(19,320,104,13,gv('fp1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(119,305,104,14,gv('fn2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(119,320,104,13,gv('fp2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(221,305,104,14,gv('fn3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(221,320,104,13,gv('fp3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(320,305,104,14,gv('fn4')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent4name'});
+  mkT(320,320,104,13,gv('fp4')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent4num'});
 }
 
 // Press Ad M3x6
@@ -3047,55 +3163,54 @@ function buildAFRM3x6(W,H){
   mkR(0,0,991,348,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkR(573,8,409,331,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkSVGLogo(19,8,113,69,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(156,40,586,3,'rgb(23, 232, 143)',{z:4});
-  mkT(573,35,400,16,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(592,59,382,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkI(19,83,535,237,'img1','Image',{z:2});
+  mkR(156,40,586,3,'rgb(23, 232, 143)',{z:4,locked:'1'});
+  mkT(573,35,400,16,gv('fm')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkI(19,83,535,237,'img2','Image',{z:2,locked:'1'});
   mkBanner(340,300,214,22,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
-  mkT(20,330,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
-  mkT(585,76,317,62,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'28px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(892,85,100,44,'logo','Image',{z:3});
-  (function(){ var _e=mkT(585,145,381,125,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.3',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
-  mkT(585,277,340,14,gv('fm')||'',{z:3,color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
-  mkR(586,297,381,1.5,'rgb(1, 42, 45)',{z:3});
+  mkT(20,330,300,8,'*Approx',{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
+  mkT(585,76,317,62,gv('fh')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'25px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(892,94,79,35,'logo','Image',{z:3});
+  (function(){ var _e=mkT(585,145,381,125,document.getElementById('fbc').value,{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'10px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'bodycopy',bullets:'1',bulletParaSpacing:'3'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkT(585,277,340,14,gv('fm')||'',{z:3,locked:'1',color:'rgb(1, 42, 45)',fontSize:'12px',fontWeight:'500',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
+  mkR(586,297,381,1.5,'rgb(1, 42, 45)',{z:3,locked:'1'});
   mkI(918,241,48,48,'','Image',{z:3});
-  mkT(585,304,104,14,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(585,319,104,13,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(689,304,104,14,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(689,319,104,13,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(788,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
-  mkT(788,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(889,319,104,13,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(889,304,104,14,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(585,304,104,14,gv('fn1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(585,319,104,13,gv('fp1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(689,304,104,14,gv('fn2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(689,319,104,13,gv('fp2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(788,304,104,14,gv('fn3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(788,319,104,13,gv('fp3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(889,319,104,13,gv('fp4')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent4num'});
+  mkT(889,304,104,14,gv('fn4')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent4name'});
 }
 
 // Press Ad T44
 function buildAFRT44(W,H){
   mkR(0,0,983,703,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkR(566,9,408,685,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkSVGLogo(19,8,136,74,SVG_CBRE_WHITE,'cbre-white',{z:200});
-  mkR(177,44,555,3,'rgb(23, 232, 143)',{z:3});
-  mkT(681,38,278,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
-  mkT(588,63,369,14,gv('fa1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
-  mkI(19,91,530,356,'img1','Image',{z:2});
+  mkSVGLogo(19,8,136,74,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  mkR(177,44,555,3,'rgb(23, 232, 143)',{z:3,locked:'1'});
+  mkT(614,38,345,14,gv('fm')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(588,61,369,14,(gv('fa1')||'')+(gv('fa2')?', '+gv('fa2'):''),{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
+  mkI(19,91,530,356,'img1','Image',{z:2,locked:'1'});
   mkBanner(298,423,252,27,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'5px 10px 4px'});
-  mkI(19,456,260,209,'img2','Image',{z:2});
-  mkI(289,456,260,209,'img3','Image',{z:2});
-  mkT(22,681,300,8,'*Approx',{z:3,color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
-  mkT(584,84,377,92,gv('fh')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'40px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
-  mkI(866,168,117,52,'logo','Image',{z:3});
-  mkT(584,191,311,19,gv('fs')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'subheading'});
-  (function(){ var _e=mkT(584,232,367,302,document.getElementById('fbc').value,{z:3,color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',bullets:'1',bulletParaSpacing:'8'}); _e.dataset.incomeAnchor='1'; return _e; })();
-  mkT(584,597,300,14,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
-  mkT(584,615,300,16,gv('fd')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
-  mkR(584,638,374,2,'rgb(1, 42, 45)',{z:3});
-  mkI(883,553,72,71,'','Image',{z:3});
-  mkT(584,652,104,16,gv('fn1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
-  mkT(584,668,104,18,gv('fp1')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
-  mkT(701,668,104,18,gv('fp2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
-  mkT(701,652,104,16,gv('fn2')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
-  mkT(824,668,104,18,gv('fp3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(824,652,104,16,gv('fn3')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkI(19,456,260,209,'img2','Image',{z:2,locked:'1'});
+  mkI(289,456,260,209,'img3','Image',{z:2,locked:'1'});
+  mkT(22,681,300,8,'*Approx',{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
+  mkT(584,84,377,92,gv('fh')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'38px',fontFamily:'\"Financier Display\", Georgia, serif',field:'heading'});
+  mkI(842,170,117,52,'logo','Image',{z:3});
+  mkT(584,191,311,37,gv('fs')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontWeight:'600',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.25',field:'subheading'});
+  (function(){ var _e=mkT(584,232,367,302,document.getElementById('fbc').value,{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',lineHeight:'1.2',field:'bodycopy',bullets:'1',bulletParaSpacing:'8'}); _e.dataset.incomeAnchor='1'; return _e; })();
+  mkT(584,597,300,14,gv('fm')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'salemethod'});
+  mkT(584,615,373,16,gv('fd')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'saledate'});
+  mkR(584,638,374,2,'rgb(1, 42, 45)',{z:3,locked:'1'});
+  mkI(883,525,67,64,'','Image',{z:3});
+  mkT(584,652,104,16,gv('fn1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1name'});
+  mkT(584,668,104,18,gv('fp1')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent1num'});
+  mkT(701,668,104,18,gv('fp2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
+  mkT(701,652,104,16,gv('fn2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2name'});
+  mkT(824,668,104,18,gv('fp3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(824,652,104,16,gv('fn3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
 }
 
 function buildBrochure2(W,H){
