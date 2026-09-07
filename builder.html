@@ -312,15 +312,15 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(1,this)">Brochure 2-Page</button>
     <button class="tab" onclick="switchTab(2,this)">EDM</button>
     <button class="tab" onclick="switchTab(3,this)">EDM - Asian Desk</button>
-    <button class="tab" onclick="switchTab(4,this)">LinkedIn</button>
     <button class="tab" onclick="switchTab(5,this)">AFR 2 Mods</button>
     <button class="tab" onclick="switchTab(6,this)">AFR 4 Mods</button>
-    <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
-    <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
     <button class="tab" onclick="switchTab(10,this)">Press Ad 10x7</button>
     <button class="tab" onclick="switchTab(11,this)">Press Ad M3x3 WA</button>
     <button class="tab" onclick="switchTab(12,this)">Press Ad M3x6</button>
     <button class="tab" onclick="switchTab(13,this)">Press Ad T44</button>
+    <button class="tab" onclick="switchTab(4,this)">LinkedIn</button>
+    <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
+    <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
     <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
   </div>
 </div>
@@ -3164,7 +3164,7 @@ function buildAFRM3x6(W,H){
   mkR(573,8,409,331,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkSVGLogo(19,8,113,69,SVG_CBRE_WHITE,'cbre-white',{z:200});
   mkR(156,40,586,3,'rgb(23, 232, 143)',{z:4,locked:'1'});
-  mkT(573,35,400,16,gv('fm')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
+  mkT(573,35,400,16,gv('fm')||'',{z:3,color:'rgb(0, 0, 0)',fontSize:'16px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'salemethod'});
   mkI(19,83,535,237,'img2','Image',{z:2,locked:'1'});
   mkBanner(340,300,214,22,gv('fb')||'Banner Point',{color:'rgb(255, 255, 255)',fontSize:'12px',fontWeight:'700',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'banner',z:5,bannerPad:'4px 8px 3px'});
   mkT(20,330,300,8,'*Approx',{z:3,locked:'1',color:'rgb(255, 255, 255)',fontSize:'8px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif'});
@@ -3180,8 +3180,9 @@ function buildAFRM3x6(W,H){
   mkT(689,319,104,13,gv('fp2')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent2num'});
   mkT(788,304,104,14,gv('fn3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
   mkT(788,319,104,13,gv('fp3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
-  mkT(889,319,104,13,gv('fp4')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent4num'});
-  mkT(889,304,104,14,gv('fn4')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent4name'});
+  mkT(889,319,104,13,gv('fp3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'14px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3num'});
+  mkT(889,304,104,14,gv('fn3')||'',{z:3,locked:'1',color:'rgb(0, 0, 0)',fontSize:'12px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',field:'agent3name'});
+  mkT(573,56,400,16,(gv('fa1')||'')+(gv('fa2')?', '+gv('fa2'):''),{z:3,color:'rgb(0, 0, 0)',fontSize:'13px',fontFamily:'Calibre, \"Franklin Gothic Medium\", Arial, sans-serif',textAlign:'right',field:'address1'});
 }
 
 // Press Ad T44
