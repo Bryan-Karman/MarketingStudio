@@ -289,13 +289,17 @@ body.admin-mode .cl-limit-wrap{display:flex;}
       <div class="mi-dd" id="mi-dd">
         <div class="mi-dh">Show / Hide artwork types</div>
         <div class="mi-di"><input type="checkbox" id="mi0" checked="" onchange="toggleMITab(0,this)"><label for="mi0">Brochure</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi1" checked="" onchange="toggleMITab(1,this)"><label for="mi1">Brochure 2-Page</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi1" onchange="toggleMITab(1,this)"><label for="mi1">Brochure 2-Page</label></div>
         <div class="mi-di"><input type="checkbox" id="mi2" checked="" onchange="toggleMITab(2,this)"><label for="mi2">EDM</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi3" checked="" onchange="toggleMITab(3,this)"><label for="mi3">EDM - Asian Desk</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi3" onchange="toggleMITab(3,this)"><label for="mi3">EDM - Asian Desk</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi5" onchange="toggleMITab(5,this)"><label for="mi5">AFR 2 Mods</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi6" onchange="toggleMITab(6,this)"><label for="mi6">AFR 4 Mods</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi10" onchange="toggleMITab(10,this)"><label for="mi10">Press Ad 10x7</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi11" onchange="toggleMITab(11,this)"><label for="mi11">Press Ad M3x3 WA</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi12" onchange="toggleMITab(12,this)"><label for="mi12">Press Ad M3x6</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi13" onchange="toggleMITab(13,this)"><label for="mi13">Press Ad T44</label></div>
         <div class="mi-di"><input type="checkbox" id="mi4" checked="" onchange="toggleMITab(4,this)"><label for="mi4">LinkedIn</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi5" checked="" onchange="toggleMITab(5,this)"><label for="mi5">AFR 2 Mods</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi6" checked="" onchange="toggleMITab(6,this)"><label for="mi6">AFR 4 Mods</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi7" checked="" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi7" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
         <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">Auction Poster</label></div>
       </div>
     </div>
@@ -4152,7 +4156,9 @@ function goPortfolio(){
 function doLogout(){ localStorage.removeItem('cbre_hub_session'); window.location.href='index.html'; }
 function setCdtStatus(cls,txt){ const el=document.getElementById('cld'); const lb=document.getElementById('cld-lbl'); if(el) el.className='cld '+cls; if(lb) lb.textContent=txt; }
 
-let _miHidden=new Set();
+// Default hidden tabs for NEW projects — only Brochure(0), EDM(2), LinkedIn(4), Auction(8), Marketing Schedule(9) are ON by default
+const _MI_DEFAULT_HIDDEN = new Set([1,3,5,6,7,10,11,12,13]);
+let _miHidden = new Set([1,3,5,6,7,10,11,12,13]);
 function toggleMIDD(e){
   if(e) e.stopPropagation();
   var dd = document.getElementById('mi-dd');
@@ -4166,9 +4172,29 @@ function toggleMIDD(e){
 }
 document.addEventListener('click',function(e){ const w=document.querySelector('.mi-wrap'); if(w&&!w.contains(e.target)) document.getElementById('mi-dd').classList.remove('open'); });
 function toggleMITab(idx,cb){
-  const tabs=document.querySelectorAll('.tab'); const tab=tabs[idx]; if(!tab) return;
-  if(!cb.checked){ _miHidden.add(idx); tab.style.display='none'; if(currentTab===idx){ for(let i=0;i<9;i++){if(!_miHidden.has(i)&&tabs[i]){switchTab(i,tabs[i]);break;}} } }
-  else { _miHidden.delete(idx); tab.style.display=''; }
+  // Find tab button by its switchTab index (not DOM array position)
+  const allTabs = document.querySelectorAll('.tab:not(.tab-add)');
+  let tab = null;
+  allTabs.forEach(function(t){
+    if(t.getAttribute('onclick') && t.getAttribute('onclick').includes('switchTab('+idx+',')) tab=t;
+  });
+  if(!tab) return;
+  if(!cb.checked){
+    _miHidden.add(idx);
+    tab.style.display='none';
+    // If currently on this tab, switch to first visible tab
+    if(currentTab===idx){
+      allTabs.forEach(function(t){
+        if(t.style.display!=='none'){
+          const m=t.getAttribute('onclick').match(/switchTab\((\d+),/);
+          if(m){ switchTab(parseInt(m[1]),t); return; }
+        }
+      });
+    }
+  } else {
+    _miHidden.delete(idx);
+    tab.style.display='';
+  }
   debouncedPersist();
 }
 
@@ -4231,16 +4257,36 @@ function applyState(data,skipZoom=false){
     }
     if(!skipZoom&&data.zoom){document.getElementById('zoom-range').value=data.zoom;setZoom(data.zoom);}
     if(data.currentTab!=null){ currentTab=parseInt(data.currentTab)||0; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab)); }
-    // Restore hidden marketing items
-    if(data.miHidden && Array.isArray(data.miHidden)){
-      _miHidden = new Set(data.miHidden);
-      const tabs = document.querySelectorAll('.tab');
-      const cbs  = document.querySelectorAll('.mi-di input[type="checkbox"]');
-      _miHidden.forEach(function(idx){
-        if(tabs[idx]) tabs[idx].style.display = 'none';
-        if(cbs[idx])  cbs[idx].checked = false;
+    // Restore hidden marketing items — use saved state if present, otherwise use defaults
+    const _miToApply = (data.miHidden && Array.isArray(data.miHidden))
+      ? new Set(data.miHidden)
+      : new Set(_MI_DEFAULT_HIDDEN);
+    _miHidden = _miToApply;
+    const tabs = document.querySelectorAll('.tab:not(.tab-add)');
+    // Map tab index to checkbox by ID
+    _miHidden.forEach(function(idx){
+      // Hide the tab button that calls switchTab(idx,...)
+      tabs.forEach(function(t){
+        if(t.getAttribute('onclick') && t.getAttribute('onclick').includes('switchTab('+idx+',')){
+          t.style.display='none';
+        }
       });
-    }
+      // Uncheck the corresponding checkbox
+      const cb = document.getElementById('mi'+idx);
+      if(cb) cb.checked = false;
+    });
+    // Ensure ON tabs have their checkboxes checked and are visible
+    [0,1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(function(idx){
+      if(!_miHidden.has(idx)){
+        const cb = document.getElementById('mi'+idx);
+        if(cb) cb.checked = true;
+        tabs.forEach(function(t){
+          if(t.getAttribute('onclick') && t.getAttribute('onclick').includes('switchTab('+idx+',')){
+            t.style.display='';
+          }
+        });
+      }
+    });
     return true;
   }catch(e){console.error('applyState failed',e);return false;}
 }
@@ -4792,7 +4838,18 @@ async function loadApprovalStatus(){
   updateApproveBtn();
 }
 
-function getSelectedTabIndices(){const tabs=document.querySelectorAll('.tab');const selected=[];tabs.forEach((tab,i)=>{if(tab.style.display!=='none')selected.push(i);});return selected;}
+function getSelectedTabIndices(){
+  const selected=[];
+  document.querySelectorAll('.tab:not(.tab-add)').forEach(function(tab){
+    if(tab.style.display==='none') return; // hidden = unchecked in Marketing Items
+    const m=tab.getAttribute('onclick').match(/switchTab\((\d+),/);
+    if(!m) return;
+    const idx=parseInt(m[1]);
+    if(idx===9) return; // Marketing Schedule excluded from PDF export
+    selected.push(idx);
+  });
+  return selected;
+}
 
 async function downloadAllSelectedPDF(){
   const btn=document.getElementById('dl-all-tb-btn');btn.disabled=true;btn.textContent='Building…';
