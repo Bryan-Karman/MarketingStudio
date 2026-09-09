@@ -516,7 +516,24 @@ body.exporting .stem-drag-handle{display:none!important;}
 
 /* ── RIGHT PANEL ── */
 .props{width:220px;min-width:200px;background:#191919;border-left:1px solid #2a2a2a;display:flex;flex-direction:column;overflow:hidden;}
-.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;}
+.props-head{padding:8px 10px;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;}
+.assist-btn{padding:3px 8px;font-size:9px;font-weight:700;background:#3a1a00;color:#f0a030;border:1px solid #7a4a00;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;}
+.assist-btn:hover{background:#4a2600;color:#ffb84d;}
+.assist-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;}
+.assist-modal-bg.open{display:flex;}
+.assist-modal{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;padding:22px;width:380px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.assist-modal-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;}
+.assist-modal-sub{font-size:10px;color:#666;margin-bottom:16px;line-height:1.5;}
+.assist-field{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;}
+.assist-field label{font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.07em;}
+.assist-field input,.assist-field textarea{padding:7px 9px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;font-size:11px;font-family:inherit;outline:none;resize:vertical;}
+.assist-field input:focus,.assist-field textarea:focus{border-color:#f0a030;}
+.assist-field textarea{min-height:90px;line-height:1.5;}
+.assist-modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.assist-cancel{padding:7px 14px;font-size:11px;font-weight:700;background:transparent;color:#777;border:1px solid #333;border-radius:2px;cursor:pointer;}
+.assist-cancel:hover{background:#2a2a2a;color:#ccc;}
+.assist-send{padding:7px 14px;font-size:11px;font-weight:700;background:#f0a030;color:#111;border:none;border-radius:2px;cursor:pointer;}
+.assist-send:hover{background:#ffb84d;}
 .props-scroll{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:10px;}
 .props-empty{padding:14px 10px;font-size:11px;color:#555;line-height:1.6;}
 .pf{display:flex;flex-direction:column;gap:3px;}
@@ -830,7 +847,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
   <!-- RIGHT PANEL -->
   <div class="props">
-    <div class="props-head" id="props-head">PROPERTIES</div>
+    <div class="props-head" id="props-head"><span>PROPERTIES</span><button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team">Request Assistance</button></div>
     <div class="props-scroll" id="props-scroll">
       <div class="props-empty" id="props-empty">
         Select a markup on the canvas to edit its label.<br><br>
@@ -5349,6 +5366,76 @@ document.addEventListener('visibilitychange', () => {
 
 // Start after initial load settles
 setTimeout(startLiveSync, 3000);
+
+// ── REQUEST ASSISTANCE ──────────────────────────────────────────
+function openAssistModal(){
+  document.getElementById('assist-form-body').style.display='';
+  document.getElementById('assist-success').style.display='none';
+  const errEl=document.getElementById('assist-error'); if(errEl) errEl.textContent='';
+  let userName='',userEmail='';
+  try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s){userName=s.name||'';userEmail=s.email||'';} }catch(e){}
+  const nameEl=document.getElementById('assist-name'); if(nameEl) nameEl.value=userName;
+  const emailEl=document.getElementById('assist-email'); if(emailEl) emailEl.value=userEmail;
+  const projEl=document.getElementById('assist-project');
+  if(projEl) projEl.value=window.location.href;
+  const ctxEl=document.getElementById('assist-context'); if(ctxEl) ctxEl.value='Aerials Builder — Page '+(currentPage+1);
+  const msgEl=document.getElementById('assist-message'); if(msgEl) msgEl.value='';
+  document.getElementById('assist-modal-bg').classList.add('open');
+  setTimeout(function(){ const m=document.getElementById('assist-message'); if(m) m.focus(); },60);
+}
+function closeAssistModal(){ document.getElementById('assist-modal-bg').classList.remove('open'); }
+async function sendAssistRequest(){
+  const name=document.getElementById('assist-name').value||'';
+  const email=document.getElementById('assist-email').value||'';
+  const project=document.getElementById('assist-project').value||'';
+  const context=document.getElementById('assist-context').value||'';
+  const message=document.getElementById('assist-message').value||'';
+  const errEl=document.getElementById('assist-error');
+  const sendBtn=document.getElementById('assist-send-btn');
+  if(errEl) errEl.textContent='';
+  if(!message.trim()){ if(errEl) errEl.textContent='Please describe what you need help with.'; return; }
+  if(!email.trim()){ if(errEl) errEl.textContent='Please enter your email so we can get back to you.'; return; }
+  if(sendBtn){ sendBtn.disabled=true; sendBtn.textContent='Sending…'; }
+  const SUPA_URL='https://pgsgjafgetdvuctmpibf.supabase.co';
+  const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
+  try{
+    const payload={agent_name:name,agent_email:email,property_name:'',portfolio_name:'',project_link:project,context:context,message:message,status:'new',product:'aerials'};
+    const res=await fetch(SUPA_URL+'/rest/v1/assistance_requests',{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
+    if(!res.ok){ const txt=await res.text(); throw new Error(txt); }
+    document.getElementById('assist-form-body').style.display='none';
+    document.getElementById('assist-success').style.display='';
+  }catch(e){
+    if(errEl) errEl.textContent='Failed to send: '+(e.message||e);
+  }finally{
+    if(sendBtn){ sendBtn.disabled=false; sendBtn.textContent='Send Request'; }
+  }
+}
 </script>
+
+<!-- ASSISTANCE MODAL -->
+<div class="assist-modal-bg" id="assist-modal-bg">
+  <div class="assist-modal">
+    <div class="assist-modal-title">Request Assistance</div>
+    <div class="assist-modal-sub">Describe what you need help with and the studio team will get back to you.</div>
+    <div id="assist-form-body">
+      <div class="assist-field"><label>Your Name</label><input type="text" id="assist-name" placeholder="e.g. Jane Smith" readonly></div>
+      <div class="assist-field"><label>Your Email</label><input type="email" id="assist-email" placeholder="your.email@cbre.com"></div>
+      <div class="assist-field"><label>Project</label><input type="text" id="assist-project" readonly></div>
+      <div class="assist-field"><label>Referring To</label><input type="text" id="assist-context" readonly style="color:#f0a030;"></div>
+      <div class="assist-field"><label>What do you need help with?</label><textarea id="assist-message" placeholder="Describe what changes or assistance you need…"></textarea></div>
+      <div id="assist-error" style="font-size:11px;color:#e06060;min-height:16px;margin-bottom:4px;"></div>
+      <div class="assist-modal-actions">
+        <button class="assist-cancel" onclick="closeAssistModal()">Cancel</button>
+        <button class="assist-send" id="assist-send-btn" onclick="sendAssistRequest()">Send Request</button>
+      </div>
+    </div>
+    <div id="assist-success" style="display:none;text-align:center;padding:24px 0 8px;">
+      <div style="font-size:28px;margin-bottom:12px;">✅</div>
+      <div style="font-size:13px;font-weight:700;color:#5bbf7a;margin-bottom:6px;">Request Sent!</div>
+      <div style="font-size:11px;color:#888;line-height:1.6;">The studio team has been notified and will be in touch shortly.</div>
+      <div class="assist-modal-actions" style="justify-content:center;margin-top:20px;"><button class="assist-send" onclick="closeAssistModal()">Close</button></div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
