@@ -2119,17 +2119,26 @@ function breakFieldLink(){
   undoSnapshot();
   // Snapshot current text content before unlinking
   const inner = selectedEl.querySelector('.el-inner');
-  const currentText = inner ? inner.textContent : '';
-  // Clear the field link on the live element
+  const currentText = inner ? (inner.innerText || inner.textContent) : '';
+  // Clear the field link AND all related field-driven behaviour
   selectedEl.dataset.field = '';
-  // Update savedStates for the CURRENT TAB ONLY — eids are not unique across tabs
-  // so updating all tabs would break same-numbered elements on other pages
+  selectedEl.dataset.bullets = '0';         // stop applyBullets from running
+  selectedEl.dataset.incomeAnchor = '0';    // stop income appending
+  selectedEl.dataset.combinedAgent = '0';   // stop combined agent formatting
+  // Keep the current visual text as plain text
+  if(inner){
+    inner.textContent = currentText;
+    inner.style.whiteSpace = 'pre-wrap';
+  }
+  // Update savedStates for the CURRENT TAB ONLY
   const tabState = savedStates[currentTab];
   if(tabState){
     tabState.forEach(function(sv){
       if(sv.eid === selectedEl.dataset.eid){
         sv.field = '';
-        // Lock in the current text so globalSync doesn't overwrite it
+        sv.bullets = '0';
+        sv.incomeAnchor = '0';
+        sv.combinedAgent = '0';
         sv.content = currentText;
       }
     });
