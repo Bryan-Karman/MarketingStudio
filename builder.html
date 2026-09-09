@@ -887,6 +887,45 @@ function createElement(cfg){
       inner.style.cursor='text';
       inner.focus();
       showRtb(inner);
+      // Intercept paste — strip all incoming formatting, keep plain text only
+      if(inner._pasteHandler) inner.removeEventListener('paste', inner._pasteHandler);
+      inner._pasteHandler = function(e){
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        if(!text) return;
+        // Insert plain text at cursor position
+        const sel = window.getSelection();
+        if(sel && sel.rangeCount){
+          sel.deleteFromDocument();
+          const range = sel.getRangeAt(0);
+          // Replace newlines with <br> if the element uses bullet formatting, else spaces
+          const el2 = inner.closest('.el');
+          const isBullets = el2 && (el2.dataset.bullets==='1' || el2.dataset.field==='bodycopy' || el2.dataset.field==='bullets');
+          const lines = text.split(/\r?\n/);
+          if(isBullets && lines.length > 1){
+            lines.forEach(function(line, i){
+              range.insertNode(document.createTextNode(line));
+              range.collapse(false);
+              if(i < lines.length - 1){
+                const br = document.createElement('br');
+                range.insertNode(br);
+                range.setStartAfter(br);
+                range.collapse(true);
+              }
+            });
+          } else {
+            // Single line — collapse newlines to spaces
+            const flat = lines.join(' ');
+            range.insertNode(document.createTextNode(flat));
+            range.collapse(false);
+          }
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        // Trigger input handler to sync to sidebar
+        inner.dispatchEvent(new Event('input'));
+      };
+      inner.addEventListener('paste', inner._pasteHandler);
       // Remove any previously attached handler to avoid duplicates
       if(inner._inlineInputHandler){
         inner.removeEventListener('input', inner._inlineInputHandler);
@@ -1003,6 +1042,10 @@ function createElement(cfg){
             inner.removeEventListener('input', inner._inlineInputHandler);
             inner.removeEventListener('keyup', inner._inlineInputHandler);
             inner._inlineInputHandler=null;
+          }
+          if(inner._pasteHandler){
+            inner.removeEventListener('paste', inner._pasteHandler);
+            inner._pasteHandler=null;
           }
           _savedRange = null;
           hideRtb();
