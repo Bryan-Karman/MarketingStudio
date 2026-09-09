@@ -2630,7 +2630,9 @@ function globalSync(){
       }
     }
   }
-  // Append income to incomeAnchor element on any tab that has one
+  // Append income to incomeAnchor element — but NOT on EDM tabs (income goes in bodycopy there)
+  // and NOT on elements where the field link has been broken (field='')
+  if(currentTab !== 2 && currentTab !== 3){
   const _anchorEl=document.querySelector('.el[data-income-anchor="1"]:not([data-field]),.el[data-income-anchor="1"][data-field=""],.el[data-income-anchor="1"][data-field="bodycopy"],.el[data-income-anchor="1"][data-field="bullets"]');
     if(_anchorEl){
       const _aInner=_anchorEl.querySelector('.el-inner');
@@ -2653,6 +2655,7 @@ function globalSync(){
         applyBullets(_aInner,true);
       }
     }
+  }
 
   // 1. Update elements on the currently visible tab (live DOM)
   document.querySelectorAll('.el[data-field]').forEach(el=>{
@@ -2682,7 +2685,10 @@ function globalSync(){
           // AFR2, Auction: append income as plain last bullet line
           inner.textContent = _fi ? val + '\n' + _fi : val;
         } else if(field === 'bullets' && currentTab === 6){
-          // AFR4: left bullets box shows bullets only — income goes to right free-text box
+          // AFR4: bullets only — income goes to right free-text box
+          inner.textContent = val;
+        } else if(field === 'bullets' && (currentTab === 2 || currentTab === 3)){
+          // EDM: highlight points — NEVER append income here (income goes in bodycopy)
           inner.textContent = val;
         } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
@@ -2769,8 +2775,8 @@ function globalSync(){
       } else if(sv.field === 'income'){
         // Income folded into bullets/bodycopy — skip standalone
         sv._hidden = true;
-      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1 && ti !== 6){
-        // AFR/Auction/Brochure: append income as last bullet (not AFR4 tab 6)
+      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1 && ti !== 6 && ti !== 2 && ti !== 3){
+        // Brochure/AFR/Auction: append income as last bullet (NOT EDM tabs 2&3)
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
       } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
@@ -3672,7 +3678,7 @@ function buildEDM(W,H){
   mkT(337,498,238,31,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4,locked:'1'});
-  (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
+  (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4,locked:'1'});
