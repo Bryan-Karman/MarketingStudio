@@ -880,11 +880,7 @@ function createElement(cfg){
   } else {
     // text
     applyTextStyle(inner, cfg);
-    inner.textContent=cfg.content||'';
-    // Ensure line breaks in content are visible
-    if(cfg.content && cfg.content.includes('\n')){
-      inner.style.whiteSpace='pre-wrap';
-    }
+    setInnerText(inner, cfg.content||'');
     inner.addEventListener('dblclick',e=>{
       e.stopPropagation();
       undoSnapshot();
@@ -2052,7 +2048,8 @@ function applyPlainParaSpacing(inner, spacingPx){
 
   if(spacingPx <= 0){
     // Remove spacing — restore plain pre-wrap text
-    inner.textContent = lines.join('\n');
+    setInnerText(inner, lines.join('
+'));
     inner.style.whiteSpace = 'pre-wrap';
     return;
   }
@@ -2088,8 +2085,7 @@ function el_inner_txt(val){
   } else {
     // For unmanaged/manual fields: set textContent directly preserving line breaks
     if(inner && inner.contentEditable!=='true'){
-      inner.textContent = val;
-      if(val.includes('\n')) inner.style.whiteSpace = 'pre-wrap';
+      setInnerText(inner, val);
     }
     // Save to savedStates so line breaks persist on refresh
     if(savedStates[currentTab]){
@@ -2127,7 +2123,7 @@ function el_set_field(fieldKey){
     const val = getFieldVal(fieldKey);
     if(val !== null){
       const inner = selectedEl.querySelector('.el-inner');
-      if(inner && selectedEl.dataset.type==='text') inner.textContent = val;
+      if(inner && selectedEl.dataset.type==='text') setInnerText(inner, val);
     }
   }
   // Refresh props panel so the status hint and border colour update
@@ -2149,7 +2145,7 @@ function breakFieldLink(){
   selectedEl.dataset.combinedAgent = '0';   // stop combined agent formatting
   // Keep the current visual text as plain text
   if(inner){
-    inner.textContent = currentText;
+    setInnerText(inner, currentText);
     inner.style.whiteSpace = 'pre-wrap';
   }
   // Update savedStates for the CURRENT TAB ONLY
@@ -2259,7 +2255,8 @@ function applyBullets(inner, on){
     inner.style.textIndent  = '';
   } else {
     const lines = getLines(inner);
-    inner.textContent = lines.join('\n');
+    setInnerText(inner, lines.join('
+'));
     inner.style.whiteSpace = 'pre-wrap';
     inner.style.paddingLeft = '';
     inner.style.textIndent  = '';
@@ -2311,24 +2308,21 @@ function rgbToHex(str){
 // ── SAVE / RESTORE STATE ──────────────────────────────────────────
 // Helper: read text content from an el-inner div, preserving line breaks
 // Works correctly across Mac/Windows by handling <br>, <div>, plain-line divs
+function setInnerText(inner, text){
+  if(!inner) return;
+  const escaped = (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  inner.innerHTML = escaped.replace(/\n/g,'<br>');
+  inner.style.whiteSpace = 'normal';
+  inner.style.wordBreak = 'break-word';
+}
+
 function getInnerText(inner){
   if(!inner) return '';
-  // plain-line divs (paragraph spacing mode)
-  const plainDivs = inner.querySelectorAll('div.plain-line');
+  const clone = inner.cloneNode(true);
+  clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+  const plainDivs = clone.querySelectorAll('div.plain-line');
   if(plainDivs.length > 0) return Array.from(plainDivs).map(d=>d.textContent).join('\n');
-  // <br> tags — walk nodes and insert \n for each <br>
-  let result = '';
-  inner.childNodes.forEach(function(node){
-    if(node.nodeType === 3){ result += node.textContent; }
-    else if(node.nodeName === 'BR'){ result += '\n'; }
-    else if(node.nodeName === 'DIV' || node.nodeName === 'P'){
-      if(result && !result.endsWith('\n')) result += '\n';
-      result += node.textContent;
-    } else { result += node.textContent; }
-  });
-  // Fallback: if no structure found, use innerText (preserves \n on most platforms)
-  if(!result.trim()) result = inner.innerText || inner.textContent || '';
-  return result;
+  return clone.textContent || '';
 }
 function serializeTab(){
   if(currentTab===9) return [];
@@ -2476,11 +2470,7 @@ function restoreTab(idx){
         inner.innerHTML = sv.richHtml;
         el.dataset.richHtml = sv.richHtml;
       } else {
-        inner.textContent = sv.content;
-        // Ensure line breaks in content are visible
-        if(sv.content && sv.content.includes('\n') && sv.bullets!=='1'){
-          inner.style.whiteSpace = 'pre-wrap';
-        }
+        setInnerText(inner, sv.content);
       }
     }
     // Apply bullets AFTER content is set so prefix isn't overwritten
@@ -2730,7 +2720,7 @@ function globalSync(){
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
       if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
         const phone = gv(agentPhoneMap[field]) || '';
-        inner.textContent = phone ? val+' '+phone : val;
+        setInnerText(inner, phone ? val+' '+phone : val);
       } else {
         // Per-tab income behaviour
         var _fi = ((document.getElementById('fi')||{}).value||'').trim();
@@ -2740,32 +2730,32 @@ function globalSync(){
           return;
         } else if(field === 'bullets' && [5,8].indexOf(currentTab) > -1){
           // AFR2, Auction: append income as plain last bullet line
-          inner.textContent = _fi ? val + '\n' + _fi : val;
+          setInnerText(inner, _fi ? val + '\n' + _fi : val);
         } else if(field === 'bullets' && currentTab === 6){
           // AFR4: bullets only — income goes to right free-text box
-          inner.textContent = val;
+          setInnerText(inner, val);
         } else if(field === 'bullets' && (currentTab === 2 || currentTab === 3)){
           // EDM: highlight points — NEVER append income here (income goes in bodycopy)
-          inner.textContent = val;
+          setInnerText(inner, val);
         } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
-          inner.textContent = _fi ? val + '\n' + _fi : val;
+          setInnerText(inner, _fi ? val + '\n' + _fi : val);
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
           // EDM, Asian Desk: append income as last body copy line
-          inner.textContent = _fi ? val + '\n' + _fi : val;
+          setInnerText(inner, _fi ? val + '\n' + _fi : val);
         } else if(field === 'bodycopy' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: append income as last body copy line
-          inner.textContent = _fi ? val + '\n' + _fi : val;
+          setInnerText(inner, _fi ? val + '\n' + _fi : val);
         } else if(field === 'address1' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: combine address1 + ", " + address2 in one box
           const _fa2 = gv('fa2') || '';
-          inner.textContent = val + (_fa2 ? ', ' + _fa2 : '');
+          setInnerText(inner, val + (_fa2 ? ', ' + _fa2 : ''));
         } else if(field === 'address2' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: address2 is merged into address1 box — hide standalone
           el.style.display = 'none';
           return;
         } else {
-          inner.textContent = val;
+          setInnerText(inner, val);
         }
       }
       // Re-apply banner inner styles after text update so pill stays fitted
