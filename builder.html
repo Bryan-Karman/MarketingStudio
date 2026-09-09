@@ -1232,8 +1232,18 @@ function createElement(cfg){
       if(committed){
         if(shouldPan){
           saveCropData(img);
-          debouncedPersist(); // also persist after panning so position is saved
+          debouncedPersist();
         } else {
+          // If this is an EDM agent element that was moved, mark it as manually positioned
+          // so repackEDMAgents won't override the user's position
+          if((currentTab===2||currentTab===3) && committed){
+            const _elToMark = groupStarts ? groupStarts.map(p=>p.el) : [el];
+            _elToMark.forEach(function(me){
+              if(me.dataset.agentOrigY || me.dataset.agentBelow==='1'){
+                me.dataset.agentManualY='1';
+              }
+            });
+          }
           debouncedPersist();
         }
       }
@@ -2281,7 +2291,7 @@ function serializeTab(){
     const obj={
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
-      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'',
+      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
     };
     if(inner){
@@ -2383,6 +2393,7 @@ function restoreTab(idx){
     if(sv.incomeAnchor==='1') el.dataset.incomeAnchor='1';
     if(sv.agentOrigY) el.dataset.agentOrigY=sv.agentOrigY;
     if(sv.agentBelow==='1'){ el.dataset.agentBelow='1'; if(sv.agentBelowY) el.dataset.agentBelowY=sv.agentBelowY; }
+    if(sv.agentManualY==='1') el.dataset.agentManualY='1';
     if(sv.banner==='1'){
       el.dataset.banner='1';
       if(sv.bannerPad) el.dataset.bannerPad=sv.bannerPad;
@@ -5319,6 +5330,8 @@ function repackEDMAgents(){
       el.style.visibility = isActive ? '' : 'hidden';
       el.style.pointerEvents = isActive ? '' : 'none';
       if(isActive){
+        // If user has manually moved this element, respect their position
+        if(el.dataset.agentManualY === '1') return;
         // Always position from agentOrigY — never from current top (prevents compounding)
         var origY = parseFloat(el.dataset.agentOrigY);
         if(isNaN(origY)){
@@ -5333,6 +5346,8 @@ function repackEDMAgents(){
         el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
     } else if(el.dataset.agentBelow === '1'){
+      // If user has manually moved this element, respect their position
+      if(el.dataset.agentManualY === '1') return;
       // Always reposition from original Y — never current top
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
