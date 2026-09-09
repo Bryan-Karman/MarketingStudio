@@ -567,7 +567,7 @@ const SVG_PORTFOLIO_WHITE = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wI
 // STATE
 // ════════════════════════════════════════
 let currentTab=0, zoom=0.65, selectedEl=null;
-let _layoutVariants={1:0}; // tabIdx -> chosen variant index (0=default)
+let _layoutVariants={1:0,2:0}; // tabIdx -> chosen variant index (0=default)
 let _selectedEls = [];  // multi-select array
 let _marqueeEl = null;
 let assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:'',img5:'',img6:'',img7:'',img8:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
@@ -1717,6 +1717,9 @@ const TAB_LAYOUTS = {
     {label:'2 Properties - A', fn: ()=>buildBrochure2_v5},
     {label:'2 Properties - B', fn: ()=>buildBrochure2_v6},
     {label:'3 Properties',     fn: ()=>buildBrochure2_v7},
+  ],
+  2: [
+    {label:'Default',          fn: ()=>buildEDM},
   ]
 };
 
@@ -1847,15 +1850,10 @@ function showProps(el){
       if(_btSpans.length > 0){
         _contentLines = Array.from(_btSpans).map(function(s){ return s.textContent; }).join('\n');
       } else {
-        _contentLines = inner.textContent;
+        _contentLines = getInnerText(inner);
       }
     } else {
-      const _plainDivs = inner.querySelectorAll('div.plain-line');
-      if(_plainDivs.length > 0){
-        _contentLines = Array.from(_plainDivs).map(function(d){ return d.textContent; }).join('\n');
-      } else {
-        _contentLines = inner.textContent;
-      }
+      _contentLines = getInnerText(inner);
     }
     const content = _contentLines;
     const color=inner.style.color||'#111';
@@ -2088,8 +2086,18 @@ function el_inner_txt(val){
       }
     }
   } else {
-    // For unmanaged fields: set textContent directly
-    if(inner && inner.contentEditable!=='true') inner.textContent=val;
+    // For unmanaged/manual fields: set textContent directly preserving line breaks
+    if(inner && inner.contentEditable!=='true'){
+      inner.textContent = val;
+      if(val.includes('\n')) inner.style.whiteSpace = 'pre-wrap';
+    }
+    // Save to savedStates so line breaks persist on refresh
+    if(savedStates[currentTab]){
+      const _eid = selectedEl.dataset.eid;
+      savedStates[currentTab].forEach(function(sv){
+        if(sv.eid === _eid){ sv.content = val; }
+      });
+    }
     if(field){
       const sidebarId=fieldToSidebarId(field);
       if(sidebarId){
@@ -2097,6 +2105,7 @@ function el_inner_txt(val){
         if(sidebarEl){ sidebarEl.value=val; globalSync(); }
       }
     }
+    debouncedPersist();
   }
 }
 // Link a text element to a content field
@@ -3150,6 +3159,7 @@ function switchLayoutVariant(variantIdx){
   undoSnapshot();
   _layoutVariants[currentTab]=variantIdx;
   delete savedStates[currentTab];
+  delete _customSizes[currentTab]; // reset artboard size to new layout's natural size
   buildTemplate(currentTab);
   document.getElementById('props-content').innerHTML=emptyPropsHTML();
   debouncedPersist();
