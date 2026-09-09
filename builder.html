@@ -3899,7 +3899,7 @@ function _rgb(str){
 
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
-  const [canvasW, canvasH] = SIZES[tabIdx];
+  const [canvasW, canvasH] = getTabSize(tabIdx); // use actual artboard size (respects custom sizes)
   return new Promise(async (resolve, reject) => {
     const offscreen = document.createElement('div');
     offscreen.style.cssText = ['position:fixed','top:0','left:0','width:'+canvasW+'px','height:'+canvasH+'px','overflow:hidden','z-index:-99999','pointer-events:none','background:'+(tabIdx===4?DK:'#ffffff')].join(';');
@@ -5265,7 +5265,10 @@ async function downloadPDF(){
   deselectAll();savedStates[currentTab]=serializeTab();
   _pdfFontCache=null;
   try{
-    const mm=PDF_MM[currentTab];const{jsPDF}=window.jspdf;
+    const _PDF_PX_PER_MM=3.7795;
+    const [_aw,_ah]=getTabSize(currentTab);
+    const mm=[Math.round(_aw/_PDF_PX_PER_MM*10)/10, Math.round(_ah/_PDF_PX_PER_MM*10)/10];
+    const{jsPDF}=window.jspdf;
     const isLandscape=mm[0]>mm[1];
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
     btn.textContent='Generating…';
@@ -5449,7 +5452,7 @@ async function exportEDMSections(){
 
   try{
     const isAsian = (currentTab===3);
-    const [CANVAS_W, CANVAS_H] = SIZES[currentTab]; // 600 x 4387
+    const [CANVAS_W, CANVAS_H] = getTabSize(currentTab); // use actual artboard size (respects custom sizes)
     const EMAIL_W = 600;
     const RENDER_SCALE = 3;
 
