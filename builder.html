@@ -321,6 +321,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
       </div>
     </div>
     <button class="tb-btn btn-tmpl" id="copy-layout-btn" onclick="copyLayoutToClipboard()" title="Copy current tab layout to clipboard" style="display:none;">⊙ Copy Layout</button>
+    <button class="tb-btn btn-reset" onclick="resetTab()" title="Reset this tab back to its default template">↺ Reset Tab</button>
     <button class="tb-btn btn-dl" id="dlb" onclick="downloadPDF()">⬇ PDF</button>
     <button class="tb-btn btn-dl" id="dl-all-tb-btn" onclick="downloadAllSelectedPDF()" title="Download PDF of all selected marketing items">⬇ All PDFs</button>
     <button class="tb-btn btn-dl" id="edm-html-btn" onclick="exportEDMSections()" style="display:none;background:#1a4a6a;color:#7ad4f8;border:1px solid #2a6a9a;" title="Export EDM as hosted image sections for Campaign Monitor">⬇ EDM HTML</button>
@@ -2578,9 +2579,11 @@ function applyTemplateLocks(idx){
 }
 
 function resetTab(){
-  if(confirm('Reset this template to default? Your edits will be lost.')){
+  if(confirm('Reset this tab to its default template? All your edits on this tab will be lost.')){
     delete savedStates[currentTab];
+    delete _customSizes[currentTab]; // also reset any custom artboard size
     buildTemplate(currentTab);
+    debouncedPersist();
   }
 }
 
