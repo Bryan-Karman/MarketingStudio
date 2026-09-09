@@ -880,7 +880,9 @@ function createElement(cfg){
   } else {
     // text
     applyTextStyle(inner, cfg);
-    setInnerText(inner, cfg.content||'');
+    inner.textContent = cfg.content || '';
+    inner.style.whiteSpace = 'pre-wrap';
+    inner.style.wordBreak = 'break-word';
     inner.addEventListener('dblclick',e=>{
       e.stopPropagation();
       undoSnapshot();
@@ -2308,19 +2310,24 @@ function rgbToHex(str){
 // Works correctly across Mac/Windows by handling <br>, <div>, plain-line divs
 function setInnerText(inner, text){
   if(!inner) return;
-  const escaped = (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  inner.innerHTML = escaped.replace(/\n/g,'<br>');
-  inner.style.whiteSpace = 'normal';
+  const el = inner.closest('.el');
+  // Bullet elements use applyBullets — never overwrite with plain text
+  if(el && el.dataset.bullets === '1') return;
+  inner.textContent = text || '';
+  inner.style.whiteSpace = 'pre-wrap';
   inner.style.wordBreak = 'break-word';
 }
 
 function getInnerText(inner){
   if(!inner) return '';
-  const clone = inner.cloneNode(true);
-  clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-  const plainDivs = clone.querySelectorAll('div.plain-line');
+  // plain-line divs (paragraph spacing elements)
+  const plainDivs = inner.querySelectorAll('div.plain-line');
   if(plainDivs.length > 0) return Array.from(plainDivs).map(d=>d.textContent).join('\n');
-  return clone.textContent || '';
+  // bullet spans
+  const btSpans = inner.querySelectorAll('span.bt');
+  if(btSpans.length > 0) return Array.from(btSpans).map(s=>s.textContent).join('\n');
+  // Pre-wrap textContent preserves \n characters directly
+  return inner.textContent || '';
 }
 function serializeTab(){
   if(currentTab===9) return [];
@@ -2468,7 +2475,9 @@ function restoreTab(idx){
         inner.innerHTML = sv.richHtml;
         el.dataset.richHtml = sv.richHtml;
       } else {
-        setInnerText(inner, sv.content);
+        inner.textContent = sv.content || '';
+        inner.style.whiteSpace = 'pre-wrap';
+        inner.style.wordBreak = 'break-word';
       }
     }
     // Apply bullets AFTER content is set so prefix isn't overwritten
