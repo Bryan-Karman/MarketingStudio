@@ -2781,13 +2781,15 @@ function globalSync(){
         applyBullets(inner, true);
       }
       // EDM (tab 2), Asian Desk (tab 3), Auction (tab 8): plain lines
-      if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets'){
+      // Skip re-render while the element is actively being edited inline — the editor
+      // manages the DOM with pre-wrap + \n text nodes, and re-rendering plain-line divs
+      // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
+      if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets' && inner.contentEditable !== 'true'){
         var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
-        // Use getInnerText() rather than inner.textContent, which loses \n separators
-        // when plain-line divs are already present from a previous globalSync pass,
-        // causing all lines to bunch together. For EDM/Asian Desk (tabs 2,3) val is used
-        // directly. For Auction (tab 8) income may have been appended, so read back via
-        // getInnerText which correctly joins plain-line divs with \n.
+        // Use val directly (already in scope, clean newline-separated string from sidebar)
+        // rather than inner.textContent, which loses \n separators when plain-line divs
+        // are already present from a previous globalSync pass, causing lines to bunch together.
+        // For Auction (tab 8) income may be appended, so read back via getInnerText instead.
         var _val8 = (currentTab === 8) ? getInnerText(inner) : (val || '');
         var _lines8 = _val8.split('\n');
         inner.innerHTML = _lines8.map(function(l, i){
