@@ -1333,6 +1333,12 @@ function enterCropMode(el){
   overlay.className = 'crop-overlay';
   inner.appendChild(overlay);
 
+  // Allow image to overflow the element box so cropped-off areas are visible
+  inner.style.overflow = 'visible';
+
+  // 4-panel ghost overlay darkening everything OUTSIDE the element box
+  _showCropGhostOverlay(el);
+
   // Dashed outline showing the full image edges (editor-only visual guide)
   const imgOutline = document.createElement('div');
   imgOutline.className = 'crop-img-outline';
@@ -1518,13 +1524,46 @@ function exitCropMode(){
   // Save final crop data to dataset
   if(img) saveCropData(img);
 
-  // Remove crop UI (including the image outline guide)
+  // Remove crop UI
   el.querySelectorAll('.crop-img-rh, .crop-label, .crop-overlay, .crop-img-outline').forEach(n=>n.remove());
   if(img) img.removeEventListener('mousedown', onCropPan);
+  // Restore inner overflow
+  const inner = el.querySelector('.el-inner');
+  if(inner) inner.style.overflow = '';
   el.classList.remove('crop-mode');
   cropEl = null;
   document.removeEventListener('mousedown', onCropOutsideClick);
+  // Remove ghost overlay
+  const cgo = document.getElementById('crop-ghost-overlay');
+  if(cgo) cgo.remove();
   debouncedPersist();
+}
+
+function _showCropGhostOverlay(el){
+  const existing = document.getElementById('crop-ghost-overlay');
+  if(existing) existing.remove();
+  const d = document.createElement('div');
+  d.id = 'crop-ghost-overlay';
+  d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9980;';
+  d.innerHTML = '<div id="cgo-top" style="position:fixed;background:rgba(0,0,0,0.6);"></div>'
+    +'<div id="cgo-bottom" style="position:fixed;background:rgba(0,0,0,0.6);"></div>'
+    +'<div id="cgo-left" style="position:fixed;background:rgba(0,0,0,0.6);"></div>'
+    +'<div id="cgo-right" style="position:fixed;background:rgba(0,0,0,0.6);"></div>';
+  document.body.appendChild(d);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ _updateCropGhostOverlay(el); }); });
+}
+
+function _updateCropGhostOverlay(el){
+  if(!el) return;
+  const top=document.getElementById('cgo-top'),bottom=document.getElementById('cgo-bottom');
+  const left=document.getElementById('cgo-left'),right=document.getElementById('cgo-right');
+  if(!top) return;
+  const r=el.getBoundingClientRect();
+  const W=window.innerWidth,H=window.innerHeight;
+  top.style.cssText    =`position:fixed;background:rgba(0,0,0,0.6);left:0;top:0;width:${W}px;height:${r.top}px;`;
+  bottom.style.cssText =`position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.bottom}px;width:${W}px;height:${H-r.bottom}px;`;
+  left.style.cssText   =`position:fixed;background:rgba(0,0,0,0.6);left:0;top:${r.top}px;width:${r.left}px;height:${r.height}px;`;
+  right.style.cssText  =`position:fixed;background:rgba(0,0,0,0.6);left:${r.right}px;top:${r.top}px;width:${W-r.right}px;height:${r.height}px;`;
 }
 
 // Add double-click to image elements to enter crop mode
