@@ -1761,7 +1761,7 @@ function emptyPropsHTML(){
     return html;
   }
   // Layout variant selector — show for any tab that has multiple layouts
-  if(TAB_LAYOUTS[currentTab] && TAB_LAYOUTS[currentTab].length > 1){
+  if(TAB_LAYOUTS[currentTab] && TAB_LAYOUTS[currentTab].length >= 1){
     const variants=TAB_LAYOUTS[currentTab];
     const current=_layoutVariants[currentTab]||0;
     const opts=variants.map((v,i)=>`<option value="${i}" ${i===current?'selected':''}>${v.label}</option>`).join('');
@@ -2095,7 +2095,16 @@ function el_inner_txt(val){
     if(savedStates[currentTab]){
       const _eid = selectedEl.dataset.eid;
       savedStates[currentTab].forEach(function(sv){
-        if(sv.eid === _eid){ sv.content = val; }
+        if(sv.eid === _eid){
+          sv.content = val;
+          // Ensure innerStyle has pre-wrap so line breaks render correctly on restore
+          if(val.includes('\n')){
+            if(!sv.innerStyle) sv.innerStyle = '';
+            if(!sv.innerStyle.includes('white-space')){
+              sv.innerStyle = sv.innerStyle + ';white-space:pre-wrap;word-break:break-word;';
+            }
+          }
+        }
       });
     }
     if(field){
@@ -2336,7 +2345,9 @@ function serializeTab(){
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
     };
     if(inner){
-      obj.innerStyle=inner.getAttribute('style')||'';
+      // Ensure pre-wrap is in innerStyle if content has line breaks
+      const _rawStyle = inner.getAttribute('style')||'';
+      obj.innerStyle = _rawStyle;
       if(el.dataset.type==='text'){
         if(el.dataset.bullets==='1'){
           // Bullet elements use flex div-per-line — read from .bt text spans
@@ -2454,7 +2465,8 @@ function restoreTab(idx){
     const inner=el.querySelector('.el-inner');
     // Apply saved style FIRST
     if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
-    // Always ensure text elements have pre-wrap (may be missing in older saves)
+    // Always ensure text elements have pre-wrap AFTER applying innerStyle
+    // (innerStyle may not contain pre-wrap if saved before line breaks were added)
     if(sv.type==='text' && inner){
       inner.style.whiteSpace='pre-wrap';
       inner.style.wordBreak='break-word';
