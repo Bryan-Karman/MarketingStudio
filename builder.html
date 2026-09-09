@@ -4485,6 +4485,12 @@ function switchTab(idx,btn){
   deselectAll();
   if(idx===9){ _renderMarketingScheduleTab(); return; }
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
+  // Apply any custom artboard size for this tab
+  const _cs2 = _customSizes[idx];
+  if(_cs2){
+    const art=document.getElementById('artwork');
+    if(art){ art.style.width=_cs2[0]+'px'; art.style.height=_cs2[1]+'px'; }
+  }
   // For AFR4: re-run globalSync after restore so income and sale combo re-render
   if(idx===6) setTimeout(function(){ globalSync(); }, 50);
   fitZoomToTab();
@@ -4598,6 +4604,7 @@ function collectState(){
   return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmS1:_edmS1,edmS2:_edmS2,edmS3:_edmS3,edmS4:_edmS4,edmS5:_edmS5,edmBtn2:_edmBtn2,edmBtn3:_edmBtn3,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
+    customSizes:JSON.parse(JSON.stringify(_customSizes)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
       fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd'),fn1:gv('fn1'),fp1:gv('fp1'),fn2:gv('fn2'),fp2:gv('fp2'),fn3:gv('fn3'),fp3:gv('fp3'),fn4:gv('fn4'),fp4:gv('fp4')} };
@@ -4611,6 +4618,7 @@ function applyState(data,skipZoom=false){
     setTimeout(function(){ renderImgUploadSlots(); renderLogoUploadSlots(); }, 0);
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
+    if(data.customSizes){ Object.assign(_customSizes,data.customSizes); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
     const _edmMap={edmS1:'fedm-link-s1',edmS2:'fedm-link-s2',edmS3:'fedm-link-s3',edmS4:'fedm-link-s4',edmS5:'fedm-link-s5',edmBtn2:'fedm-link-btn2',edmBtn3:'fedm-link-btn3'};
     Object.keys(_edmMap).forEach(function(k){ if(data[k]!=null){ const el=document.getElementById(_edmMap[k]); if(el) el.value=data[k]; }});
@@ -5074,6 +5082,12 @@ async function init(){
       restoreTab(currentTab);
     } else {
       buildTemplate(currentTab);
+    }
+    // Apply any custom artboard size for this tab
+    const _cs = _customSizes[currentTab];
+    if(_cs){
+      const art=document.getElementById('artwork');
+      if(art){ art.style.width=_cs[0]+'px'; art.style.height=_cs[1]+'px'; }
     }
     if(currentTab===6) setTimeout(function(){ globalSync(); }, 50);
     fitZoomToTab();
