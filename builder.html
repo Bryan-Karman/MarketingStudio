@@ -604,7 +604,7 @@ function copySelected(){
       h:         parseFloat(el.style.height) || 30,
       z:         parseInt(el.style.zIndex)   || 2,
       innerStyle: inner ? inner.getAttribute('style') : '',
-      content:   inner ? (inner.textContent || '') : '',
+      content:   inner ? (getInnerText(inner) || '') : '',
       field:     el.dataset.field || '',
       assetKey:  el.dataset.assetKey || '',
       imgSrc:    img ? img.src : '',
@@ -881,6 +881,10 @@ function createElement(cfg){
     // text
     applyTextStyle(inner, cfg);
     inner.textContent=cfg.content||'';
+    // Ensure line breaks in content are visible
+    if(cfg.content && cfg.content.includes('\n')){
+      inner.style.whiteSpace='pre-wrap';
+    }
     inner.addEventListener('dblclick',e=>{
       e.stopPropagation();
       undoSnapshot();
@@ -1100,7 +1104,7 @@ function createElement(cfg){
                 });
                 return _stripAllIncome(_allLines).join('\n');
               }
-              return (innerEl.innerText||innerEl.textContent||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
+              return getInnerText(innerEl).replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
             }
             var _sid2 = fieldToSidebarId(_blurField);
             var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
@@ -2119,7 +2123,7 @@ function breakFieldLink(){
   undoSnapshot();
   // Snapshot current text content before unlinking
   const inner = selectedEl.querySelector('.el-inner');
-  const currentText = inner ? (inner.innerText || inner.textContent) : '';
+  const currentText = inner ? getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ') : '';
   // Clear the field link AND all related field-driven behaviour
   selectedEl.dataset.field = '';
   selectedEl.dataset.bullets = '0';         // stop applyBullets from running
@@ -2286,9 +2290,28 @@ function rgbToHex(str){
   return '#'+m.slice(0,3).map(x=>parseInt(x).toString(16).padStart(2,'0')).join('');
 }
 
-// ════════════════════════════════════════
-// SAVE / RESTORE STATE
-// ════════════════════════════════════════
+// ── SAVE / RESTORE STATE ──────────────────────────────────────────
+// Helper: read text content from an el-inner div, preserving line breaks
+// Works correctly across Mac/Windows by handling <br>, <div>, plain-line divs
+function getInnerText(inner){
+  if(!inner) return '';
+  // plain-line divs (paragraph spacing mode)
+  const plainDivs = inner.querySelectorAll('div.plain-line');
+  if(plainDivs.length > 0) return Array.from(plainDivs).map(d=>d.textContent).join('\n');
+  // <br> tags — walk nodes and insert \n for each <br>
+  let result = '';
+  inner.childNodes.forEach(function(node){
+    if(node.nodeType === 3){ result += node.textContent; }
+    else if(node.nodeName === 'BR'){ result += '\n'; }
+    else if(node.nodeName === 'DIV' || node.nodeName === 'P'){
+      if(result && !result.endsWith('\n')) result += '\n';
+      result += node.textContent;
+    } else { result += node.textContent; }
+  });
+  // Fallback: if no structure found, use innerText (preserves \n on most platforms)
+  if(!result.trim()) result = inner.innerText || inner.textContent || '';
+  return result;
+}
 function serializeTab(){
   if(currentTab===9) return [];
   const art=document.getElementById('artwork');
@@ -2342,7 +2365,7 @@ function serializeTab(){
           if(plainDivs.length > 0){
             obj.content = Array.from(plainDivs).map(function(d){ return d.textContent; }).join('\n');
           } else {
-            obj.content = inner.textContent;
+            obj.content = getInnerText(inner);
           }
           if(el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
             obj.richHtml = el.dataset.richHtml;
@@ -2433,6 +2456,10 @@ function restoreTab(idx){
         el.dataset.richHtml = sv.richHtml;
       } else {
         inner.textContent = sv.content;
+        // Ensure line breaks in content are visible
+        if(sv.content && sv.content.includes('\n') && sv.bullets!=='1'){
+          inner.style.whiteSpace = 'pre-wrap';
+        }
       }
     }
     // Apply bullets AFTER content is set so prefix isn't overwritten
