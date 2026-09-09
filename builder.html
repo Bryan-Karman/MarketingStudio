@@ -2803,9 +2803,11 @@ function getFieldVal(field){
 // multiple unlabelled elements need a full rebuild on next visit.
 // We clear their savedStates so buildTemplate() runs fresh.
 function onBulletFieldChange(){
-  for(let i=0;i<8;i++){
+  // Sync field values into other tabs WITHOUT wiping the layout
+  for(let i=0;i<14;i++){
     if(i===currentTab) continue;
-    if(savedStates[i]) delete savedStates[i]; // force rebuild on next visit
+    if(i===9) continue; // marketing schedule has no savedState
+    syncTabOnEntry(i);
   }
   globalSync();
 }
@@ -4081,12 +4083,17 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
 async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
+  // EDM tabs are too complex for native renderer — use raster (html2canvas)
+  if(tabIdx === 2 || tabIdx === 3){
+    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
+  }
+
   let fonts = [];
   try { fonts = await loadPdfFonts(); } catch(e){ console.warn('Font load error',e); }
   if(fonts.length > 0) registerPdfFonts(pdf, fonts);
   const hasFonts = fonts.length > 0;
 
-  const [pxW, pxH] = SIZES[tabIdx];
+  const [pxW, pxH] = getTabSize(tabIdx);
   const scaleX = pageW / pxW;
   const scaleY = pageH / pxH;
 
@@ -4426,7 +4433,6 @@ function switchTab(idx,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   deselectAll();
-  if((idx===2||idx===3)&&typeof _migrateEDMStates==='function') _migrateEDMStates();
   if(idx===9){ _renderMarketingScheduleTab(); return; }
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
   // For AFR4: re-run globalSync after restore so income and sale combo re-render
@@ -4516,7 +4522,8 @@ function toggleMITab(idx,cb){
 }
 
 function collectState(){
-  savedStates[currentTab]=serializeTab();
+  // Always capture current tab state before collecting everything
+  if(currentTab!==9) savedStates[currentTab]=serializeTab();
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
   const _edmS1=(document.getElementById('fedm-link-s1')||{}).value||'';
   const _edmS2=(document.getElementById('fedm-link-s2')||{}).value||'';
@@ -4991,18 +4998,13 @@ async function init(){
   try{
     var _edmVer = localStorage.getItem('cbre_edm_canvas_ver');
     if(_edmVer !== EDM_CANVAS_VERSION){
-      // Clear tabs 2&3 from localStorage state
-      var _ss=JSON.parse(localStorage.getItem('cbre_mktg_state')||'{}');
-      var _tl=_ss.tabLayouts||{}; var _sv=_ss.savedStates||{};
-      delete _tl[2]; delete _tl[3]; delete _sv[2]; delete _sv[3];
-      _ss.tabLayouts=_tl; _ss.savedStates=_sv;
-      localStorage.setItem('cbre_mktg_state',JSON.stringify(_ss));
+      // Only clear EDM from localStorage if we have no cloud save yet
+      // Don't clear if cloud state exists — it will be loaded from Supabase
       localStorage.setItem('cbre_edm_canvas_ver', EDM_CANVAS_VERSION);
     }
   }catch(e){}
   const cloudResult=await supabaseLoad();
   if(cloudResult&&applyState(cloudResult.state)){
-    _migrateEDMStates(); // clear any old 212px states from cloud
     setCdtStatus('saved','Loaded ✓');_lastKnownUpdatedAt=cloudResult.updatedAt;loaded=true;
   }
   if(!loaded){
@@ -5018,7 +5020,6 @@ async function init(){
   if(currentTab===9) currentTab=0;
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab));
   requestAnimationFrame(function(){
-    if(typeof _migrateEDMStates==='function') _migrateEDMStates();
     if(savedStates[currentTab] && savedStates[currentTab].length){
       restoreTab(currentTab);
     } else {
@@ -5052,11 +5053,9 @@ function _migrateEDMStates(){
   if(typeof savedStates === 'undefined') return;
   [2,3].forEach(function(ti){
     if(!savedStates[ti]||!savedStates[ti].length) return;
-    var isOld = savedStates[ti].some(function(sv){
-      var w = parseFloat(sv.w||0);
-      return w > 0 && w <= 220;
-    });
-    if(isOld){ console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti); delete savedStates[ti]; }
+    var maxW=0;
+    savedStates[ti].forEach(function(sv){ var w=parseFloat(sv.w||0); if(w>maxW) maxW=w; });
+    if(maxW>0 && maxW<300){ console.log('[CBRE] Migration: clearing old 212px EDM state for tab',ti); delete savedStates[ti]; }
   });
 }
 
@@ -5166,11 +5165,14 @@ async function downloadAllSelectedPDF(){
   const btn=document.getElementById('dl-all-tb-btn');btn.disabled=true;btn.textContent='Building…';
   deselectAll();savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){btn.disabled=false;btn.textContent='⬇ All PDFs';return;}
+  const PX_PER_MM=3.7795;
+  function getMM(idx){ const [w,h]=getTabSize(idx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
   try{
-    const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
+    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
-    pdf.save('CBRE_All_Selected.pdf');
+    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    const _propSlug=(_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
+    pdf.save(`${_propSlug}_All_Selected.pdf`);
   }catch(err){alert('PDF error: '+err.message);}
   btn.disabled=false;btn.textContent='⬇ All PDFs';
 }
@@ -5180,10 +5182,12 @@ showAllArtworks=async function(){
   savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){alert('No marketing items selected.');return;}
   const btn=document.getElementById('view-all-tb-btn');if(btn){btn.disabled=true;btn.textContent='Building…';}
+  const PX_PER_MM=3.7795;
+  function getMM(idx){ const [w,h]=getTabSize(idx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
   try{
-    const{jsPDF}=window.jspdf;const first=indices[0];const mm0=PDF_MM[first];
+    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
     const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=PDF_MM[tabIdx];await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
     const blob=pdf.output('blob');const url=URL.createObjectURL(blob);window.open(url,'_blank');
   }catch(err){alert('Error: '+err.message);}
   if(btn){btn.disabled=false;btn.textContent='⊞ View All';}
