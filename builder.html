@@ -1182,6 +1182,13 @@ function createElement(cfg){
   }
   el.appendChild(inner);
 
+  // Apply locked state from cfg if provided at build time
+  if(cfg && cfg.locked === '1'){
+    el.dataset.locked = '1';
+    el.classList.add('locked-el');
+    el.style.cursor = 'not-allowed';
+  }
+
   // Selection ring
   const ring=document.createElement('div');ring.className='el-sel-ring';el.appendChild(ring);
 
@@ -3120,6 +3127,13 @@ function mkSVGLogo(x,y,w,h,uri,svgKey,cfg){
   img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;';
   inner.appendChild(img);
   el.appendChild(inner);
+
+  // Apply locked state from cfg if provided at build time
+  if(cfg && cfg.locked === '1'){
+    el.dataset.locked = '1';
+    el.classList.add('locked-el');
+    el.style.cursor = 'not-allowed';
+  }
 
   const ring = document.createElement('div'); ring.className='el-sel-ring'; el.appendChild(ring);
   ['nw','n','ne','e','se','s','sw','w'].forEach(pos=>{
