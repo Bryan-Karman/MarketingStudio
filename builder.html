@@ -137,13 +137,23 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
 /* CANVAS */
 .canvas-area{flex:1;overflow:auto;padding:24px;background:#242424;position:relative;cursor:default;}
 .canvas-wrap{position:relative;display:inline-block;}
+/* Artboard edge overlay — sits over canvas-wrap, clips via overflow:hidden + inward box-shadow */
+/* Always shows a crisp 2px edge line; during drag, the outer shadow darkens overflow content */
+#artboard-edge{
+  position:absolute;
+  pointer-events:none;
+  z-index:9985;
+  overflow:hidden;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,0.25);
+  transition:box-shadow 0.12s;
+}
+.canvas-area.dragging-el #artboard-edge{
+  box-shadow:
+    inset 0 0 0 2px rgba(120,220,160,0.9),
+    0 0 0 2000px rgba(20,20,20,0.65);
+}
 /* Overflow ghost: four panels that darken content outside the artboard during drag */
-.overflow-ghost{position:absolute;pointer-events:none;z-index:9980;background:rgba(30,30,30,0.72);transition:opacity .1s;opacity:0;}
-.canvas-wrap.dragging-el .overflow-ghost{opacity:1;}
-.overflow-ghost-top{top:auto;bottom:100%;left:-500px;right:-500px;height:500px;}
-.overflow-ghost-bottom{top:100%;left:-500px;right:-500px;height:500px;}
-.overflow-ghost-left{top:-500px;bottom:-500px;right:100%;width:500px;}
-.overflow-ghost-right{top:-500px;bottom:-500px;left:100%;width:500px;}
+
 
 /* ARTWORK */
 .artwork{position:relative;cursor:default;box-shadow:0 6px 40px rgba(0,0,0,.6);}
@@ -456,11 +466,8 @@ Line five</textarea>
     <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
   </div>
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
+    <div id="artboard-edge"></div>
     <div class="canvas-wrap" id="canvas-wrap">
-      <div class="overflow-ghost overflow-ghost-top"></div>
-      <div class="overflow-ghost overflow-ghost-bottom"></div>
-      <div class="overflow-ghost overflow-ghost-left"></div>
-      <div class="overflow-ghost overflow-ghost-right"></div>
       <div class="artwork" id="artwork"></div>
     </div>
   </div>
@@ -806,6 +813,23 @@ function setZoom(v){
   art.style.position='absolute';
   art.style.top='0';
   art.style.left='0';
+  // Sync after next paint so getBoundingClientRect is accurate
+  requestAnimationFrame(syncArtboardEdge);
+}
+// Keep #artboard-edge perfectly aligned with canvas-wrap so its overflow:hidden clips correctly
+function syncArtboardEdge(){
+  const cw=document.getElementById('canvas-wrap');
+  const ae=document.getElementById('artboard-edge');
+  if(!cw||!ae) return;
+  // canvas-wrap uses inline-block inside padding:24px canvas-area
+  // We position artboard-edge absolutely within canvas-area to match canvas-wrap
+  const ca=document.getElementById('canvas-area');
+  const cwRect=cw.getBoundingClientRect();
+  const caRect=ca.getBoundingClientRect();
+  ae.style.left=(cwRect.left-caRect.left+ca.scrollLeft)+'px';
+  ae.style.top=(cwRect.top-caRect.top+ca.scrollTop)+'px';
+  ae.style.width=cw.offsetWidth+'px';
+  ae.style.height=cw.offsetHeight+'px';
 }
 
 // Calculate and apply the zoom that fits the current tab's height
@@ -1224,7 +1248,7 @@ function createElement(cfg){
       }
 
       // Show overflow ghost panels while dragging
-      const _cw=document.getElementById('canvas-wrap');
+      const _cw=document.getElementById('canvas-area');
       if(_cw) _cw.classList.add('dragging-el');
 
       if(groupStarts && !_lockedImg){
@@ -1254,7 +1278,7 @@ function createElement(cfg){
       el.style.cursor='';
       if(img) img.style.cursor = shouldPan ? 'grab' : '';
       // Hide overflow ghost panels
-      const _cw2=document.getElementById('canvas-wrap');
+      const _cw2=document.getElementById('canvas-area');
       if(_cw2) _cw2.classList.remove('dragging-el');
       if(committed){
         if(shouldPan){
@@ -1320,7 +1344,7 @@ function startDrag(e, el){
       undoSnapshot();
       dragging = true;
       el.style.cursor = 'grabbing';
-      const _cwD=document.getElementById('canvas-wrap');
+      const _cwD=document.getElementById('canvas-area');
       if(_cwD) _cwD.classList.add('dragging-el');
     }
     el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
@@ -1328,7 +1352,7 @@ function startDrag(e, el){
   }
   function up(){
     el.style.cursor = '';
-    const _cwD2=document.getElementById('canvas-wrap');
+    const _cwD2=document.getElementById('canvas-area');
     if(_cwD2) _cwD2.classList.remove('dragging-el');
     window.removeEventListener('mousemove',mv);
     window.removeEventListener('mouseup',up);
@@ -5280,6 +5304,7 @@ async function init(){
   document.querySelectorAll('#fh,#fs,#fb,#fa1,#fa2,#fm,#fd,#fbull,#fi,#fbc').forEach(el=>el.addEventListener('input',debouncedZhSync));
   document.getElementById('canvas-area').addEventListener('mouseup',debouncedPersist);
   document.getElementById('canvas-area').addEventListener('mousedown',startMarquee);
+  document.getElementById('canvas-area').addEventListener('scroll',syncArtboardEdge,{passive:true});
   document.getElementById('zoom-range').addEventListener('input',debouncedPersist);
   window.addEventListener('beforeunload',()=>{clearTimeout(_persistTimer);try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){}});
 }
