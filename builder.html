@@ -546,9 +546,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,180],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186]];
+const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,181.5],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186]];
 const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule','PressAd10x7','PressAdM3x3WA','PressAdM3x6','PressAdT44'];
-const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,680],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703]];
+const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,686],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703]];
 
 
 // ═══════════════════════════════════
@@ -3930,11 +3930,12 @@ function buildLinkedIn(W,H){
   mkSVGLogo(34,36,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
 }
 function buildSignboard(W,H){
-  mkR(0,0,907,680,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(586,0,321,680,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  // Artboard: 907x686px. Backgrounds use -15px offset for bleed coverage.
+  mkR(-15,-15,605,715,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(586,-15,336,715,'rgb(255, 255, 255)',{z:2,locked:'1'});
   mkR(196,61,449,4,'rgb(91, 232, 143)',{z:201,locked:'1'});
   mkT(671,50,192,39,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
-  mkT(63,175,499,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'55px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(63,175,522,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'55px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
   mkT(64,318,465,185,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'10',locked:'1'});
   mkT(62,507,442,26,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
   mkT(64,538,501,31,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
@@ -5118,20 +5119,24 @@ const _origApplyState2=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState2(data,skipZoom);if(data&&Array.isArray(data.agentSlots)){_pendingAgentSlots=data.agentSlots;}return result;};
 
 function copyLayoutToClipboard(){
-  // Read tab labels dynamically from the DOM — always correct no matter how many tabs exist
-  const tabEls = document.querySelectorAll('.tab:not(.tab-add)');
-  const tabLabels = [...tabEls].map(t=>t.textContent.trim());
-  // Build fnNames from TAB_LAYOUTS + a fallback pattern
+  // Build a tab index → label map from DOM so order doesn't matter
+  const _tabLabelMap = {};
+  document.querySelectorAll('.tab:not(.tab-add)').forEach(t=>{
+    const m=t.getAttribute('onclick').match(/switchTab\((\d+),/);
+    if(m) _tabLabelMap[parseInt(m[1])]=t.textContent.trim();
+  });
+  const tabLabel = _tabLabelMap[currentTab] || ('Tab '+currentTab);
+  // Build fnNames keyed by tab index
   const defaultFnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction','null','buildAFR10x7','buildAFRM3x3WA','buildAFRM3x6','buildAFRT44'];
   const fnName = defaultFnNames[currentTab] || ('buildTab'+currentTab);
   const snapshot=serializeTab();
-  const output={tab:currentTab,tabName:tabLabels[currentTab]||('Tab '+currentTab),fnName,size:getTabSize(currentTab),elements:snapshot};
+  const output={tab:currentTab,tabName:tabLabel,fnName,size:getTabSize(currentTab),elements:snapshot};
   const json=JSON.stringify(output,null,2);
   const existing=document.getElementById('copy-layout-dialog');if(existing)existing.remove();
   const overlay=document.createElement('div');overlay.id='copy-layout-dialog';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;';
   const box=document.createElement('div');box.style.cssText='background:#1a1a1a;border:1px solid #444;border-radius:4px;padding:20px;width:min(700px,90vw);display:flex;flex-direction:column;gap:10px;';
-  const title=document.createElement('div');title.style.cssText='font-size:13px;font-weight:700;color:#fff;';title.textContent='Layout JSON — '+(tabLabels[currentTab]||'Tab '+currentTab);
+  const title=document.createElement('div');title.style.cssText='font-size:13px;font-weight:700;color:#fff;';title.textContent='Layout JSON — '+tabLabel;
   const instructions=document.createElement('div');instructions.style.cssText='font-size:11px;color:#888;line-height:1.5;';instructions.textContent='Select all and copy this JSON, then paste it into Claude chat to update the base template.';
   const ta=document.createElement('textarea');ta.value=json;ta.style.cssText='width:100%;height:40vh;font-size:10px;padding:10px;background:#111;color:#ccc;border:1px solid #333;border-radius:3px;resize:vertical;font-family:monospace;';ta.readOnly=true;
   const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;justify-content:flex-end;';
@@ -5143,7 +5148,7 @@ function copyLayoutToClipboard(){
     const blob=new Blob([json],{type:'application/json'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    const tabSlug=(tabLabels[currentTab]||'Tab'+currentTab).replace(/[^a-zA-Z0-9]/g,'_');
+    const tabSlug=tabLabel.replace(/[^a-zA-Z0-9]/g,'_');
     a.href=url; a.download=tabSlug+'_layout.json'; a.click();
     URL.revokeObjectURL(url);
     downloadBtn.textContent='✓ Downloaded!';
