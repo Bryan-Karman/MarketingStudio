@@ -334,6 +334,9 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi13" onchange="toggleMITab(13,this)"><label for="mi13">Press Ad T44</label></div>
         <div class="mi-di"><input type="checkbox" id="mi4" checked="" onchange="toggleMITab(4,this)"><label for="mi4">LinkedIn</label></div>
         <div class="mi-di"><input type="checkbox" id="mi7" onchange="toggleMITab(7,this)"><label for="mi7">Signboard 8x6</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi14" onchange="toggleMITab(14,this)"><label for="mi14">Signboard 10x8</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi15" onchange="toggleMITab(15,this)"><label for="mi15">Signboard 12x8</label></div>
+        <div class="mi-di"><input type="checkbox" id="mi16" onchange="toggleMITab(16,this)"><label for="mi16">Signboard 6x4</label></div>
         <div class="mi-di"><input type="checkbox" id="mi8" checked="" onchange="toggleMITab(8,this)"><label for="mi8">Auction Poster</label></div>
       </div>
     </div>
@@ -359,6 +362,9 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab" onclick="switchTab(13,this)">Press Ad T44</button>
     <button class="tab" onclick="switchTab(4,this)">LinkedIn</button>
     <button class="tab" onclick="switchTab(7,this)">Signboard 8x6</button>
+    <button class="tab" onclick="switchTab(14,this)">Signboard 10x8</button>
+    <button class="tab" onclick="switchTab(15,this)">Signboard 12x8</button>
+    <button class="tab" onclick="switchTab(16,this)">Signboard 6x4</button>
     <button class="tab" onclick="switchTab(8,this)">Auction Poster</button>
     <button class="tab" onclick="switchTab(9,this)">Marketing Schedule</button>
   </div>
@@ -546,9 +552,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,181.5],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186]];
-const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule','PressAd10x7','PressAdM3x3WA','PressAdM3x6','PressAdT44'];
-const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,686],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703]];
+const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,181.5],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186],[314,242],[374,242],[194,122]];
+const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule','PressAd10x7','PressAdM3x3WA','PressAdM3x6','PressAdT44','Signboard10x8','Signboard12x8','Signboard6x4'];
+const SIZES=[[595,842],[1191,842],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,686],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703],[1187,915],[1414,915],[733,461]];
 
 
 // ═══════════════════════════════════
@@ -3281,7 +3287,7 @@ function buildTemplate(idx){
   deselectAll();
   document.getElementById('props-content').innerHTML=emptyPropsHTML();
   // For tabs with layout variants, call the selected variant's builder
-  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44];
+  var _buildFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44,buildSignboard10x8,buildSignboard12x8,buildSignboard6x4];
   var _variantFn=null;
   if(TAB_LAYOUTS[idx]){
     var _vi=_layoutVariants[idx]||0;
@@ -3864,6 +3870,66 @@ function buildEDM(W,H){
   mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
 }
 
+function buildSignboard10x8(W,H){
+  // Signboard 10x8 — 314x242mm (1187x915px) — scaled from Signboard 8x6
+  mkR(-15,-15,792,954,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(586,-15,440,954,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(257,81,588,5,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(878,67,251,52,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(82,233,683,183,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'72px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(84,424,609,247,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'31px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'13',locked:'1'});
+  mkT(81,676,578,35,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'31px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(84,718,656,41,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'31px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(84,807,153,31,'*Approx.',{color:'rgb(255,255,255)',fontSize:'13px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  mkT(453,810,260,35,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'16px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
+  mkT(809,499,318,41,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'39px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(819,546,309,47,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'46px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(821,623,305,44,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'39px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(807,667,318,47,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'46px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(805,746,325,44,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'39px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(822,794,313,45,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'46px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkSVGLogo(80,21,140,121,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+}
+function buildSignboard12x8(W,H){
+  // Signboard 12x8 — 374x242mm (1414x915px) — scaled from Signboard 8x6
+  mkR(-15,-15,943,954,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(586,-15,524,954,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(306,81,700,5,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(1046,67,299,52,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'44px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(98,233,814,183,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'86px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(100,424,725,247,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'16',locked:'1'});
+  mkT(97,676,689,35,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(100,718,781,41,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(100,807,182,31,'*Approx.',{color:'rgb(255,255,255)',fontSize:'16px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  mkT(539,810,310,35,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'19px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
+  mkT(963,499,379,41,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'47px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(976,546,368,47,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(977,623,363,44,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'47px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(962,667,379,47,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(959,746,387,44,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'47px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(979,794,373,45,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkSVGLogo(95,21,167,121,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+}
+function buildSignboard6x4(W,H){
+  // Signboard 6x4 — 194x122mm (733x461px) — scaled from Signboard 8x6
+  mkR(-15,-15,489,480,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(474,-15,272,480,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(158,41,363,3,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(542,34,155,26,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'18px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(51,118,422,92,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'35px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(52,214,376,124,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'15px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'6',locked:'1'});
+  mkT(50,341,357,17,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'15px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(52,362,405,21,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'15px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(52,407,95,15,'*Approx.',{color:'rgb(255,255,255)',fontSize:'6px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  mkT(280,408,161,17,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'8px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
+  mkT(499,251,196,21,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'19px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(506,275,191,24,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'22px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(507,314,188,22,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'19px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(499,336,196,24,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'22px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(497,376,200,22,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'19px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(508,400,193,23,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'22px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkSVGLogo(49,11,86,61,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+}
 // ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
 function buildEDMAsianDesk(W,H){
   mkI(0,116,600,425,'img1','Image',{z:2});
@@ -4093,7 +4159,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         realArt.innerHTML=''; nextId=1;
         realArt.style.width=canvasW+'px'; realArt.style.height=canvasH+'px';
         realArt.style.background=tabIdx===4?DK:'#ffffff'; realArt.style.transform='none';
-        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44];
+        var _allFns=[buildBrochure1,buildBrochure2,buildEDM,buildEDMAsianDesk,buildLinkedIn,buildAFR2,buildAFR4,buildSignboard,buildAuction,null,buildAFR10x7,buildAFRM3x3WA,buildAFRM3x6,buildAFRT44,buildSignboard10x8,buildSignboard12x8,buildSignboard6x4];
         var _vFn=null;
         if(TAB_LAYOUTS[tabIdx]){ var _vvi=_layoutVariants[tabIdx]||0; var _vvd=TAB_LAYOUTS[tabIdx][_vvi]; if(_vvd)_vFn=_vvd.fn(); }
         (_vFn||_allFns[tabIdx])(canvasW,canvasH);
@@ -4731,7 +4797,7 @@ function setCdtStatus(cls,txt){ const el=document.getElementById('cld'); const l
 
 // Default hidden tabs for NEW projects — only Brochure(0), EDM(2), LinkedIn(4), Auction(8), Marketing Schedule(9) are ON by default
 const _MI_DEFAULT_HIDDEN = new Set([1,3,5,6,7,10,11,12,13]);
-let _miHidden = new Set([1,3,5,6,7,10,11,12,13]);
+let _miHidden = new Set([1,3,5,6,7,10,11,12,13,14,15,16]);
 function toggleMIDD(e){
   if(e) e.stopPropagation();
   var dd = document.getElementById('mi-dd');
@@ -5127,7 +5193,7 @@ function copyLayoutToClipboard(){
   });
   const tabLabel = _tabLabelMap[currentTab] || ('Tab '+currentTab);
   // Build fnNames keyed by tab index
-  const defaultFnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction','null','buildAFR10x7','buildAFRM3x3WA','buildAFRM3x6','buildAFRT44'];
+  const defaultFnNames=['buildBrochure1','buildBrochure2','buildEDM','buildEDMAsianDesk','buildLinkedIn','buildAFR2','buildAFR4','buildSignboard','buildAuction','null','buildAFR10x7','buildAFRM3x3WA','buildAFRM3x6','buildAFRT44','buildSignboard10x8','buildSignboard12x8','buildSignboard6x4'];
   const fnName = defaultFnNames[currentTab] || ('buildTab'+currentTab);
   const snapshot=serializeTab();
   const output={tab:currentTab,tabName:tabLabel,fnName,size:getTabSize(currentTab),elements:snapshot};
@@ -6045,7 +6111,7 @@ function openAssistModal(){
   const emailEl=document.getElementById('assist-email'); if(emailEl) emailEl.value=userEmail;
   const projEl=document.getElementById('assist-project');
   if(projEl) projEl.value=window.location.origin+window.location.pathname+'?portfolioId='+encodeURIComponent(_portfolioId||'')+'&propertyId='+encodeURIComponent(_propertyId||'')+'&portfolioName='+encodeURIComponent(_portfolioName||'')+'&propertyName='+encodeURIComponent(_propertyName||'');
-  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule','Press Ad 10x7','Press Ad M3x3 WA','Press Ad M3x6','Press Ad T44'];
+  const tabLabels=['Brochure','Brochure 2-Page','EDM','EDM - Asian Desk','LinkedIn','AFR 2 Mods','AFR 4 Mods','Signboard 8x6','Auction Poster','Marketing Schedule','Press Ad 10x7','Press Ad M3x3 WA','Press Ad M3x6','Press Ad T44','Signboard 10x8','Signboard 12x8','Signboard 6x4'];
   const ctxEl=document.getElementById('assist-context'); if(ctxEl) ctxEl.value='Tab: '+(tabLabels[currentTab]||'Tab '+(currentTab+1));
   const msgEl=document.getElementById('assist-message'); if(msgEl) msgEl.value='';
   document.getElementById('assist-modal-bg').classList.add('open');
