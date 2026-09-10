@@ -801,6 +801,13 @@ function setZoom(v){
 // into the visible canvas area, with a small padding margin.
 // Uses requestAnimationFrame to ensure the DOM has painted first.
 let _customSizes = {};
+// Bleed settings per tab: { mm: number, cropMarks: bool }
+let _bleedSettings = {};
+function getBleed(idx){ return _bleedSettings[idx] || {mm:0, cropMarks:true}; }
+function setBleed(idx, mm, cropMarks){
+  _bleedSettings[idx] = {mm: Math.max(0, parseFloat(mm)||0), cropMarks: !!cropMarks};
+  refreshProps();
+}
 function getTabSize(idx){ return _customSizes[idx] || SIZES[idx] || [595,842]; }
 
 function applyCustomArtboardSize(){
@@ -1768,6 +1775,30 @@ function emptyPropsHTML(){
       <select onchange="switchLayoutVariant(parseInt(this.value))" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid #333;border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;">
         ${opts}
       </select>
+    </div>`;
+  }
+  // Signboard bleed panel
+  if(currentTab === 7){
+    const _bl = getBleed(7);
+    html += `<div style="background:#1a1a2a;border:1px solid #2a2a4a;border-radius:3px;padding:8px 10px;margin-bottom:2px;">
+      <div style="font-size:9px;font-weight:700;color:#8888cc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">&#9988; PDF Bleed &amp; Crop Marks</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <div style="flex:1;">
+          <div style="font-size:8px;color:#555;margin-bottom:2px;">BLEED (mm)</div>
+          <input type="number" id="bleed-mm-input" value="${_bl.mm}" min="0" max="20" step="0.5"
+            style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #2a2a4a;border-radius:2px;background:#111120;color:#ccc;outline:none;font-family:inherit;box-sizing:border-box;"
+            oninput="setBleed(7, this.value, document.getElementById('bleed-cm-chk').checked)">
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:8px;color:#555;margin-bottom:2px;">CROP MARKS</div>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="bleed-cm-chk" ${_bl.cropMarks?'checked':''} style="cursor:pointer;"
+              onchange="setBleed(7, document.getElementById('bleed-mm-input').value, this.checked)">
+            <span style="font-size:10px;color:#aaa;">Include</span>
+          </label>
+        </div>
+      </div>
+      <div style="font-size:9px;color:#4a4a7a;">${_bl.mm > 0 ? '✓ Bleed active — PDF will be '+(240+_bl.mm*2).toFixed(1)+'×'+(180+_bl.mm*2).toFixed(1)+'mm' : 'Set bleed > 0 to add bleed to PDF export'}</div>
     </div>`;
   }
   html+=edmMetaHTML();
@@ -4209,7 +4240,7 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
   });
 }
 
-async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
+async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
   // EDM tabs are too complex for native renderer — use raster (html2canvas)
@@ -4222,9 +4253,15 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   if(fonts.length > 0) registerPdfFonts(pdf, fonts);
   const hasFonts = fonts.length > 0;
 
+  // Bleed: artwork is offset into page by bleedMm; scale based on artwork area only
+  const _bleedMm = (bleedOpts && bleedOpts.bleedMm) || 0;
+  const _artWmm  = (bleedOpts && bleedOpts.artWmm)  || pageW - _bleedMm*2;
+  const _artHmm  = (bleedOpts && bleedOpts.artHmm)  || pageH - _bleedMm*2;
+  const _cropMarks = bleedOpts && bleedOpts.cropMarks && _bleedMm > 0;
+
   const [pxW, pxH] = getTabSize(tabIdx);
-  const scaleX = pageW / pxW;
-  const scaleY = pageH / pxH;
+  const scaleX = _artWmm / pxW;
+  const scaleY = _artHmm / pxH;
 
   let state = savedStates[tabIdx];
   if(!state || !state.length){
@@ -4324,10 +4361,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
   else { pdf.setFillColor(255,255,255); }
   pdf.rect(0,0,pageW,pageH,'F');
 
-  // Render each element
+  // Render each element (offset by bleedMm so artwork sits within the bleed margins)
   for(const sv of sorted){
     if(sv.field==='income') continue;
-    const ex=parseFloat(sv.x)*scaleX, ey=parseFloat(sv.y)*scaleY;
+    const ex=parseFloat(sv.x)*scaleX + _bleedMm, ey=parseFloat(sv.y)*scaleY + _bleedMm;
     const ew=parseFloat(sv.w)*scaleX, eh=parseFloat(sv.h)*scaleY;
     if(ew<=0||eh<=0) continue;
 
@@ -4424,10 +4461,41 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage){
       });
     }
   }
+
+  // ── Draw crop marks if bleed is active ──
+  if(_cropMarks && _bleedMm > 0){
+    const B = _bleedMm;          // bleed margin in mm
+    const W = _artWmm;           // artwork width in mm
+    const H = _artHmm;           // artwork height in mm
+    const markLen = Math.min(B * 0.6, 4); // crop mark length (max 4mm)
+    const gap = B * 0.15;        // small gap between artwork edge and mark start
+    const markStart = gap;
+    const markEnd = gap + markLen;
+
+    pdf.setDrawColor(0,0,0);
+    pdf.setLineWidth(0.25);
+
+    // Corner positions (artwork corners in page coords):
+    // TL = (B, B),  TR = (B+W, B),  BL = (B, B+H),  BR = (B+W, B+H)
+    const corners = [
+      {ax: B,   ay: B   },  // TL
+      {ax: B+W, ay: B   },  // TR
+      {ax: B,   ay: B+H },  // BL
+      {ax: B+W, ay: B+H },  // BR
+    ];
+    corners.forEach(({ax, ay}) => {
+      // Horizontal mark: extends outward from artwork edge
+      const hDir = ax < B+W/2 ? -1 : 1;  // left side: go left; right side: go right
+      pdf.line(ax + hDir*markStart, ay, ax + hDir*markEnd, ay);
+      // Vertical mark: extends outward from artwork edge
+      const vDir = ay < B+H/2 ? -1 : 1;  // top side: go up; bottom side: go down
+      pdf.line(ax, ay + vDir*markStart, ax, ay + vDir*markEnd);
+    });
+  }
 }
 
-async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage){
-  return renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage);
+async function renderTabToPdf(pdf, tabIdx, pageW, pageH, addPage, bleedOpts){
+  return renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts);
 }
 // ════════════════════════════════════════
 // TAB SWITCHING
@@ -4684,6 +4752,7 @@ function collectState(){
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
     customSizes:JSON.parse(JSON.stringify(_customSizes)),
+    bleedSettings:JSON.parse(JSON.stringify(_bleedSettings)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
       fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd'),fn1:gv('fn1'),fp1:gv('fp1'),fn2:gv('fn2'),fp2:gv('fp2'),fn3:gv('fn3'),fp3:gv('fp3'),fn4:gv('fn4'),fp4:gv('fp4')} };
@@ -4698,6 +4767,7 @@ function applyState(data,skipZoom=false){
     if(data.deletedLogos){ Object.entries(data.deletedLogos).forEach(([tab,keys])=>{ _deletedLogos[parseInt(tab)]=new Set(keys); }); }
     if(data.layoutVariants){ Object.assign(_layoutVariants,data.layoutVariants); }
     if(data.customSizes){ Object.assign(_customSizes,data.customSizes); }
+    if(data.bleedSettings){ Object.assign(_bleedSettings,data.bleedSettings); }
     if(data.edmSubject!=null){ const s=document.getElementById('fedm-subject'); if(s) s.value=data.edmSubject; }
     const _edmMap={edmS1:'fedm-link-s1',edmS2:'fedm-link-s2',edmS3:'fedm-link-s3',edmS4:'fedm-link-s4',edmS5:'fedm-link-s5',edmBtn2:'fedm-link-btn2',edmBtn3:'fedm-link-btn3'};
     Object.keys(_edmMap).forEach(function(k){ if(data[k]!=null){ const el=document.getElementById(_edmMap[k]); if(el) el.value=data[k]; }});
@@ -5267,13 +5337,18 @@ async function downloadPDF(){
   try{
     const _PDF_PX_PER_MM=3.7795;
     const [_aw,_ah]=getTabSize(currentTab);
-    const mm=[Math.round(_aw/_PDF_PX_PER_MM*10)/10, Math.round(_ah/_PDF_PX_PER_MM*10)/10];
+    const artWmm=Math.round(_aw/_PDF_PX_PER_MM*10)/10;
+    const artHmm=Math.round(_ah/_PDF_PX_PER_MM*10)/10;
+    // Apply bleed if set for this tab
+    const _bleed=getBleed(currentTab);
+    const bleedMm=_bleed.mm||0;
+    const mm=[artWmm+bleedMm*2, artHmm+bleedMm*2];
     const{jsPDF}=window.jspdf;
     const isLandscape=mm[0]>mm[1];
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
     btn.textContent='Generating…';
-    await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false);
-    pdf.save(`CBRE_${TAB_NAMES[currentTab]}.pdf`);
+    await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false,{bleedMm,cropMarks:_bleed.cropMarks,artWmm,artHmm});
+    pdf.save(`CBRE_${TAB_NAMES[currentTab]}${bleedMm>0?'_bleed'+bleedMm+'mm':''}.pdf`);
   }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
