@@ -3871,64 +3871,64 @@ function buildEDM(W,H){
 }
 
 function buildSignboard10x8(W,H){
-  // Signboard 10x8 — 314x242mm (1187x915px) — scaled from Signboard 8x6
-  mkR(-15,-15,792,954,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(586,-15,440,954,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkR(257,81,588,5,'rgb(91, 232, 143)',{z:201,locked:'1'});
-  mkT(878,67,251,52,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
-  mkT(82,233,683,183,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'72px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
-  mkT(84,424,609,247,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'31px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'13',locked:'1'});
-  mkT(81,676,578,35,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'31px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
-  mkT(84,718,656,41,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'31px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
-  mkT(84,807,153,31,'*Approx.',{color:'rgb(255,255,255)',fontSize:'13px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
-  mkT(453,810,260,35,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'16px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
-  mkT(809,499,318,41,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'39px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
-  mkT(819,546,309,47,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'46px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
-  mkT(821,623,305,44,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'39px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
-  mkT(807,667,318,47,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'46px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
-  mkT(805,746,325,44,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'39px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
-  mkT(822,794,313,45,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'46px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  // Signboard 10x8 — 314x242mm (1187x915px)
+  mkR(-20,-15,805,950,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(779,-15,425,950,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(257,81,605,5,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(878,62,251,52,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'50px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(80,213,683,183,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'75px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(80,419,659,247,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'13',locked:'1'});
+  mkT(80,676,630,40,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(80,723,656,41,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(80,807,153,31,'*Approx.',{color:'rgb(255,255,255)',fontSize:'15px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  mkT(453,810,260,35,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'18px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
+  mkT(809,484,318,53,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'43px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(819,535,309,47,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'50px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(821,613,305,53,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'43px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(807,661,318,47,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'50px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(805,742,325,56,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'43px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(820,794,313,45,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'50px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
   mkSVGLogo(80,21,140,121,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
 }
 function buildSignboard12x8(W,H){
-  // Signboard 12x8 — 374x242mm (1414x915px) — scaled from Signboard 8x6
-  mkR(-15,-15,943,954,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(586,-15,524,954,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkR(306,81,700,5,'rgb(91, 232, 143)',{z:201,locked:'1'});
-  mkT(1046,67,299,52,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'44px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
-  mkT(98,233,814,183,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'86px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
-  mkT(100,424,725,247,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'16',locked:'1'});
-  mkT(97,676,689,35,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
-  mkT(100,718,781,41,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
-  mkT(100,807,182,31,'*Approx.',{color:'rgb(255,255,255)',fontSize:'16px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
-  mkT(539,810,310,35,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'19px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
-  mkT(963,499,379,41,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'47px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
-  mkT(976,546,368,47,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
-  mkT(977,623,363,44,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'47px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
-  mkT(962,667,379,47,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
-  mkT(959,746,387,44,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'47px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
-  mkT(979,794,373,45,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
-  mkSVGLogo(95,21,167,121,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  // Signboard 12x8 — 374x242mm (1414x915px)
+  mkR(-15,-15,1011,950,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(989,-15,442,950,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(296,81,780,5,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(1068,64,299,62,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'50px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(80,213,858,183,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'86px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(80,404,844,247,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'16',locked:'1'});
+  mkT(80,676,818,35,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(80,720,852,41,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'37px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(80,822,182,31,'*Approx.',{color:'rgb(255,255,255)',fontSize:'16px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  mkT(607,825,310,35,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'19px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
+  mkT(985,473,379,52,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'47px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(998,526,368,58,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(999,607,363,52,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'47px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(984,657,379,60,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(981,740,387,55,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'47px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(999,794,373,56,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'55px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkSVGLogo(80,21,167,121,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
 }
 function buildSignboard6x4(W,H){
-  // Signboard 6x4 — 194x122mm (733x461px) — scaled from Signboard 8x6
-  mkR(-15,-15,489,480,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(474,-15,272,480,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkR(158,41,363,3,'rgb(91, 232, 143)',{z:201,locked:'1'});
-  mkT(542,34,155,26,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'18px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
-  mkT(51,118,422,92,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'35px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
-  mkT(52,214,376,124,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'15px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'6',locked:'1'});
-  mkT(50,341,357,17,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'15px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
-  mkT(52,362,405,21,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'15px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
-  mkT(52,407,95,15,'*Approx.',{color:'rgb(255,255,255)',fontSize:'6px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
-  mkT(280,408,161,17,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'8px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
-  mkT(499,251,196,21,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'19px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
-  mkT(506,275,191,24,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'22px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
-  mkT(507,314,188,22,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'19px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
-  mkT(499,336,196,24,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'22px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
-  mkT(497,376,200,22,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'19px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
-  mkT(508,400,193,23,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'22px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
-  mkSVGLogo(49,11,86,61,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  // Signboard 6x4 — 194x122mm (733x461px)
+  mkR(-10,-10,511,480,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(501,-10,245,480,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(151,41,395,3,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(515,29,188,34,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(40,104,430,100,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'42px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1',field:'heading',z:3,locked:'1'});
+  mkT(40,209,430,124,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'17px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'6',locked:'1'});
+  mkT(40,338,357,17,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'17px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(40,362,405,21,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'17px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(40,416,95,15,'*Approx.',{color:'rgb(255,255,255)',fontSize:'9px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  mkT(280,417,161,17,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
+  mkT(505,220,196,33,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(512,249,191,31,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
+  mkT(509,295,192,32,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(505,323,196,31,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
+  mkT(503,370,200,35,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'28px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(512,400,193,30,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkSVGLogo(40,11,86,61,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
 }
 // ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
 function buildEDMAsianDesk(W,H){
@@ -3996,24 +3996,24 @@ function buildLinkedIn(W,H){
   mkSVGLogo(34,36,160,39,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:200,locked:'1'});
 }
 function buildSignboard(W,H){
-  // Artboard: 907x686px. Backgrounds use -15px offset for bleed coverage.
-  mkR(-15,-15,605,715,'rgb(1, 42, 45)',{z:1,locked:'1'});
-  mkR(586,-15,336,715,'rgb(255, 255, 255)',{z:2,locked:'1'});
-  mkR(196,61,449,4,'rgb(91, 232, 143)',{z:201,locked:'1'});
-  mkT(671,50,192,39,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
-  mkT(63,175,522,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'55px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
-  mkT(64,318,465,185,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'10',locked:'1'});
-  mkT(62,507,442,26,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
-  mkT(64,538,501,31,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
-  mkT(64,605,117,23,'*Approx.',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
+  // Signboard 8x6 — 240x181.5mm (907x686px)
+  mkR(-15,-15,621,715,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(605,-15,317,715,'rgb(255, 255, 255)',{z:2,locked:'1'});
+  mkR(196,61,455,4,'rgb(91, 232, 143)',{z:201,locked:'1'});
+  mkT(671,46,192,39,gv('fm')||'For Sale',{color:'rgb(1,42,45)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'salemethod',z:4,locked:'1'});
+  mkT(60,159,522,137,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'55px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.1',field:'heading',z:3,locked:'1'});
+  mkT(60,310,512,185,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'10',locked:'1'});
+  mkT(60,507,514,26,gv('fm')||'For Sale',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:3,locked:'1'});
+  mkT(60,542,501,31,gv('fd')||'Day Date Time Venue',{color:'rgb(23,232,143)',fontSize:'24px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:3,locked:'1'});
+  mkT(60,605,117,23,'*Approx.',{color:'rgb(255,255,255)',fontSize:'10px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3});
   mkT(346,607,199,26,'cbre.com.au/properties',{color:'rgb(255,255,255)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',z:3,locked:'1'});
-  mkT(618,374,243,31,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
+  mkT(618,376,243,31,gv('fn1')||'',{color:'rgb(13,42,45)',fontSize:'30px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1name',z:4,locked:'1'});
   mkT(626,409,236,35,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent1num',z:4,locked:'1'});
-  mkT(627,467,233,33,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
+  mkT(627,469,233,33,gv('fn2')||'',{color:'rgb(1,42,45)',fontSize:'30px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2name',z:4,locked:'1'});
   mkT(617,500,243,35,gv('fp2')||'',{color:'rgb(1,42,45)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent2num',z:4,locked:'1'});
-  mkT(615,559,248,33,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'30px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
-  mkT(628,595,239,34,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
-  mkSVGLogo(61,16,107,91,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
+  mkT(615,561,248,33,gv('fn3')||'',{color:'rgb(17,17,17)',fontSize:'30px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3name',z:50,locked:'1'});
+  mkT(626,595,239,34,gv('fp3')||'',{color:'rgb(17,17,17)',fontSize:'35px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'agent3num',z:50,locked:'1'});
+  mkSVGLogo(60,16,107,91,SVG_CBRE_WHITE,'cbre-white',{z:200,locked:'1'});
 }
 // ─── EDM ASIAN DESK 212×1550 (Simplified Chinese) ───
 
