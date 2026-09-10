@@ -137,6 +137,13 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
 /* CANVAS */
 .canvas-area{flex:1;overflow:auto;padding:24px;background:#242424;position:relative;cursor:default;}
 .canvas-wrap{position:relative;display:inline-block;}
+/* Overflow ghost: four panels that darken content outside the artboard during drag */
+.overflow-ghost{position:absolute;pointer-events:none;z-index:9980;background:rgba(30,30,30,0.72);transition:opacity .1s;opacity:0;}
+.canvas-wrap.dragging-el .overflow-ghost{opacity:1;}
+.overflow-ghost-top{top:auto;bottom:100%;left:-500px;right:-500px;height:500px;}
+.overflow-ghost-bottom{top:100%;left:-500px;right:-500px;height:500px;}
+.overflow-ghost-left{top:-500px;bottom:-500px;right:100%;width:500px;}
+.overflow-ghost-right{top:-500px;bottom:-500px;left:100%;width:500px;}
 
 /* ARTWORK */
 .artwork{position:relative;cursor:default;box-shadow:0 6px 40px rgba(0,0,0,.6);}
@@ -450,6 +457,10 @@ Line five</textarea>
   </div>
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
     <div class="canvas-wrap" id="canvas-wrap">
+      <div class="overflow-ghost overflow-ghost-top"></div>
+      <div class="overflow-ghost overflow-ghost-bottom"></div>
+      <div class="overflow-ghost overflow-ghost-left"></div>
+      <div class="overflow-ghost overflow-ghost-right"></div>
       <div class="artwork" id="artwork"></div>
     </div>
   </div>
@@ -803,7 +814,7 @@ function setZoom(v){
 let _customSizes = {};
 // Bleed settings per tab: { mm: number, cropMarks: bool }
 let _bleedSettings = {};
-function getBleed(idx){ return _bleedSettings[idx] || {mm:0, cropMarks:true}; }
+function getBleed(idx){ return _bleedSettings[idx] || {mm:3, cropMarks:true}; }
 function setBleed(idx, mm, cropMarks){
   _bleedSettings[idx] = {mm: Math.max(0, parseFloat(mm)||0), cropMarks: !!cropMarks};
   refreshProps();
@@ -1212,6 +1223,10 @@ function createElement(cfg){
         if(Math.abs(dx) >= Math.abs(dy)){ dy=0; } else { dx=0; }
       }
 
+      // Show overflow ghost panels while dragging
+      const _cw=document.getElementById('canvas-wrap');
+      if(_cw) _cw.classList.add('dragging-el');
+
       if(groupStarts && !_lockedImg){
         // Move ALL selected elements together (not for locked images)
         groupStarts.forEach(function(p){
@@ -1238,6 +1253,9 @@ function createElement(cfg){
     function up(){
       el.style.cursor='';
       if(img) img.style.cursor = shouldPan ? 'grab' : '';
+      // Hide overflow ghost panels
+      const _cw2=document.getElementById('canvas-wrap');
+      if(_cw2) _cw2.classList.remove('dragging-el');
       if(committed){
         if(shouldPan){
           saveCropData(img);
@@ -1302,12 +1320,16 @@ function startDrag(e, el){
       undoSnapshot();
       dragging = true;
       el.style.cursor = 'grabbing';
+      const _cwD=document.getElementById('canvas-wrap');
+      if(_cwD) _cwD.classList.add('dragging-el');
     }
     el.style.left=Math.round(ox+(e.clientX-sx)/zoom)+'px';
     el.style.top=Math.round(oy+(e.clientY-sy)/zoom)+'px';
   }
   function up(){
     el.style.cursor = '';
+    const _cwD2=document.getElementById('canvas-wrap');
+    if(_cwD2) _cwD2.classList.remove('dragging-el');
     window.removeEventListener('mousemove',mv);
     window.removeEventListener('mouseup',up);
     if(dragging) debouncedPersist();
