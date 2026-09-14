@@ -265,6 +265,8 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 #rich-toolbar button:hover{background:#3a3a3a;color:#fff;}
 #rich-toolbar button.active{background:#0d2b21;border-color:#5bbf7a;color:#5bbf7a;}
 #rich-toolbar .tb-sep{width:1px;height:16px;background:#333;margin:0 2px;}
+/* Superscript in canvas text elements */
+.el-inner sup{font-size:0.55em;vertical-align:super;line-height:0;}
 
 #live-sync-toast{
   position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);
@@ -306,6 +308,8 @@ body.admin-mode .cl-limit-wrap{display:flex;}
   <button id="rtb-bold"   onclick="rtCmd('bold')"        title="Bold (Cmd+B)"><b>B</b></button>
   <button id="rtb-italic" onclick="rtCmd('italic')"      title="Italic (Cmd+I)"><i>I</i></button>
   <button id="rtb-under"  onclick="rtCmd('underline')"   title="Underline (Cmd+U)"><u>U</u></button>
+  <div class="tb-sep"></div>
+  <button id="rtb-sup" onclick="rtSuperscript()" title="Superscript selected character(s)" style="font-size:10px;">X<sup style="font-size:0.6em;vertical-align:super;">2</sup></button>
   <div class="tb-sep"></div>
   <button id="rtb-clear"  onclick="rtCmd('removeFormat')" title="Clear formatting" style="font-size:10px;">✕ Clear</button>
 </div>
@@ -1992,6 +1996,7 @@ function showProps(el){
       <div style="display:flex;gap:4px;margin-top:4px;">
         <button onclick="rtCmd('bold')" style="flex:1;padding:4px;font-size:11px;font-weight:700;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Bold selected text (Cmd+B)"><b>B</b> Selection</button>
         <button onclick="rtCmd('italic')" style="flex:1;padding:4px;font-size:11px;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Italic selected text (Cmd+I)"><i>I</i> Selection</button>
+        <button onclick="rtSuperscript()" style="flex:1;padding:4px;font-size:11px;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Superscript selected character(s)">X<sup style="font-size:0.6em;vertical-align:super;">2</sup> Sup</button>
       </div>
     </div>
     <div class="pf"><label>Font Family</label>
@@ -5981,6 +5986,22 @@ function restoreSelectionRange(){
 
 function rtCmd(cmd){
   restoreSelectionRange();
+  // removeFormat doesn't strip <sup> — handle manually
+  if(cmd === 'removeFormat'){
+    const sel = window.getSelection();
+    if(sel && sel.rangeCount > 0){
+      const range = sel.getRangeAt(0);
+      const inner = selectedEl && selectedEl.querySelector('.el-inner');
+      if(inner){
+        inner.querySelectorAll('sup').forEach(function(sup){
+          if(range.intersectsNode(sup)){
+            const txt = document.createTextNode(sup.textContent);
+            sup.replaceWith(txt);
+          }
+        });
+      }
+    }
+  }
   document.execCommand(cmd, false, null);
   if(selectedEl){
     const inner = selectedEl.querySelector('.el-inner');
@@ -5988,6 +6009,48 @@ function rtCmd(cmd){
       if(inner._inlineInputHandler) inner._inlineInputHandler();
     }
   }
+}
+
+function rtSuperscript(){
+  restoreSelectionRange();
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+
+  // Check if selection is already fully inside a <sup>
+  const parentSup = range.commonAncestorContainer.nodeType === 3
+    ? range.commonAncestorContainer.parentElement.closest('sup')
+    : range.commonAncestorContainer.closest && range.commonAncestorContainer.closest('sup');
+
+  if(parentSup){
+    // Unwrap: replace the <sup> with its text content
+    const txt = document.createTextNode(parentSup.textContent);
+    parentSup.replaceWith(txt);
+    const newRange = document.createRange();
+    newRange.selectNode(txt);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+  } else {
+    // Wrap selected content in <sup>
+    const sup = document.createElement('sup');
+    try {
+      range.surroundContents(sup);
+    } catch(e){
+      const frag = range.extractContents();
+      sup.appendChild(frag);
+      range.insertNode(sup);
+    }
+    const newRange = document.createRange();
+    newRange.selectNodeContents(sup);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+  }
+
+  if(selectedEl){
+    const inner = selectedEl.querySelector('.el-inner');
+    if(inner && inner._inlineInputHandler) inner._inlineInputHandler();
+  }
+  saveSelectionRange();
 }
 
 function handleRtbKeydown(ev, inner){
