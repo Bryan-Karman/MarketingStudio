@@ -4848,6 +4848,9 @@ function toggleMITab(idx,cb){
     _miHidden.delete(idx);
     tab.style.display='';
   }
+  // Immediately flush to localStorage so tab visibility survives a quick refresh
+  // before the debounced cloud save completes
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(collectState())); } catch(e){}
   debouncedPersist();
 }
 
@@ -4886,7 +4889,8 @@ function collectState(){
 }
 
 function applyState(data,skipZoom=false){
-  if(!data||data.v!==5) return false;
+  // Accept v4 and v5 — v4 saves still contain miHidden and other fields we need
+  if(!data||!data.v||(data.v!==5&&data.v!==4)) return false;
   try{
     if(data.assets) assets=data.assets;
     // Refresh upload slot panels after assets restored
@@ -4920,6 +4924,9 @@ function applyState(data,skipZoom=false){
       ? new Set(data.miHidden)
       : new Set(_MI_DEFAULT_HIDDEN);
     _miHidden = _miToApply;
+    // Apply immediately to DOM so tabs are hidden as soon as state loads,
+    // not only after the requestAnimationFrame in init()
+    if(typeof applyMIHidden === 'function') applyMIHidden();
     return true;
   }catch(e){console.error('applyState failed',e);return false;}
 }
