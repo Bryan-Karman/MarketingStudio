@@ -2839,7 +2839,13 @@ function globalSync(){
           setInnerText(inner, _fi ? val + '\n' + _fi : val);
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
           // EDM, Asian Desk: append income as last body copy line
-          setInnerText(inner, _fi ? val + '\n' + _fi : val);
+          // bodycopy has bullets:'1' so setInnerText bails — rebuild lines and use applyBullets
+          var _fiPrefix2 = _fi ? _fi.split(':')[0].trim().toLowerCase() : '';
+          var _bcLines = (val||'').split('\n');
+          _bcLines = _bcLines.filter(function(l){ return !(_fiPrefix2 && l.toLowerCase().startsWith(_fiPrefix2+':')); });
+          if(_fi) _bcLines.push(_fi);
+          inner.textContent = _bcLines.join('\n');
+          applyBullets(inner, true);
         } else if(field === 'bodycopy' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: append income as last body copy line
           setInnerText(inner, _fi ? val + '\n' + _fi : val);
@@ -3833,8 +3839,8 @@ function buildBrochure2_v3(W,H){
 function buildEDM(W,H){
   mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkI(0,116,600,425,'img1','Image',{z:2});
-  mkR(354,478,246,62,'rgb(0, 63, 45)',{z:4});
-  mkT(337,498,238,31,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5});
+  mkR(108,478,492,62,'rgb(0, 63, 45)',{z:4});
+  mkT(91,498,476,31,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4,locked:'1'});
   (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
