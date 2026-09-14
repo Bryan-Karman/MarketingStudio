@@ -1000,6 +1000,10 @@ function createElement(cfg){
             _sel.value = _txt;
           }
         }
+        // Keep richHtml in sync whenever there are formatting tags present
+        if(_el2 && inner.innerHTML !== (inner.textContent||'')){
+          _el2.dataset.richHtml = inner.innerHTML;
+        }
         debouncedPersist();
       }
       inner._inlineInputHandler=_inlineInputHandler;
@@ -2411,19 +2415,21 @@ function setInnerText(inner, text){
   const el = inner.closest('.el');
   // Bullet elements use applyBullets — never overwrite with plain text
   if(el && el.dataset.bullets === '1') return;
-  // If this element has saved rich HTML (e.g. superscript) and the plain-text
-  // content matches what the sidebar holds, restore the rich HTML instead of
-  // overwriting it with plain text (which would strip <sup> tags etc.)
+  // If this element has saved rich HTML (superscript, bold, italic etc.),
+  // check whether the plain text content still matches. If so, keep the rich
+  // HTML — don't blow it away with textContent. Strip ALL tags for comparison.
   if(el && el.dataset.richHtml){
-    const _richPlain = (el.dataset.richHtml.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ')).trim();
-    const _valPlain  = (text||'').trim();
-    if(_richPlain === _valPlain || inner.innerHTML === el.dataset.richHtml){
+    const _stripTags = function(h){ return h.replace(/<[^>]+>/g,'').replace(/\u00A0/g,' ').trim(); };
+    const _richPlain = _stripTags(el.dataset.richHtml);
+    const _newPlain  = (text||'').trim();
+    if(_richPlain === _newPlain){
+      // Content unchanged — restore rich HTML to preserve formatting
       inner.innerHTML = el.dataset.richHtml;
       inner.style.whiteSpace = 'pre-wrap';
       inner.style.wordBreak = 'break-word';
       return;
     }
-    // Content has changed — clear stale richHtml so we don't re-apply old formatting
+    // Text has genuinely changed — discard stale rich HTML
     delete el.dataset.richHtml;
   }
   inner.textContent = text || '';
@@ -4797,7 +4803,11 @@ function switchTab(idx,btn){
   if(idx===6) setTimeout(function(){ globalSync(); }, 50);
   fitZoomToTab();
   updateEdmMetaVisibility();
-  if(idx===2||idx===3) setTimeout(repackEDMAgents,80);
+  if(idx===2||idx===3){
+    // Sync agent slots so fn1/fn2 hidden inputs are populated, then repack
+    syncAllAgentSlots();
+    setTimeout(repackEDMAgents, 120);
+  }
   if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
   _updateEDMHtmlBtn();
 }
@@ -5407,6 +5417,8 @@ async function init(){
     if(currentTab===6) setTimeout(function(){ globalSync(); }, 50);
     fitZoomToTab();
     renderAgentBlocks();
+    // Sync agent slots so fn1/fn2 hidden inputs are populated before repackEDMAgents runs
+    syncAllAgentSlots();
     document.getElementById('props-content').innerHTML=emptyPropsHTML();
     renderImgUploadSlots(); renderLogoUploadSlots();
     updateEdmMetaVisibility();
@@ -5418,6 +5430,8 @@ async function init(){
     }
     updateEdmCharCounts();
     applyMIHidden();
+    // Final repack after everything has settled
+    if(currentTab===2||currentTab===3) setTimeout(repackEDMAgents, 200);
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
