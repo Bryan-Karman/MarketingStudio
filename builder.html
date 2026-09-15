@@ -2415,23 +2415,6 @@ function setInnerText(inner, text){
   const el = inner.closest('.el');
   // Bullet elements use applyBullets — never overwrite with plain text
   if(el && el.dataset.bullets === '1') return;
-  // If this element has saved rich HTML (superscript, bold, italic etc.),
-  // check whether the plain text content still matches. If so, keep the rich
-  // HTML — don't blow it away with textContent. Strip ALL tags for comparison.
-  if(el && el.dataset.richHtml){
-    const _stripTags = function(h){ return h.replace(/<[^>]+>/g,'').replace(/\u00A0/g,' ').trim(); };
-    const _richPlain = _stripTags(el.dataset.richHtml);
-    const _newPlain  = (text||'').trim();
-    if(_richPlain === _newPlain){
-      // Content unchanged — restore rich HTML to preserve formatting
-      inner.innerHTML = el.dataset.richHtml;
-      inner.style.whiteSpace = 'pre-wrap';
-      inner.style.wordBreak = 'break-word';
-      return;
-    }
-    // Text has genuinely changed — discard stale rich HTML
-    delete el.dataset.richHtml;
-  }
   inner.textContent = text || '';
   inner.style.whiteSpace = 'pre-wrap';
   inner.style.wordBreak = 'break-word';
@@ -2669,6 +2652,25 @@ function restoreTab(idx){
       } // end else (non-svg)
     }
   });
+  // For EDM tabs: populate fn/fp hidden inputs from agentSlots BEFORE globalSync
+  // so that repackEDMAgents (called inside globalSync) sees the correct active agents.
+  // Use a lightweight populate (no globalSync/repack cascade) to avoid redundant work.
+  if(idx===2||idx===3){
+    agentSlots.forEach(function(slot,i){
+      var num=i+1;
+      var nameEl=document.getElementById('fn'+num);
+      var phoneEl=document.getElementById('fp'+num);
+      var name='',phone='';
+      if(slot.mode==='db'&&slot.agentId){
+        var agent=agentList.find(function(a){return a.id===slot.agentId;});
+        if(agent){name=agent.name||'';phone=agent.phone||'';}
+      } else if(slot.mode==='custom'){
+        name=slot.customName||''; phone=slot.customPhone||'';
+      }
+      if(nameEl) nameEl.value=name;
+      if(phoneEl) phoneEl.value=phone;
+    });
+  }
   // Sync all field values so combined agents, bullets etc all populate correctly
   globalSync();
   // Patch any banner elements missing bannerPad (old saves before this was tracked)
@@ -2842,6 +2844,9 @@ function globalSync(){
     if(inner && el.dataset.type==='text'){
       // Skip elements currently being edited inline — don't interrupt typing
       if(inner.contentEditable === 'true') return;
+      // Skip elements that have rich HTML formatting (superscript, bold, italic etc.)
+      // — globalSync must not overwrite innerHTML with plain text
+      if(el.dataset.richHtml) return;
       // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
       if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
