@@ -943,45 +943,8 @@ function createElement(cfg){
       inner.style.cursor='text';
       inner.focus();
       showRtb(inner);
-      // Intercept paste — strip all incoming formatting, keep plain text only
-      if(inner._pasteHandler) inner.removeEventListener('paste', inner._pasteHandler);
-      inner._pasteHandler = function(e){
-        e.preventDefault();
-        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-        if(!text) return;
-        // Insert plain text at cursor position
-        const sel = window.getSelection();
-        if(sel && sel.rangeCount){
-          sel.deleteFromDocument();
-          const range = sel.getRangeAt(0);
-          // Replace newlines with <br> if the element uses bullet formatting, else spaces
-          const el2 = inner.closest('.el');
-          const isBullets = el2 && (el2.dataset.bullets==='1' || el2.dataset.field==='bodycopy' || el2.dataset.field==='bullets');
-          const lines = text.split(/\r?\n/);
-          if(isBullets && lines.length > 1){
-            lines.forEach(function(line, i){
-              range.insertNode(document.createTextNode(line));
-              range.collapse(false);
-              if(i < lines.length - 1){
-                const br = document.createElement('br');
-                range.insertNode(br);
-                range.setStartAfter(br);
-                range.collapse(true);
-              }
-            });
-          } else {
-            // Single line — collapse newlines to spaces
-            const flat = lines.join(' ');
-            range.insertNode(document.createTextNode(flat));
-            range.collapse(false);
-          }
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-        // Trigger input handler to sync to sidebar
-        inner.dispatchEvent(new Event('input'));
-      };
-      inner.addEventListener('paste', inner._pasteHandler);
+      // Paste is handled by the global capture listener (strips formatting, keeps plain text)
+      inner._pasteHandler = null;
       // Remove any previously attached handler to avoid duplicates
       if(inner._inlineInputHandler){
         inner.removeEventListener('input', inner._inlineInputHandler);
@@ -5577,6 +5540,52 @@ async function liveSyncTick(){
   }catch(e){console.warn('[CBRE] Live sync error:',e);}
 }
 function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
+
+// ── Global paste guard ────────────────────────────────────────────
+// Ensures pasting into any canvas contentEditable always strips formatting,
+// regardless of how the element gained focus (dblclick handler also does this,
+// but this catches edge cases like programmatic focus or browser quirks).
+document.addEventListener('paste', function(e){
+  const active = document.activeElement;
+  if(!active) return;
+  // Only intercept pastes inside .el-inner elements that are contentEditable
+  const inner = active.closest ? active.closest('.el-inner') : null;
+  if(!inner || inner.contentEditable !== 'true') return;
+  // Always intercept — even if _pasteHandler is attached, this ensures
+  // context-menu paste and any other edge cases are caught
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if(!text) return;
+  const sel = window.getSelection();
+  if(sel && sel.rangeCount){
+    sel.deleteFromDocument();
+    const range = sel.getRangeAt(0);
+    const el2 = inner.closest('.el');
+    const isBullets = el2 && (el2.dataset.bullets==='1' || el2.dataset.field==='bodycopy' || el2.dataset.field==='bullets');
+    const lines = text.split(/\r?\n/);
+    if(isBullets && lines.length > 1){
+      lines.forEach(function(line, i){
+        range.insertNode(document.createTextNode(line));
+        range.collapse(false);
+        if(i < lines.length - 1){
+          const br = document.createElement('br');
+          range.insertNode(br);
+          range.setStartAfter(br);
+          range.collapse(true);
+        }
+      });
+    } else {
+      const flat = lines.map(function(l){return l.trim();}).filter(Boolean).join(' ');
+      const node = document.createTextNode(flat);
+      range.insertNode(node);
+      range.setStartAfter(node);
+      range.collapse(true);
+    }
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  inner.dispatchEvent(new Event('input'));
+}, true); // useCapture:true so this fires before any other handler
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopLiveSync();else startLiveSync();});
 
