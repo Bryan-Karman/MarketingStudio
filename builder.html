@@ -1174,7 +1174,6 @@ function createElement(cfg){
                   if(sv.eid===_eid2||sv.field===_blurField){ sv.content=_txt2; sv.richHtml=inner.innerHTML; }
                 });
               }
-              console.log('[SUP] blur: saved richHtml for field='+_blurField, inner.innerHTML.substring(0,80));
               if(typeof clEnforce==='function') clEnforce(_sid2);
               if(_blurField==='bullets'||_blurField==='bodycopy'){
                 if(typeof onBulletFieldChange==='function') onBulletFieldChange();
@@ -2491,11 +2490,9 @@ function serializeTab(){
           }
           if(el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
             obj.richHtml = el.dataset.richHtml;
-            console.log('[SUP] serializeTab: saving richHtml for field='+el.dataset.field+' eid='+el.dataset.eid, obj.richHtml.substring(0,80));
           } else if(inner.innerHTML !== inner.textContent && !inner.querySelector('div.plain-line')){
             obj.richHtml = inner.innerHTML;
             el.dataset.richHtml = inner.innerHTML;
-            console.log('[SUP] serializeTab: saving innerHTML as richHtml for field='+el.dataset.field, obj.richHtml.substring(0,80));
           }
         }
       }
@@ -2578,7 +2575,6 @@ function restoreTab(idx){
     }
     if(sv.content!==undefined && inner && sv.type==='text'){
       if(sv.richHtml && sv.bullets!=='1'){
-        console.log('[SUP] restoreTab: applying richHtml for field='+sv.field+' eid='+sv.eid, sv.richHtml.substring(0,80));
         inner.innerHTML = sv.richHtml;
         el.dataset.richHtml = sv.richHtml;
       } else {
@@ -2851,7 +2847,7 @@ function globalSync(){
       if(inner.contentEditable === 'true') return;
       // Skip elements that have rich HTML formatting (superscript, bold, italic etc.)
       // — globalSync must not overwrite innerHTML with plain text
-      if(el.dataset.richHtml){ console.log('[SUP] globalSync: skipping field='+field+' (has richHtml)'); return; }
+      if(el.dataset.richHtml) return;
       // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
       if(el.dataset.combinedAgent==='1' && agentPhoneMap[field]){
@@ -2955,8 +2951,9 @@ function globalSync(){
   //    we flag them for a full rebuild next time they're visited.
   for(const [tabIdx, state] of Object.entries(savedStates)){
     const ti=parseInt(tabIdx);
+    if(isNaN(ti)) continue; // skip non-numeric keys like _marketingScheduleUrl
     if(ti===currentTab) continue; // live DOM already handled above
-    if(!state) continue;
+    if(!state || !Array.isArray(state)) continue;
     state.forEach(sv=>{
       if(sv.type!=='text' || !sv.field) return;
       if(sv.field.startsWith('zh_')) return; // Chinese tab — skip
@@ -4111,7 +4108,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
     nextId    = 1;
     currentTab = tabIdx;
     try {
-      if(savedStates[tabIdx] && savedStates[tabIdx].length){
+      if(savedStates[tabIdx] && Array.isArray(savedStates[tabIdx]) && savedStates[tabIdx].length){
         savedStates[tabIdx].forEach(sv => {
           const el = document.createElement('div');
           el.className = 'el';
