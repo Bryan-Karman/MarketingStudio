@@ -417,9 +417,11 @@ Line four
 Line five</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fbc"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fbc" placeholder="∞" oninput="clSetLimit('fbc',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Sale</div>
-      <div class="fl"><label>Sale Method</label><input id="fm" value="For Sale" oninput="clEnforce('fm');globalSync()">
+      <div class="fl"><label>Sale Method</label><textarea id="fm" rows="2" style="min-height:40px;" oninput="clEnforce('fm');globalSync()">For Sale</textarea>
+        <div style="font-size:9px;color:#666;margin-top:2px;">Use Enter for line breaks on Brochure only — other templates show on one line.</div>
         <div class="cl-row"><span class="cl-count" id="cl-fm"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fm" placeholder="∞" oninput="clSetLimit('fm',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Sale Date &amp; Details</label><input id="fd" value="Day Date Month Year" oninput="clEnforce('fd');globalSync()">
+      <div class="fl"><label>Sale Date &amp; Details</label><textarea id="fd" rows="2" style="min-height:40px;" oninput="clEnforce('fd');globalSync()">Day Date Month Year</textarea>
+        <div style="font-size:9px;color:#666;margin-top:2px;">Use Enter for line breaks on Brochure only — other templates show on one line.</div>
         <div class="cl-row"><span class="cl-count" id="cl-fd"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fd" placeholder="∞" oninput="clSetLimit('fd',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Agents</div>
       
@@ -2822,14 +2824,14 @@ function globalSync(){
       if(_found){
         const _ci=_found.querySelector('.el-inner');
         if(_ci){
-          const _sm=getFieldVal('salemethod')||''; const _sd=getFieldVal('saledate')||'';
+          const _sm=_collapseLines(getFieldVal('salemethod')||''); const _sd=_collapseLines(getFieldVal('saledate')||'');
           _ci.textContent=_sm&&_sd?_sm+', '+_sd:_sm||_sd||'Sale Method, Date & Details';
         }
       }
     } else {
       const _ci=_comboEl.querySelector('.el-inner');
       if(_ci){
-        const _sm=getFieldVal('salemethod')||''; const _sd=getFieldVal('saledate')||'';
+        const _sm=_collapseLines(getFieldVal('salemethod')||''); const _sd=_collapseLines(getFieldVal('saledate')||'');
         _ci.textContent=_sm&&_sd?_sm+', '+_sd:_sm||_sd||'Sale Method, Date & Details';
       }
     }
@@ -2920,6 +2922,21 @@ function globalSync(){
           // Press Ads: address2 is merged into address1 box — hide standalone
           el.style.display = 'none';
           return;
+        } else if(field === 'saledate'){
+          // Brochure tabs: preserve line breaks so date can span multiple lines
+          // All other tabs: collapse to single line
+          if(currentTab === 0 || currentTab === 1){
+            setInnerText(inner, val);
+          } else {
+            setInnerText(inner, _collapseLines(val));
+          }
+        } else if(field === 'salemethod'){
+          // Brochure tabs: preserve line breaks; all other tabs: collapse to single line
+          if(currentTab === 0 || currentTab === 1){
+            setInnerText(inner, val);
+          } else {
+            setInnerText(inner, _collapseLines(val));
+          }
         } else {
           setInnerText(inner, val);
         }
@@ -3004,6 +3021,12 @@ function globalSync(){
         // EDM/Asian Desk: append income to bodycopy
         const _fi = gv('fi') || '';
         sv.content = _fi ? val + '\n' + _fi : val;
+      } else if(sv.field === 'saledate'){
+        // Brochure tabs: keep line breaks. All others: collapse to single line
+        sv.content = (ti===0||ti===1) ? val : _collapseLines(val);
+      } else if(sv.field === 'salemethod'){
+        // Brochure tabs: keep line breaks. All others: collapse to single line
+        sv.content = (ti===0||ti===1) ? val : _collapseLines(val);
       } else {
         sv.content=val;
       }
@@ -3022,8 +3045,17 @@ function syncTabOnEntry(idx){
   // Walk every element and push current field values in
   state.forEach(sv=>{
     if(sv.type!=='text' || !sv.field) return;
-    const val=getFieldVal(sv.field);
-    if(val!==null) sv.content=val;
+    var val=getFieldVal(sv.field);
+    if(val===null) return;
+    // Saledate: brochure tabs keep line breaks, all others collapse to single line
+    if(sv.field==='saledate' && idx!==0 && idx!==1){
+      val=_collapseLines(val);
+    }
+    // Salemethod: same treatment
+    if(sv.field==='salemethod' && idx!==0 && idx!==1){
+      val=_collapseLines(val);
+    }
+    sv.content=val;
   });
 }
 
@@ -3069,6 +3101,12 @@ function fieldToSidebarId(field){
   return map[field]||null;
 }
 function gv(id){return document.getElementById(id)?.value?.trim()||'';}
+// Collapse a multiline value to a single clean line (trim each line, join with space)
+function _collapseLines(v){ return (v||'').split('\n').map(function(l){return l.trim();}).filter(Boolean).join(' '); }
+// Sale date helper: returns fd value with line breaks for brochure (tabs 0,1), collapsed for all others
+function gvFd(){ const v=gv('fd'); return (currentTab===0||currentTab===1)?v:_collapseLines(v); }
+// Sale method helper: returns fm value with line breaks for brochure (tabs 0,1), collapsed for all others
+function gvFm(){ const v=gv('fm'); return (currentTab===0||currentTab===1)?v:_collapseLines(v); }
 
 // ════════════════════════════════════════
 // ASSETS
