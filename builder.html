@@ -2149,7 +2149,7 @@ function setBannerPad(side, v){
   var inner = selectedEl.querySelector('.el-inner');
   if(!inner) return;
   // Parse existing padding — format is "top right bottom" or "top"
-  var parts = (selectedEl.dataset.bannerPad || '16px 20px 14px').split(' ');
+  var parts = (selectedEl.dataset.bannerPad || '21px 20px 14px').split(' ');
   var top    = parseFloat(parts[0]) || 0;
   var right  = parseFloat(parts[1]) || 20;
   var bottom = parseFloat(parts[2] !== undefined ? parts[2] : parts[0]) || 0;
