@@ -266,8 +266,6 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 #rich-toolbar button:hover{background:#3a3a3a;color:#fff;}
 #rich-toolbar button.active{background:#0d2b21;border-color:#5bbf7a;color:#5bbf7a;}
 #rich-toolbar .tb-sep{width:1px;height:16px;background:#333;margin:0 2px;}
-/* Superscript in canvas text elements */
-.el-inner sup{font-size:0.55em;vertical-align:super;line-height:0;}
 
 #live-sync-toast{
   position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);
@@ -310,7 +308,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
   <button id="rtb-italic" onmousedown="event.preventDefault();" onclick="rtCmd('italic')"      title="Italic (Cmd+I)"><i>I</i></button>
   <button id="rtb-under"  onmousedown="event.preventDefault();" onclick="rtCmd('underline')"   title="Underline (Cmd+U)"><u>U</u></button>
   <div class="tb-sep"></div>
-  <button id="rtb-sup" onmousedown="event.preventDefault();rtSuperscript();" title="Superscript selected character(s)" style="font-size:10px;">X<sup style="font-size:0.6em;vertical-align:super;">2</sup></button>
+  <button id="rtb-sup" onmousedown="event.preventDefault();toggleSupPicker(this);" title="Insert superscript character" style="font-size:10px;">X¹</button>
   <div class="tb-sep"></div>
   <button id="rtb-clear" onmousedown="event.preventDefault();" onclick="rtCmd('removeFormat')" title="Clear formatting" style="font-size:10px;">✕ Clear</button>
 </div>
@@ -2003,7 +2001,7 @@ function showProps(el){
       <div style="display:flex;gap:4px;margin-top:4px;">
         <button onmousedown="event.preventDefault();" onclick="rtCmd('bold')" style="flex:1;padding:4px;font-size:11px;font-weight:700;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Bold selected text (Cmd+B)"><b>B</b> Selection</button>
         <button onmousedown="event.preventDefault();" onclick="rtCmd('italic')" style="flex:1;padding:4px;font-size:11px;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Italic selected text (Cmd+I)"><i>I</i> Selection</button>
-        <button onmousedown="event.preventDefault();" onclick="rtSuperscript()" style="flex:1;padding:4px;font-size:11px;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Superscript selected character(s)">X<sup style="font-size:0.6em;vertical-align:super;">2</sup> Sup</button>
+        <button onmousedown="event.preventDefault();toggleSupPicker(this);" style="flex:1;padding:4px;font-size:11px;background:#242424;border:1px solid #444;border-radius:2px;color:#ccc;cursor:pointer;" title="Insert superscript character">X¹ Sup</button>
       </div>
     </div>
     <div class="pf"><label>Font Family</label>
@@ -6050,53 +6048,166 @@ function rtCmd(cmd){
   }
 }
 
-function rtSuperscript(){
-  // preventDefault on mousedown keeps focus+selection in the text element,
-  // so we read the live selection directly — no need to restore a saved range.
-  const sel = window.getSelection();
-  if(!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-  const range = sel.getRangeAt(0);
+// Unicode superscript character map
+const _supMap = {
+  '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
+  'a':'ᵃ','b':'ᵇ','c':'ᶜ','d':'ᵈ','e':'ᵉ','f':'ᶠ','g':'ᵍ','h':'ʰ','i':'ⁱ','j':'ʲ',
+  'k':'ᵏ','l':'ˡ','m':'ᵐ','n':'ⁿ','o':'ᵒ','p':'ᵖ','r':'ʳ','s':'ˢ','t':'ᵗ','u':'ᵘ',
+  'v':'ᵛ','w':'ʷ','x':'ˣ','y':'ʸ','z':'ᶻ',
+  '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','*':'*'
+};
+const _supChars = [
+  {ch:'¹', label:'¹'},
+  {ch:'²', label:'²'},
+  {ch:'³', label:'³'},
+  {ch:'⁰', label:'⁰'},
+  {ch:'⁴', label:'⁴'},
+  {ch:'⁵', label:'⁵'},
+  {ch:'⁶', label:'⁶'},
+  {ch:'⁷', label:'⁷'},
+  {ch:'⁸', label:'⁸'},
+  {ch:'⁹', label:'⁹'},
+  {ch:'ⁿ', label:'ⁿ'},
+  {ch:'ᵃ', label:'ᵃ'},
+  {ch:'ᵇ', label:'ᵇ'},
+  {ch:'ᶜ', label:'ᶜ'},
+  {ch:'ᵈ', label:'ᵈ'},
+  {ch:'ᵉ', label:'ᵉ'},
+  {ch:'ˢ', label:'ˢ'},
+  {ch:'ᵗ', label:'ᵗ'},
+  {ch:'⁺', label:'⁺'},
+  {ch:'⁻', label:'⁻'},
+  {ch:'*',  label:'*'},
+];
 
-  // Only act if the selection is inside an editable el-inner
-  const inner = range.commonAncestorContainer.nodeType === 3
-    ? range.commonAncestorContainer.parentElement.closest('.el-inner')
-    : (range.commonAncestorContainer.closest && range.commonAncestorContainer.closest('.el-inner'));
-  if(!inner || inner.contentEditable !== 'true') return;
+// Single floating picker appended to body — never clipped by overflow:hidden parents
+var _supPicker = null;
+var _supPickerAnchor = null; // the text el-inner to insert into
 
-  // Check if the selected text is already inside a <sup> — if so, unwrap it
-  const anchor = range.commonAncestorContainer.nodeType === 3
-    ? range.commonAncestorContainer.parentElement
-    : range.commonAncestorContainer;
-  const existingSup = anchor.closest('sup');
+function _getOrCreateSupPicker(){
+  if(_supPicker) return _supPicker;
+  _supPicker = document.createElement('div');
+  _supPicker.id = 'sup-char-picker';
+  _supPicker.style.cssText = [
+    'display:none',
+    'position:fixed',
+    'background:#1e1e1e',
+    'border:1px solid #555',
+    'border-radius:4px',
+    'padding:6px',
+    'gap:4px',
+    'flex-wrap:wrap',
+    'width:168px',
+    'z-index:999999',
+    'box-shadow:0 6px 20px rgba(0,0,0,.7)',
+  ].join(';');
 
-  if(existingSup){
-    // Unwrap the <sup>
-    const txt = document.createTextNode(existingSup.textContent);
-    existingSup.replaceWith(txt);
-    const newRange = document.createRange();
-    newRange.selectNode(txt);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
-  } else {
-    // Wrap selection in <sup>
-    const sup = document.createElement('sup');
-    try {
-      range.surroundContents(sup);
-    } catch(e){
-      // Selection spans element boundaries — extract and rewrap
-      const frag = range.extractContents();
-      sup.appendChild(frag);
-      range.insertNode(sup);
+  // Label
+  var lbl = document.createElement('div');
+  lbl.textContent = 'Insert superscript:';
+  lbl.style.cssText = 'width:100%;font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;';
+  _supPicker.appendChild(lbl);
+
+  _supChars.forEach(function(item){
+    var btn = document.createElement('button');
+    btn.textContent = item.ch;
+    btn.title = item.label;
+    btn.style.cssText = 'padding:4px 6px;font-size:16px;line-height:1;background:#2a2a2a;border:1px solid #444;border-radius:3px;color:#fff;cursor:pointer;min-width:28px;text-align:center;';
+    btn.onmouseover = function(){ this.style.background='#3a5a3a'; this.style.borderColor='#5bbf7a'; };
+    btn.onmouseout  = function(){ this.style.background='#2a2a2a'; this.style.borderColor='#444'; };
+    btn.onmousedown = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      _insertSupChar(item.ch);
+      _closeSupPicker();
+    };
+    _supPicker.appendChild(btn);
+  });
+
+  document.body.appendChild(_supPicker);
+
+  // Close on outside click
+  document.addEventListener('mousedown', function(e){
+    if(_supPicker && _supPicker.style.display !== 'none'){
+      if(!_supPicker.contains(e.target)){
+        _closeSupPicker();
+      }
     }
-    const newRange = document.createRange();
-    newRange.selectNodeContents(sup);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
+  }, true);
+
+  return _supPicker;
+}
+
+function _closeSupPicker(){
+  if(_supPicker) _supPicker.style.display = 'none';
+  _supPickerAnchor = null;
+}
+
+function toggleSupPicker(triggerBtn){
+  var picker = _getOrCreateSupPicker();
+
+  // Save the current selection's inner element before picker opens
+  var sel = window.getSelection();
+  if(sel && sel.rangeCount > 0){
+    var r = sel.getRangeAt(0);
+    var node = r.commonAncestorContainer;
+    var innerEl = node.nodeType === 3 ? node.parentElement.closest('.el-inner') : (node.closest && node.closest('.el-inner'));
+    if(innerEl && innerEl.contentEditable === 'true'){
+      _supPickerAnchor = { inner: innerEl, range: r.cloneRange() };
+    }
   }
 
-  // Sync canvas text back to sidebar
+  if(picker.style.display !== 'none'){
+    _closeSupPicker();
+    return;
+  }
+
+  // Position below the trigger button
+  var rect = triggerBtn.getBoundingClientRect();
+  var pickerW = 168;
+  var left = rect.left;
+  // Keep within viewport
+  if(left + pickerW > window.innerWidth - 8) left = window.innerWidth - pickerW - 8;
+  picker.style.display = 'flex';
+  picker.style.left = left + 'px';
+  picker.style.top  = (rect.bottom + 4) + 'px';
+}
+
+function _insertSupChar(ch){
+  if(!_supPickerAnchor) return;
+  var inner = _supPickerAnchor.inner;
+  var savedRange = _supPickerAnchor.range;
+
+  // Restore the saved selection
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedRange);
+
+  var range = sel.getRangeAt(0);
+
+  if(!sel.isCollapsed){
+    // Convert each selected character to its superscript equivalent
+    var selected = sel.toString();
+    var converted = selected.split('').map(function(c){
+      return _supMap[c.toLowerCase()] || _supMap[c] || c;
+    }).join('');
+    range.deleteContents();
+    var node = document.createTextNode(converted);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+  } else {
+    // Insert the chosen character at the cursor
+    var node = document.createTextNode(ch);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+  }
+
+  sel.removeAllRanges();
+  sel.addRange(range);
+
   if(inner._inlineInputHandler) inner._inlineInputHandler();
-  saveSelectionRange();
 }
 
 function handleRtbKeydown(ev, inner){
