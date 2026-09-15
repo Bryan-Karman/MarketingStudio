@@ -2042,7 +2042,20 @@ function showProps(el){
         <input type="number" id="para-spacing-input" step="1" min="0" max="60" value="${parseFloat(selectedEl&&selectedEl.dataset.bulletParaSpacing)||0}" oninput="setParaSpacing(this.value)" style="width:100%;">
         <span style="color:#666;font-size:9px;padding-top:6px;">px below</span>
       </div>
-    </div>`;
+    </div>
+    ${el.dataset.banner==='1' ? `
+    <div class="pf"><label>Banner Padding</label>
+      <div class="pf-row">
+        <div class="pf" style="flex:1;">
+          <label style="font-size:9px;color:#555;">Top</label>
+          <input type="number" step="1" min="0" max="80" value="${parseInt((el.dataset.bannerPad||'').split(' ')[0])||0}" oninput="setBannerPad('top',this.value)" style="width:100%;">
+        </div>
+        <div class="pf" style="flex:1;">
+          <label style="font-size:9px;color:#555;">Bottom</label>
+          <input type="number" step="1" min="0" max="80" value="${parseInt((el.dataset.bannerPad||'').split(' ')[2]||(el.dataset.bannerPad||'').split(' ')[0])||0}" oninput="setBannerPad('bottom',this.value)" style="width:100%;">
+        </div>
+      </div>
+    </div>` : ''}`;
   }
 
   if(type==='img'){
@@ -2128,6 +2141,23 @@ function setParaSpacing(v){
     // Plain text mode: split into line divs with margin-bottom
     applyPlainParaSpacing(inner, val);
   }
+  debouncedPersist();
+}
+
+function setBannerPad(side, v){
+  if(!selectedEl || selectedEl.dataset.banner !== '1') return;
+  var inner = selectedEl.querySelector('.el-inner');
+  if(!inner) return;
+  // Parse existing padding — format is "top right bottom" or "top"
+  var parts = (selectedEl.dataset.bannerPad || '16px 20px 14px').split(' ');
+  var top    = parseFloat(parts[0]) || 0;
+  var right  = parseFloat(parts[1]) || 20;
+  var bottom = parseFloat(parts[2] !== undefined ? parts[2] : parts[0]) || 0;
+  if(side === 'top')    top    = parseFloat(v) || 0;
+  if(side === 'bottom') bottom = parseFloat(v) || 0;
+  var newPad = top + 'px ' + right + 'px ' + bottom + 'px';
+  selectedEl.dataset.bannerPad = newPad;
+  inner.style.padding = newPad;
   debouncedPersist();
 }
 
@@ -3871,10 +3901,10 @@ function buildBrochure2_v3(W,H){
 }
 
 function buildEDM(W,H){
-  mkR(0,0,603,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(0,0,600,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkI(0,116,600,425,'img1','Image',{z:2});
-  mkBanner(91,478,509,62,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerBg:'rgb(0,63,45)',bannerPad:'16px 20px 14px'});
-  mkR(34,592,8,359,'rgb(23,232,143)',{z:4});
+  mkBanner(91,480,509,62,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerBg:'rgb(0,63,45)',bannerPad:'21px 20px 14px'});
+  mkR(34,592,8,359,'rgb(23,232,143)',{z:4,locked:'1'});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4,locked:'1'});
   (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
@@ -3882,11 +3912,11 @@ function buildEDM(W,H){
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4,locked:'1'});
   mkT(34,1251,569,37,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4,locked:'1'});
   mkI(0,1313,600,396,'img2','Image',{z:2});
-  mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3});
-  mkR(34,1738,8,68,'rgb(23,232,143)',{z:4});
-  mkT(76,1735,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4});
-  mkT(76,1777,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4});
-  mkR(0,1834,600,2066,'rgb(255,255,255)',{z:2}); // white bg for body/agents/buttons
+  mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3,locked:'1'});
+  mkR(34,1738,8,68,'rgb(23,232,143)',{z:4,locked:'1'});
+  mkT(76,1735,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4,locked:'1'});
+  mkT(76,1777,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4,locked:'1'});
+  mkR(0,1834,600,2066,'rgb(255,255,255)',{z:2,locked:'1'});
   mkT(34,1871,541,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
   mkI(0,2493,600,368,'img3','Image',{z:2});
   mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3,locked:'1'});
@@ -3917,10 +3947,9 @@ function buildEDM(W,H){
     tagBelow(mkR(0,3930,600,113,'rgb(1, 42, 45)',{z:3,locked:'1'}),3930);
     tagBelow(mkSVGLogo(40,3961,524,45,SVG_CBRE_WHITE,'cbre-white',{z:201}),3961);
     tagBelow(mkT(23,4077,555,170,'*All areas and figures approx only.   \nThis communication is from CBRE or one of its associated/subsidiary companies. This communication contains information which is confidential and may be privileged. If you are not the intended recipient, please contact the sender immediately. Any use of its contents is strictly prohibited and you must not copy, send or disclose it, or rely on its contents in any way whatsoever.\nInformation herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. It is your responsibility to independently confirm its accuracy and completeness. Any projections, opinions, assumptions or estimates used are for example only and do not represent the current or future performance of the market.\nReasonable care has been taken to ensure that this communication (and any attachments or hyperlinks contained within it) is free from computer viruses. No responsibility is accepted by CBRE Pty Ltd or its associated/subsidiary companies and the recipient should carry out any appropriate virus checks.\nCBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy which can be viewed here.',{color:'rgb(153,153,153)',fontSize:'11px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',z:3}),4077);
-
   })();
-  mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201});
-  mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201});
+  mkSVGLogo(40,28,156,59,SVG_PORTFOLIO_WHITE,'portfolio-white',{z:201,locked:'1'});
+  mkSVGLogo(405,37,170,42,SVG_CBRE_WHITE,'cbre-white',{z:201,locked:'1'});
 }
 
 function buildSignboard10x8(W,H){
