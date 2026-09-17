@@ -5646,18 +5646,14 @@ function clAttachEnforcement(){
         var _sid2field = {fbull:'bullets',fbc:'bodycopy',fh:'heading',fs:'subheading',
           fa1:'address1',fa2:'address2',fb:'banner',fi:'income',fm:'salemethod',fd:'saledate'};
         var _fieldName = _sid2field[id];
-        if(_fieldName){
-          document.querySelectorAll('.el[data-field="'+_fieldName+'"]').forEach(function(elx){
-            var inx = elx.querySelector('.el-inner');
-            if(inx && inx.contentEditable === 'true'){
-              inx.contentEditable = 'false';
-              inx.style.cursor = '';
-            }
-            // Clear richHtml so globalSync doesn't skip this element
-            if(elx.dataset.richHtml) delete elx.dataset.richHtml;
-          });
+        // Save current state then restore the tab — replicates exactly what a
+        // manual page refresh does, guaranteeing correct rendering immediately.
+        if(typeof savedStates !== 'undefined' && typeof serializeTab === 'function'){
+          savedStates[currentTab] = serializeTab();
         }
-        if(id==='fbull'||id==='fbc'||id==='fi'){
+        if(typeof restoreTab === 'function'){
+          restoreTab(currentTab);
+        } else if(id==='fbull'||id==='fbc'||id==='fi'){
           onBulletFieldChange();
         } else {
           globalSync();
@@ -5755,6 +5751,55 @@ document.addEventListener('paste', function(e){
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
 }, true);
+
+// ── Artboard paste for locked bullets/bodycopy elements ──────────────────
+// These elements can't enter contentEditable mode (locked:'1') so the canvas
+// paste handler never fires for them. Instead, intercept Cmd+V / Ctrl+V when
+// such an element is selected and route the paste directly to the sidebar field.
+document.addEventListener('keydown', function(e){
+  var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  var isPaste = isMac ? (e.metaKey && e.key === 'v') : (e.ctrlKey && e.key === 'v');
+  if(!isPaste) return;
+
+  // Only act when a canvas element is selected (not when typing in a field)
+  var active = document.activeElement;
+  var inField = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.contentEditable === 'true');
+  if(inField) return;
+
+  // Check if the selected element is a locked bullets or bodycopy field
+  var selEl = typeof selectedEl !== 'undefined' ? selectedEl : null;
+  if(!selEl) return;
+  var field = selEl.dataset.field || '';
+  if(field !== 'bullets' && field !== 'bodycopy') return;
+
+  // Get text from clipboard and route to sidebar
+  var sid  = typeof fieldToSidebarId === 'function' ? fieldToSidebarId(field) : null;
+  var sbEl = sid ? document.getElementById(sid) : null;
+  if(!sbEl) return;
+
+  e.preventDefault();
+  navigator.clipboard.readText().then(function(text){
+    if(!text) return;
+    // Clean the pasted text
+    var lines = text.split(/\r?\n/).map(function(l){
+      return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd();
+    });
+    while(lines.length && !lines[0].trim()) lines.shift();
+    while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+    if(!lines.length) return;
+    // Write to sidebar value
+    sbEl.value = lines.join('\n');
+    // Save current canvas state, then restore the tab — this is exactly what
+    // a manual page refresh does and guarantees correct rendering immediately.
+    if(typeof savedStates !== 'undefined' && typeof serializeTab === 'function'){
+      savedStates[currentTab] = serializeTab();
+    }
+    if(typeof restoreTab === 'function') restoreTab(currentTab);
+    if(typeof debouncedPersist === 'function') debouncedPersist();
+  }).catch(function(){
+    // Clipboard API unavailable — nothing we can do
+  });
+});
 
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopLiveSync();else startLiveSync();});
