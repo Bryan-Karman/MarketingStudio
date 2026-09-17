@@ -5565,30 +5565,32 @@ function clUpdate(id){const el=document.getElementById(id),countEl=document.getE
 function clSetLimit(id,val){const num=parseInt(val);charLimits[id]=(isNaN(num)||num<=0)?0:num;clUpdate(id);clEnforce(id);saveGlobalCharLimits();}
 function clEnforce(id){const el=document.getElementById(id);if(!el)return;const lim=clGetLimit(id);if(lim>0){el.setAttribute('maxlength',lim);if(el.value.length>lim)el.value=el.value.slice(0,lim);}else{el.removeAttribute('maxlength');}clUpdate(id);}
 function clAttachEnforcement(){
-  CL_FIELD_IDS.forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el)return;
-    // Strip rich formatting on paste — always insert plain text only
-    el.addEventListener('paste',function(e){
-      // For textareas and inputs, browser will insert plain text from getData('text/plain')
-      // but we intercept to ensure no HTML leaks through and enforce char limits cleanly
-      const text=(e.clipboardData||window.clipboardData).getData('text/plain');
-      if(text===undefined||text===null) return; // let browser handle it
+  CL_FIELD_IDS.forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('paste', function(e){
+      var cbd = e.clipboardData || window.clipboardData;
+      var text = cbd ? cbd.getData('text/plain') : null;
+      if(!text) return;
       e.preventDefault();
-      // Insert at cursor position (works for both input and textarea)
-      const start=el.selectionStart||0;
-      const end=el.selectionEnd||0;
-      const before=el.value.slice(0,start);
-      const after=el.value.slice(end);
-      el.value=before+text+after;
-      // Move cursor to after pasted text
-      const newCursor=start+text.length;
-      el.selectionStart=newCursor;
-      el.selectionEnd=newCursor;
-      // Fire input event so globalSync and char limits run
-      el.dispatchEvent(new Event('input',{bubbles:true}));
+      // Insert at cursor, replacing any selection
+      var start = el.selectionStart || 0;
+      var end   = el.selectionEnd   || 0;
+      el.value  = el.value.slice(0, start) + text + el.value.slice(end);
+      var cur   = start + text.length;
+      el.selectionStart = cur;
+      el.selectionEnd   = cur;
+      // Directly call the right sync — no synthetic events, works in all browsers
+      try { clEnforce(id); } catch(ex){}
+      try {
+        if(id==='fbull' || id==='fbc' || id==='fi'){
+          onBulletFieldChange();
+        } else {
+          globalSync();
+        }
+      } catch(ex){}
+      try { debouncedPersist(); } catch(ex){}
     });
-    el.addEventListener('paste',()=>{setTimeout(()=>{clEnforce(id);},0);});
   });
 }
 function clInitAll(){CL_FIELD_IDS.forEach(id=>{clUpdate(id);const limInp=document.getElementById('lim-'+id);if(limInp){const lim=clGetLimit(id);limInp.value=lim>0?lim:'';}});}
@@ -5636,86 +5638,71 @@ function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
 document.addEventListener('paste', function(e){
   const active = document.activeElement;
   if(!active) return;
-  // Only intercept pastes inside .el-inner elements that are contentEditable
   const inner = active.closest ? active.closest('.el-inner') : null;
   if(!inner || inner.contentEditable !== 'true') return;
   e.preventDefault();
 
-  // Always get plain text — strips all rich formatting from the clipboard source
   const text = (e.clipboardData || window.clipboardData).getData('text/plain');
   if(!text) return;
 
-  const el2    = inner.closest('.el');
-  const field  = el2 ? (el2.dataset.field || '') : '';
-  const sid    = field ? fieldToSidebarId(field) : null;
-  const sbEl   = sid ? document.getElementById(sid) : null;
+  const el2   = inner.closest('.el');
+  const field = el2 ? (el2.dataset.field || '') : '';
 
-  // ── Unified strategy: write to the sidebar field then call globalSync.
-  // This is exactly what a page refresh does, so every box type — headings,
-  // addresses, bullets, body copy, sale details — renders correctly on paste
-  // with no refresh or tab-switch needed.
-  if(sbEl){
-    // Strip any bullet/dash prefixes from each line of pasted text
-    var _pLines = text.split(/\r?\n/).map(function(l){
-      return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022\u2019]\s*/,'').trimEnd();
-    });
-    // Drop leading/trailing blank lines; keep interior blank lines (user intent)
-    while(_pLines.length && !_pLines[0].trim()) _pLines.shift();
-    while(_pLines.length && !_pLines[_pLines.length-1].trim()) _pLines.pop();
-    var _pClean = _pLines.join('\n');
+  // Strip bullet/dash prefixes and clean up the pasted text
+  var lines = text.split(/\r?\n/).map(function(l){
+    return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022\u2019\u2018]\s*/,'').trimEnd();
+  });
+  while(lines.length && !lines[0].trim()) lines.shift();
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  var clean = lines.join('\n');
 
-    // Write to sidebar and trigger the right re-render path
-    sbEl.value = _pClean;
-    if(field === 'bullets' || field === 'bodycopy'){
+  // For bullets/bodycopy: write to sidebar and re-render line divs immediately
+  if(field === 'bullets' || field === 'bodycopy'){
+    var sid  = fieldToSidebarId(field);
+    var sbEl = sid ? document.getElementById(sid) : null;
+    if(sbEl){
+      sbEl.value = clean;
       if(typeof onBulletFieldChange === 'function') onBulletFieldChange();
-    } else {
-      if(typeof globalSync === 'function') globalSync();
+      if(typeof debouncedPersist === 'function') debouncedPersist();
+      return;
     }
-    if(typeof debouncedPersist === 'function') debouncedPersist();
-    return; // fully handled — no direct DOM insertion needed
   }
 
-  // ── No sidebar link: manual / unlinked text box ──
-  // Bullet elements (data-bullets="1"): rebuild dash divs immediately.
+  // For everything else: insert plain text at the cursor inside the contentEditable.
+  // The existing _inlineInputHandler syncs back to the sidebar on each keystroke/blur.
+  var sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return;
+  sel.deleteFromDocument();
+  var range = sel.getRangeAt(0);
+
   if(el2 && el2.dataset.bullets === '1'){
-    var _bLines = text.split(/\r?\n/).map(function(l){
-      return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd();
-    }).filter(function(l){ return l.trim().length > 0; });
-    var _spB = parseFloat(el2.dataset.bulletParaSpacing || '0');
-    var _mbB = _spB > 0 ? ';margin-bottom:' + _spB + 'px' : '';
-    function _escB(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    inner.innerHTML = _bLines.map(function(l){
-      return '<div style="display:flex;align-items:baseline' + _mbB + '">' +
-             '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>' +
-             '<span class="bt">' + _escB(l) + '</span></div>';
+    // Unlinked bullet element — rebuild dash divs
+    var sp  = parseFloat(el2.dataset.bulletParaSpacing || '0');
+    var mb  = sp > 0 ? ';margin-bottom:'+sp+'px' : '';
+    function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    inner.innerHTML = lines.filter(function(l){ return l.trim(); }).map(function(l){
+      return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+esc(l)+'</span></div>';
     }).join('');
     inner.style.whiteSpace = 'normal';
   } else {
-    // Plain unlinked text box — preserve ALL existing styles (font, colour, size,
-    // weight, alignment etc.) and just swap the text content.
-
-    // 1. Snapshot every inline style currently on the inner div
-    var _savedStyle = inner.getAttribute('style') || '';
-
-    // 2. Clean the pasted text (collapse excessive blank lines)
-    var _uLines = text.split(/\r?\n/);
-    var _uClean = _uLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-
-    // 3. Set content — textContent ensures no stray HTML leaks in from clipboard
-    inner.textContent = _uClean;
-
-    // 4. Reapply the full saved style so font/colour/size/weight are all restored,
-    //    then enforce pre-wrap so line breaks show immediately without any refresh
-    inner.setAttribute('style', _savedStyle);
-    inner.style.whiteSpace = 'pre-wrap';
-    inner.style.wordBreak  = 'break-word';
-
-    // 5. Force a synchronous layout flush so the browser paints right away
-    //    (reading offsetHeight triggers reflow — same trick CSS animations use)
+    // Plain text — insert line by line with \n between them
+    lines.forEach(function(line, i){
+      var node = document.createTextNode(line);
+      range.insertNode(node);
+      range.setStartAfter(node);
+      range.collapse(true);
+      if(i < lines.length - 1){
+        var nl = document.createTextNode('\n');
+        range.insertNode(nl);
+        range.setStartAfter(nl);
+        range.collapse(true);
+      }
+    });
+    sel.removeAllRanges();
+    // Force immediate repaint so text shows without needing to click away
     void inner.offsetHeight;
   }
 
-  // Fire input handler so persist runs
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
 }, true); // useCapture:true so this fires before any other handler
