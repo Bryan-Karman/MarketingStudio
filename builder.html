@@ -5624,6 +5624,52 @@ function clGetLimit(id){const v=charLimits[id];return(v&&v>0)?v:0;}
 function clUpdate(id){const el=document.getElementById(id),countEl=document.getElementById('cl-'+id);if(!el||!countEl)return;const len=el.value.length,lim=clGetLimit(id);if(lim>0){countEl.textContent=len+' / '+lim+' Characters';countEl.classList.remove('cl-warn','cl-over');if(len>lim)countEl.classList.add('cl-over');else if(len>lim*0.85)countEl.classList.add('cl-warn');}else{countEl.textContent=len>0?len+' Characters':'';countEl.classList.remove('cl-warn','cl-over');}}
 function clSetLimit(id,val){const num=parseInt(val);charLimits[id]=(isNaN(num)||num<=0)?0:num;clUpdate(id);clEnforce(id);saveGlobalCharLimits();}
 function clEnforce(id){const el=document.getElementById(id);if(!el)return;const lim=clGetLimit(id);if(lim>0){el.setAttribute('maxlength',lim);if(el.value.length>lim)el.value=el.value.slice(0,lim);}else{el.removeAttribute('maxlength');}clUpdate(id);}
+// Shared function: directly render pasted text into canvas elements for a given field.
+// Called by both the sidebar paste handler and the artboard Cmd+V handler.
+function _renderPastedField(fieldName, rawText){
+  var _newVal = (rawText||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  // Write to sidebar
+  var _sid2field = {fbull:'bullets',fbc:'bodycopy',fh:'heading',fs:'subheading',
+    fa1:'address1',fa2:'address2',fb:'banner',fi:'income',fm:'salemethod',fd:'saledate'};
+  // Find sidebar element
+  var _sbId = Object.keys(_sid2field).find(function(k){ return _sid2field[k] === fieldName; });
+  var _sbEl = _sbId ? document.getElementById(_sbId) : null;
+  if(_sbEl) _sbEl.value = _newVal;
+  // Directly render into every canvas element with this field
+  document.querySelectorAll('.el[data-field="'+fieldName+'"]').forEach(function(elx){
+    var inx = elx.querySelector('.el-inner');
+    if(!inx) return;
+    inx.contentEditable = 'false';
+    delete elx.dataset.richHtml;
+    var _lines = _newVal.split('\n');
+    if(elx.dataset.bullets === '1'){
+      var _sp = parseFloat(elx.dataset.bulletParaSpacing||'0');
+      var _mb = _sp > 0 ? ';margin-bottom:'+_sp+'px' : '';
+      function _e(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      inx.innerHTML = _lines.map(function(l){
+        var t = l.replace(/^\u2013\s*/,'').trim();
+        if(!t) return '<div style="display:flex;min-height:0.5em;"></div>';
+        return '<div style="display:flex;align-items:baseline'+_mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+_e(t)+'</span></div>';
+      }).join('');
+      inx.style.whiteSpace = 'normal';
+    } else if(elx.dataset.bullets === '0' && fieldName === 'bullets'){
+      var _sp2 = parseFloat(elx.dataset.bulletParaSpacing||'6');
+      function _e2(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      inx.innerHTML = _lines.map(function(l){
+        var mb = _sp2 > 0 ? 'margin-bottom:'+_sp2+'px;' : '';
+        if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;'+mb+'"></div>';
+        return '<div class="plain-line" style="display:block;'+mb+'">'+_e2(l)+'</div>';
+      }).join('');
+      inx.style.whiteSpace = 'normal';
+    } else {
+      inx.textContent = _newVal;
+      inx.style.whiteSpace = 'pre-wrap';
+      inx.style.wordBreak = 'break-word';
+    }
+  });
+  if(typeof debouncedPersist === 'function') debouncedPersist();
+}
+
 function clAttachEnforcement(){
   CL_FIELD_IDS.forEach(function(id){
     var el = document.getElementById(id);
@@ -5640,25 +5686,10 @@ function clAttachEnforcement(){
       }
       setTimeout(function(){
         clEnforce(id);
-        // Before syncing: clear contentEditable and richHtml on any canvas element
-        // for this field — otherwise globalSync skips it (it guards against
-        // interrupting inline edits, but a sidebar paste should always win).
         var _sid2field = {fbull:'bullets',fbc:'bodycopy',fh:'heading',fs:'subheading',
           fa1:'address1',fa2:'address2',fb:'banner',fi:'income',fm:'salemethod',fd:'saledate'};
         var _fieldName = _sid2field[id];
-        // Save current state then restore the tab — replicates exactly what a
-        // manual page refresh does, guaranteeing correct rendering immediately.
-        if(typeof savedStates !== 'undefined' && typeof serializeTab === 'function'){
-          savedStates[currentTab] = serializeTab();
-        }
-        if(typeof restoreTab === 'function'){
-          restoreTab(currentTab);
-        } else if(id==='fbull'||id==='fbc'||id==='fi'){
-          onBulletFieldChange();
-        } else {
-          globalSync();
-        }
-        debouncedPersist();
+        if(_fieldName) _renderPastedField(_fieldName, el.value);
       }, 0);
     });
   });
@@ -5753,52 +5784,31 @@ document.addEventListener('paste', function(e){
 }, true);
 
 // ── Artboard paste for locked bullets/bodycopy elements ──────────────────
-// These elements can't enter contentEditable mode (locked:'1') so the canvas
-// paste handler never fires for them. Instead, intercept Cmd+V / Ctrl+V when
-// such an element is selected and route the paste directly to the sidebar field.
 document.addEventListener('keydown', function(e){
   var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   var isPaste = isMac ? (e.metaKey && e.key === 'v') : (e.ctrlKey && e.key === 'v');
   if(!isPaste) return;
 
-  // Only act when a canvas element is selected (not when typing in a field)
   var active = document.activeElement;
   var inField = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.contentEditable === 'true');
   if(inField) return;
 
-  // Check if the selected element is a locked bullets or bodycopy field
   var selEl = typeof selectedEl !== 'undefined' ? selectedEl : null;
   if(!selEl) return;
   var field = selEl.dataset.field || '';
   if(field !== 'bullets' && field !== 'bodycopy') return;
 
-  // Get text from clipboard and route to sidebar
-  var sid  = typeof fieldToSidebarId === 'function' ? fieldToSidebarId(field) : null;
-  var sbEl = sid ? document.getElementById(sid) : null;
-  if(!sbEl) return;
-
   e.preventDefault();
   navigator.clipboard.readText().then(function(text){
     if(!text) return;
-    // Clean the pasted text
     var lines = text.split(/\r?\n/).map(function(l){
       return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd();
     });
     while(lines.length && !lines[0].trim()) lines.shift();
     while(lines.length && !lines[lines.length-1].trim()) lines.pop();
     if(!lines.length) return;
-    // Write to sidebar value
-    sbEl.value = lines.join('\n');
-    // Save current canvas state, then restore the tab — this is exactly what
-    // a manual page refresh does and guarantees correct rendering immediately.
-    if(typeof savedStates !== 'undefined' && typeof serializeTab === 'function'){
-      savedStates[currentTab] = serializeTab();
-    }
-    if(typeof restoreTab === 'function') restoreTab(currentTab);
-    if(typeof debouncedPersist === 'function') debouncedPersist();
-  }).catch(function(){
-    // Clipboard API unavailable — nothing we can do
-  });
+    _renderPastedField(field, lines.join('\n'));
+  }).catch(function(){});
 });
 
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
