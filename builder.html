@@ -951,19 +951,33 @@ function createElement(cfg){
         inner._inlineInputHandler = null;
       }
       function _inlineInputHandler(){
-        // Read field from the element itself (not closure) in case el ref changed
         const _el2 = inner.closest('.el');
         const _f = _el2 ? _el2.dataset.field : '';
         const _mgd=['bullets','bodycopy'];
         if(_f && _mgd.indexOf(_f)===-1){
+          // Non-managed field: sync text back to sidebar on every keystroke
           const _sid=fieldToSidebarId(_f);
           const _sel=_sid?document.getElementById(_sid):null;
           if(_sel){
             const _txt = (inner.innerText||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();
             _sel.value = _txt;
           }
+        } else if(_f && inner._fromPaste){
+          // Managed field triggered by paste: sync to sidebar and re-render immediately.
+          inner._fromPaste = false;
+          var _sid2 = fieldToSidebarId(_f);
+          var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
+          if(_sel2){
+            var _pLines = (inner.innerText||inner.textContent||'')
+              .split('\n')
+              .map(function(l){ return l.replace(/^\u2013\s*/,'').trimEnd(); });
+            while(_pLines.length && !_pLines[0].trim()) _pLines.shift();
+            while(_pLines.length && !_pLines[_pLines.length-1].trim()) _pLines.pop();
+            _sel2.value = _pLines.join('\n');
+          }
+          if(_el2 && _el2.dataset.richHtml) delete _el2.dataset.richHtml;
+          if(typeof onBulletFieldChange === 'function') onBulletFieldChange();
         }
-        // Keep richHtml in sync whenever there are formatting tags present
         if(_el2 && inner.innerHTML !== (inner.textContent||'')){
           _el2.dataset.richHtml = inner.innerHTML;
         }
@@ -5735,6 +5749,9 @@ document.addEventListener('paste', function(e){
   inner.style.whiteSpace = 'pre-wrap';
   inner.style.wordBreak  = 'break-word';
 
+  // Flag that this input event is from a paste so _inlineInputHandler
+  // knows to sync managed fields (bullets/bodycopy) back to the sidebar.
+  inner._fromPaste = true;
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
 }, true);
