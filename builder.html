@@ -2943,9 +2943,14 @@ function globalSync(){
         el.style.display='flex';
         el.style.alignItems='center';
       }
-      // Re-apply bullet prefix if this element has bullets enabled
+      // Re-apply bullet prefix if this element has bullets enabled.
+      // EXCEPTION: Brochure tabs (0,1) bullets field uses plain-line spacing divs,
+      // not applyBullets — so skip it there to prevent random dash-bullet corruption.
       if(el.dataset.bullets==='1'){
-        applyBullets(inner, true);
+        var _isBrochureBullets = (field==='bullets' && (currentTab===0||currentTab===1));
+        if(!_isBrochureBullets){
+          applyBullets(inner, true);
+        }
       }
       // EDM (tab 2), Asian Desk (tab 3), Auction (tab 8): plain lines
       // Skip re-render while the element is actively being edited inline — the editor
@@ -5569,30 +5574,26 @@ function clAttachEnforcement(){
     var el = document.getElementById(id);
     if(!el) return;
     el.addEventListener('paste', function(e){
-      var cbd = e.clipboardData || window.clipboardData;
-      var text = cbd ? cbd.getData('text/plain') : null;
+      var cbd  = e.clipboardData || window.clipboardData;
+      var text = cbd ? cbd.getData('text/plain') : '';
       if(!text) return;
       e.preventDefault();
-      // Insert at cursor, replacing any selection
       var start = el.selectionStart || 0;
       var end   = el.selectionEnd   || 0;
       el.value  = el.value.slice(0, start) + text + el.value.slice(end);
-      var cur   = start + text.length;
-      el.selectionStart = cur;
-      el.selectionEnd   = cur;
-      // Directly call the right sync — no synthetic events, works in all browsers
-      try { clEnforce(id); } catch(ex){}
-      try {
-        if(id==='fbull' || id==='fbc' || id==='fi'){
-          onBulletFieldChange();
-        } else {
-          globalSync();
-        }
-      } catch(ex){}
-      try { debouncedPersist(); } catch(ex){}
+      el.selectionStart = el.selectionEnd = start + text.length;
+      clEnforce(id);
+      if(id === 'fbull' || id === 'fbc' || id === 'fi'){
+        onBulletFieldChange();
+      } else {
+        globalSync();
+      }
+      debouncedPersist();
     });
   });
 }
+
+
 function clInitAll(){CL_FIELD_IDS.forEach(id=>{clUpdate(id);const limInp=document.getElementById('lim-'+id);if(limInp){const lim=clGetLimit(id);limInp.value=lim>0?lim:'';}});}
 
 async function loadGlobalCharLimits(){
@@ -5631,81 +5632,70 @@ async function liveSyncTick(){
 }
 function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
 
-// ── Global paste guard ────────────────────────────────────────────
-// Ensures pasting into any canvas contentEditable always strips formatting,
-// applies the box's own style instantly, and re-renders bullet divs immediately
-// so paragraph breaks show without needing a refresh or tab switch.
+// ── Global paste guard ──────────────────────────────────────────────────────
 document.addEventListener('paste', function(e){
-  const active = document.activeElement;
+  var active = document.activeElement;
   if(!active) return;
-  const inner = active.closest ? active.closest('.el-inner') : null;
+  var inner = active.closest ? active.closest('.el-inner') : null;
   if(!inner || inner.contentEditable !== 'true') return;
+
+  var cbd  = e.clipboardData || window.clipboardData;
+  var text = cbd ? cbd.getData('text/plain') : '';
+  if(!text) return;
   e.preventDefault();
 
-  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-  if(!text) return;
+  var el2   = inner.closest('.el');
+  var field = el2 ? (el2.dataset.field || '') : '';
 
-  const el2   = inner.closest('.el');
-  const field = el2 ? (el2.dataset.field || '') : '';
-
-  // Strip bullet/dash prefixes and clean up the pasted text
+  // Strip leading dash/bullet chars from each line
   var lines = text.split(/\r?\n/).map(function(l){
-    return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022\u2019\u2018]\s*/,'').trimEnd();
+    return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd();
   });
   while(lines.length && !lines[0].trim()) lines.shift();
   while(lines.length && !lines[lines.length-1].trim()) lines.pop();
-  var clean = lines.join('\n');
 
-  // For bullets/bodycopy: write to sidebar and re-render line divs immediately
+  // bullets/bodycopy: write to sidebar then re-render via onBulletFieldChange
   if(field === 'bullets' || field === 'bodycopy'){
     var sid  = fieldToSidebarId(field);
     var sbEl = sid ? document.getElementById(sid) : null;
     if(sbEl){
-      sbEl.value = clean;
-      if(typeof onBulletFieldChange === 'function') onBulletFieldChange();
-      if(typeof debouncedPersist === 'function') debouncedPersist();
+      sbEl.value = lines.join('\n');
+      onBulletFieldChange();
+      debouncedPersist();
       return;
     }
   }
 
-  // For everything else: insert plain text at the cursor inside the contentEditable.
-  // The existing _inlineInputHandler syncs back to the sidebar on each keystroke/blur.
+  // All other boxes: insert plain text at cursor, keep edit session alive
   var sel = window.getSelection();
   if(!sel || !sel.rangeCount) return;
   sel.deleteFromDocument();
   var range = sel.getRangeAt(0);
 
   if(el2 && el2.dataset.bullets === '1'){
-    // Unlinked bullet element — rebuild dash divs
-    var sp  = parseFloat(el2.dataset.bulletParaSpacing || '0');
-    var mb  = sp > 0 ? ';margin-bottom:'+sp+'px' : '';
-    function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    // Unlinked bullet element — rebuild dash-span divs
+    var sp = parseFloat(el2.dataset.bulletParaSpacing || '0');
+    var mb = sp > 0 ? ';margin-bottom:'+sp+'px' : '';
+    function escP(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     inner.innerHTML = lines.filter(function(l){ return l.trim(); }).map(function(l){
-      return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+esc(l)+'</span></div>';
+      return '<div style="display:flex;align-items:baseline'+mb+'">'+
+             '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>'+
+             '<span class="bt">'+escP(l)+'</span></div>';
     }).join('');
     inner.style.whiteSpace = 'normal';
   } else {
-    // Plain text — insert line by line with \n between them
-    lines.forEach(function(line, i){
-      var node = document.createTextNode(line);
-      range.insertNode(node);
-      range.setStartAfter(node);
-      range.collapse(true);
-      if(i < lines.length - 1){
-        var nl = document.createTextNode('\n');
-        range.insertNode(nl);
-        range.setStartAfter(nl);
-        range.collapse(true);
-      }
-    });
+    var node = document.createTextNode(lines.join('\n'));
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
     sel.removeAllRanges();
-    // Force immediate repaint so text shows without needing to click away
     void inner.offsetHeight;
   }
 
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
-}, true); // useCapture:true so this fires before any other handler
+}, true);
+
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopLiveSync();else startLiveSync();});
 
