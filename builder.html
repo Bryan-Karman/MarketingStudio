@@ -849,7 +849,12 @@ function syncArtboardEdge(){
 let _customSizes = {};
 // Bleed settings per tab: { mm: number, cropMarks: bool }
 let _bleedSettings = {};
-function getBleed(idx){ return _bleedSettings[idx] || {mm:3, cropMarks:true}; }
+function getBleed(idx){
+  // Only signboard tabs have bleed by default — all others default to 0
+  const _signboardTabs = [7, 14, 15, 16];
+  const _defaultBleed = _signboardTabs.indexOf(idx) > -1 ? {mm:3, cropMarks:true} : {mm:0, cropMarks:false};
+  return _bleedSettings[idx] || _defaultBleed;
+}
 function setBleed(idx, mm, cropMarks){
   _bleedSettings[idx] = {mm: Math.max(0, parseFloat(mm)||0), cropMarks: !!cropMarks};
   refreshProps();
@@ -2066,8 +2071,10 @@ function showProps(el){
     }
   }
 
-  // Bullet toggle — only show for text elements
-  if(type==='text'){
+  // Bullet toggle — only show for text elements that aren't brochure highlight points
+  // (brochure bullets field uses plain-line spacing, never dash bullets)
+  const _isBrochureHlField = selectedEl && selectedEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1);
+  if(type==='text' && !_isBrochureHlField){
     const hasBullets = selectedEl && selectedEl.dataset.bullets === '1';
     html+=`<button class="props-bullet-btn ${hasBullets?'active':''}" onclick="toggleBullets()" title="Prefix each line with an em dash (–)">
       ${hasBullets ? '– Bullets ON — click to remove' : '– Add Dash Bullets'}
@@ -2374,6 +2381,8 @@ function applyBullets(inner, on){
 
 function toggleBullets(){
   if(!selectedEl) return;
+  // Never allow bullet toggle on brochure highlight points field
+  if(selectedEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1)) return;
   const on = selectedEl.dataset.bullets !== '1';
   selectedEl.dataset.bullets = on ? '1' : '0';
   const inner = selectedEl.querySelector('.el-inner');
@@ -4569,7 +4578,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     const fi = ((document.getElementById('fi')||{}).value||'').trim();
     if(field==='bullets' && fi){
       if([5,6,8].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n\u2013 '+fi : '\u2013 '+fi; }
-      else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n'+fi : fi; }
+      else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text.trimEnd()+'\n'+fi : fi; }
     }
     return text;
   }
