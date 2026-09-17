@@ -2477,7 +2477,14 @@ function serializeTab(){
           // For plain-line spacing divs, save textContent as lines joined by \n
           var plainDivs = inner.querySelectorAll('div.plain-line');
           if(plainDivs.length > 0){
-            obj.content = Array.from(plainDivs).map(function(d){ return d.textContent; }).join('\n');
+            var _pdLines = Array.from(plainDivs).map(function(d){ return d.textContent; });
+            // Strip appended income from last line (it is added at render time, not saved)
+            var _fi_strip2 = ((document.getElementById('fi')||{}).value||'').trim();
+            if(_fi_strip2 && _pdLines.length > 0){
+              var _pdLast = _pdLines[_pdLines.length-1].trim();
+              if(_pdLast === _fi_strip2){ _pdLines = _pdLines.slice(0,-1); }
+            }
+            obj.content = _pdLines.join('\n');
           } else {
             obj.content = getInnerText(inner);
           }
@@ -2558,40 +2565,61 @@ function restoreTab(idx){
       }
     }
     const inner=el.querySelector('.el-inner');
-    // Apply saved style FIRST
-    if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
-    // Always ensure text elements have pre-wrap AFTER applying innerStyle
-    // (innerStyle may not contain pre-wrap if saved before line breaks were added)
-    if(sv.type==='text' && inner){
-      inner.style.whiteSpace='pre-wrap';
-      inner.style.wordBreak='break-word';
-    }
-    if(sv.content!==undefined && inner && sv.type==='text'){
-      if(sv.richHtml && sv.bullets!=='1'){
-        inner.innerHTML = sv.richHtml;
-        el.dataset.richHtml = sv.richHtml;
-      } else {
-        inner.textContent = sv.content || '';
-        inner.style.whiteSpace = 'pre-wrap';
-        inner.style.wordBreak = 'break-word';
+    if(sv.bullets==='1' && inner && sv.type==='text'){
+      // ── BULLET ELEMENT RESTORE ──
+      // Order: (1) apply innerStyle styles EXCEPT whiteSpace (2) set plain content (3) applyBullets
+      // This prevents innerStyle's whiteSpace:normal from fighting applyBullets mid-render.
+      if(sv.innerStyle){
+        // Parse innerStyle into individual properties and apply them, skipping whiteSpace
+        var _styleStr = sv.innerStyle;
+        // Apply via setAttribute then override whiteSpace — fastest path
+        inner.setAttribute('style', _styleStr);
       }
-    }
-    // Apply bullets AFTER content is set so prefix isn't overwritten
-    if(sv.bullets==='1'){
-      el.dataset.bullets='1';
       // Restore paragraph spacing BEFORE applyBullets so it picks it up
       if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
         el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
         inner.dataset.bulletSpacing = sv.bulletParaSpacing;
         inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
       }
+      el.dataset.bullets='1';
+      // Set plain text content (lines without dashes) so applyBullets re-renders correctly
+      // Strip leading dashes from saved content so we don't double-dash
+      var _rawContent = (sv.content||'');
+      var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
+      inner.textContent = _plainLines.join('\n');
+      inner.style.whiteSpace = 'pre-wrap'; // ensure applyBullets reads textContent correctly
+      // Now re-render bullet divs
       applyBullets(inner, true);
-    } else if(sv.bulletParaSpacing && parseFloat(sv.bulletParaSpacing) > 0){
-      // Plain text with paragraph spacing — re-apply line divs
-      el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
-      inner.dataset.bulletSpacing = sv.bulletParaSpacing;
-      inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
-      applyPlainParaSpacing(inner, parseFloat(sv.bulletParaSpacing));
+      // Ensure whiteSpace:normal is set after applyBullets (it sets it, but be explicit)
+      inner.style.whiteSpace = 'normal';
+      inner.style.wordBreak = 'break-word';
+    } else {
+      // ── NON-BULLET TEXT / RECT / IMG RESTORE ──
+      // Apply saved style FIRST
+      if(inner && sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
+      // Always ensure text elements have pre-wrap AFTER applying innerStyle
+      // (innerStyle may not contain pre-wrap if saved before line breaks were added)
+      if(sv.type==='text' && inner){
+        inner.style.whiteSpace='pre-wrap';
+        inner.style.wordBreak='break-word';
+      }
+      if(sv.content!==undefined && inner && sv.type==='text'){
+        if(sv.richHtml){
+          inner.innerHTML = sv.richHtml;
+          el.dataset.richHtml = sv.richHtml;
+        } else {
+          inner.textContent = sv.content || '';
+          inner.style.whiteSpace = 'pre-wrap';
+          inner.style.wordBreak = 'break-word';
+        }
+      }
+      if(sv.bulletParaSpacing && parseFloat(sv.bulletParaSpacing) > 0 && sv.type==='text'){
+        // Plain text with paragraph spacing — re-apply line divs
+        el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+        inner.dataset.bulletSpacing = sv.bulletParaSpacing;
+        inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
+        if(inner) applyPlainParaSpacing(inner, parseFloat(sv.bulletParaSpacing));
+      }
     }
     // Apply images AFTER innerStyle (overrides any display:none from innerStyle)
     if(sv.type==='img'){
@@ -2976,14 +3004,14 @@ function globalSync(){
       } else if(sv.field === 'income'){
         // Income folded into bullets/bodycopy — skip standalone
         sv._hidden = true;
-      } else if(sv.field === 'bullets' && [0,1,2,3,4].indexOf(ti) > -1 && ti !== 6 && ti !== 2 && ti !== 3){
-        // Brochure/AFR/Auction: append income as last bullet (NOT EDM tabs 2&3)
-        const _fi = gv('fi') || '';
-        sv.content = _fi ? val + '\n' + _fi : val;
-      } else if(sv.field === 'bodycopy' && [5,8].indexOf(ti) > -1){
-        // EDM/Asian Desk: append income to bodycopy
-        const _fi = gv('fi') || '';
-        sv.content = _fi ? val + '\n' + _fi : val;
+      } else if(sv.field === 'bullets'){
+        // Store ONLY the user's bullet text — no income appended here.
+        // Income is added at render time (globalSync live DOM branch / restoreTab)
+        // to avoid it being double-baked into the saved content.
+        sv.content = val;
+      } else if(sv.field === 'bodycopy'){
+        // Same: store only the user's body copy — income added at render time.
+        sv.content = val;
       } else if(sv.field === 'saledate'){
         // Brochure tabs: keep line breaks. All others: collapse to single line
         sv.content = (ti===0||ti===1) ? val : _collapseLines(val);
@@ -5474,6 +5502,40 @@ async function init(){
   document.getElementById('canvas-area').addEventListener('mousedown',startMarquee);
   document.getElementById('canvas-area').addEventListener('scroll',syncArtboardEdge,{passive:true});
   document.getElementById('zoom-range').addEventListener('input',debouncedPersist);
+
+  // ── Option (Alt) + Scroll to zoom ──────────────────────────────
+  // Holding Option on Mac (or Alt on Windows) while scrolling zooms
+  // the canvas in and out, centred on the mouse cursor position.
+  document.getElementById('canvas-area').addEventListener('wheel', function(e){
+    if(!e.altKey) return;        // only act when Option/Alt is held
+    e.preventDefault();          // block page scroll
+    const ca   = document.getElementById('canvas-area');
+    const STEP = 5;              // zoom % per scroll tick
+    const MIN  = 15;
+    const MAX  = 150;
+
+    // Current zoom as integer %
+    const currentPct = Math.round(zoom * 100);
+
+    // deltaY > 0 = scroll down = zoom out; < 0 = scroll up = zoom in
+    const delta  = e.deltaY > 0 ? -STEP : STEP;
+    const newPct = Math.min(MAX, Math.max(MIN, currentPct + delta));
+    if(newPct === currentPct) return;
+
+    // Preserve the canvas point under the cursor
+    const caRect   = ca.getBoundingClientRect();
+    const mouseX   = e.clientX - caRect.left + ca.scrollLeft;
+    const mouseY   = e.clientY - caRect.top  + ca.scrollTop;
+    const oldScale = zoom;
+
+    // Update zoom (updates global `zoom` var and re-renders)
+    setZoom(newPct);
+
+    // Adjust scroll so the point under the cursor stays fixed
+    const ratio = zoom / oldScale;
+    ca.scrollLeft = mouseX * ratio - (e.clientX - caRect.left);
+    ca.scrollTop  = mouseY * ratio - (e.clientY - caRect.top);
+  }, { passive: false });
   window.addEventListener('beforeunload',()=>{clearTimeout(_persistTimer);try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){}});
 }
 
@@ -5502,7 +5564,33 @@ function clGetLimit(id){const v=charLimits[id];return(v&&v>0)?v:0;}
 function clUpdate(id){const el=document.getElementById(id),countEl=document.getElementById('cl-'+id);if(!el||!countEl)return;const len=el.value.length,lim=clGetLimit(id);if(lim>0){countEl.textContent=len+' / '+lim+' Characters';countEl.classList.remove('cl-warn','cl-over');if(len>lim)countEl.classList.add('cl-over');else if(len>lim*0.85)countEl.classList.add('cl-warn');}else{countEl.textContent=len>0?len+' Characters':'';countEl.classList.remove('cl-warn','cl-over');}}
 function clSetLimit(id,val){const num=parseInt(val);charLimits[id]=(isNaN(num)||num<=0)?0:num;clUpdate(id);clEnforce(id);saveGlobalCharLimits();}
 function clEnforce(id){const el=document.getElementById(id);if(!el)return;const lim=clGetLimit(id);if(lim>0){el.setAttribute('maxlength',lim);if(el.value.length>lim)el.value=el.value.slice(0,lim);}else{el.removeAttribute('maxlength');}clUpdate(id);}
-function clAttachEnforcement(){CL_FIELD_IDS.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.addEventListener('paste',()=>{setTimeout(()=>{clEnforce(id);},0);});});}
+function clAttachEnforcement(){
+  CL_FIELD_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    // Strip rich formatting on paste — always insert plain text only
+    el.addEventListener('paste',function(e){
+      // For textareas and inputs, browser will insert plain text from getData('text/plain')
+      // but we intercept to ensure no HTML leaks through and enforce char limits cleanly
+      const text=(e.clipboardData||window.clipboardData).getData('text/plain');
+      if(text===undefined||text===null) return; // let browser handle it
+      e.preventDefault();
+      // Insert at cursor position (works for both input and textarea)
+      const start=el.selectionStart||0;
+      const end=el.selectionEnd||0;
+      const before=el.value.slice(0,start);
+      const after=el.value.slice(end);
+      el.value=before+text+after;
+      // Move cursor to after pasted text
+      const newCursor=start+text.length;
+      el.selectionStart=newCursor;
+      el.selectionEnd=newCursor;
+      // Fire input event so globalSync and char limits run
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    el.addEventListener('paste',()=>{setTimeout(()=>{clEnforce(id);},0);});
+  });
+}
 function clInitAll(){CL_FIELD_IDS.forEach(id=>{clUpdate(id);const limInp=document.getElementById('lim-'+id);if(limInp){const lim=clGetLimit(id);limInp.value=lim>0?lim:'';}});}
 
 async function loadGlobalCharLimits(){
@@ -5543,48 +5631,135 @@ function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
 
 // ── Global paste guard ────────────────────────────────────────────
 // Ensures pasting into any canvas contentEditable always strips formatting,
-// regardless of how the element gained focus (dblclick handler also does this,
-// but this catches edge cases like programmatic focus or browser quirks).
+// applies the box's own style instantly, and re-renders bullet divs immediately
+// so paragraph breaks show without needing a refresh or tab switch.
 document.addEventListener('paste', function(e){
   const active = document.activeElement;
   if(!active) return;
   // Only intercept pastes inside .el-inner elements that are contentEditable
   const inner = active.closest ? active.closest('.el-inner') : null;
   if(!inner || inner.contentEditable !== 'true') return;
-  // Always intercept — even if _pasteHandler is attached, this ensures
-  // context-menu paste and any other edge cases are caught
   e.preventDefault();
   const text = (e.clipboardData || window.clipboardData).getData('text/plain');
   if(!text) return;
-  const sel = window.getSelection();
-  if(sel && sel.rangeCount){
-    sel.deleteFromDocument();
-    const range = sel.getRangeAt(0);
-    const el2 = inner.closest('.el');
-    const isBullets = el2 && (el2.dataset.bullets==='1' || el2.dataset.field==='bodycopy' || el2.dataset.field==='bullets');
-    const lines = text.split(/\r?\n/);
-    if(isBullets && lines.length > 1){
-      lines.forEach(function(line, i){
-        range.insertNode(document.createTextNode(line));
-        range.collapse(false);
-        if(i < lines.length - 1){
+
+  const el2 = inner.closest('.el');
+  const isBulletEl = el2 && el2.dataset.bullets === '1';
+  const isBulletField = el2 && (el2.dataset.field === 'bodycopy' || el2.dataset.field === 'bullets');
+
+  if(isBulletEl){
+    // ── Bullet element: collect existing lines, merge pasted text at cursor, re-render ──
+    // 1. Find which bullet span the cursor is in
+    const sel = window.getSelection();
+    let insertAfterIdx = -1;
+    if(sel && sel.rangeCount){
+      const spans = Array.from(inner.querySelectorAll('span.bt'));
+      const r = sel.getRangeAt(0);
+      for(let i = 0; i < spans.length; i++){
+        if(spans[i].contains(r.startContainer) || spans[i] === r.startContainer){
+          insertAfterIdx = i; break;
+        }
+      }
+      if(insertAfterIdx === -1) insertAfterIdx = spans.length - 1;
+    }
+
+    // 2. Read existing lines
+    const existingSpans = Array.from(inner.querySelectorAll('span.bt'));
+    let existingLines = existingSpans.length > 0
+      ? existingSpans.map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); })
+      : (inner.innerText||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
+
+    // 3. Build pasted lines (strip leading dashes, trim)
+    const pastedLines = text.split(/\r?\n/).map(function(l){ return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd(); });
+
+    // 4. Merge: replace lines after insertAfterIdx (splice in pasted content)
+    const before = existingLines.slice(0, insertAfterIdx + 1);
+    const after  = existingLines.slice(insertAfterIdx + 1);
+    const merged = before.concat(pastedLines).concat(after).filter(function(l, i, arr){
+      // Remove truly empty lines except intentional spacing — keep at least content lines
+      return l.trim().length > 0 || (i > 0 && i < arr.length - 1);
+    });
+
+    // 5. Re-render bullet divs immediately
+    applyBullets(inner, true);
+    // Override innerHTML with merged content
+    const _sp = el2 ? (parseFloat(el2.dataset.bulletParaSpacing)||0) : 0;
+    const _mb = _sp > 0 ? ';margin-bottom:'+_sp+'px' : '';
+    function _esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    inner.innerHTML = merged.map(function(l){
+      if(!l.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+      return '<div style="display:flex;align-items:baseline'+_mb+'">'+
+             '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>'+
+             '<span class="bt">'+_esc(l)+'</span></div>';
+    }).join('');
+    inner.style.whiteSpace = 'normal';
+
+    // 6. Sync back to sidebar if linked
+    if(el2 && el2.dataset.field){
+      const _sid = fieldToSidebarId(el2.dataset.field);
+      const _sel = _sid ? document.getElementById(_sid) : null;
+      if(_sel) _sel.value = merged.filter(function(l){ return l.trim(); }).join('\n');
+    }
+
+  } else if(isBulletField){
+    // ── Bullet-field element (bodycopy/bullets without data-bullets set) ──
+    // Insert multi-line preserving line breaks with <br>
+    const sel2 = window.getSelection();
+    if(sel2 && sel2.rangeCount){
+      sel2.deleteFromDocument();
+      const range2 = sel2.getRangeAt(0);
+      const lines2 = text.split(/\r?\n/);
+      lines2.forEach(function(line, i){
+        range2.insertNode(document.createTextNode(line));
+        range2.collapse(false);
+        if(i < lines2.length - 1){
           const br = document.createElement('br');
-          range.insertNode(br);
-          range.setStartAfter(br);
-          range.collapse(true);
+          range2.insertNode(br);
+          range2.setStartAfter(br);
+          range2.collapse(true);
         }
       });
-    } else {
-      const flat = lines.map(function(l){return l.trim();}).filter(Boolean).join(' ');
-      const node = document.createTextNode(flat);
-      range.insertNode(node);
-      range.setStartAfter(node);
-      range.collapse(true);
+      sel2.removeAllRanges();
+      sel2.addRange(range2);
     }
-    sel.removeAllRanges();
-    sel.addRange(range);
+
+  } else {
+    // ── Plain text element: collapse newlines into spaces, insert at cursor ──
+    const sel3 = window.getSelection();
+    if(sel3 && sel3.rangeCount){
+      sel3.deleteFromDocument();
+      const range3 = sel3.getRangeAt(0);
+      const lines3 = text.split(/\r?\n/);
+      // For multi-line text: preserve line breaks as \n (pre-wrap handles them)
+      if(lines3.length > 1 && inner.style.whiteSpace === 'pre-wrap'){
+        // Insert as individual text nodes separated by \n so pre-wrap renders them
+        lines3.forEach(function(line, i){
+          range3.insertNode(document.createTextNode(line));
+          range3.collapse(false);
+          if(i < lines3.length - 1){
+            const nl = document.createTextNode('\n');
+            range3.insertNode(nl);
+            range3.setStartAfter(nl);
+            range3.collapse(true);
+          }
+        });
+      } else {
+        // Single line or non-pre-wrap: collapse into single string
+        const flat = lines3.map(function(l){ return l.trim(); }).filter(Boolean).join(' ');
+        const node = document.createTextNode(flat);
+        range3.insertNode(node);
+        range3.setStartAfter(node);
+        range3.collapse(true);
+      }
+      sel3.removeAllRanges();
+      // Don't try to restore range — content has changed
+    }
   }
+
+  // Always fire input event so sidebar sync and persist run
   inner.dispatchEvent(new Event('input'));
+  // For bullet elements, also fire the inline input handler if attached
+  if(inner._inlineInputHandler) inner._inlineInputHandler();
 }, true); // useCapture:true so this fires before any other handler
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopLiveSync();else startLiveSync();});

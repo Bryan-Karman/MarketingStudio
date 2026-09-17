@@ -5189,6 +5189,43 @@ setTool('select');
 loadProject();
 loadIconDB();
 
+// ── Option (Alt) + Scroll to zoom ────────────────────────────────
+// Holding Option on Mac (or Alt on Windows) while scrolling zooms
+// the canvas in and out, centred on the mouse cursor position.
+document.getElementById('canvas-area').addEventListener('wheel', function(e){
+  if(!e.altKey) return;          // only act when Option/Alt is held
+  e.preventDefault();            // block page scroll
+  const ca = document.getElementById('canvas-area');
+  const wrap = document.getElementById('canvas-wrap');
+  const STEP = 5;                // zoom step per scroll tick in %
+  const MIN  = 10;
+  const MAX  = 150;
+
+  // Current zoom as a percentage integer
+  const currentPct = Math.round(_zoom * 100);
+
+  // deltaY > 0 = scroll down = zoom out; < 0 = scroll up = zoom in
+  const delta = e.deltaY > 0 ? -STEP : STEP;
+  const newPct = Math.min(MAX, Math.max(MIN, currentPct + delta));
+  if(newPct === currentPct) return;
+
+  // Preserve the point under the cursor so zoom feels anchored
+  const caRect   = ca.getBoundingClientRect();
+  const mouseX   = e.clientX - caRect.left + ca.scrollLeft; // px in scrollable area
+  const mouseY   = e.clientY - caRect.top  + ca.scrollTop;
+  const oldScale = _zoom;
+  const newScale = newPct / 100;
+
+  // Update zoom
+  setZoom(newPct);
+  document.getElementById('zoom-range').value = newPct;
+
+  // Adjust scroll so the point under the cursor stays fixed
+  const ratio = newScale / oldScale;
+  ca.scrollLeft = mouseX * ratio - (e.clientX - caRect.left);
+  ca.scrollTop  = mouseY * ratio - (e.clientY - caRect.top);
+}, { passive: false });
+
 // ═══════════════════════════════════════════════════════════════
 // BULK IMAGE UPLOAD — creates one page per image
 // ═══════════════════════════════════════════════════════════════
