@@ -5706,7 +5706,24 @@ document.addEventListener('paste', function(e){
   while(lines.length && !lines[lines.length-1].trim()) lines.pop();
   if(!lines.length) return;
 
-  // Snapshot current style — restore after insert so font/colour/size survive
+  var el2   = inner.closest('.el');
+  var field = el2 ? (el2.dataset.field || '') : '';
+
+  // For bullets/bodycopy fields: use exactly the same path as the sidebar paste.
+  // Write to the sidebar textarea and call onBulletFieldChange() so globalSync
+  // re-renders the canvas with proper line breaks immediately.
+  if(field === 'bullets' || field === 'bodycopy'){
+    var sid  = fieldToSidebarId(field);
+    var sbEl = sid ? document.getElementById(sid) : null;
+    if(sbEl){
+      sbEl.value = lines.join('\n');
+      onBulletFieldChange();
+      debouncedPersist();
+      return;
+    }
+  }
+
+  // For all other fields: insert plain text at cursor, keep edit session alive.
   var savedStyle = inner.getAttribute('style') || '';
 
   var sel = window.getSelection();
