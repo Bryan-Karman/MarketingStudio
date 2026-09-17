@@ -4654,7 +4654,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       const lh=parseFloat(ist.lineHeight)||1.35;
       const lineH=fsMm*lh;
       const bsp=parseFloat(sv.bulletParaSpacing||'0')*scaleY;
-      const isBullets=sv.bullets==='1';
+      // Brochure tabs (0,1): bullets field uses plain-line spacing, not dash bullets.
+      // Force isBullets=false regardless of what sv.bullets says (stale saves may have bullets:'1').
+      const _isBrochureBulletsField = (sv.field === 'bullets' && (tabIdx === 0 || tabIdx === 1));
+      const isBullets = sv.bullets === '1' && !_isBrochureBulletsField;
 
       // Banner background pill — measure text, draw pill, centre text within it
       let pillX=ex, pillW2=ew; // defaults
@@ -4678,7 +4681,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
       const rawText=resolveText(sv);
       const lines=rawText.split('\n');
-      const maxW=ew*1.08; // jsPDF font metrics differ from browser — extra room prevents false wrapping
+      const maxW=ew*1.01; // jsPDF measures text slightly narrower than browser, so give extra room
 
       // Starting Y — vertically centre single-line text, or start near top for multi-line
       let curY=ey+fsMm*0.85;
