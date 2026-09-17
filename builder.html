@@ -2567,32 +2567,33 @@ function restoreTab(idx){
     const inner=el.querySelector('.el-inner');
     if(sv.bullets==='1' && inner && sv.type==='text'){
       // ── BULLET ELEMENT RESTORE ──
-      // Order: (1) apply innerStyle styles EXCEPT whiteSpace (2) set plain content (3) applyBullets
-      // This prevents innerStyle's whiteSpace:normal from fighting applyBullets mid-render.
-      if(sv.innerStyle){
-        // Parse innerStyle into individual properties and apply them, skipping whiteSpace
-        var _styleStr = sv.innerStyle;
-        // Apply via setAttribute then override whiteSpace — fastest path
-        inner.setAttribute('style', _styleStr);
-      }
-      // Restore paragraph spacing BEFORE applyBullets so it picks it up
+      if(sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
       if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
         el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
         inner.dataset.bulletSpacing = sv.bulletParaSpacing;
         inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
       }
-      el.dataset.bullets='1';
-      // Set plain text content (lines without dashes) so applyBullets re-renders correctly
-      // Strip leading dashes from saved content so we don't double-dash
-      var _rawContent = (sv.content||'');
-      var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
-      inner.textContent = _plainLines.join('\n');
-      inner.style.whiteSpace = 'pre-wrap'; // ensure applyBullets reads textContent correctly
-      // Now re-render bullet divs
-      applyBullets(inner, true);
-      // Ensure whiteSpace:normal is set after applyBullets (it sets it, but be explicit)
-      inner.style.whiteSpace = 'normal';
-      inner.style.wordBreak = 'break-word';
+
+      // EXCEPTION: Brochure tabs (0,1) bullets field uses plain-line spacing, NOT dash bullets.
+      // If a stale save has bullets:'1' on this element, correct it to plain-line rendering.
+      var _isBrochureBulletsRestore = (sv.field === 'bullets' && (idx === 0 || idx === 1));
+      if(_isBrochureBulletsRestore){
+        el.dataset.bullets = '0';
+        var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
+        var _rbContent = (sv.content||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); }).join('\n');
+        inner.textContent = _rbContent;
+        inner.style.whiteSpace = 'pre-wrap';
+        applyPlainParaSpacing(inner, _bpsRestore);
+      } else {
+        el.dataset.bullets='1';
+        var _rawContent = (sv.content||'');
+        var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
+        inner.textContent = _plainLines.join('\n');
+        inner.style.whiteSpace = 'pre-wrap';
+        applyBullets(inner, true);
+        inner.style.whiteSpace = 'normal';
+        inner.style.wordBreak = 'break-word';
+      }
     } else {
       // ── NON-BULLET TEXT / RECT / IMG RESTORE ──
       // Apply saved style FIRST
@@ -2949,6 +2950,22 @@ function globalSync(){
       if(el.dataset.bullets==='1'){
         var _isBrochureBullets = (field==='bullets' && (currentTab===0||currentTab===1));
         if(!_isBrochureBullets){
+          // setInnerText bails on bullets:'1' elements, so set content directly
+          // from the sidebar value (val) so pasted text renders immediately.
+          var _bval = val || '';
+          // For income-anchor elements, re-append income
+          var _fi2b = ((document.getElementById('fi')||{}).value||'').trim();
+          if(_fi2b && el.dataset.incomeAnchor === '1'){
+            var _pfx2 = _fi2b.split(':')[0].trim().toLowerCase();
+            var _blines2 = _bval.split('\n').filter(function(l){
+              var lc = l.replace(/^\u2013\s*/,'').trim().toLowerCase();
+              return !lc.startsWith(_pfx2+':') && lc !== _fi2b.toLowerCase();
+            });
+            _blines2.push(_fi2b);
+            _bval = _blines2.join('\n');
+          }
+          inner.textContent = _bval;
+          inner.style.whiteSpace = 'pre-wrap';
           applyBullets(inner, true);
         }
       }
