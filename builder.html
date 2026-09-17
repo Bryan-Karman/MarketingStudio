@@ -5640,125 +5640,83 @@ document.addEventListener('paste', function(e){
   const inner = active.closest ? active.closest('.el-inner') : null;
   if(!inner || inner.contentEditable !== 'true') return;
   e.preventDefault();
+
+  // Always get plain text — strips all rich formatting from the clipboard source
   const text = (e.clipboardData || window.clipboardData).getData('text/plain');
   if(!text) return;
 
-  const el2 = inner.closest('.el');
-  const isBulletEl = el2 && el2.dataset.bullets === '1';
-  const isBulletField = el2 && (el2.dataset.field === 'bodycopy' || el2.dataset.field === 'bullets');
+  const el2    = inner.closest('.el');
+  const field  = el2 ? (el2.dataset.field || '') : '';
+  const sid    = field ? fieldToSidebarId(field) : null;
+  const sbEl   = sid ? document.getElementById(sid) : null;
 
-  if(isBulletEl){
-    // ── Bullet element: collect existing lines, merge pasted text at cursor, re-render ──
-    // 1. Find which bullet span the cursor is in
-    const sel = window.getSelection();
-    let insertAfterIdx = -1;
-    if(sel && sel.rangeCount){
-      const spans = Array.from(inner.querySelectorAll('span.bt'));
-      const r = sel.getRangeAt(0);
-      for(let i = 0; i < spans.length; i++){
-        if(spans[i].contains(r.startContainer) || spans[i] === r.startContainer){
-          insertAfterIdx = i; break;
-        }
-      }
-      if(insertAfterIdx === -1) insertAfterIdx = spans.length - 1;
-    }
-
-    // 2. Read existing lines
-    const existingSpans = Array.from(inner.querySelectorAll('span.bt'));
-    let existingLines = existingSpans.length > 0
-      ? existingSpans.map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); })
-      : (inner.innerText||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
-
-    // 3. Build pasted lines (strip leading dashes, trim)
-    const pastedLines = text.split(/\r?\n/).map(function(l){ return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd(); });
-
-    // 4. Merge: replace lines after insertAfterIdx (splice in pasted content)
-    const before = existingLines.slice(0, insertAfterIdx + 1);
-    const after  = existingLines.slice(insertAfterIdx + 1);
-    const merged = before.concat(pastedLines).concat(after).filter(function(l, i, arr){
-      // Remove truly empty lines except intentional spacing — keep at least content lines
-      return l.trim().length > 0 || (i > 0 && i < arr.length - 1);
+  // ── Unified strategy: write to the sidebar field then call globalSync.
+  // This is exactly what a page refresh does, so every box type — headings,
+  // addresses, bullets, body copy, sale details — renders correctly on paste
+  // with no refresh or tab-switch needed.
+  if(sbEl){
+    // Strip any bullet/dash prefixes from each line of pasted text
+    var _pLines = text.split(/\r?\n/).map(function(l){
+      return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022\u2019]\s*/,'').trimEnd();
     });
+    // Drop leading/trailing blank lines; keep interior blank lines (user intent)
+    while(_pLines.length && !_pLines[0].trim()) _pLines.shift();
+    while(_pLines.length && !_pLines[_pLines.length-1].trim()) _pLines.pop();
+    var _pClean = _pLines.join('\n');
 
-    // 5. Re-render bullet divs immediately
-    applyBullets(inner, true);
-    // Override innerHTML with merged content
-    const _sp = el2 ? (parseFloat(el2.dataset.bulletParaSpacing)||0) : 0;
-    const _mb = _sp > 0 ? ';margin-bottom:'+_sp+'px' : '';
-    function _esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    inner.innerHTML = merged.map(function(l){
-      if(!l.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
-      return '<div style="display:flex;align-items:baseline'+_mb+'">'+
-             '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>'+
-             '<span class="bt">'+_esc(l)+'</span></div>';
-    }).join('');
-    inner.style.whiteSpace = 'normal';
-
-    // 6. Sync back to sidebar if linked
-    if(el2 && el2.dataset.field){
-      const _sid = fieldToSidebarId(el2.dataset.field);
-      const _sel = _sid ? document.getElementById(_sid) : null;
-      if(_sel) _sel.value = merged.filter(function(l){ return l.trim(); }).join('\n');
+    // Write to sidebar and trigger the right re-render path
+    sbEl.value = _pClean;
+    if(field === 'bullets' || field === 'bodycopy'){
+      if(typeof onBulletFieldChange === 'function') onBulletFieldChange();
+    } else {
+      if(typeof globalSync === 'function') globalSync();
     }
-
-  } else if(isBulletField){
-    // ── Bullet-field element (bodycopy/bullets without data-bullets set) ──
-    // Insert multi-line preserving line breaks with <br>
-    const sel2 = window.getSelection();
-    if(sel2 && sel2.rangeCount){
-      sel2.deleteFromDocument();
-      const range2 = sel2.getRangeAt(0);
-      const lines2 = text.split(/\r?\n/);
-      lines2.forEach(function(line, i){
-        range2.insertNode(document.createTextNode(line));
-        range2.collapse(false);
-        if(i < lines2.length - 1){
-          const br = document.createElement('br');
-          range2.insertNode(br);
-          range2.setStartAfter(br);
-          range2.collapse(true);
-        }
-      });
-      sel2.removeAllRanges();
-      sel2.addRange(range2);
-    }
-
-  } else {
-    // ── Plain text element: collapse newlines into spaces, insert at cursor ──
-    const sel3 = window.getSelection();
-    if(sel3 && sel3.rangeCount){
-      sel3.deleteFromDocument();
-      const range3 = sel3.getRangeAt(0);
-      const lines3 = text.split(/\r?\n/);
-      // For multi-line text: preserve line breaks as \n (pre-wrap handles them)
-      if(lines3.length > 1 && inner.style.whiteSpace === 'pre-wrap'){
-        // Insert as individual text nodes separated by \n so pre-wrap renders them
-        lines3.forEach(function(line, i){
-          range3.insertNode(document.createTextNode(line));
-          range3.collapse(false);
-          if(i < lines3.length - 1){
-            const nl = document.createTextNode('\n');
-            range3.insertNode(nl);
-            range3.setStartAfter(nl);
-            range3.collapse(true);
-          }
-        });
-      } else {
-        // Single line or non-pre-wrap: collapse into single string
-        const flat = lines3.map(function(l){ return l.trim(); }).filter(Boolean).join(' ');
-        const node = document.createTextNode(flat);
-        range3.insertNode(node);
-        range3.setStartAfter(node);
-        range3.collapse(true);
-      }
-      sel3.removeAllRanges();
-      // Don't try to restore range — content has changed
-    }
+    if(typeof debouncedPersist === 'function') debouncedPersist();
+    return; // fully handled — no direct DOM insertion needed
   }
 
-  // Always fire input event so sidebar sync and persist run
+  // ── No sidebar link: manual / unlinked text box ──
+  // Bullet elements (data-bullets="1"): rebuild dash divs immediately.
+  if(el2 && el2.dataset.bullets === '1'){
+    var _bLines = text.split(/\r?\n/).map(function(l){
+      return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd();
+    }).filter(function(l){ return l.trim().length > 0; });
+    var _spB = parseFloat(el2.dataset.bulletParaSpacing || '0');
+    var _mbB = _spB > 0 ? ';margin-bottom:' + _spB + 'px' : '';
+    function _escB(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    inner.innerHTML = _bLines.map(function(l){
+      return '<div style="display:flex;align-items:baseline' + _mbB + '">' +
+             '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>' +
+             '<span class="bt">' + _escB(l) + '</span></div>';
+    }).join('');
+    inner.style.whiteSpace = 'normal';
+  } else {
+    // Plain unlinked text box — preserve ALL existing styles (font, colour, size,
+    // weight, alignment etc.) and just swap the text content.
+
+    // 1. Snapshot every inline style currently on the inner div
+    var _savedStyle = inner.getAttribute('style') || '';
+
+    // 2. Clean the pasted text (collapse excessive blank lines)
+    var _uLines = text.split(/\r?\n/);
+    var _uClean = _uLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+    // 3. Set content — textContent ensures no stray HTML leaks in from clipboard
+    inner.textContent = _uClean;
+
+    // 4. Reapply the full saved style so font/colour/size/weight are all restored,
+    //    then enforce pre-wrap so line breaks show immediately without any refresh
+    inner.setAttribute('style', _savedStyle);
+    inner.style.whiteSpace = 'pre-wrap';
+    inner.style.wordBreak  = 'break-word';
+
+    // 5. Force a synchronous layout flush so the browser paints right away
+    //    (reading offsetHeight triggers reflow — same trick CSS animations use)
+    void inner.offsetHeight;
+  }
+
+  // Fire input handler so persist runs
   inner.dispatchEvent(new Event('input'));
-  // For bullet elements, also fire the inline input handler if attached
   if(inner._inlineInputHandler) inner._inlineInputHandler();
 }, true); // useCapture:true so this fires before any other handler
 function stopLiveSync(){clearInterval(_liveSyncTimer);}
