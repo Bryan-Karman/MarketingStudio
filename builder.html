@@ -5843,7 +5843,8 @@ async function downloadPDF(){
     const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:[mm[0],mm[1]]});
     btn.textContent='Generating…';
     await renderTabToPdf(pdf,currentTab,mm[0],mm[1],false,{bleedMm,cropMarks:_bleed.cropMarks,artWmm,artHmm});
-    pdf.save(`CBRE_${TAB_NAMES[currentTab]}${bleedMm>0?'_bleed'+bleedMm+'mm':''}.pdf`);
+    const _pdfSlug = (_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
+    pdf.save(`${_pdfSlug}_${TAB_NAMES[currentTab]}.pdf`);
   }catch(err){alert('PDF generation failed: '+err.message);console.error(err);}
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
