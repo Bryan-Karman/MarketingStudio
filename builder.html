@@ -5614,27 +5614,36 @@ function clAttachEnforcement(){
   CL_FIELD_IDS.forEach(function(id){
     var el = document.getElementById(id);
     if(!el) return;
-
     el.addEventListener('paste', function(e){
-      // Get plain text from clipboard
       var cbd  = e.clipboardData || window.clipboardData;
       var text = cbd ? cbd.getData('text/plain') : null;
-
-      // If we got text, handle it ourselves so we can call the right sync functions.
-      // We do this because some browsers don't reliably fire 'input' after paste.
       if(text !== null && text !== undefined){
         e.preventDefault();
-        // Insert at cursor position
         var start = el.selectionStart || 0;
         var end   = el.selectionEnd   || 0;
         el.value  = el.value.slice(0, start) + text + el.value.slice(end);
         el.selectionStart = el.selectionEnd = start + text.length;
       }
-      // Whether we handled it or let the browser handle it,
-      // always sync after a short delay to let the value settle
       setTimeout(function(){
         clEnforce(id);
-        if(id === 'fbull' || id === 'fbc' || id === 'fi'){
+        // Before syncing: clear contentEditable and richHtml on any canvas element
+        // for this field — otherwise globalSync skips it (it guards against
+        // interrupting inline edits, but a sidebar paste should always win).
+        var _sid2field = {fbull:'bullets',fbc:'bodycopy',fh:'heading',fs:'subheading',
+          fa1:'address1',fa2:'address2',fb:'banner',fi:'income',fm:'salemethod',fd:'saledate'};
+        var _fieldName = _sid2field[id];
+        if(_fieldName){
+          document.querySelectorAll('.el[data-field="'+_fieldName+'"]').forEach(function(elx){
+            var inx = elx.querySelector('.el-inner');
+            if(inx && inx.contentEditable === 'true'){
+              inx.contentEditable = 'false';
+              inx.style.cursor = '';
+            }
+            // Clear richHtml so globalSync doesn't skip this element
+            if(elx.dataset.richHtml) delete elx.dataset.richHtml;
+          });
+        }
+        if(id==='fbull'||id==='fbc'||id==='fi'){
           onBulletFieldChange();
         } else {
           globalSync();
@@ -5706,24 +5715,7 @@ document.addEventListener('paste', function(e){
   while(lines.length && !lines[lines.length-1].trim()) lines.pop();
   if(!lines.length) return;
 
-  var el2   = inner.closest('.el');
-  var field = el2 ? (el2.dataset.field || '') : '';
-
-  // For bullets/bodycopy fields: use exactly the same path as the sidebar paste.
-  // Write to the sidebar textarea and call onBulletFieldChange() so globalSync
-  // re-renders the canvas with proper line breaks immediately.
-  if(field === 'bullets' || field === 'bodycopy'){
-    var sid  = fieldToSidebarId(field);
-    var sbEl = sid ? document.getElementById(sid) : null;
-    if(sbEl){
-      sbEl.value = lines.join('\n');
-      onBulletFieldChange();
-      debouncedPersist();
-      return;
-    }
-  }
-
-  // For all other fields: insert plain text at cursor, keep edit session alive.
+  // Snapshot current style — restore after insert so font/colour/size survive
   var savedStyle = inner.getAttribute('style') || '';
 
   var sel = window.getSelection();
