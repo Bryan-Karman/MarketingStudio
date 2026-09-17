@@ -277,7 +277,7 @@ body.exporting .stem-drag-handle{display:none!important;}
   line-height:1;
   text-transform:uppercase;
   letter-spacing:.1em;
-  padding:9px 16px 7px;
+  padding:8px 16px;
   display:flex;align-items:center;justify-content:center;
   white-space:pre-wrap;
   word-break:break-word;
@@ -285,6 +285,14 @@ body.exporting .stem-drag-handle{display:none!important;}
   min-height:44px;
   flex-shrink:0;
   text-align:center;
+}
+/* Inner text span — flex child so browser centres by box edges, not font metrics.
+   Equal padding above keeps breathing room; symmetry is what fixes Mac vs PC. */
+.sticker-label > .sl-text{
+  display:block;
+  line-height:1.2;
+  padding:0;
+  margin:0;
 }
 
 /* ICON-LEFT (default) */
@@ -444,9 +452,9 @@ body.exporting .stem-drag-handle{display:none!important;}
 .markup-sticker.prop-label.flipped .prop-text-block{ padding:14px 16px 14px 20px; text-align:right; }
 
 /* ── SUB-LABEL ── */
-.sticker-label-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; }
-.sticker-label-main{ padding:7px 16px 5px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:500; font-size:18px; line-height:1; text-transform:uppercase; letter-spacing:.1em; white-space:pre-wrap; word-break:break-word; text-align:center; }
-.sticker-label-sub{ padding:2px 16px 7px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:400; font-size:13px; line-height:1; text-transform:uppercase; letter-spacing:.07em; white-space:pre-wrap; word-break:break-word; text-align:center; opacity:0.85; }
+.sticker-label-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; gap:3px; padding:8px 0; }
+.sticker-label-main{ padding:0 16px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:500; font-size:18px; line-height:1.2; text-transform:uppercase; letter-spacing:.1em; white-space:pre-wrap; word-break:break-word; text-align:center; }
+.sticker-label-sub{ padding:0 16px; font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif; font-weight:400; font-size:13px; line-height:1.2; text-transform:uppercase; letter-spacing:.07em; white-space:pre-wrap; word-break:break-word; text-align:center; opacity:0.85; }
 
 /* ── ICON DATABASE MODAL ── */
 .icon-modal-overlay{
@@ -1771,11 +1779,11 @@ function _buildStickerHTML(s, isSelected, isMulti){
       + '<div class="prop-line2">'+escHtml(line2)+'</div>'
       + '</div></div>';
   } else if(isArea){
-    labelInner = escHtml(label);
+    labelInner = '<span class="sl-text">'+escHtml(label)+'</span>';
   } else if(subLabel){
     labelInner = '<div class="sticker-label-wrap"><div class="sticker-label-main">'+escHtml(label)+'</div><div class="sticker-label-sub">'+escHtml(subLabel)+'</div></div>';
   } else {
-    labelInner = escHtml(label);
+    labelInner = '<span class="sl-text">'+escHtml(label)+'</span>';
   }
 
   const absStemH = Math.abs(stemH);
@@ -5188,43 +5196,6 @@ renderLibrary();
 setTool('select');
 loadProject();
 loadIconDB();
-
-// ── Option (Alt) + Scroll to zoom ────────────────────────────────
-// Holding Option on Mac (or Alt on Windows) while scrolling zooms
-// the canvas in and out, centred on the mouse cursor position.
-document.getElementById('canvas-area').addEventListener('wheel', function(e){
-  if(!e.altKey) return;          // only act when Option/Alt is held
-  e.preventDefault();            // block page scroll
-  const ca = document.getElementById('canvas-area');
-  const wrap = document.getElementById('canvas-wrap');
-  const STEP = 5;                // zoom step per scroll tick in %
-  const MIN  = 10;
-  const MAX  = 150;
-
-  // Current zoom as a percentage integer
-  const currentPct = Math.round(_zoom * 100);
-
-  // deltaY > 0 = scroll down = zoom out; < 0 = scroll up = zoom in
-  const delta = e.deltaY > 0 ? -STEP : STEP;
-  const newPct = Math.min(MAX, Math.max(MIN, currentPct + delta));
-  if(newPct === currentPct) return;
-
-  // Preserve the point under the cursor so zoom feels anchored
-  const caRect   = ca.getBoundingClientRect();
-  const mouseX   = e.clientX - caRect.left + ca.scrollLeft; // px in scrollable area
-  const mouseY   = e.clientY - caRect.top  + ca.scrollTop;
-  const oldScale = _zoom;
-  const newScale = newPct / 100;
-
-  // Update zoom
-  setZoom(newPct);
-  document.getElementById('zoom-range').value = newPct;
-
-  // Adjust scroll so the point under the cursor stays fixed
-  const ratio = newScale / oldScale;
-  ca.scrollLeft = mouseX * ratio - (e.clientX - caRect.left);
-  ca.scrollTop  = mouseY * ratio - (e.clientY - caRect.top);
-}, { passive: false });
 
 // ═══════════════════════════════════════════════════════════════
 // BULK IMAGE UPLOAD — creates one page per image
