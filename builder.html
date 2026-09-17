@@ -5573,22 +5573,33 @@ function clAttachEnforcement(){
   CL_FIELD_IDS.forEach(function(id){
     var el = document.getElementById(id);
     if(!el) return;
+
     el.addEventListener('paste', function(e){
+      // Get plain text from clipboard
       var cbd  = e.clipboardData || window.clipboardData;
-      var text = cbd ? cbd.getData('text/plain') : '';
-      if(!text) return;
-      e.preventDefault();
-      var start = el.selectionStart || 0;
-      var end   = el.selectionEnd   || 0;
-      el.value  = el.value.slice(0, start) + text + el.value.slice(end);
-      el.selectionStart = el.selectionEnd = start + text.length;
-      clEnforce(id);
-      if(id === 'fbull' || id === 'fbc' || id === 'fi'){
-        onBulletFieldChange();
-      } else {
-        globalSync();
+      var text = cbd ? cbd.getData('text/plain') : null;
+
+      // If we got text, handle it ourselves so we can call the right sync functions.
+      // We do this because some browsers don't reliably fire 'input' after paste.
+      if(text !== null && text !== undefined){
+        e.preventDefault();
+        // Insert at cursor position
+        var start = el.selectionStart || 0;
+        var end   = el.selectionEnd   || 0;
+        el.value  = el.value.slice(0, start) + text + el.value.slice(end);
+        el.selectionStart = el.selectionEnd = start + text.length;
       }
-      debouncedPersist();
+      // Whether we handled it or let the browser handle it,
+      // always sync after a short delay to let the value settle
+      setTimeout(function(){
+        clEnforce(id);
+        if(id === 'fbull' || id === 'fbc' || id === 'fi'){
+          onBulletFieldChange();
+        } else {
+          globalSync();
+        }
+        debouncedPersist();
+      }, 0);
     });
   });
 }
@@ -5632,7 +5643,9 @@ async function liveSyncTick(){
 }
 function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
 
-// ── Global paste guard ──────────────────────────────────────────────────────
+// ── Canvas paste guard ───────────────────────────────────────────────
+// Fires only when a canvas text box is in contentEditable mode (after double-click).
+// Strips rich formatting, inserts plain text at cursor, keeps the box's own styling.
 document.addEventListener('paste', function(e){
   var active = document.activeElement;
   if(!active) return;
@@ -5644,53 +5657,33 @@ document.addEventListener('paste', function(e){
   if(!text) return;
   e.preventDefault();
 
-  var el2   = inner.closest('.el');
-  var field = el2 ? (el2.dataset.field || '') : '';
-
-  // Strip leading dash/bullet chars from each line
+  // Strip leading bullet/dash chars, trim each line
   var lines = text.split(/\r?\n/).map(function(l){
     return l.replace(/^\u2013\s*/,'').replace(/^[-\u2022]\s*/,'').trimEnd();
   });
   while(lines.length && !lines[0].trim()) lines.shift();
   while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  if(!lines.length) return;
 
-  // bullets/bodycopy: write to sidebar then re-render via onBulletFieldChange
-  if(field === 'bullets' || field === 'bodycopy'){
-    var sid  = fieldToSidebarId(field);
-    var sbEl = sid ? document.getElementById(sid) : null;
-    if(sbEl){
-      sbEl.value = lines.join('\n');
-      onBulletFieldChange();
-      debouncedPersist();
-      return;
-    }
-  }
+  // Snapshot current style — restore after insert so font/colour/size survive
+  var savedStyle = inner.getAttribute('style') || '';
 
-  // All other boxes: insert plain text at cursor, keep edit session alive
   var sel = window.getSelection();
-  if(!sel || !sel.rangeCount) return;
-  sel.deleteFromDocument();
-  var range = sel.getRangeAt(0);
-
-  if(el2 && el2.dataset.bullets === '1'){
-    // Unlinked bullet element — rebuild dash-span divs
-    var sp = parseFloat(el2.dataset.bulletParaSpacing || '0');
-    var mb = sp > 0 ? ';margin-bottom:'+sp+'px' : '';
-    function escP(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    inner.innerHTML = lines.filter(function(l){ return l.trim(); }).map(function(l){
-      return '<div style="display:flex;align-items:baseline'+mb+'">'+
-             '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span>'+
-             '<span class="bt">'+escP(l)+'</span></div>';
-    }).join('');
-    inner.style.whiteSpace = 'normal';
-  } else {
-    var node = document.createTextNode(lines.join('\n'));
+  if(sel && sel.rangeCount){
+    sel.deleteFromDocument();
+    var range = sel.getRangeAt(0);
+    var node  = document.createTextNode(lines.join('\n'));
     range.insertNode(node);
     range.setStartAfter(node);
     range.collapse(true);
     sel.removeAllRanges();
-    void inner.offsetHeight;
+  } else {
+    inner.textContent = lines.join('\n');
   }
+
+  if(savedStyle) inner.setAttribute('style', savedStyle);
+  inner.style.whiteSpace = 'pre-wrap';
+  inner.style.wordBreak  = 'break-word';
 
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
