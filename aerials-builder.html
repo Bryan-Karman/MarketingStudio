@@ -69,6 +69,9 @@ body{display:flex;flex-direction:column;font-family:'Calibre','Franklin Gothic M
 .tab{padding:0 14px;height:34px;font-size:10px;font-weight:700;cursor:pointer;color:rgba(255,255,255,.4);border:none;background:none;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0;}
 .tab.active{color:#fff;border-bottom-color:var(--gb);}
 .tab:hover:not(.active){color:rgba(255,255,255,.75);}
+.tab.tab-dragging{opacity:0.35;border:1px dashed #5bbf7a !important;}
+.tab.tab-drag-over-left{border-left:3px solid #17E88F !important;background:rgba(23,232,143,0.08);}
+.tab.tab-drag-over-right{border-right:3px solid #17E88F !important;background:rgba(23,232,143,0.08);}
 .tab-add{padding:0 16px;height:34px;font-size:10px;font-weight:700;cursor:pointer;color:#5bbf7a;border:none;border-left:1px solid #2a2a2a;background:#0d1f17;flex-shrink:0;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;}
 .tab-add:hover{background:#163022;color:#fff;}
 .tab-del{font-size:10px;color:rgba(255,255,255,.2);cursor:pointer;margin-left:6px;vertical-align:middle;line-height:1;}
@@ -195,12 +198,20 @@ body.exporting .stem-drag-handle{display:none!important;}
 .ab-bg img{display:block;max-width:none;pointer-events:all;user-select:none;cursor:grab;}
 .artboard.pen-mode .ab-bg img{cursor:inherit !important;}
 
-/* resize handles — fixed to artboard corners, z-index above SVG and markups */
-.img-rh{position:absolute;width:16px;height:16px;background:var(--gb);border:2px solid #fff;border-radius:2px;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.6);}
+/* resize handles — fixed to artboard corners/edges, z-index above SVG and markups */
+.img-rh{position:absolute;background:var(--gb);border:2px solid #fff;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.6);}
+/* Corner handles — square */
+.img-rh.nw,.img-rh.ne,.img-rh.sw,.img-rh.se{width:16px;height:16px;border-radius:2px;}
 .img-rh.nw{top:4px;left:4px;cursor:nw-resize;}
 .img-rh.ne{top:4px;right:4px;cursor:ne-resize;}
 .img-rh.sw{bottom:4px;left:4px;cursor:sw-resize;}
 .img-rh.se{bottom:4px;right:4px;cursor:se-resize;}
+/* Mid-edge handles — round, smaller */
+.img-rh.n,.img-rh.s,.img-rh.e,.img-rh.w{width:14px;height:14px;border-radius:50%;background:#5bbf7a;}
+.img-rh.n{top:4px;left:50%;transform:translateX(-50%);cursor:n-resize;}
+.img-rh.s{bottom:4px;left:50%;transform:translateX(-50%);cursor:s-resize;}
+.img-rh.e{right:4px;top:50%;transform:translateY(-50%);cursor:e-resize;}
+.img-rh.w{left:4px;top:50%;transform:translateY(-50%);cursor:w-resize;}
 .img-rh:hover{background:#fff;border-color:var(--gb);}
 
 /* SVG overlay — pen drawing, fixed size = artboard */
@@ -1096,6 +1107,8 @@ function newPage(label){
     imageUrl: null,
     imagePos: {x:0,y:0},
     imageScale: 1,
+    imageScaleX: 1,
+    imageScaleY: 1,
     imageBrightness: 1,   // 1 = 100%, range 0.3–2.0
     imageContrast:   1,   // 1 = 100%, range 0.3–2.0
     imageSaturation: 1,   // 1 = 100%, range 0–3.0
@@ -1115,7 +1128,7 @@ function renderTabs(){
   const bar = document.getElementById('page-tabs');
   let html = '';
   pages.forEach((p,i)=>{
-    html += `<button class="tab${i===currentPage?' active':''}" onclick="switchPage(${i})">
+    html += `<button class="tab${i===currentPage?' active':''}" data-tab-idx="${i}" onclick="switchPage(${i})">
       ${p.label}
       ${pages.length>1 ? `<span class="tab-del" onclick="deletePage(event,${i})">✕</span>` : ''}
     </button>`;
@@ -1124,6 +1137,91 @@ function renderTabs(){
   html += `<button class="tab-add" onclick="duplicatePage()" title="Duplicate current page with all markups and image" style="background:#0d1f2a;color:#6aaad8;border-left:1px solid #2a2a2a;">⧉ Duplicate Page</button>`;
   html += `<label class="tab-add" title="Select multiple images to create a page for each" style="background:#0d1f18;color:#17e88f;border-left:1px solid #2a2a2a;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">⬆ Bulk Upload<input type="file" accept="image/*" multiple style="display:none;" onchange="handleBulkUpload(this)"></label>`;
   bar.innerHTML = html;
+  _attachTabDrag(bar);
+}
+
+// ── Tab drag-to-reorder ────────────────────────────────────────────
+function _attachTabDrag(bar){
+  if(pages.length < 2) return; // nothing to reorder with one tab
+  let _td = {active:false, fromIdx:-1, overIdx:-1, overSide:'', startX:0, startY:0, moved:false};
+
+  bar.querySelectorAll('.tab[data-tab-idx]').forEach(tab=>{
+    tab.addEventListener('mousedown', e=>{
+      if(e.target.closest('.tab-del')) return; // don't intercept delete button
+      _td.fromIdx = +tab.dataset.tabIdx;
+      _td.startX  = e.clientX;
+      _td.startY  = e.clientY;
+      _td.active  = false; // becomes true after movement threshold
+      _td.moved   = false;
+
+      function onMove(ev){
+        const dx = ev.clientX - _td.startX;
+        const dy = ev.clientY - _td.startY;
+        if(!_td.active && Math.hypot(dx,dy) < 5) return;
+        _td.active = true;
+        _td.moved  = true;
+        tab.classList.add('tab-dragging');
+        bar.style.cursor = 'grabbing';
+
+        // Find which tab the cursor is over
+        let newOver = -1, newSide = '';
+        bar.querySelectorAll('.tab[data-tab-idx]').forEach(t=>{
+          t.classList.remove('tab-drag-over-left','tab-drag-over-right');
+          const r = t.getBoundingClientRect();
+          if(ev.clientX >= r.left && ev.clientX <= r.right){
+            newOver = +t.dataset.tabIdx;
+            newSide = (ev.clientX - r.left) < r.width/2 ? 'left' : 'right';
+          }
+        });
+        _td.overIdx  = newOver;
+        _td.overSide = newSide;
+        if(newOver >= 0 && newOver !== _td.fromIdx){
+          const overEl = bar.querySelector(`.tab[data-tab-idx="${newOver}"]`);
+          if(overEl) overEl.classList.add(newSide==='left' ? 'tab-drag-over-left' : 'tab-drag-over-right');
+        }
+      }
+
+      function onUp(){
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+        tab.classList.remove('tab-dragging');
+        bar.style.cursor = '';
+        bar.querySelectorAll('.tab').forEach(t=>t.classList.remove('tab-drag-over-left','tab-drag-over-right'));
+
+        if(!_td.active || _td.overIdx < 0 || _td.overIdx === _td.fromIdx){
+          // Treat as a normal click if barely moved
+          if(!_td.moved) switchPage(_td.fromIdx);
+          return;
+        }
+        // Calculate target insertion index
+        let toIdx = _td.overIdx;
+        if(_td.overSide === 'right') toIdx = _td.overIdx + 1;
+        // Adjust for the removal of the dragged item
+        if(toIdx > _td.fromIdx) toIdx--;
+        toIdx = Math.max(0, Math.min(pages.length-1, toIdx));
+        if(toIdx === _td.fromIdx) return;
+
+        pushUndo();
+        // Reorder pages array
+        const moved = pages.splice(_td.fromIdx, 1)[0];
+        pages.splice(toIdx, 0, moved);
+        // Track current page
+        if(currentPage === _td.fromIdx){
+          currentPage = toIdx;
+        } else if(_td.fromIdx < currentPage && toIdx >= currentPage){
+          currentPage--;
+        } else if(_td.fromIdx > currentPage && toIdx <= currentPage){
+          currentPage++;
+        }
+        renderTabs();
+        renderPage(currentPage);
+        scheduleSave();
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
+    });
+  });
 }
 
 function switchPage(i){
@@ -1207,7 +1305,7 @@ function renderPage(i){
       <!-- Image layer -->
       <div class="ab-img-layer" id="img-layer">
 
-        <div class="ab-bg" id="ab-bg" style="transform:translate(${p.imagePos.x}px,${p.imagePos.y}px) scale(${p.imageScale});">
+        <div class="ab-bg" id="ab-bg" style="transform:translate(${p.imagePos.x}px,${p.imagePos.y}px) scale(${p.imageScaleX||p.imageScale||1},${p.imageScaleY||p.imageScale||1});">
           ${p.imageUrl
             ? `<img id="bg-img" src="${p.imageUrl}" crossorigin="anonymous" draggable="false" onload="fitImageToArtboard()" style="filter:brightness(${p.imageBrightness||1}) contrast(${p.imageContrast||1}) saturate(${p.imageSaturation||1});">`
             : '<div style="width:1500px;height:1129px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px;font-weight:600;letter-spacing:.05em;">Upload an aerial image to get started</div>'}
@@ -1253,10 +1351,14 @@ function renderPage(i){
       </div>
       <!-- Image resize handles — fixed to artboard corners, outside scaled ab-bg -->
       ${p.imageUrl ? `
-        <div class="img-rh nw" data-corner="nw" title="Drag to resize image"></div>
-        <div class="img-rh ne" data-corner="ne" title="Drag to resize image"></div>
-        <div class="img-rh sw" data-corner="sw" title="Drag to resize image"></div>
-        <div class="img-rh se" data-corner="se" title="Drag to resize image"></div>
+        <div class="img-rh nw" data-corner="nw" title="Drag corner to resize (free stretch)"></div>
+        <div class="img-rh ne" data-corner="ne" title="Drag corner to resize (free stretch)"></div>
+        <div class="img-rh sw" data-corner="sw" title="Drag corner to resize (free stretch)"></div>
+        <div class="img-rh se" data-corner="se" title="Drag corner to resize (free stretch)"></div>
+        <div class="img-rh n"  data-corner="n"  title="Drag to stretch vertically"></div>
+        <div class="img-rh s"  data-corner="s"  title="Drag to stretch vertically"></div>
+        <div class="img-rh e"  data-corner="e"  title="Drag to stretch horizontally"></div>
+        <div class="img-rh w"  data-corner="w"  title="Drag to stretch horizontally"></div>
       ` : ''}
     </div>
   `;
@@ -1892,7 +1994,7 @@ let _pen = {
 };
 let _imgDrag = {active:false, startX:0, startY:0, origX:0, origY:0};
 let _imgPanMode = false; // true only after double-clicking the image
-let _imgResize = {active:false, corner:'', origScale:1, origX:0, origY:0, origW:0, origH:0};
+let _imgResize = {active:false, corner:'', origScale:1, origScaleX:1, origScaleY:1, origX:0, origY:0, origW:0, origH:0};
 
 function attachArtboardEvents(pageObj){
   const artboard = document.getElementById('artboard');
@@ -1913,13 +2015,15 @@ function attachArtboardEvents(pageObj){
     // ── RESIZE HANDLE ──
     if(onRH && tool==='select'){
       e.preventDefault(); e.stopPropagation();
-      _imgResize.active   = true;
-      _imgResize.corner   = onRH.dataset.corner;
-      _imgResize.origScale= pages[currentPage].imageScale;
-      _imgResize.origX    = pages[currentPage].imagePos.x;
-      _imgResize.origY    = pages[currentPage].imagePos.y;
-      _imgResize.startX   = e.clientX;
-      _imgResize.startY   = e.clientY;
+      _imgResize.active    = true;
+      _imgResize.corner    = onRH.dataset.corner;
+      _imgResize.origScale = pages[currentPage].imageScale;
+      _imgResize.origScaleX= pages[currentPage].imageScaleX || pages[currentPage].imageScale || 1;
+      _imgResize.origScaleY= pages[currentPage].imageScaleY || pages[currentPage].imageScale || 1;
+      _imgResize.origX     = pages[currentPage].imagePos.x;
+      _imgResize.origY     = pages[currentPage].imagePos.y;
+      _imgResize.startX    = e.clientX;
+      _imgResize.startY    = e.clientY;
       return;
     }
 
@@ -2063,12 +2167,50 @@ function attachArtboardEvents(pageObj){
       const origPt=artboardPt({clientX:_imgResize.startX,clientY:_imgResize.startY});
       const dx=nowPt.x-origPt.x, dy=nowPt.y-origPt.y;
       const corner=_imgResize.corner;
-      let delta;
-      if(corner==='se') delta=(dx+dy)/2;
-      else if(corner==='sw') delta=(-dx+dy)/2;
-      else if(corner==='ne') delta=(dx-dy)/2;
-      else delta=(-dx-dy)/2;
-      pages[currentPage].imageScale=Math.max(0.05,_imgResize.origScale+delta/ARTBOARD_W);
+      const img=document.getElementById('bg-img');
+      const natW=(img&&img.naturalWidth)||1;
+      const natH=(img&&img.naturalHeight)||1;
+      const origW=natW*_imgResize.origScaleX;
+      const origH=natH*_imgResize.origScaleY;
+      const p=pages[currentPage];
+      // Corner handles: stretch both axes independently
+      if(corner==='se'){
+        p.imageScaleX=Math.max(0.02,_imgResize.origScaleX+dx/natW);
+        p.imageScaleY=Math.max(0.02,_imgResize.origScaleY+dy/natH);
+      } else if(corner==='sw'){
+        const newSX=Math.max(0.02,_imgResize.origScaleX-dx/natW);
+        p.imageScaleX=newSX;
+        p.imageScaleY=Math.max(0.02,_imgResize.origScaleY+dy/natH);
+        p.imagePos.x=_imgResize.origX+dx;
+      } else if(corner==='ne'){
+        p.imageScaleX=Math.max(0.02,_imgResize.origScaleX+dx/natW);
+        const newSY=Math.max(0.02,_imgResize.origScaleY-dy/natH);
+        p.imageScaleY=newSY;
+        p.imagePos.y=_imgResize.origY+dy;
+      } else if(corner==='nw'){
+        const newSX=Math.max(0.02,_imgResize.origScaleX-dx/natW);
+        const newSY=Math.max(0.02,_imgResize.origScaleY-dy/natH);
+        p.imageScaleX=newSX;
+        p.imageScaleY=newSY;
+        p.imagePos.x=_imgResize.origX+dx;
+        p.imagePos.y=_imgResize.origY+dy;
+      }
+      // Mid-edge handles: stretch single axis only
+      else if(corner==='n'){
+        const newSY=Math.max(0.02,_imgResize.origScaleY-dy/natH);
+        p.imageScaleY=newSY;
+        p.imagePos.y=_imgResize.origY+dy;
+      } else if(corner==='s'){
+        p.imageScaleY=Math.max(0.02,_imgResize.origScaleY+dy/natH);
+      } else if(corner==='e'){
+        p.imageScaleX=Math.max(0.02,_imgResize.origScaleX+dx/natW);
+      } else if(corner==='w'){
+        const newSX=Math.max(0.02,_imgResize.origScaleX-dx/natW);
+        p.imageScaleX=newSX;
+        p.imagePos.x=_imgResize.origX+dx;
+      }
+      // Keep legacy imageScale in sync with average for save compatibility
+      p.imageScale=(p.imageScaleX+p.imageScaleY)/2;
       applyImgTransform();
       updateGhost();
       if(_imgPanMode) { _updatePanImgHandles(); _updatePanOverlay(); }
@@ -3036,8 +3178,15 @@ function fitImageToArtboard(){
     // Scale so image height = artboard height; centre horizontally
     const scale = ARTBOARD_H / img.naturalHeight;
     const centreX = (ARTBOARD_W - img.naturalWidth * scale) / 2;
-    p.imageScale = scale;
-    p.imagePos   = {x: centreX, y: 0};
+    p.imageScale  = scale;
+    p.imageScaleX = scale;
+    p.imageScaleY = scale;
+    p.imagePos    = {x: centreX, y: 0};
+    applyImgTransform();
+  } else {
+    // Migrate old saves that only have imageScale
+    if(!p.imageScaleX) p.imageScaleX = p.imageScale || 1;
+    if(!p.imageScaleY) p.imageScaleY = p.imageScale || 1;
     applyImgTransform();
   }
   updateGhost();
@@ -3047,7 +3196,9 @@ function applyImgTransform(){
   const bg = document.getElementById('ab-bg');
   if(!bg) return;
   const p = pages[currentPage];
-  bg.style.transform = `translate(${p.imagePos.x}px,${p.imagePos.y}px) scale(${p.imageScale})`;
+  const sx = p.imageScaleX || p.imageScale || 1;
+  const sy = p.imageScaleY || p.imageScale || 1;
+  bg.style.transform = `translate(${p.imagePos.x}px,${p.imagePos.y}px) scale(${sx},${sy})`;
   // Keep brightness in sync (img may have been re-created by renderPage)
   const img = document.getElementById('bg-img');
   if(img) img.style.filter = `brightness(${p.imageBrightness||1}) contrast(${p.imageContrast||1}) saturate(${p.imageSaturation||1})`;
@@ -3167,7 +3318,7 @@ function _showPanModeHint(){
     hint = document.createElement('div');
     hint.id = 'pan-mode-hint';
     hint.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:11px;font-weight:600;padding:8px 18px;border-radius:20px;z-index:99999;pointer-events:none;letter-spacing:.04em;white-space:nowrap;';
-    hint.textContent = '🖼 Image Pan Mode — drag image to reposition · drag corners to resize · Esc to exit';
+    hint.textContent = '🖼 Image Pan Mode — drag image to reposition · drag corners to free-stretch · drag edge dots to stretch one axis · Esc to exit';
     document.body.appendChild(hint);
   }
   clearTimeout(hint._timer);
@@ -3195,42 +3346,48 @@ function _updatePanImgHandles(){
   const img = document.getElementById('bg-img');
   if(!ab || !img) return;
   const p = pages[currentPage];
-  const imgW = (img.naturalWidth  || 0) * p.imageScale;
-  const imgH = (img.naturalHeight || 0) * p.imageScale;
-  const zoom = _zoom || 1;
-  // Image corners in artboard px
+  const sx = p.imageScaleX || p.imageScale || 1;
+  const sy = p.imageScaleY || p.imageScale || 1;
+  const imgW = (img.naturalWidth  || 0) * sx;
+  const imgH = (img.naturalHeight || 0) * sy;
+  // Image corners/edges in artboard px
   const ix = p.imagePos.x, iy = p.imagePos.y;
-  const corners = {
-    nw:{x:ix,          y:iy          },
-    ne:{x:ix+imgW,     y:iy          },
-    sw:{x:ix,          y:iy+imgH     },
-    se:{x:ix+imgW,     y:iy+imgH     },
+  const handles = {
+    nw:{x:ix,           y:iy,           cursor:'nw-resize', size:20},
+    ne:{x:ix+imgW,      y:iy,           cursor:'ne-resize', size:20},
+    sw:{x:ix,           y:iy+imgH,      cursor:'sw-resize', size:20},
+    se:{x:ix+imgW,      y:iy+imgH,      cursor:'se-resize', size:20},
+    // Mid-edge handles for axis-only stretch
+    n: {x:ix+imgW/2,    y:iy,           cursor:'n-resize',  size:16},
+    s: {x:ix+imgW/2,    y:iy+imgH,      cursor:'s-resize',  size:16},
+    e: {x:ix+imgW,      y:iy+imgH/2,    cursor:'e-resize',  size:16},
+    w: {x:ix,           y:iy+imgH/2,    cursor:'w-resize',  size:16},
   };
   // Remove old
   document.querySelectorAll('.pan-img-rh').forEach(el=>el.remove());
   // Add new handles positioned relative to artboard
-  Object.entries(corners).forEach(([corner, pos])=>{
+  Object.entries(handles).forEach(([corner, pos])=>{
     const h = document.createElement('div');
     h.className = 'pan-img-rh';
     h.dataset.corner = corner;
-    h.style.cssText = `position:absolute;width:20px;height:20px;background:#17E88F;border:2px solid #fff;border-radius:3px;z-index:300;cursor:${corner}-resize;transform:translate(-50%,-50%);left:${pos.x}px;top:${pos.y}px;box-shadow:0 2px 8px rgba(0,0,0,.5);`;
-    h.title = 'Drag to resize image';
+    const isCorner = corner.length === 2;
+    h.style.cssText = `position:absolute;width:${pos.size}px;height:${pos.size}px;background:${isCorner?'#17E88F':'#5bbf7a'};border:2px solid #fff;border-radius:${isCorner?'3px':'50%'};z-index:300;cursor:${pos.cursor};transform:translate(-50%,-50%);left:${pos.x}px;top:${pos.y}px;box-shadow:0 2px 8px rgba(0,0,0,.5);`;
+    h.title = isCorner ? 'Drag to resize (free stretch)' : 'Drag to stretch this axis';
     ab.appendChild(h);
-    // Attach resize drag to these handles using existing _imgResize logic
     h.addEventListener('mousedown', e=>{
       e.preventDefault(); e.stopPropagation();
-      const abRect = ab.getBoundingClientRect();
-      const scaleX = abRect.width  / ARTBOARD_W;
       _imgResize.active    = true;
       _imgResize.corner    = corner;
       _imgResize.origScale = p.imageScale;
+      _imgResize.origScaleX= sx;
+      _imgResize.origScaleY= sy;
       _imgResize.origX     = p.imagePos.x;
       _imgResize.origY     = p.imagePos.y;
-      _imgResize.origW     = img.naturalWidth  * p.imageScale;
-      _imgResize.origH     = img.naturalHeight * p.imageScale;
+      _imgResize.origW     = img.naturalWidth  * sx;
+      _imgResize.origH     = img.naturalHeight * sy;
       _imgResize.startX    = e.clientX;
       _imgResize.startY    = e.clientY;
-      ab.style.cursor = corner+'-resize';
+      ab.style.cursor = pos.cursor;
     });
   });
 }
@@ -3240,8 +3397,10 @@ function updateGhost(){
   const img  = document.getElementById('bg-img');
   if(!rect || !img) return;
   const p = pages[currentPage];
-  const w = (img.naturalWidth  || 0) * p.imageScale;
-  const hh= (img.naturalHeight || 0) * p.imageScale;
+  const sx = p.imageScaleX || p.imageScale || 1;
+  const sy = p.imageScaleY || p.imageScale || 1;
+  const w = (img.naturalWidth  || 0) * sx;
+  const hh= (img.naturalHeight || 0) * sy;
   rect.setAttribute('x', p.imagePos.x);
   rect.setAttribute('y', p.imagePos.y);
   rect.setAttribute('width',  w);
@@ -5257,6 +5416,8 @@ async function handleBulkUpload(input){
       pages[pageIdx].label           = pageLabel;
       pages[pageIdx].imagePos        = {x:0, y:0};
       pages[pageIdx].imageScale      = 1;
+      pages[pageIdx].imageScaleX     = 1;
+      pages[pageIdx].imageScaleY     = 1;
       pages[pageIdx].imageBrightness = 1;
       pages[pageIdx].imageContrast   = 1;
       pages[pageIdx].imageSaturation = 1;
