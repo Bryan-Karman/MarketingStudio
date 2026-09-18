@@ -5356,6 +5356,18 @@ setTool('select');
 loadProject();
 loadIconDB();
 
+// ── Option/Alt + scroll to zoom ──────────────────────────────────
+document.getElementById('canvas-area').addEventListener('wheel', e=>{
+  if(!e.altKey) return;          // only when Option/Alt is held
+  e.preventDefault();
+  const STEP = 5;                // zoom % per scroll notch
+  const delta = e.deltaY < 0 ? STEP : -STEP;
+  const slider = document.getElementById('zoom-range');
+  const newPct = Math.min(150, Math.max(10, Math.round(_zoom*100) + delta));
+  slider.value = newPct;
+  setZoom(newPct);
+}, { passive: false });
+
 // ═══════════════════════════════════════════════════════════════
 // BULK IMAGE UPLOAD — creates one page per image
 // ═══════════════════════════════════════════════════════════════
