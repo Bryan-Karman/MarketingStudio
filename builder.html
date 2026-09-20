@@ -2610,6 +2610,15 @@ function restoreTab(idx){
       } else {
         el.dataset.bullets='1';
         var _rawContent = (sv.content||'');
+        // EDM tabs (2 & 3): inject Net Income as last bodycopy line at restore time
+        if(sv.field==='bodycopy' && (idx===2 || idx===3)){
+          var _rFi = ((document.getElementById('fi')||{}).value||'').trim();
+          var _rFiPfx = _rFi ? _rFi.split(':')[0].trim().toLowerCase() : '';
+          var _rLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); }).filter(function(l){ return l.trim(); });
+          _rLines = _rLines.filter(function(l){ return !(_rFiPfx && l.toLowerCase().startsWith(_rFiPfx+':')); });
+          if(_rFi) _rLines.push(_rFi);
+          _rawContent = _rLines.join('\n');
+        }
         var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
         inner.textContent = _plainLines.join('\n');
         inner.style.whiteSpace = 'pre-wrap';
@@ -2738,6 +2747,11 @@ function restoreTab(idx){
   });
   // Re-apply template locks after restore (saved states may predate lock rules)
   applyTemplateLocks(idx);
+  // Inject income + auto-size EDM bodycopy after all restore rendering settles
+  if(idx===2||idx===3){
+    setTimeout(function(){ _edmInjectIncome(); }, 150);
+    setTimeout(function(){ if(currentTab===idx){ _edmInjectIncome(); setTimeout(repackEDMAgents,50); } }, 600);
+  }
   return true;
 }
 
@@ -2822,6 +2836,124 @@ function resetTab(){
 // ════════════════════════════════════════
 // GLOBAL SYNC (sidebar fields → elements)
 // ════════════════════════════════════════
+
+// ── EDM bodycopy: auto-size box to content & push elements below downward ──
+// _edmBaselineY stores the original y positions from the initial build,
+// so repeated calls never accumulate drift.
+var _edmBaselineY = null;
+var _edmBodycopyGrowth = 0; // tracks how much bodycopy grew/shrunk vs original 617px
+
+function edmBodycopyAutoSize(){
+  if(currentTab !== 2 && currentTab !== 3) return;
+  var art = document.getElementById('artwork');
+  var bcEl = art && art.querySelector('.el[data-field="bodycopy"]');
+  if(!bcEl) return;
+  var inner = bcEl.querySelector('.el-inner');
+  if(!inner) return;
+
+  // ── Snapshot baseline y positions on first call per EDM build ──
+  if(!_edmBaselineY){
+    _edmBaselineY = {};
+    art.querySelectorAll('.el').forEach(function(el){
+      _edmBaselineY[el.dataset.eid] = {
+        top:    parseFloat(el.style.top)    || 0,
+        height: parseFloat(el.style.height) || 0
+      };
+    });
+  }
+
+  // ── Measure natural content height via off-canvas clone ──
+  var bcW  = parseFloat(bcEl.style.width) || 541;
+  var computed = window.getComputedStyle(inner);
+
+  var measurer = document.createElement('div');
+  measurer.style.cssText = [
+    'position:fixed',
+    'visibility:hidden',
+    'pointer-events:none',
+    'top:-99999px',
+    'left:-99999px',
+    'width:' + bcW + 'px',
+    'font-size:'    + computed.fontSize,
+    'font-family:'  + computed.fontFamily,
+    'line-height:'  + computed.lineHeight,
+    'word-break:break-word',
+    'white-space:normal',
+    'box-sizing:border-box',
+    'padding:0'
+  ].join(';');
+  measurer.innerHTML = inner.innerHTML;
+  document.body.appendChild(measurer);
+  var naturalH = measurer.offsetHeight;
+  document.body.removeChild(measurer);
+
+  // Add bottom padding (one bullet-spacing gap = 17px)
+  var newH = naturalH + 34;
+
+  // ── Apply new height to bodycopy box ──
+  bcEl.style.height = newH + 'px';
+
+  // ── Push all elements below bodycopy using BASELINE positions ──
+  var bcBaseTop = _edmBaselineY[bcEl.dataset.eid] ? _edmBaselineY[bcEl.dataset.eid].top : (parseFloat(bcEl.style.top) || 0);
+  var bcBaseH   = _edmBaselineY[bcEl.dataset.eid] ? _edmBaselineY[bcEl.dataset.eid].height : 617;
+  var bcBottom  = bcBaseTop + bcBaseH; // original bottom of bodycopy box
+  var growth    = newH - bcBaseH;      // how much it grew vs original
+  _edmBodycopyGrowth = growth;          // expose for repackEDMAgents
+
+  art.querySelectorAll('.el').forEach(function(el){
+    if(el === bcEl) return;
+    var base = _edmBaselineY[el.dataset.eid];
+    if(!base) return;
+    var elBaseTop = base.top;
+    var elBaseH   = base.height;
+
+    // Push elements that originally started AT or BELOW the bodycopy bottom
+    if(elBaseTop >= bcBottom){
+      el.style.top = (elBaseTop + growth) + 'px';
+    }
+    // Expand background rect that spans the bodycopy section
+    // (starts above or at bodycopy top, extends to or past bodycopy bottom)
+    if(el.dataset.type === 'rect' && elBaseTop <= bcBaseTop && (elBaseTop + elBaseH) >= (bcBottom - 10)){
+      el.style.height = (elBaseH + growth) + 'px';
+    }
+  });
+
+  // Grow or shrink artwork canvas
+  if(!art.dataset.baseHeight) art.dataset.baseHeight = art.style.height;
+  var baseArtH = parseFloat(art.dataset.baseHeight) || 0;
+  art.style.height = (baseArtH + growth) + 'px';
+}
+
+// Reset baseline when switching away from EDM tab
+function _edmResetBaseline(){ _edmBaselineY = null; _edmBodycopyGrowth = 0; }
+
+// Directly inject Net Income into the EDM bodycopy element.
+// Reads from the sidebar fbc field (the canonical source) rather than DOM spans,
+// so it is never affected by DOM render timing or empty-span race conditions.
+function _edmInjectIncome(){
+  if(currentTab !== 2 && currentTab !== 3) return;
+  var bcEl = document.querySelector('.el[data-field="bodycopy"]');
+  if(!bcEl || bcEl.dataset.type !== 'text') return;
+  var inner = bcEl.querySelector('.el-inner');
+  if(!inner || inner.contentEditable === 'true') return;
+  var _fi = ((document.getElementById('fi')||{}).value||'').trim();
+  // Read from the sidebar fbc field — the single source of truth for body copy content
+  var _fbc = ((document.getElementById('fbc')||{}).value||'');
+  var _fiPrefix = _fi ? _fi.split(':')[0].trim().toLowerCase() : '';
+  // Build lines from fbc, strip any stale income line, append fresh income
+  var lines = _fbc.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  lines = lines.filter(function(l){ return !(_fiPrefix && l.toLowerCase().startsWith(_fiPrefix+':')); });
+  if(_fi) lines.push(_fi);
+  // Re-render as bullets
+  inner.textContent = lines.join('\n');
+  applyBullets(inner, true);
+  // Auto-size then repack agents with updated positions
+  requestAnimationFrame(function(){
+    edmBodycopyAutoSize();
+    requestAnimationFrame(repackEDMAgents);
+  });
+}
+
 function globalSync(){
   // 0. Enforce character limits on ALL fields FIRST — before reading any values
   //    This means over-limit text can never reach the canvas under any circumstance
@@ -2926,6 +3058,11 @@ function globalSync(){
           if(_fi) _bcLines.push(_fi);
           inner.textContent = _bcLines.join('\n');
           applyBullets(inner, true);
+          // Defer so applyBullets has rendered before measuring; then repack agents
+          requestAnimationFrame(function(){
+            edmBodycopyAutoSize();
+            requestAnimationFrame(repackEDMAgents);
+          });
         } else if(field === 'bodycopy' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: append income as last body copy line
           setInnerText(inner, _fi ? val + '\n' + _fi : val);
@@ -3097,7 +3234,7 @@ function globalSync(){
 
 // Called when switching to a tab — rebuilds if fields have changed since last visit
 function syncTabOnEntry(idx){
-  if(!savedStates[idx]) return; // will be built fresh — already uses current field values
+  if(!savedStates[idx]) return; // will be built fresh -- already uses current field values
   const state=savedStates[idx];
   // Walk every element and push current field values in
   state.forEach(sv=>{
@@ -3111,6 +3248,16 @@ function syncTabOnEntry(idx){
     // Salemethod: same treatment
     if(sv.field==='salemethod' && idx!==0 && idx!==1){
       val=_collapseLines(val);
+    }
+    // EDM / EDM Asian Desk (tabs 2 & 3): append Net Income as the last bodycopy line
+    if(sv.field==='bodycopy' && (idx===2 || idx===3)){
+      var _fi=((document.getElementById('fi')||{}).value||'').trim();
+      var _fiPrefix=_fi ? _fi.split(':')[0].trim().toLowerCase() : '';
+      var _lines=(val||'').split('\n');
+      // Strip any existing income line so we never duplicate it
+      _lines=_lines.filter(function(l){ return !(_fiPrefix && l.toLowerCase().startsWith(_fiPrefix+':')); });
+      if(_fi) _lines.push(_fi);
+      val=_lines.join('\n');
     }
     sv.content=val;
   });
@@ -3476,6 +3623,10 @@ function buildTemplate(idx){
   (_variantFn||_buildFns[idx])(s[0],s[1]);
   // Re-apply template locks after build
   applyTemplateLocks(idx);
+  // For EDM: clear baseline AFTER build so edmBodycopyAutoSize snapshots fresh positions
+  // (baseline was reset before build in switchTab; now elements exist, clear again so
+  //  edmBodycopyAutoSize takes the snapshot from the freshly built positions)
+  if(idx===2||idx===3) _edmBaselineY=null;
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
@@ -4924,6 +5075,8 @@ function switchTab(idx,btn){
   btn.classList.add('active');
   deselectAll();
   if(idx===9){ _renderMarketingScheduleTab(); return; }
+  // Reset EDM baseline BEFORE build/restore so snapshot is taken fresh on the new tab
+  if(idx===2||idx===3) _edmResetBaseline();
   if(savedStates[idx]&&savedStates[idx].length){ restoreTab(idx); } else { buildTemplate(idx); }
   // Apply any custom artboard size for this tab
   const _cs2 = _customSizes[idx];
@@ -4941,6 +5094,17 @@ function switchTab(idx,btn){
     setTimeout(repackEDMAgents, 120);
   }
   if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
+  // Inject income + auto-size EDM bodycopy after build + globalSync settle
+  // Two passes: 150ms for initial render, 500ms safety net after all syncAgentSlot/globalSync calls
+  if(idx===2||idx===3){
+    setTimeout(function(){ _edmInjectIncome(); }, 150);
+    setTimeout(function(){
+      if(currentTab===idx){
+        _edmInjectIncome();
+        setTimeout(repackEDMAgents, 50);
+      }
+    }, 500);
+  }
   _updateEDMHtmlBtn();
 }
 
@@ -5357,6 +5521,13 @@ function syncAgentSlot(i){
   });
   globalSync();
   repackEDMAgents();
+  // On EDM tabs, re-inject income explicitly after globalSync — the RAF inside globalSync
+  // may not have completed before other code runs, so we guarantee income is present.
+  if(currentTab===2||currentTab===3){
+    requestAnimationFrame(function(){
+      _edmInjectIncome();
+    });
+  }
   const agentField=['agent1name','agent2name','agent3name','agent4name'][i];
   const phoneField=['fp1','fp2','fp3','fp4'][i];
   const agentNum=i+1;
@@ -5563,9 +5734,23 @@ async function init(){
     applyMIHidden();
     // Final repack after everything has settled
     if(currentTab===2||currentTab===3) setTimeout(repackEDMAgents, 200);
+    // Inject Net Income + auto-size bodycopy on initial load for EDM tabs
+    // Two passes: 300ms for initial render, 700ms as a safety net after all async init (loadAgents, syncAllAgentSlots) settle
+    if(currentTab===2||currentTab===3){
+      setTimeout(_edmInjectIncome, 300);
+      setTimeout(function(){
+        if(currentTab===2||currentTab===3){
+          _edmInjectIncome();
+          setTimeout(repackEDMAgents, 50);
+        }
+      }, 700);
+    }
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
+  // Additional: re-inject income into EDM bodycopy when fi changes
+  var _fiEl = document.getElementById('fi');
+  if(_fiEl) _fiEl.addEventListener('input', function(){ if(currentTab===2||currentTab===3) setTimeout(_edmInjectIncome, 50); });
   document.querySelectorAll('#fh,#fs,#fb,#fa1,#fa2,#fm,#fd,#fbull,#fi,#fbc').forEach(el=>el.addEventListener('input',debouncedZhSync));
   document.getElementById('canvas-area').addEventListener('mouseup',debouncedPersist);
   document.getElementById('canvas-area').addEventListener('mousedown',startMarquee);
@@ -5920,7 +6105,16 @@ init().then(async()=>{
   await loadApprovalStatus();
   _updateEDMHtmlBtn(); // run after full init so currentTab is correct
   // Re-run repackEDMAgents after agents have fully settled to fix button positions
-  setTimeout(function(){ syncAllAgentSlots(); }, 400);
+  // Then re-inject income and repack to ensure everything is consistent
+  setTimeout(function(){
+    syncAllAgentSlots();
+    if(currentTab===2||currentTab===3){
+      setTimeout(function(){
+        _edmInjectIncome();
+        setTimeout(repackEDMAgents, 50);
+      }, 80);
+    }
+  }, 400);
 });
 
 // ── EDM Agent Repacking ──────────────────────────────────────────────────
@@ -5940,11 +6134,38 @@ function repackEDMAgents(){
     return nameVal.trim().length > 0 || !!slotHasAgent;
   });
 
-  // Slot base Y positions differ between EDM (tab 2) and Asian Desk (tab 3)
-  const SLOT_BASE = currentTab === 3
-    ? [2986, 3122, 3258, 3393]   // Asian Desk (600px canvas)
-    : [3006, 3147, 3289, 3430];  // Standard EDM (600px canvas)
-  const SLOT_H = currentTab === 3 ? 136 : 142;
+  // Compute agent slot 1 start Y dynamically from the actual bodycopy bottom.
+  // This is robust against baseline-snapshot timing issues — it reads the live DOM.
+  // The gap between bodycopy bottom and the "For more info" text + agents is fixed in the template.
+  // Original template: bodycopy bottom = 1871+617=2488, agent1 = 3006 → gap = 518px (Standard EDM)
+  //                    bodycopy bottom = 1871+617=2488, agent1 = 2986 → gap = 498px (Asian Desk)
+  var _bcGrowth = _edmBodycopyGrowth || 0;
+  var SLOT_H = currentTab === 3 ? 136 : 142;
+  var AGENT1_ORIG = currentTab === 3 ? 2986 : 3006; // original agent1 Y in template
+  var SLOT_ORIG_SPACING = SLOT_H; // spacing between slots is same as SLOT_H
+
+  // Try to read agent1 start Y from the live bodycopy position
+  var bcEl = art.querySelector('.el[data-field="bodycopy"]');
+  var slot1Y;
+  if(bcEl){
+    var bcTop = parseFloat(bcEl.style.top) || 0;
+    var bcH   = parseFloat(bcEl.style.height) || 617;
+    var bcBottom = bcTop + bcH;
+    // Gap from bodycopy bottom to agent1 in the original template
+    var _origBcBottom = currentTab === 3 ? 2488 : 2488; // 1871+617
+    var _gap = AGENT1_ORIG - _origBcBottom; // 518 (standard) or 498 (asian)
+    slot1Y = bcBottom + _gap;
+  } else {
+    // Fallback: use fixed SLOT_BASE + growth (original behaviour)
+    slot1Y = AGENT1_ORIG + _bcGrowth;
+  }
+
+  const SLOT_BASE = [
+    slot1Y,
+    slot1Y + SLOT_ORIG_SPACING,
+    slot1Y + SLOT_ORIG_SPACING * 2,
+    slot1Y + SLOT_ORIG_SPACING * 3
+  ];
 
   // Build packed Y positions — active slots stack from SLOT_BASE[0] down
   var packedY = [];
@@ -5994,10 +6215,12 @@ function repackEDMAgents(){
     } else if(el.dataset.agentBelow === '1'){
       // If user has manually moved this element, respect their position
       if(el.dataset.agentManualY === '1') return;
-      // Always reposition from original Y — never current top
+      // Reposition from original Y, offset by actual bodycopy growth (from live DOM) minus hidden-slot shift
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
-        el.style.top = (belowOrigY - shift) + 'px';
+        // Use the live-computed growth (slot1Y - AGENT1_ORIG) to stay in sync with agent positions
+        var _liveBcGrowth = slot1Y - AGENT1_ORIG;
+        el.style.top = (belowOrigY + _liveBcGrowth - shift) + 'px';
       }
     }
   });
