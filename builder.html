@@ -2726,6 +2726,32 @@ function restoreTab(idx){
       if(phoneEl) phoneEl.value=phone;
     });
   }
+  // For EDM tabs: tag each element with its ORIGINAL template position.
+  // We derive this by subtracting the bodycopy growth that was saved with the state.
+  // priorGrowth = savedBodycopyHeight - 617 (the original template height).
+  if(idx===2||idx===3){
+    var _art2 = document.getElementById('artwork');
+    if(_art2){
+      var _bcSv = savedStates[idx] && savedStates[idx].find(function(sv){ return sv.field==='bodycopy'; });
+      var _priorGrowth = _bcSv ? Math.max(0, parseFloat(_bcSv.h) - 617) : 0;
+      _art2.dataset.edmOrigH = (parseFloat(_art2.style.height) - _priorGrowth) + 'px';
+      _art2.querySelectorAll('.el').forEach(function(el){
+        var curT = parseFloat(el.style.top) || 0;
+        var curH = parseFloat(el.style.height) || 0;
+        var fld  = el.dataset.field || '';
+        if(fld === 'bodycopy'){
+          el.dataset.edmOrigTop = '1871'; el.dataset.edmOrigH = '617';
+        } else if(el.dataset.agentSlot || el.dataset.agentBelow === '1'){
+          // agents managed by repackEDMAgents — no edmOrigTop needed
+        } else {
+          // Subtract prior growth to recover original template Y
+          var oT = (curT - _priorGrowth >= 2488) ? (curT - _priorGrowth) : curT;
+          var oH = (el.dataset.type==='rect' && curT <= 1871 && curH > 617) ? (curH - _priorGrowth) : curH;
+          el.dataset.edmOrigTop = oT; el.dataset.edmOrigH = oH;
+        }
+      });
+    }
+  }
   // Sync all field values so combined agents, bullets etc all populate correctly
   globalSync();
   // Patch any banner elements missing bannerPad (old saves before this was tracked)
@@ -2747,10 +2773,10 @@ function restoreTab(idx){
   });
   // Re-apply template locks after restore (saved states may predate lock rules)
   applyTemplateLocks(idx);
-  // Inject income + auto-size EDM bodycopy after all restore rendering settles
+  // Inject income (also sizes bodycopy + repacks agents). Two passes for safety.
   if(idx===2||idx===3){
     setTimeout(function(){ _edmInjectIncome(); }, 150);
-    setTimeout(function(){ if(currentTab===idx){ _edmInjectIncome(); setTimeout(repackEDMAgents,50); } }, 600);
+    setTimeout(function(){ if(currentTab===idx) _edmInjectIncome(); }, 600);
   }
   return true;
 }
@@ -2837,11 +2863,11 @@ function resetTab(){
 // GLOBAL SYNC (sidebar fields → elements)
 // ════════════════════════════════════════
 
-// ── EDM bodycopy: auto-size box to content & push elements below downward ──
-// _edmBaselineY stores the original y positions from the initial build,
-// so repeated calls never accumulate drift.
-var _edmBaselineY = null;
-var _edmBodycopyGrowth = 0; // tracks how much bodycopy grew/shrunk vs original 617px
+// ── EDM layout engine: sizes bodycopy, positions every element below it ──
+// Single source of truth. Called whenever bodycopy content changes.
+// Uses ONLY hardcoded template constants + live measured content height.
+// Never depends on saved/restored DOM state or snapshot baselines.
+var _edmBodycopyGrowth = 0;
 
 function edmBodycopyAutoSize(){
   if(currentTab !== 2 && currentTab !== 3) return;
@@ -2851,107 +2877,106 @@ function edmBodycopyAutoSize(){
   var inner = bcEl.querySelector('.el-inner');
   if(!inner) return;
 
-  // ── Snapshot baseline y positions on first call per EDM build ──
-  if(!_edmBaselineY){
-    _edmBaselineY = {};
-    art.querySelectorAll('.el').forEach(function(el){
-      _edmBaselineY[el.dataset.eid] = {
-        top:    parseFloat(el.style.top)    || 0,
-        height: parseFloat(el.style.height) || 0
-      };
-    });
-  }
+  // ── Template constants (px) — never change ──
+  var BC_TOP    = 1871;
+  var BC_ORIG_H = 617;
+  var BC_BOTTOM = BC_TOP + BC_ORIG_H; // 2488 — original bottom of bodycopy
 
-  // ── Measure natural content height via off-canvas clone ──
-  var bcW  = parseFloat(bcEl.style.width) || 541;
-  var computed = window.getComputedStyle(inner);
-
-  var measurer = document.createElement('div');
-  measurer.style.cssText = [
-    'position:fixed',
-    'visibility:hidden',
-    'pointer-events:none',
-    'top:-99999px',
-    'left:-99999px',
-    'width:' + bcW + 'px',
-    'font-size:'    + computed.fontSize,
-    'font-family:'  + computed.fontFamily,
-    'line-height:'  + computed.lineHeight,
-    'word-break:break-word',
-    'white-space:normal',
-    'box-sizing:border-box',
-    'padding:0'
+  // ── Measure how tall the current content actually is ──
+  var bcW = parseFloat(bcEl.style.width) || 541;
+  var cs  = window.getComputedStyle(inner);
+  var m   = document.createElement('div');
+  m.style.cssText = [
+    'position:fixed','visibility:hidden','pointer-events:none',
+    'top:-99999px','left:-99999px',
+    'width:'+bcW+'px',
+    'font-size:'+cs.fontSize,
+    'font-family:'+cs.fontFamily,
+    'line-height:'+cs.lineHeight,
+    'word-break:break-word','white-space:normal',
+    'box-sizing:border-box','padding:0'
   ].join(';');
-  measurer.innerHTML = inner.innerHTML;
-  document.body.appendChild(measurer);
-  var naturalH = measurer.offsetHeight;
-  document.body.removeChild(measurer);
+  m.innerHTML = inner.innerHTML;
+  document.body.appendChild(m);
+  var contentH = m.offsetHeight;
+  document.body.removeChild(m);
 
-  // Add bottom padding (one bullet-spacing gap = 17px)
-  var newH = naturalH + 34;
-
-  // ── Apply new height to bodycopy box ──
+  // New bodycopy height = content + padding, minimum original size
+  var newH = Math.max(contentH + 34, BC_ORIG_H);
   bcEl.style.height = newH + 'px';
 
-  // ── Push all elements below bodycopy using BASELINE positions ──
-  var bcBaseTop = _edmBaselineY[bcEl.dataset.eid] ? _edmBaselineY[bcEl.dataset.eid].top : (parseFloat(bcEl.style.top) || 0);
-  var bcBaseH   = _edmBaselineY[bcEl.dataset.eid] ? _edmBaselineY[bcEl.dataset.eid].height : 617;
-  var bcBottom  = bcBaseTop + bcBaseH; // original bottom of bodycopy box
-  var growth    = newH - bcBaseH;      // how much it grew vs original
-  _edmBodycopyGrowth = growth;          // expose for repackEDMAgents
+  // Growth = how much taller than the original template height
+  var growth = newH - BC_ORIG_H;
+  _edmBodycopyGrowth = growth;
 
+  // ── Push every non-agent, non-bodycopy element that sits below BC_BOTTOM ──
+  // Use data-edmOrigTop (set at build/restore time) as the stable original position.
+  // If not set, fall back to current position (handles elements added after load).
   art.querySelectorAll('.el').forEach(function(el){
     if(el === bcEl) return;
-    var base = _edmBaselineY[el.dataset.eid];
-    if(!base) return;
-    var elBaseTop = base.top;
-    var elBaseH   = base.height;
+    if(el.dataset.agentSlot || el.dataset.agentBelow === '1') return; // agents handled below
 
-    // Push elements that originally started AT or BELOW the bodycopy bottom
-    if(elBaseTop >= bcBottom){
-      el.style.top = (elBaseTop + growth) + 'px';
+    var origTop = parseFloat(el.dataset.edmOrigTop);
+    var origH   = parseFloat(el.dataset.edmOrigH);
+
+    // Fallback: tag it now from current position (only correct right after fresh build)
+    if(isNaN(origTop)){
+      origTop = parseFloat(el.style.top) || 0;
+      origH   = parseFloat(el.style.height) || 0;
+      el.dataset.edmOrigTop = origTop;
+      el.dataset.edmOrigH   = origH;
     }
-    // Expand background rect that spans the bodycopy section
-    // (starts above or at bodycopy top, extends to or past bodycopy bottom)
-    if(el.dataset.type === 'rect' && elBaseTop <= bcBaseTop && (elBaseTop + elBaseH) >= (bcBottom - 10)){
-      el.style.height = (elBaseH + growth) + 'px';
+
+    if(origTop >= BC_BOTTOM){
+      el.style.top = (origTop + growth) + 'px';
+    }
+    // Stretch background rect that spans the bodycopy section
+    if(el.dataset.type === 'rect' && origTop <= BC_TOP && (origTop + origH) >= BC_BOTTOM - 10){
+      el.style.height = (origH + growth) + 'px';
     }
   });
 
-  // Grow or shrink artwork canvas
-  if(!art.dataset.baseHeight) art.dataset.baseHeight = art.style.height;
-  var baseArtH = parseFloat(art.dataset.baseHeight) || 0;
-  art.style.height = (baseArtH + growth) + 'px';
+  // ── Grow artwork canvas ──
+  var artOrigH = parseFloat(art.dataset.edmOrigH);
+  if(isNaN(artOrigH)){
+    artOrigH = parseFloat(art.style.height) || 0;
+    art.dataset.edmOrigH = artOrigH;
+  }
+  art.style.height = (artOrigH + growth) + 'px';
+
+  // ── Now reposition agents using the computed growth ──
+  repackEDMAgents();
 }
 
-// Reset baseline when switching away from EDM tab
-function _edmResetBaseline(){ _edmBaselineY = null; _edmBodycopyGrowth = 0; }
+function _edmResetBaseline(){ _edmBodycopyGrowth = 0; }
 
-// Directly inject Net Income into the EDM bodycopy element.
-// Reads from the sidebar fbc field (the canonical source) rather than DOM spans,
-// so it is never affected by DOM render timing or empty-span race conditions.
+// Inject Net Income as the last bullet in the EDM bodycopy.
+// Reads from the fbc sidebar field (canonical source). Always runs after any
+// content change. This is the ONLY place bodycopy content is written on EDM tabs.
 function _edmInjectIncome(){
   if(currentTab !== 2 && currentTab !== 3) return;
   var bcEl = document.querySelector('.el[data-field="bodycopy"]');
-  if(!bcEl || bcEl.dataset.type !== 'text') return;
+  if(!bcEl) return;
   var inner = bcEl.querySelector('.el-inner');
-  if(!inner || inner.contentEditable === 'true') return;
-  var _fi = ((document.getElementById('fi')||{}).value||'').trim();
-  // Read from the sidebar fbc field — the single source of truth for body copy content
+  if(!inner) return;
+  // Don't interrupt live inline editing of this element
+  if(inner.contentEditable === 'true') return;
+
+  var _fi  = ((document.getElementById('fi') ||{}).value||'').trim();
   var _fbc = ((document.getElementById('fbc')||{}).value||'');
-  var _fiPrefix = _fi ? _fi.split(':')[0].trim().toLowerCase() : '';
-  // Build lines from fbc, strip any stale income line, append fresh income
+  var _pfx = _fi ? _fi.split(':')[0].trim().toLowerCase() : '';
+
+  // Build canonical line list: fbc lines + income (never duplicated)
   var lines = _fbc.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-  lines = lines.filter(function(l){ return !(_fiPrefix && l.toLowerCase().startsWith(_fiPrefix+':')); });
-  if(_fi) lines.push(_fi);
-  // Re-render as bullets
+  if(_pfx) lines = lines.filter(function(l){ return !l.toLowerCase().startsWith(_pfx+':'); });
+  if(_fi)  lines.push(_fi);
+
+  // Write to DOM
   inner.textContent = lines.join('\n');
   applyBullets(inner, true);
-  // Auto-size then repack agents with updated positions
-  requestAnimationFrame(function(){
-    edmBodycopyAutoSize();
-    requestAnimationFrame(repackEDMAgents);
-  });
+
+  // Size the bodycopy box and push everything below it
+  requestAnimationFrame(function(){ edmBodycopyAutoSize(); });
 }
 
 function globalSync(){
@@ -3050,19 +3075,10 @@ function globalSync(){
           // Brochure1, Brochure2: append income as plain last line (bold applied below)
           setInnerText(inner, _fi ? val + '\n' + _fi : val);
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
-          // EDM, Asian Desk: append income as last body copy line
-          // bodycopy has bullets:'1' so setInnerText bails — rebuild lines and use applyBullets
-          var _fiPrefix2 = _fi ? _fi.split(':')[0].trim().toLowerCase() : '';
-          var _bcLines = (val||'').split('\n');
-          _bcLines = _bcLines.filter(function(l){ return !(_fiPrefix2 && l.toLowerCase().startsWith(_fiPrefix2+':')); });
-          if(_fi) _bcLines.push(_fi);
-          inner.textContent = _bcLines.join('\n');
-          applyBullets(inner, true);
-          // Defer so applyBullets has rendered before measuring; then repack agents
-          requestAnimationFrame(function(){
-            edmBodycopyAutoSize();
-            requestAnimationFrame(repackEDMAgents);
-          });
+          // EDM/Asian Desk: bodycopy is always written by _edmInjectIncome (not here).
+          // _edmInjectIncome is the single place that writes bodycopy + income on EDM tabs.
+          // Calling it via RAF ensures applyBullets has settled before measuring.
+          requestAnimationFrame(function(){ _edmInjectIncome(); });
         } else if(field === 'bodycopy' && [10,11,12,13].indexOf(currentTab) > -1){
           // Press Ads: append income as last body copy line
           setInnerText(inner, _fi ? val + '\n' + _fi : val);
@@ -3623,10 +3639,19 @@ function buildTemplate(idx){
   (_variantFn||_buildFns[idx])(s[0],s[1]);
   // Re-apply template locks after build
   applyTemplateLocks(idx);
-  // For EDM: clear baseline AFTER build so edmBodycopyAutoSize snapshots fresh positions
-  // (baseline was reset before build in switchTab; now elements exist, clear again so
-  //  edmBodycopyAutoSize takes the snapshot from the freshly built positions)
-  if(idx===2||idx===3) _edmBaselineY=null;
+  // For EDM: tag every element with its original template position NOW, before globalSync
+  // changes any heights. These tags are the authoritative source for edmBodycopyAutoSize.
+  if(idx===2||idx===3){
+    _edmBaselineY = null; // clear so autoSize re-snapshots if needed
+    var _art = document.getElementById('artwork');
+    if(_art){
+      _art.dataset.edmOrigH = _art.style.height; // record original canvas height
+      _art.querySelectorAll('.el').forEach(function(el){
+        el.dataset.edmOrigTop = el.style.top;
+        el.dataset.edmOrigH   = el.style.height;
+      });
+    }
+  }
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
 }
@@ -5089,21 +5114,15 @@ function switchTab(idx,btn){
   fitZoomToTab();
   updateEdmMetaVisibility();
   if(idx===2||idx===3){
-    // Sync agent slots so fn1/fn2 hidden inputs are populated, then repack
+    // Sync agent slots so fn1/fn2 hidden inputs are populated
     syncAllAgentSlots();
-    setTimeout(repackEDMAgents, 120);
   }
   if(idx===3) requestAnimationFrame(function(){ requestAnimationFrame(syncEDMAsianDesk); });
-  // Inject income + auto-size EDM bodycopy after build + globalSync settle
-  // Two passes: 150ms for initial render, 500ms safety net after all syncAgentSlot/globalSync calls
+  // For EDM: inject income (which also sizes bodycopy and repacks agents).
+  // Two passes: 150ms initial, 600ms safety net.
   if(idx===2||idx===3){
     setTimeout(function(){ _edmInjectIncome(); }, 150);
-    setTimeout(function(){
-      if(currentTab===idx){
-        _edmInjectIncome();
-        setTimeout(repackEDMAgents, 50);
-      }
-    }, 500);
+    setTimeout(function(){ if(currentTab===idx) _edmInjectIncome(); }, 600);
   }
   _updateEDMHtmlBtn();
 }
@@ -5520,13 +5539,12 @@ function syncAgentSlot(i){
     if(ph) ph.style.display=photo?'none':'';
   });
   globalSync();
-  repackEDMAgents();
-  // On EDM tabs, re-inject income explicitly after globalSync — the RAF inside globalSync
-  // may not have completed before other code runs, so we guarantee income is present.
+  // On EDM tabs, _edmInjectIncome is the single writer for bodycopy+income+layout.
+  // Call it in a RAF so the DOM has settled after globalSync updates agent name fields.
   if(currentTab===2||currentTab===3){
-    requestAnimationFrame(function(){
-      _edmInjectIncome();
-    });
+    requestAnimationFrame(function(){ _edmInjectIncome(); });
+  } else {
+    repackEDMAgents();
   }
   const agentField=['agent1name','agent2name','agent3name','agent4name'][i];
   const phoneField=['fp1','fp2','fp3','fp4'][i];
@@ -5732,18 +5750,11 @@ async function init(){
     }
     updateEdmCharCounts();
     applyMIHidden();
-    // Final repack after everything has settled
-    if(currentTab===2||currentTab===3) setTimeout(repackEDMAgents, 200);
-    // Inject Net Income + auto-size bodycopy on initial load for EDM tabs
-    // Two passes: 300ms for initial render, 700ms as a safety net after all async init (loadAgents, syncAllAgentSlots) settle
+    // For EDM: inject income (which also auto-sizes and repacks agents).
+    // Two passes: 250ms for initial render, 800ms safety net after all async init settles.
     if(currentTab===2||currentTab===3){
-      setTimeout(_edmInjectIncome, 300);
-      setTimeout(function(){
-        if(currentTab===2||currentTab===3){
-          _edmInjectIncome();
-          setTimeout(repackEDMAgents, 50);
-        }
-      }, 700);
+      setTimeout(_edmInjectIncome, 250);
+      setTimeout(function(){ if(currentTab===2||currentTab===3) _edmInjectIncome(); }, 800);
     }
   });
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
@@ -6104,16 +6115,10 @@ init().then(async()=>{
   startLiveSync();
   await loadApprovalStatus();
   _updateEDMHtmlBtn(); // run after full init so currentTab is correct
-  // Re-run repackEDMAgents after agents have fully settled to fix button positions
-  // Then re-inject income and repack to ensure everything is consistent
+  // After all async init settles, sync agents and re-inject income (which repacks everything).
   setTimeout(function(){
     syncAllAgentSlots();
-    if(currentTab===2||currentTab===3){
-      setTimeout(function(){
-        _edmInjectIncome();
-        setTimeout(repackEDMAgents, 50);
-      }, 80);
-    }
+    setTimeout(function(){ if(currentTab===2||currentTab===3) _edmInjectIncome(); }, 80);
   }, 400);
 });
 
@@ -6124,7 +6129,7 @@ function repackEDMAgents(){
   const art = document.getElementById('artwork');
   if(!art) return;
 
-  // An agent is "active" if their name field has a value OR their slot has an agent selected
+  // ── Determine which agent slots have content ──
   const agentActive = [0,1,2,3].map(function(i){
     var nameVal = (document.getElementById('fn'+(i+1))||{}).value||'';
     var slotHasAgent = agentSlots[i] && (
@@ -6134,53 +6139,31 @@ function repackEDMAgents(){
     return nameVal.trim().length > 0 || !!slotHasAgent;
   });
 
-  // Compute agent slot 1 start Y dynamically from the actual bodycopy bottom.
-  // This is robust against baseline-snapshot timing issues — it reads the live DOM.
-  // The gap between bodycopy bottom and the "For more info" text + agents is fixed in the template.
-  // Original template: bodycopy bottom = 1871+617=2488, agent1 = 3006 → gap = 518px (Standard EDM)
-  //                    bodycopy bottom = 1871+617=2488, agent1 = 2986 → gap = 498px (Asian Desk)
-  var _bcGrowth = _edmBodycopyGrowth || 0;
   var SLOT_H = currentTab === 3 ? 136 : 142;
-  var AGENT1_ORIG = currentTab === 3 ? 2986 : 3006; // original agent1 Y in template
-  var SLOT_ORIG_SPACING = SLOT_H; // spacing between slots is same as SLOT_H
+  var bcGrowth = _edmBodycopyGrowth || 0;
 
-  // Try to read agent1 start Y from the live bodycopy position
-  var bcEl = art.querySelector('.el[data-field="bodycopy"]');
-  var slot1Y;
-  if(bcEl){
-    var bcTop = parseFloat(bcEl.style.top) || 0;
-    var bcH   = parseFloat(bcEl.style.height) || 617;
-    var bcBottom = bcTop + bcH;
-    // Gap from bodycopy bottom to agent1 in the original template
-    var _origBcBottom = currentTab === 3 ? 2488 : 2488; // 1871+617
-    var _gap = AGENT1_ORIG - _origBcBottom; // 518 (standard) or 498 (asian)
-    slot1Y = bcBottom + _gap;
-  } else {
-    // Fallback: use fixed SLOT_BASE + growth (original behaviour)
-    slot1Y = AGENT1_ORIG + _bcGrowth;
+  // Original template agent Y positions + bodycopy growth = where slot 1 starts
+  // agentOrigY on each element is the original template Y (3006, 3008, 3054, etc.)
+  // offsetInSlot = agentOrigY - ORIG_SLOT_BASE[slot] = small fixed offset within slot
+  var ORIG_SLOT_BASE = currentTab === 3
+    ? [2986, 3122, 3258, 3393]
+    : [3006, 3147, 3289, 3430];
+
+  // Active slots pack downward from slot1's grown position
+  var packedY = [null, null, null, null];
+  var nextY = ORIG_SLOT_BASE[0] + bcGrowth;
+  for(var s = 0; s < 4; s++){
+    if(agentActive[s]){ packedY[s] = nextY; nextY += SLOT_H; }
   }
 
-  const SLOT_BASE = [
-    slot1Y,
-    slot1Y + SLOT_ORIG_SPACING,
-    slot1Y + SLOT_ORIG_SPACING * 2,
-    slot1Y + SLOT_ORIG_SPACING * 3
-  ];
-
-  // Build packed Y positions — active slots stack from SLOT_BASE[0] down
-  var packedY = [];
-  var nextY = SLOT_BASE[0];
-  for(var s=0;s<4;s++){
-    if(agentActive[s]){ packedY[s]=nextY; nextY+=SLOT_H; }
-    else { packedY[s]=null; }
-  }
-  var activeCount = agentActive.filter(Boolean).length;
-  var hiddenCount = 4 - activeCount;
+  var hiddenCount = agentActive.filter(function(a){ return !a; }).length;
   var shift = hiddenCount * SLOT_H;
 
   art.querySelectorAll('.el').forEach(function(el){
-    var field = el.dataset.field||'';
-    var ak = el.dataset.assetKey||'';
+    var field = el.dataset.field || '';
+    var ak    = el.dataset.assetKey || '';
+
+    // Identify agent slot number
     var slotNum = 0;
     if(ak==='agent1photo') slotNum=1;
     else if(ak==='agent2photo') slotNum=2;
@@ -6192,39 +6175,37 @@ function repackEDMAgents(){
     else if(field==='agent4name'||field==='agent4num') slotNum=4;
 
     if(slotNum > 0){
-      var isActive = agentActive[slotNum-1];
-      el.style.visibility = isActive ? '' : 'hidden';
-      el.style.display = isActive ? '' : 'none';
+      var isActive = agentActive[slotNum - 1];
+      el.style.visibility   = isActive ? '' : 'hidden';
+      el.style.display      = isActive ? '' : 'none';
       el.style.pointerEvents = isActive ? '' : 'none';
-      if(isActive){
-        // If user has manually moved this element, respect their position
-        if(el.dataset.agentManualY === '1') return;
-        // Always position from agentOrigY — never from current top (prevents compounding)
+      if(isActive && el.dataset.agentManualY !== '1'){
+        // origY = original template position of this element (e.g. 3006, 3008, 3054)
         var origY = parseFloat(el.dataset.agentOrigY);
         if(isNaN(origY)){
-          // Old save without agentOrigY — infer from slot base + field type offset
+          // Infer from slot base + field type
           var inferOffset = 0;
-          if(field.endsWith('num')) inferOffset = currentTab===3 ? 18 : 17;
-          else if(field.endsWith('name')) inferOffset = currentTab===3 ? 6 : 1;
-          origY = SLOT_BASE[slotNum-1] + inferOffset;
+          if(field.endsWith('num'))  inferOffset = currentTab===3 ? 18 : 17;
+          if(field.endsWith('name')) inferOffset = currentTab===3 ? 6  : 1;
+          origY = ORIG_SLOT_BASE[slotNum-1] + inferOffset;
           el.dataset.agentOrigY = origY;
         }
-        var offsetInSlot = origY - SLOT_BASE[slotNum-1];
+        // offset within slot (e.g. name is 2px from top of slot photo)
+        var offsetInSlot = origY - ORIG_SLOT_BASE[slotNum-1];
         el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
     } else if(el.dataset.agentBelow === '1'){
-      // If user has manually moved this element, respect their position
       if(el.dataset.agentManualY === '1') return;
-      // Reposition from original Y, offset by actual bodycopy growth (from live DOM) minus hidden-slot shift
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
-        // Use the live-computed growth (slot1Y - AGENT1_ORIG) to stay in sync with agent positions
-        var _liveBcGrowth = slot1Y - AGENT1_ORIG;
-        el.style.top = (belowOrigY + _liveBcGrowth - shift) + 'px';
+        // Position = original Y + bodycopy growth - space freed by hidden agents
+        el.style.top = (belowOrigY + bcGrowth - shift) + 'px';
       }
     }
   });
 }
+
+
 
 
 // ════════════════════════════════════════════════════
