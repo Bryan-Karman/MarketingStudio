@@ -3047,13 +3047,16 @@ function globalSync(){
       }
     }
   }
-  // Append income to incomeAnchor element — but NOT on EDM tabs (income goes in bodycopy there)
-  // and NOT on elements where the field link has been broken (field='')
+  // Append income to incomeAnchor element — but NOT on EDM tabs (income goes in bodycopy there),
+  // NOT on elements where the field link has been broken (field=''),
+  // and NOT on Brochure tabs (0,1) bullets field — the plain-line block below handles income there.
   if(currentTab !== 2 && currentTab !== 3){
   const _anchorEl=document.querySelector('.el[data-income-anchor="1"]:not([data-field]),.el[data-income-anchor="1"][data-field=""],.el[data-income-anchor="1"][data-field="bodycopy"],.el[data-income-anchor="1"][data-field="bullets"]');
     if(_anchorEl){
+      // Skip brochure bullets — income is appended by the plain-line render block
+      var _isAnchorBrochBullets = (_anchorEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1));
       const _aInner=_anchorEl.querySelector('.el-inner');
-      if(_aInner && _aInner.contentEditable!=='true'){
+      if(_aInner && _aInner.contentEditable!=='true' && !_isAnchorBrochBullets){
         const _fi4=((document.getElementById('fi')||{}).value||'').trim();
         const _btSpans=_aInner.querySelectorAll('span.bt');
         let _baseLines=[];
@@ -3111,8 +3114,11 @@ function globalSync(){
           // EDM: highlight points — NEVER append income here (income goes in bodycopy)
           setInnerText(inner, val);
         } else if(field === 'bullets' && [0,1].indexOf(currentTab) > -1){
-          // Brochure1, Brochure2: append income as plain last line (bold applied below)
-          setInnerText(inner, _fi ? val + '\n' + _fi : val);
+          // Brochure1, Brochure2: rendered entirely by the plain-line block below.
+          // Do NOT call setInnerText here — it collapses to pre-wrap text which
+          // the plain-line block then immediately overwrites, AND it would append
+          // income causing it to appear twice (once here, once in the block below).
+          // Fall through to the plain-line block.
         } else if(field === 'bodycopy' && [2,3].indexOf(currentTab) > -1){
           // EDM/Asian Desk: bodycopy is always written by _edmInjectIncome (not here).
           // _edmInjectIncome is the single place that writes bodycopy + income on EDM tabs.
