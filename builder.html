@@ -995,7 +995,9 @@ function createElement(cfg){
         handleRtbKeydown(ev, inner);
         if(ev.key==='Enter' && !ev.shiftKey){
           ev.preventDefault();
-          const _isBulletEl = el.dataset.bullets==='1';
+          // Never add bullet prefix on brochure Highlight Points (tabs 0,1 field 'bullets')
+          var _isBrochureBullField = (el.dataset.field==='bullets' && (currentTab===0||currentTab===1));
+          const _isBulletEl = el.dataset.bullets==='1' && !_isBrochureBullField;
           if(_isBulletEl){
             // For bullet elements: read current lines, append new bullet, re-render
             const _btSpans = inner.querySelectorAll('span.bt');
@@ -1120,16 +1122,27 @@ function createElement(cfg){
               }
               function _readLines(innerEl){
                 var bts=innerEl.querySelectorAll('span.bt');
-                if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+                if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^–\s*/,'').trim();}).filter(Boolean);
                 var pds=innerEl.querySelectorAll('div.plain-line');
-                if(pds.length) return Array.from(pds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
-                var ds=innerEl.querySelectorAll('div');
-                if(ds.length) return Array.from(ds).map(function(d){return d.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
-                return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+                if(pds.length) return Array.from(pds).map(function(d){return d.textContent.replace(/^–\s*/,'').trim();}).filter(Boolean);
+                // Use innerText directly — it preserves \n line breaks correctly.
+                // The old div-fallback (querySelectorAll('div')) lost paragraph breaks because
+                // browsers create bare <div> on Enter in contentEditable and empty lines were
+                // dropped by .filter(Boolean). innerText handles both pre-wrap \n and <div> correctly.
+                return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();});
               }
               if(fld==='bullets'||fld==='bodycopy'){
                 var _allLines = _readLines(innerEl);
-                // Check if user edited the income line — update fi if so
+                // For brochure Highlight Points (tabs 0,1 field 'bullets'):
+                // preserve paragraph breaks (including empty lines) and skip income stripping —
+                // income is not embedded in this field, it's handled separately in globalSync.
+                var _isBrochureBullBlur2 = (fld==='bullets' && (currentTab===0||currentTab===1));
+                if(_isBrochureBullBlur2){
+                  // Only strip trailing empty lines introduced by browser contentEditable
+                  while(_allLines.length && !_allLines[_allLines.length-1].trim()) _allLines.pop();
+                  return _allLines.join('\n');
+                }
+                // For all other fields: check if user edited the income line, update fi if so
                 var _fi2 = ((document.getElementById('fi')||{}).value||'').trim();
                 var _fiPrefix = _fi2.split(':')[0].trim().toLowerCase();
                 _allLines.forEach(function(l){
@@ -1149,11 +1162,18 @@ function createElement(cfg){
               var _txt2 = _readInnerText(inner, _blurField);
               _sel2.value = _txt2;
               // Save rich HTML BEFORE globalSync so setInnerText can preserve it
-              el.dataset.richHtml = inner.innerHTML;
+              // Never save richHtml for brochure bullets — it would capture span.bt elements
+              // that cause dash bullets to appear on restore. Plain-line divs are rebuilt by globalSync.
+              var _isBrochureBulletsBlur = (_blurField === 'bullets' && (currentTab === 0 || currentTab === 1));
+              if(!_isBrochureBulletsBlur) el.dataset.richHtml = inner.innerHTML;
               if(savedStates[currentTab]){
                 var _eid2 = _blurEl ? _blurEl.dataset.eid : null;
                 savedStates[currentTab].forEach(function(sv){
-                  if(sv.eid===_eid2||sv.field===_blurField){ sv.content=_txt2; sv.richHtml=inner.innerHTML; }
+                  if(sv.eid===_eid2||sv.field===_blurField){
+                    sv.content=_txt2;
+                    if(!_isBrochureBulletsBlur) sv.richHtml=inner.innerHTML;
+                    else delete sv.richHtml; // clear any stale richHtml for brochure bullets
+                  }
                 });
               }
               if(typeof clEnforce==='function') clEnforce(_sid2);
@@ -2322,6 +2342,15 @@ function deleteSelected(){
 // rgb(r,g,b) → #rrggbb
 // Apply or strip dash-bullet prefix from each line of an inner element
 function applyBullets(inner, on){
+  // Never apply bullet formatting to Brochure Highlight Points (tabs 0 & 1, field='bullets').
+  // Those elements always use plain-line divs with paragraph spacing only.
+  if(inner){
+    var _aEl = inner.closest('.el');
+    if(_aEl && _aEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1)){
+      _aEl.dataset.bullets = '0'; // self-heal in case it was wrongly set
+      return;
+    }
+  }
   if(!inner) return;
 
   // Extract lines correctly whether inner contains divs (bullet mode) or plain pre-wrap text
@@ -2511,11 +2540,18 @@ function serializeTab(){
           } else {
             obj.content = getInnerText(inner);
           }
-          if(el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
-            obj.richHtml = el.dataset.richHtml;
-          } else if(inner.innerHTML !== inner.textContent && !inner.querySelector('div.plain-line')){
-            obj.richHtml = inner.innerHTML;
-            el.dataset.richHtml = inner.innerHTML;
+          // Never save richHtml for brochure Highlight Points — plain-line divs are rebuilt by globalSync
+          var _isSerBrochBullets = (el.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1));
+          if(!_isSerBrochBullets){
+            if(el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
+              obj.richHtml = el.dataset.richHtml;
+            } else if(inner.innerHTML !== inner.textContent && !inner.querySelector('div.plain-line')){
+              obj.richHtml = inner.innerHTML;
+              el.dataset.richHtml = inner.innerHTML;
+            }
+          } else {
+            // Clear any stale richHtml that may have been saved previously
+            delete el.dataset.richHtml;
           }
         }
       }
@@ -2602,6 +2638,9 @@ function restoreTab(idx){
       var _isBrochureBulletsRestore = (sv.field === 'bullets' && (idx === 0 || idx === 1));
       if(_isBrochureBulletsRestore){
         el.dataset.bullets = '0';
+        // Clear any stale richHtml that may contain span.bt elements from old saves
+        delete el.dataset.richHtml;
+        delete sv.richHtml;
         var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
         var _rbContent = (sv.content||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); }).join('\n');
         inner.textContent = _rbContent;
@@ -3124,7 +3163,10 @@ function globalSync(){
       // EXCEPTION: Brochure tabs (0,1) bullets field uses plain-line spacing divs,
       // not applyBullets — so skip it there to prevent random dash-bullet corruption.
       if(el.dataset.bullets==='1'){
+        // Brochure bullets field (tabs 0,1) must NEVER use applyBullets — plain-line only.
+        // Force bullets to '0' here as a self-healing correction if it was set incorrectly.
         var _isBrochureBullets = (field==='bullets' && (currentTab===0||currentTab===1));
+        if(_isBrochureBullets) el.dataset.bullets = '0';
         if(!_isBrochureBullets){
           // Build bullet HTML directly from val (the sidebar textarea value).
           // Never read back from DOM — DOM content can lose \n depending on browser.
