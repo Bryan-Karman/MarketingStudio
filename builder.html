@@ -2740,12 +2740,12 @@ function restoreTab(idx){
         var curH = parseFloat(el.style.height) || 0;
         var fld  = el.dataset.field || '';
         if(fld === 'bodycopy'){
-          el.dataset.edmOrigTop = '1871'; el.dataset.edmOrigH = '617';
+          el.dataset.edmOrigTop = '1904'; el.dataset.edmOrigH = '617';
         } else if(el.dataset.agentSlot || el.dataset.agentBelow === '1'){
           // agents managed by repackEDMAgents — no edmOrigTop needed
         } else {
           // Subtract prior growth to recover original template Y
-          var oT = (curT - _priorGrowth >= 2488) ? (curT - _priorGrowth) : curT;
+          var oT = (curT - _priorGrowth >= 2521) ? (curT - _priorGrowth) : curT;
           var oH = (el.dataset.type==='rect' && curT <= 1871 && curH > 617) ? (curH - _priorGrowth) : curH;
           el.dataset.edmOrigTop = oT; el.dataset.edmOrigH = oH;
         }
@@ -2877,10 +2877,10 @@ function edmBodycopyAutoSize(){
   var inner = bcEl.querySelector('.el-inner');
   if(!inner) return;
 
-  // ── Template constants (px) — never change ──
-  var BC_TOP    = 1871;
+  // ── Template constants (px) — match buildEDM bodycopy position ──
+  var BC_TOP    = 1904;
   var BC_ORIG_H = 617;
-  var BC_BOTTOM = BC_TOP + BC_ORIG_H; // 2488 — original bottom of bodycopy
+  var BC_BOTTOM = BC_TOP + BC_ORIG_H; // 2521 — original bottom of bodycopy
 
   // ── Measure how tall the current content actually is ──
   var bcW = parseFloat(bcEl.style.width) || 541;
@@ -4172,23 +4172,23 @@ function buildBrochure2_v3(W,H){
 }
 
 function buildEDM(W,H){
-  mkR(0,0,600,1313,'rgb(1, 42, 45)',{z:1,locked:'1'});
+  mkR(0,0,600,1347,'rgb(1, 42, 45)',{z:1,locked:'1'});
   mkI(0,116,600,425,'img1','Image',{z:2});
   mkBanner(91,480,509,62,gv('fb')||'Banner Point',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'700',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',textAlign:'right',field:'banner',z:5,bannerBg:'rgb(0,63,45)',bannerPad:'21px 20px 14px'});
   mkR(34,592,8,359,'rgb(23,232,143)',{z:4,locked:'1'});
   mkT(85,583,492,184,gv('fh')||'Heading',{color:'rgb(255,255,255)',fontSize:'51px',fontFamily:'"Financier Display",Georgia,serif',lineHeight:'1.15',field:'heading',z:4,locked:'1'});
-  (function(){ var _e=mkT(82,777,495,188,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
+  (function(){ var _e=mkT(82,777,495,222,document.getElementById('fbull').value,{color:'rgb(255,255,255)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bullets',z:4,bullets:'0',bulletParaSpacing:'10',locked:'1'}); _e.dataset.bulletParaSpacing='10'; var _i=_e.querySelector('.el-inner'); if(_i){ var _lns=(document.getElementById('fbull').value||'').split('\n'); _i.innerHTML=_lns.map(function(l,ix){ var mb=(ix<_lns.length-1)?'margin-bottom:10px;':''; return '<div class="plain-line" style="display:block;'+mb+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'; }).join(''); _i.style.whiteSpace='normal'; } return _e; })();
   mkT(82,968,495,40,gv('fi')||'',{color:'rgb(255,255,255)',fontSize:'28px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:4});
   mkI(144,1016,311,130,'logo','Image',{z:4});
   mkT(34,1200,532,45,gv('fm')||'For Sale',{color:'rgb(255,255,255)',fontSize:'37px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'salemethod',z:4,locked:'1'});
-  mkT(34,1251,569,37,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4,locked:'1'});
-  mkI(0,1313,600,396,'img2','Image',{z:2});
-  mkR(0,1709,600,125,'rgb(13, 42, 45)',{z:3,locked:'1'});
-  mkR(34,1738,8,68,'rgb(23,232,143)',{z:4,locked:'1'});
-  mkT(76,1735,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4,locked:'1'});
-  mkT(76,1777,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4,locked:'1'});
-  mkR(0,1834,600,2066,'rgb(255,255,255)',{z:2,locked:'1'});
-  mkT(34,1871,541,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
+  mkT(34,1251,520,68,gv('fd')||'Day Date Time',{color:'rgb(255,255,255)',fontSize:'25px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'saledate',z:4,locked:'1'});
+  mkI(0,1346,600,396,'img2','Image',{z:2});
+  mkR(0,1742,600,125,'rgb(13, 42, 45)',{z:3,locked:'1'});
+  mkR(34,1771,8,68,'rgb(23,232,143)',{z:4,locked:'1'});
+  mkT(76,1768,507,45,gv('fa1')||'Suburb State',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:4,locked:'1'});
+  mkT(76,1810,507,40,gv('fa2')||'Address',{color:'rgb(255,255,255)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:4,locked:'1'});
+  mkR(0,1867,600,2066,'rgb(255,255,255)',{z:2,locked:'1'});
+  mkT(34,1904,541,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
   mkI(0,2493,600,368,'img3','Image',{z:2});
   mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3,locked:'1'});
   (function(){
