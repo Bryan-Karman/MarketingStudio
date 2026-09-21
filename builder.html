@@ -328,7 +328,8 @@ body.admin-mode .cl-limit-wrap{display:flex;}
         <div class="mi-di"><input type="checkbox" id="mi0" checked="" onchange="toggleMITab(0,this)"><label for="mi0">Brochure</label></div>
         <div class="mi-di"><input type="checkbox" id="mi1" onchange="toggleMITab(1,this)"><label for="mi1">Brochure 2-Page</label></div>
         <div class="mi-di"><input type="checkbox" id="mi2" checked="" onchange="toggleMITab(2,this)"><label for="mi2">EDM</label></div>
-        <div class="mi-di"><input type="checkbox" id="mi3" onchange="toggleMITab(3,this)"><label for="mi3">EDM - Asian Desk</label></div>
+        <!-- EDM - Asian Desk MI checkbox hidden until feature is ready -->
+        <div class="mi-di" style="display:none"><input type="checkbox" id="mi3" onchange="toggleMITab(3,this)"><label for="mi3">EDM - Asian Desk</label></div>
         <div class="mi-di"><input type="checkbox" id="mi5" onchange="toggleMITab(5,this)"><label for="mi5">AFR 2 Mods</label></div>
         <div class="mi-di"><input type="checkbox" id="mi6" onchange="toggleMITab(6,this)"><label for="mi6">AFR 4 Mods</label></div>
         <div class="mi-di"><input type="checkbox" id="mi10" onchange="toggleMITab(10,this)"><label for="mi10">Press Ad 10x7</label></div>
@@ -356,7 +357,8 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tab active" onclick="switchTab(0,this)">Brochure</button>
     <button class="tab" onclick="switchTab(1,this)">Brochure 2-Page</button>
     <button class="tab" onclick="switchTab(2,this)">EDM</button>
-    <button class="tab" onclick="switchTab(3,this)">EDM - Asian Desk</button>
+    <!-- EDM - Asian Desk tab hidden until feature is ready — to restore, remove the style="display:none" -->
+    <button class="tab" onclick="switchTab(3,this)" style="display:none">EDM - Asian Desk</button>
     <button class="tab" onclick="switchTab(5,this)">AFR 2 Mods</button>
     <button class="tab" onclick="switchTab(6,this)">AFR 4 Mods</button>
     <button class="tab" onclick="switchTab(10,this)">Press Ad 10x7</button>
@@ -5189,6 +5191,21 @@ const _propertyName=_qp.get('propertyName')||'Property';
 const _openedFromHub=_qp.has('portfolioId');
 const _userRole=_qp.get('userRole')||(_openedFromHub?'user':'admin');
 const LS_KEY='cbre_v5_'+_portfolioId+'_'+_propertyId;
+
+// Clean admin/personal params from the URL bar immediately after reading them.
+// This makes the URL safe to copy and share — it contains only the data needed
+// to load the project (portfolioId, propertyId, portfolioName, propertyName).
+// userRole and userName are stripped so shared links open in user mode without
+// showing the sender's name. history.replaceState does not reload the page.
+(function(){
+  var _cleanParams = new URLSearchParams();
+  if(_portfolioId && _portfolioId !== 'demo') _cleanParams.set('portfolioId', _portfolioId);
+  if(_propertyId  && _propertyId  !== 'demo') _cleanParams.set('propertyId',  _propertyId);
+  if(_portfolioName && _portfolioName !== 'Portfolio') _cleanParams.set('portfolioName', _portfolioName);
+  if(_propertyName  && _propertyName  !== 'Property')  _cleanParams.set('propertyName',  _propertyName);
+  var _cleanSearch = _cleanParams.toString() ? '?' + _cleanParams.toString() : '';
+  try{ history.replaceState(null, '', window.location.pathname + _cleanSearch); }catch(e){}
+})();
 
 (function(){
   const pp=document.getElementById('mast-port-link');
