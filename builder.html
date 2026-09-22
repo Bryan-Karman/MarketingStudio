@@ -2480,8 +2480,7 @@ function serializeTab(){
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
       field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
-      afrSaleCombo:el.dataset.afrSaleCombo||'0',
-      incomeAnchor:(el.dataset.field==='bullets'&&(currentTab===2||currentTab===3))?'0':(el.dataset.incomeAnchor||'0'),
+      afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
     };
     if(inner){
       // Ensure pre-wrap is in innerStyle if content has line breaks
@@ -2840,8 +2839,6 @@ function applyTemplateLocks(idx){
     art.querySelectorAll('.el').forEach(function(el){
       var field = el.dataset.field || '';
       var asset = el.dataset.assetKey || '';
-      // Income anchor must never be set on EDM bullets field
-      if(field === 'bullets') el.dataset.incomeAnchor = '0';
       // Banner pills: always unlocked
       if(field === 'banner' || field === 'zh_banner') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
       // Income: unlocked
@@ -3202,14 +3199,11 @@ function globalSync(){
       // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
       if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets' && inner.contentEditable !== 'true'){
         var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
+        // Use val directly (already in scope, clean newline-separated string from sidebar)
+        // rather than inner.textContent, which loses \n separators when plain-line divs
+        // are already present from a previous globalSync pass, causing lines to bunch together.
+        // For Auction (tab 8) income may be appended, so read back via getInnerText instead.
         var _val8 = (currentTab === 8) ? getInnerText(inner) : (val || '');
-        // EDM: always strip income from Highlight Points — it belongs in bodycopy only
-        if(currentTab === 2 || currentTab === 3){
-          var _fi8=((document.getElementById('fi')||{}).value||'').trim();
-          if(_fi8){var _fi8p=_fi8.split(':')[0].trim().toLowerCase();_val8=_val8.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !((_fi8p&&lc.startsWith(_fi8p+':'))||lc===_fi8.toLowerCase());}).join('\n');}
-          el.dataset.incomeAnchor='0';
-          var _fbEl=document.getElementById('fbull');if(_fbEl&&_fbEl.value!==_val8)_fbEl.value=_val8;
-        }
         var _lines8 = _val8.split('\n');
         inner.innerHTML = _lines8.map(function(l, i){
           var mb = (i < _lines8.length - 1) ? 'margin-bottom:'+_ps8+'px;' : '';
@@ -4452,7 +4446,29 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
     nextId    = 1;
     currentTab = tabIdx;
     try {
-      if(savedStates[tabIdx] && Array.isArray(savedStates[tabIdx]) && savedStates[tabIdx].length){
+      // ── EDM TABS: clone live artwork directly — it is already correct ──
+      // Rebuilding from savedStates causes income to appear in Highlight Points
+      // because sv.content may have stale data. The live DOM is always correct.
+      const _isEdmTab = (tabIdx === 2 || tabIdx === 3);
+      if(_isEdmTab && tabIdx === currentTab){
+        // EDM is the active tab — live artwork is ready, just clone it
+        const realArt = document.getElementById('artwork');
+        offscreen.style.width  = realArt.style.width;
+        offscreen.style.height = realArt.style.height;
+        offscreen.style.background = realArt.style.background || '#ffffff';
+        offscreen.innerHTML = realArt.innerHTML;
+        // Remove selection rings and handles from the clone
+        offscreen.querySelectorAll('.el-sel-ring,.rh,.crop-label,.crop-overlay,.crop-img-outline,.crop-img-rh').forEach(function(n){n.remove();});
+        offscreen.querySelectorAll('.el').forEach(function(el){el.classList.remove('selected','crop-mode','has-crop');});
+        // Hide empty agent photo boxes
+        offscreen.querySelectorAll('.el[data-asset-key^="agent"][data-asset-key$="photo"]').forEach(function(agEl){
+          if(!assets[agEl.dataset.assetKey]){
+            agEl.style.background='transparent';
+            var agIn=agEl.querySelector('.el-inner');
+            if(agIn){agIn.style.background='transparent';agIn.innerHTML='';}
+          }
+        });
+      } else if(savedStates[tabIdx] && Array.isArray(savedStates[tabIdx]) && savedStates[tabIdx].length){
         savedStates[tabIdx].forEach(sv => {
           const el = document.createElement('div');
           el.className = 'el';
@@ -4468,43 +4484,44 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           if(sv.type==='text'){
             inner.style.overflow='hidden';
             const content=sv.content!==undefined?sv.content:'';
-            var _rFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-            var _rFiPfx=_rFi?_rFi.split(':')[0].trim().toLowerCase():'';
-            // ── EDM bodycopy: dash bullets + income from sidebar (canonical source) ──
-            if((tabIdx===2||tabIdx===3)&&sv.field==='bodycopy'&&sv.bullets==='1'){
-              const sp=sv.bulletParaSpacing||'0',mb=parseFloat(sp)>0?';margin-bottom:'+sp+'px':'';
-              var _rfbc=(document.getElementById('fbc')||{}).value||'';
-              var _rLines=_rfbc.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-              if(_rFiPfx)_rLines=_rLines.filter(function(l){return !l.toLowerCase().startsWith(_rFiPfx+':');});
-              if(_rFi)_rLines.push(_rFi);
-              inner.innerHTML=_rLines.map(function(l){var t=l.startsWith('\u2013 ')?l.slice(2):l;if(!t.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+t.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
-            // ── EDM bullets/Highlight Points: plain lines, income ALWAYS stripped ──
-            } else if((tabIdx===2||tabIdx===3)&&sv.field==='bullets'){
-              var _rfbull=(document.getElementById('fbull')||{}).value||'';
-              var _rBLines=_rfbull.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_rFiPfx&&lc.startsWith(_rFiPfx+':'))&&lc!==_rFi.toLowerCase();});
-              var _rBPs=parseFloat(sv.bulletParaSpacing||'10');
-              inner.innerHTML=_rBLines.map(function(l,li){var mb2=li<_rBLines.length-1?'margin-bottom:'+_rBPs+'px;':'';return'<div class="plain-line" style="display:block;'+mb2+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';}).join('');
-              inner.style.whiteSpace='normal';
-            } else if(sv.bullets==='1'&&[8].indexOf(tabIdx)===-1){
-              const spacing=sv.bulletParaSpacing||'0',mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
+            if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+              const spacing=sv.bulletParaSpacing||'0';
+              const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
+              // Append income for AFR/Auction tabs (5,6,8) on bullets field
               var _svBVal=content;
-              if(sv.field==='bullets'&&[5,6].indexOf(tabIdx)>-1&&_rFi&&!_svBVal.trim().endsWith(_rFi))_svBVal=_svBVal?_svBVal+'\n\u2013 '+_rFi:'\u2013 '+_rFi;
-              inner.innerHTML=_svBVal.split('\n').map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+              var _svBFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+              if(sv.field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_svBFi){
+                var _alreadyHas=_svBVal.trim().endsWith(_svBFi);
+                if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
+              }
+              const lines=_svBVal.split('\n');
+              inner.innerHTML=lines.map(l=>{
+                const text=l.startsWith('\u2013 ')?l.slice(2):l;
+                if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
+                return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+              }).join('');
             } else {
               const _ps=parseFloat(sv.bulletParaSpacing||'0');
-              const _svIncome=(sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_rFi);
+              const _svFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+              const _svIncome=(sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_svFi);
+              // Income may already be in content (from serializeTab) - don't double-add
               var _svContent=content;
-              if(_svIncome&&!_svContent.trim().endsWith(_rFi))_svContent=_svContent+'\n'+_rFi;
-              if(_ps>0){inner.innerHTML=_svContent.split('\n').map(function(l,li){var isBold=_svIncome&&li===_svContent.split('\n').length-1;return'<div class="plain-line" style="display:block;margin-bottom:'+_ps+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';}).join('');}
-              else{inner.textContent=_svContent;}
+              if(_svIncome&&_svContent&&!_svContent.trim().endsWith(_svFi)){
+                _svContent=_svContent+'\n'+_svFi;
+              }
+              if(_ps>0){
+                const _svLines=_svContent.split('\n');
+                inner.innerHTML=_svLines.map(function(l,li){
+                  var isBold=_svIncome&&li===_svLines.length-1;
+                  return '<div class="plain-line" style="display:block;margin-bottom:'+_ps+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+                }).join('');
+              } else { inner.textContent=_svContent; }
             }
           } else if(sv.type==='img'){
             const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
             const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
+            inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5';
             const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
-            // ── FIX: only show grey placeholder if there IS an image to load ──
-            // Empty agent photo slots must render transparent, not grey
-            inner.style.background=(isLogo||isSvg||!src)?'transparent':'#c5ccc5';
             if(src){
               const imgEl=document.createElement('img'); imgEl.src=src; imgEl.crossOrigin='anonymous';
               const _hasRealCrop=sv.cropW&&!isLogo&&!isSvg&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0;
@@ -4519,53 +4536,40 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         const phoneMap={agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
         offscreen.querySelectorAll('.el[data-type="text"]').forEach(el=>{
           const field=el.dataset.field; if(!field||!fieldMap[field]) return;
+          // Skip standalone income for non-EDM tabs
           if(field==='income'&&[2,3].indexOf(tabIdx)===-1) return;
           var val=gv(fieldMap[field])||document.getElementById(fieldMap[field])?.value||'';
-          // ── Collapse multi-line saledate/salemethod for non-brochure tabs ──
+          // Collapse multi-line saledate/salemethod for non-brochure tabs
           if((field==='saledate'||field==='salemethod')&&tabIdx!==0&&tabIdx!==1){
             val=val.split('\n').map(function(l){return l.trim();}).filter(Boolean).join(' ');
           }
           const inner=el.querySelector('.el-inner'); if(!inner) return;
-          var _p2Fi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-          var _p2FiPfx=_p2Fi?_p2Fi.split(':')[0].trim().toLowerCase():'';
-          if(el.dataset.combinedAgent==='1'&&phoneMap[field]){
-            const phone=gv(phoneMap[field])||'';inner.textContent=phone?val+' '+phone:(val||'');
-          // ── EDM bodycopy: dash bullets + income ──
-          } else if((tabIdx===2||tabIdx===3)&&field==='bodycopy'){
-            const sp2=el.dataset.bulletParaSpacing||'0',mb2=parseFloat(sp2)>0?';margin-bottom:'+sp2+'px':'';
-            var _p2fbc=(document.getElementById('fbc')||{}).value||'';
-            var _p2Lines=_p2fbc.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-            if(_p2FiPfx)_p2Lines=_p2Lines.filter(function(l){return !l.toLowerCase().startsWith(_p2FiPfx+':');});
-            if(_p2Fi)_p2Lines.push(_p2Fi);
-            inner.innerHTML=_p2Lines.map(function(l){var t=l.startsWith('\u2013 ')?l.slice(2):l;if(!t.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb2+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+t.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
-          // ── EDM bullets/Highlight Points: plain lines, income stripped ──
-          } else if((tabIdx===2||tabIdx===3)&&field==='bullets'){
-            var _p2BLines=val.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_p2FiPfx&&lc.startsWith(_p2FiPfx+':'))&&lc!==_p2Fi.toLowerCase();});
-            var _p2BPs=parseFloat(el.dataset.bulletParaSpacing||'10');
-            inner.innerHTML=_p2BLines.map(function(l,li){var mb3=li<_p2BLines.length-1?'margin-bottom:'+_p2BPs+'px;':'';return'<div class="plain-line" style="display:block;'+mb3+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';}).join('');
-            inner.style.whiteSpace='normal';
-          } else if(el.dataset.bullets==='1'&&[8].indexOf(tabIdx)===-1){
-            const spacing=el.dataset.bulletParaSpacing||'0',mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
+          if(el.dataset.combinedAgent==='1'&&phoneMap[field]){const phone=gv(phoneMap[field])||'';inner.textContent=phone?val+' '+phone:(val||'');}
+          else if(el.dataset.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+            const spacing=el.dataset.bulletParaSpacing||'0';
+            const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
+            // Append income for AFR/Auction tabs (5,6,8) on bullets field
             var _bVal=val;
-            if(field==='bullets'&&[5,6].indexOf(tabIdx)>-1&&_p2Fi&&!_bVal.trim().endsWith(_p2Fi))_bVal=_bVal?_bVal+'\n\u2013 '+_p2Fi:'\u2013 '+_p2Fi;
-            inner.innerHTML=_bVal.split('\n').map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+            var _bFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+            if(field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_bFi){
+              _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
+            }
+            const lines=_bVal.split('\n');
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
           } else {
             const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
+            // Append income for brochure tabs (0,1) on bullets field
             var _pdfVal=val;
-            var _iib=(field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_p2Fi);
-            if(_iib&&!_pdfVal.trim().endsWith(_p2Fi))_pdfVal=_pdfVal?_pdfVal+'\n'+_p2Fi:_p2Fi;
-            if(ps2>0){inner.innerHTML=_pdfVal.split('\n').map(function(l,li){var isBold=_iib&&li===_pdfVal.split('\n').length-1;return'<div class="plain-line" style="display:block;margin-bottom:'+ps2+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';}).join('');}
-            else{inner.textContent=_pdfVal;}
-          }
-        });
-        // ── FIX: hide empty agent photo boxes so they render transparent in PDF ──
-        offscreen.querySelectorAll('.el[data-asset-key^="agent"][data-asset-key$="photo"]').forEach(function(el){
-          var ak=el.dataset.assetKey;
-          if(!assets[ak]){
-            // No photo uploaded — make invisible so no grey box appears in PDF
-            el.style.background='transparent';
-            var inner2=el.querySelector('.el-inner');
-            if(inner2){inner2.style.background='transparent';inner2.innerHTML='';}
+            var _pdfFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
+            var _isIncomeBullets=(field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_pdfFi);
+            if(_isIncomeBullets) _pdfVal=_pdfVal?_pdfVal+'\n'+_pdfFi:_pdfFi;
+            if(ps2>0){
+              const lines2=_pdfVal.split('\n');
+              inner.innerHTML=lines2.map(function(l,li){
+                var isBold=_isIncomeBullets&&li===lines2.length-1;
+                return '<div class="plain-line" style="display:block;margin-bottom:'+ps2+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+              }).join('');
+            } else { inner.textContent=_pdfVal; }
           }
         });
       } else {
@@ -4583,6 +4587,14 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         realArt.innerHTML=ph; realArt.style.width=pw; realArt.style.height=phh;
         realArt.style.background=pbg; realArt.style.transform=pt;
       }
+      // ── For all cases: hide empty agent photo boxes (no grey placeholder in PDF) ──
+      offscreen.querySelectorAll('.el[data-asset-key^="agent"][data-asset-key$="photo"]').forEach(function(agEl){
+        if(!assets[agEl.dataset.assetKey]){
+          agEl.style.background='transparent';
+          var agIn=agEl.querySelector('.el-inner');
+          if(agIn){agIn.style.background='transparent';agIn.innerHTML='';}
+        }
+      });
       // Pre-convert SVG images to PNG canvas so html2canvas can render them
       await Promise.all([...offscreen.querySelectorAll('.el[data-type="img"] img')].map(img=>new Promise(resolve=>{
         if(!img.src||!img.src.startsWith('data:image/svg')){resolve();return;}
@@ -5314,7 +5326,7 @@ function collectState(){
     customSizes:JSON.parse(JSON.stringify(_customSizes)),
     bleedSettings:JSON.parse(JSON.stringify(_bleedSettings)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
-      fbull:(function(){var _rb=document.getElementById('fbull').value||'',_cf=((document.getElementById('fi')||{}).value||'').trim();if(_cf){var _cp=_cf.split(':')[0].trim().toLowerCase();_rb=_rb.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_cp&&lc.startsWith(_cp+':'))&&lc!==_cf.toLowerCase();}).join('\n');}return _rb;})(),fbc:document.getElementById('fbc').value,
+      fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd')} };
 }
 
@@ -5344,8 +5356,7 @@ function applyState(data,skipZoom=false){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
       set('fh',f.fh);set('fs',f.fs);set('fa1',f.fa1);set('fa2',f.fa2);set('fb',f.fb);set('fi',f.fi);
-      if(f.fbull!=null){var _rFi=(f.fi||'').trim(),_rFiP=_rFi?_rFi.split(':')[0].trim().toLowerCase():'',_rB=f.fbull;if(_rFi){_rB=_rB.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_rFiP&&lc.startsWith(_rFiP+':'))&&lc!==_rFi.toLowerCase();}).join('\n');}set('fbull',_rB);}
-      set('fbc',f.fbc);set('fm',f.fm);set('fd',f.fd);
+      set('fbull',f.fbull);set('fbc',f.fbc);set('fm',f.fm);set('fd',f.fd);
     }
     if(!skipZoom&&data.zoom){document.getElementById('zoom-range').value=data.zoom;setZoom(data.zoom);}
     if(data.currentTab!=null){ currentTab=parseInt(data.currentTab)||0; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab)); }
