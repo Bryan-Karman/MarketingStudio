@@ -2547,10 +2547,19 @@ function serializeTab(){
           }
         }
       }
-      // Store img src: prefer assets store (always up to date), fall back to element src
+      // Store img src: ALWAYS use assets store for keyed slots.
+      // NEVER fall back to img.src for keyed slots — img.src can be stale/wrong
+      // (e.g. containing a logo URL in a hero image slot) causing self-reinforcing corruption.
+      // Only unkeyed elements (assetKey='') fall back to img.src.
       if(el.dataset.type==='img'){
-        obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
-        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey; // track logo identity
+        if(ak && assets[ak]){
+          obj.imgSrc = assets[ak];          // keyed + uploaded: use assets store
+        } else if(ak && !assets[ak]){
+          obj.imgSrc = '';                  // keyed but not uploaded: save empty, not img.src
+        } else {
+          obj.imgSrc = img ? img.src : '';  // unkeyed (manually placed): use img.src
+        }
+        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey;
         // Save crop state if image has been cropped
         if(img && img.dataset.cropW){
           obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY;
@@ -2705,7 +2714,7 @@ function restoreTab(idx){
           el.dataset.svgKey=sv.svgKey;
         }
       } else {
-      // Use assets store as source of truth, fall back to saved imgSrc
+      // Use assets store as truth for keyed slots — sv.imgSrc may be stale/corrupted
       const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : (!sv.assetKey ? sv.imgSrc : '');
       if(src){
         if(img){
@@ -2839,7 +2848,8 @@ function applyTemplateLocks(idx){
     art.querySelectorAll('.el').forEach(function(el){
       var field = el.dataset.field || '';
       var asset = el.dataset.assetKey || '';
-      if(field === 'bullets') el.dataset.incomeAnchor = '0';
+      if(field==='bullets') el.dataset.incomeAnchor='0';
+      // Banner pills: always unlocked
       if(field === 'banner' || field === 'zh_banner') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
       // Income: unlocked
       if(field === 'income' || field === 'zh_income') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
@@ -3197,14 +3207,16 @@ function globalSync(){
       // Skip re-render while the element is actively being edited inline — the editor
       // manages the DOM with pre-wrap + \n text nodes, and re-rendering plain-line divs
       // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
-      if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets' && inner.contentEditable !== 'true'){
-        var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
-        // Use val directly (already in scope, clean newline-separated string from sidebar)
-        // rather than inner.textContent, which loses \n separators when plain-line divs
-        // are already present from a previous globalSync pass, causing lines to bunch together.
-        // For Auction (tab 8) income may be appended, so read back via getInnerText instead.
-        var _val8 = (currentTab === 8) ? getInnerText(inner) : (val || '');
-        var _lines8 = _val8.split('\n');
+      if((currentTab===2||currentTab===3||currentTab===8)&&field==='bullets'&&inner.contentEditable!=='true'){
+        var _ps8=parseFloat(el.dataset.bulletParaSpacing||'10');
+        var _val8=(currentTab===8)?getInnerText(inner):(val||'');
+        if(currentTab===2||currentTab===3){
+          var _fi8=((document.getElementById('fi')||{}).value||'').trim();
+          if(_fi8){var _pfx8=_fi8.split(':')[0].trim().toLowerCase();_val8=_val8.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !((_pfx8&&lc.startsWith(_pfx8+':'))||lc===_fi8.toLowerCase());}).join('\n');}
+          el.dataset.incomeAnchor='0';
+          var _fbEl=document.getElementById('fbull');if(_fbEl&&_fbEl.value!==_val8)_fbEl.value=_val8;
+        }
+        var _lines8=_val8.split('\n');
         inner.innerHTML = _lines8.map(function(l, i){
           var mb = (i < _lines8.length - 1) ? 'margin-bottom:'+_ps8+'px;' : '';
           return '<div class="plain-line" style="display:block;'+mb+'">' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>';
@@ -5349,6 +5361,20 @@ function applyState(data,skipZoom=false){
     if(data.edmLinkPortfolio!=null){ const el=document.getElementById('fedm-link-portfolio'); if(el) el.value=data.edmLinkPortfolio; }
     if(data.edmLinkIMSubject!=null){ const el=document.getElementById('fedm-link-im-subject'); if(el) el.value=data.edmLinkIMSubject; }
     updateEdmCharCounts();
+    // ── Heal corrupted imgSrc in saved states ──
+    // For keyed slots (img1, logo2 etc), imgSrc must match assets[key].
+    // If it doesn't (stale URL from old bug), fix it now so PDF export uses correct image.
+    if(data.tabLayouts){
+      Object.values(data.tabLayouts).forEach(function(tabState){
+        if(!Array.isArray(tabState)) return;
+        tabState.forEach(function(sv){
+          if(sv.type !== 'img' || !sv.assetKey) return;
+          const _correctSrc = (data.assets && data.assets[sv.assetKey]) || assets[sv.assetKey] || '';
+          if(!_correctSrc){ sv.imgSrc = ''; }
+          else if(sv.imgSrc && sv.imgSrc !== _correctSrc){ sv.imgSrc = _correctSrc; }
+        });
+      });
+    }
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
@@ -5543,61 +5569,37 @@ function loadAsset(e,key){
 }
 
 let _persistTimer=null;
-let _lastUserActivityTime = 0;
-let _lastSaveCompletedTime = 0;
-let _lastSaveAttemptTime = 0;
-let _pendingSaveState = null;   // holds state that failed to save, for retry
-let _saveRetryTimer = null;
+let _lastUserActivityTime=0, _lastSaveCompletedTime=0, _lastSaveAttemptTime=0;
+let _pendingSaveState=null, _saveRetryTimer=null;
+const USER_BUSY_WINDOW_MS=2000, POST_SAVE_WINDOW_MS=4000, SAVE_RETRY_DELAY_MS=3000;
 
-const USER_BUSY_WINDOW_MS = 2000;  // block sync for 2s after any user activity
-const POST_SAVE_WINDOW_MS = 4000;  // block sync for 4s after a save completes
-const SAVE_RETRY_DELAY_MS = 3000;  // retry a failed save after 3s
-
-function _markUserActivity(){ _lastUserActivityTime = Date.now(); }
+function _markUserActivity(){ _lastUserActivityTime=Date.now(); }
 document.addEventListener('keydown',   _markUserActivity, true);
 document.addEventListener('mousedown', _markUserActivity, true);
 document.addEventListener('input',     _markUserActivity, true);
 
 async function _doSave(state){
-  // Save to localStorage FIRST — this is the safety net that survives failed network saves
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
-  _lastSaveAttemptTime = Date.now();
-  const serverTs = await supabaseSave(state);
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){}
+  _lastSaveAttemptTime=Date.now();
+  const serverTs=await supabaseSave(state);
   if(serverTs){
-    _lastKnownUpdatedAt = serverTs;
-    _lastSaveCompletedTime = Date.now();
-    _pendingSaveState = null;  // save succeeded — clear pending retry
-    clearTimeout(_saveRetryTimer);
-    setCdtStatus('saved','Saved ✓');
-    return true;
+    _lastKnownUpdatedAt=serverTs; _lastSaveCompletedTime=Date.now();
+    _pendingSaveState=null; clearTimeout(_saveRetryTimer);
+    setCdtStatus('saved','Saved ✓'); return true;
   } else {
-    // Save failed — keep the state queued for retry
-    _pendingSaveState = state;
+    _pendingSaveState=state;
     setCdtStatus('error','Save failed — retrying…');
-    // Schedule a retry in 3 seconds
     clearTimeout(_saveRetryTimer);
-    _saveRetryTimer = setTimeout(async function(){
-      if(_pendingSaveState){
-        setCdtStatus('saving','Retrying save…');
-        // Re-collect state in case more changes happened since the failed save
-        const retryState = collectState();
-        const ok = await _doSave(retryState);
-        if(!ok) setCdtStatus('error','Save failed — will retry');
-      }
+    _saveRetryTimer=setTimeout(async function(){
+      if(_pendingSaveState){ setCdtStatus('saving','Retrying save…'); await _doSave(collectState()); }
     }, SAVE_RETRY_DELAY_MS);
     return false;
   }
 }
 
 function debouncedPersist(){
-  clearTimeout(_persistTimer);
-  _markUserActivity();
-  setCdtStatus('saving','Saving…');
-  _persistTimer = setTimeout(async()=>{
-    _persistTimer = null;
-    const state = collectState();
-    await _doSave(state);
-  }, 500);
+  clearTimeout(_persistTimer); _markUserActivity(); setCdtStatus('saving','Saving…');
+  _persistTimer=setTimeout(async()=>{ _persistTimer=null; await _doSave(collectState()); },500);
 }
 function persistAll(){ debouncedPersist(); }
 function saveTab(){ debouncedPersist(); }
@@ -5962,21 +5964,11 @@ async function init(){
     ca.scrollTop  = mouseY * ratio - (e.clientY - caRect.top);
   }, { passive: false });
   window.addEventListener('beforeunload',()=>{
-    clearTimeout(_persistTimer);
-    clearTimeout(_saveRetryTimer);
-    const state = collectState();
-    // Always save to localStorage on close — this is the last line of defence
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
-    // If there was a pending failed save, attempt one final synchronous-style save
-    // (navigator.sendBeacon is fire-and-forget but at least reaches the server)
-    if(_pendingSaveState !== null || _persistTimer !== null){
-      try{
-        const body = {portfolio_id:_portfolioId, property_id:_propertyId, state_json:JSON.stringify(state), updated_at:new Date().toISOString()};
-        navigator.sendBeacon && navigator.sendBeacon(
-          `${SUPA_URL}/rest/v1/projects`,
-          new Blob([JSON.stringify(body)], {type:'application/json'})
-        );
-      }catch(e){}
+    clearTimeout(_persistTimer); clearTimeout(_saveRetryTimer);
+    const state=collectState();
+    try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){}
+    if(_pendingSaveState!==null||_persistTimer!==null){
+      try{ const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:JSON.stringify(state),updated_at:new Date().toISOString()}; navigator.sendBeacon&&navigator.sendBeacon(`${SUPA_URL}/rest/v1/projects`,new Blob([JSON.stringify(body)],{type:'application/json'})); }catch(e){}
     }
   });
 }
@@ -6095,62 +6087,37 @@ let _liveSyncTimer=null,_toastTimer=null;
 function showSyncToast(msg){const t=document.getElementById('live-sync-toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
 
 function isUserBusy(){
-  const now = Date.now();
-  // Block if user was active within last 2 seconds
-  if(now - _lastUserActivityTime < USER_BUSY_WINDOW_MS) return true;
-  // Block if a save completed within last 4 seconds (let Supabase propagate)
-  if(now - _lastSaveCompletedTime < POST_SAVE_WINDOW_MS) return true;
-  // Block if a save is currently pending or in-flight
-  if(_persistTimer !== null) return true;
-  // Block if we have a failed save waiting to retry — DO NOT sync over unsynced data
-  if(_pendingSaveState !== null) return true;
-  // Block if a sidebar input or canvas text element is being edited
-  const active = document.activeElement;
-  if(active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA') && active.closest('.sb')) return true;
-  if(active && active.contentEditable==='true') return true;
+  const now=Date.now();
+  if(now-_lastUserActivityTime<USER_BUSY_WINDOW_MS)return true;
+  if(now-_lastSaveCompletedTime<POST_SAVE_WINDOW_MS)return true;
+  if(_persistTimer!==null)return true;
+  if(_pendingSaveState!==null)return true;
+  const active=document.activeElement;
+  if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;
+  if(active&&active.contentEditable==='true')return true;
   return false;
 }
 
 async function liveSyncTick(){
-  if(isUserBusy()) return;
+  if(isUserBusy())return;
   try{
     const checkUrl=`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
     const checkRes=await fetch(checkUrl,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
-    if(!checkRes.ok) return;
-    const checkRows=await checkRes.json(); if(!checkRows||!checkRows.length) return;
-    const remoteTs=checkRows[0].updated_at; if(remoteTs===_lastKnownUpdatedAt) return;
+    if(!checkRes.ok)return;
+    const checkRows=await checkRes.json(); if(!checkRows||!checkRows.length)return;
+    const remoteTs=checkRows[0].updated_at; if(remoteTs===_lastKnownUpdatedAt)return;
     if(!_lastKnownUpdatedAt){_lastKnownUpdatedAt=remoteTs;return;}
-    // Re-check busy — network fetch takes time, user may have started editing
-    if(isUserBusy()) return;
-
-    // ── SAFETY CHECK: never overwrite local changes that haven't reached Supabase ──
-    // Compare localStorage save time against the remote timestamp.
-    // If our localStorage is newer than what we're about to load, our local data
-    // is the truth — push it to Supabase instead of pulling the old server state.
-    try{
-      const _localRaw = localStorage.getItem(LS_KEY);
-      if(_localRaw){
-        const _localData = JSON.parse(_localRaw);
-        // If we have local data and a pending save, push local data instead of pulling remote
-        if(_pendingSaveState !== null){
-          setCdtStatus('saving','Recovering unsaved changes…');
-          await _doSave(collectState());
-          return;
-        }
-      }
-    }catch(e){}
-
-    const result=await supabaseLoad(); if(!result) return;
-    if(isUserBusy()) return;  // final check before applying
-    const prevTab=currentTab;
-    applyState(result.state,true);
-    currentTab=prevTab;
+    if(isUserBusy())return;
+    // Never overwrite if we have a pending failed save
+    if(_pendingSaveState!==null){ setCdtStatus('saving','Recovering unsaved changes…'); await _doSave(collectState()); return; }
+    const result=await supabaseLoad(); if(!result)return;
+    if(isUserBusy())return;
+    const prevTab=currentTab; applyState(result.state,true); currentTab=prevTab;
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
-    if(savedStates[prevTab]) restoreTab(prevTab); else buildTemplate(prevTab);
+    if(savedStates[prevTab])restoreTab(prevTab);else buildTemplate(prevTab);
     CL_FIELD_IDS.forEach(id=>clEnforce(id));
     _lastKnownUpdatedAt=result.updatedAt||remoteTs;
-    setCdtStatus('saved','Saved ✓');
-    showSyncToast('↻ Updated by another user');
+    setCdtStatus('saved','Saved ✓'); showSyncToast('↻ Updated by another user');
   }catch(e){console.warn('[CBRE] Live sync error:',e);}
 }
 function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
@@ -6199,16 +6166,9 @@ document.addEventListener('paste', function(e){
 
   // Flag that this input event is from a paste so _inlineInputHandler
   // knows to sync managed fields (bullets/bodycopy) back to the sidebar.
-  inner._fromPaste = true;
-  inner.dispatchEvent(new Event('input'));
-  if(inner._inlineInputHandler) inner._inlineInputHandler();
-  // Update the props panel Text Content textarea immediately
-  var _pasteEl2 = inner.closest('.el');
-  if(_pasteEl2 && !_pasteEl2.dataset.field){
-    var _ppt = document.querySelector('#props-content textarea');
-    if(_ppt) _ppt.value = getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ');
-  }
-}, true);
+  inner._fromPaste=true; inner.dispatchEvent(new Event('input')); if(inner._inlineInputHandler)inner._inlineInputHandler();
+  var _pEl=inner.closest('.el');if(_pEl&&!_pEl.dataset.field){var _ppt=document.querySelector('#props-content textarea');if(_ppt)_ppt.value=getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ');}
+},true);
 
 // ── Artboard paste for locked bullets/bodycopy elements ──────────────────
 document.addEventListener('keydown', function(e){
@@ -6760,21 +6720,14 @@ function restoreSelectionRange(){
 
 function rtCmd(cmd){
   restoreSelectionRange();
-  if(cmd === 'removeFormat'){
-    const sel = window.getSelection();
-    if(sel && sel.rangeCount > 0){
-      const range = sel.getRangeAt(0);
-      const inner = selectedEl && selectedEl.querySelector('.el-inner');
-      if(inner){ inner.querySelectorAll('sup').forEach(function(sup){ if(range.intersectsNode(sup)){ sup.replaceWith(document.createTextNode(sup.textContent)); } }); }
-    }
-  }
-  document.execCommand(cmd, false, null);
+  if(cmd==='removeFormat'){const sel=window.getSelection();if(sel&&sel.rangeCount>0){const range=sel.getRangeAt(0);const inner=selectedEl&&selectedEl.querySelector('.el-inner');if(inner){inner.querySelectorAll('sup').forEach(function(sup){if(range.intersectsNode(sup))sup.replaceWith(document.createTextNode(sup.textContent));});}}}
+  document.execCommand(cmd,false,null);
   if(selectedEl){
-    const inner = selectedEl.querySelector('.el-inner');
+    const inner=selectedEl.querySelector('.el-inner');
     if(inner){
-      const _rtHtml = inner.innerHTML;
-      if(_rtHtml && _rtHtml !== inner.textContent){
-        selectedEl.dataset.richHtml = _rtHtml;
+      const _rtHtml=inner.innerHTML;
+      if(_rtHtml&&_rtHtml!==inner.textContent){
+        selectedEl.dataset.richHtml=_rtHtml;
         const _eid=selectedEl.dataset.eid,_st=savedStates[currentTab];
         if(_st&&_eid)_st.forEach(function(sv){if(sv.eid===_eid){sv.richHtml=_rtHtml;sv.content=getInnerText(inner);}});
       } else if(cmd==='removeFormat'){
@@ -6782,7 +6735,7 @@ function rtCmd(cmd){
         const _eid2=selectedEl.dataset.eid,_st2=savedStates[currentTab];
         if(_st2&&_eid2)_st2.forEach(function(sv){if(sv.eid===_eid2)delete sv.richHtml;});
       }
-      if(inner._inlineInputHandler) inner._inlineInputHandler();
+      if(inner._inlineInputHandler)inner._inlineInputHandler();
     }
   }
   debouncedPersist();
