@@ -2547,16 +2547,14 @@ function serializeTab(){
           }
         }
       }
-      // Store img src: prefer assets store (always up to date)
-      // For keyed slots (img1, logo etc), imgSrc = assets[key] so PDF renderer always has the right URL.
-      // For unkeyed elements (manually placed, no assetKey), fall back to the img element's src.
+      // Store img src: keyed slots always use assets store; unkeyed use element src
       if(el.dataset.type==='img'){
         if(ak && assets[ak]){
-          obj.imgSrc = assets[ak]; // always use assets store for keyed slots
+          obj.imgSrc = assets[ak];
         } else if(!ak){
-          obj.imgSrc = img ? img.src : ''; // unkeyed: use element src
+          obj.imgSrc = img ? img.src : '';
         } else {
-          obj.imgSrc = ''; // keyed but not yet uploaded — don't save a stale src
+          obj.imgSrc = '';
         }
         if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey;
         // Save crop state if image has been cropped
@@ -2847,6 +2845,7 @@ function applyTemplateLocks(idx){
     art.querySelectorAll('.el').forEach(function(el){
       var field = el.dataset.field || '';
       var asset = el.dataset.assetKey || '';
+      if(field === 'bullets') el.dataset.incomeAnchor = '0';
       // Banner pills: always unlocked
       if(field === 'banner' || field === 'zh_banner') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
       // Income: unlocked
@@ -3207,11 +3206,13 @@ function globalSync(){
       // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
       if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets' && inner.contentEditable !== 'true'){
         var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
-        // Use val directly (already in scope, clean newline-separated string from sidebar)
-        // rather than inner.textContent, which loses \n separators when plain-line divs
-        // are already present from a previous globalSync pass, causing lines to bunch together.
-        // For Auction (tab 8) income may be appended, so read back via getInnerText instead.
         var _val8 = (currentTab === 8) ? getInnerText(inner) : (val || '');
+        if(currentTab === 2 || currentTab === 3){
+          var _fi8=((document.getElementById('fi')||{}).value||'').trim();
+          if(_fi8){var _pfx8=_fi8.split(':')[0].trim().toLowerCase();_val8=_val8.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !((_pfx8&&lc.startsWith(_pfx8+':'))||lc===_fi8.toLowerCase());}).join('\n');}
+          el.dataset.incomeAnchor='0';
+          var _fbEl=document.getElementById('fbull');if(_fbEl&&_fbEl.value!==_val8)_fbEl.value=_val8;
+        }
         var _lines8 = _val8.split('\n');
         inner.innerHTML = _lines8.map(function(l, i){
           var mb = (i < _lines8.length - 1) ? 'margin-bottom:'+_ps8+'px;' : '';
@@ -4528,7 +4529,6 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           } else if(sv.type==='img'){
             const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
             const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
-            // Use assets store as truth for keyed slots; only fall back to imgSrc for unkeyed elements
             const src = (sv.assetKey && assets[sv.assetKey])
               ? assets[sv.assetKey]
               : (!sv.assetKey ? (sv.imgSrc||'') : '');
@@ -4873,9 +4873,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
   // Pre-rasterise images in parallel
   const imgJobs=sorted.filter(sv=>sv.type==='img').map(async sv=>{
-    // ── FIX: always use assets store for keyed slots (img1, logo, etc).
-    // sv.imgSrc can be stale/corrupted (e.g. containing a different asset's URL).
-    // Only fall back to sv.imgSrc for unkeyed elements (assetKey is empty).
+    // Always use assets store for keyed slots — sv.imgSrc can be stale/corrupted
     const src = (sv.assetKey && assets[sv.assetKey])
       ? assets[sv.assetKey]
       : (!sv.assetKey ? (sv.imgSrc||'') : '');
@@ -5342,7 +5340,7 @@ function collectState(){
     customSizes:JSON.parse(JSON.stringify(_customSizes)),
     bleedSettings:JSON.parse(JSON.stringify(_bleedSettings)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
-      fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
+      fbull:(function(){var _rb=document.getElementById('fbull').value||'',_cf=((document.getElementById('fi')||{}).value||'').trim();if(_cf){var _cp=_cf.split(':')[0].trim().toLowerCase();_rb=_rb.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_cp&&lc.startsWith(_cp+':'))&&lc!==_cf.toLowerCase();}).join('\n');}return _rb;})(),fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd')} };
 }
 
@@ -5372,7 +5370,8 @@ function applyState(data,skipZoom=false){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
       set('fh',f.fh);set('fs',f.fs);set('fa1',f.fa1);set('fa2',f.fa2);set('fb',f.fb);set('fi',f.fi);
-      set('fbull',f.fbull);set('fbc',f.fbc);set('fm',f.fm);set('fd',f.fd);
+      if(f.fbull!=null){var _rFi=(f.fi||'').trim(),_rFiP=_rFi?_rFi.split(':')[0].trim().toLowerCase():'',_rB=f.fbull;if(_rFi){_rB=_rB.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_rFiP&&lc.startsWith(_rFiP+':'))&&lc!==_rFi.toLowerCase();}).join('\n');}set('fbull',_rB);}
+      set('fbc',f.fbc);set('fm',f.fm);set('fd',f.fd);
     }
     if(!skipZoom&&data.zoom){document.getElementById('zoom-range').value=data.zoom;setZoom(data.zoom);}
     if(data.currentTab!=null){ currentTab=parseInt(data.currentTab)||0; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab)); }
@@ -5558,18 +5557,14 @@ function loadAsset(e,key){
 }
 
 let _persistTimer=null;
-// Track the last time the user did anything (keydown, click, input)
-// and the last time a save completed — live sync will not fire within these windows.
 let _lastUserActivityTime = 0;
 let _lastSaveCompletedTime = 0;
-const USER_BUSY_WINDOW_MS = 2000;  // block sync for 2s after any user activity
-const POST_SAVE_WINDOW_MS = 3000;  // block sync for 3s after a save completes
-
+const USER_BUSY_WINDOW_MS = 2000;
+const POST_SAVE_WINDOW_MS = 3000;
 function _markUserActivity(){ _lastUserActivityTime = Date.now(); }
 document.addEventListener('keydown',   _markUserActivity, true);
 document.addEventListener('mousedown', _markUserActivity, true);
 document.addEventListener('input',     _markUserActivity, true);
-
 function debouncedPersist(){
   clearTimeout(_persistTimer);
   _markUserActivity();
@@ -5578,14 +5573,10 @@ function debouncedPersist(){
     const state=collectState();
     try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
     const serverTs=await supabaseSave(state);
-    if(serverTs){
-      _lastKnownUpdatedAt=serverTs;
-      _lastSaveCompletedTime=Date.now(); // mark save completion time
-      setCdtStatus('saved','Saved ✓');
-    }
+    if(serverTs){_lastKnownUpdatedAt=serverTs;_lastSaveCompletedTime=Date.now();setCdtStatus('saved','Saved ✓');}
     else{setCdtStatus('error','Local only');}
     _persistTimer=null;
-  },500); // reduced from 1000ms to 500ms for faster saves
+  },500);
 }
 function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
@@ -6066,16 +6057,11 @@ let _liveSyncTimer=null,_toastTimer=null;
 function showSyncToast(msg){const t=document.getElementById('live-sync-toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
 function isUserBusy(){
   const now = Date.now();
-  // Block if user was active within the last 2 seconds
   if(now - _lastUserActivityTime < USER_BUSY_WINDOW_MS) return true;
-  // Block if a save completed within the last 3 seconds (let Supabase propagate)
   if(now - _lastSaveCompletedTime < POST_SAVE_WINDOW_MS) return true;
-  // Block if a save is currently pending
   if(_persistTimer !== null) return true;
-  // Block if a sidebar input is focused
   const active=document.activeElement;
   if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;
-  // Block if a canvas text element is being edited inline
   if(active&&active.contentEditable==='true')return true;
   return false;
 }
@@ -6148,6 +6134,18 @@ document.addEventListener('paste', function(e){
   inner._fromPaste = true;
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
+
+  // ── Update the props panel "Text Content" textarea immediately after paste ──
+  // The textarea is rendered once by showProps and won't update unless we push to it.
+  var _pastePropsTextarea = document.querySelector('#props-content textarea');
+  if(_pastePropsTextarea){
+    var _pasteText = getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ');
+    // Only update if this textarea drives the canvas element (not a sidebar field textarea)
+    var _pasteEl = inner.closest('.el');
+    if(_pasteEl && !_pasteEl.dataset.field){
+      _pastePropsTextarea.value = _pasteText;
+    }
+  }
 }, true);
 
 // ── Artboard paste for locked bullets/bodycopy elements ──────────────────
@@ -6720,9 +6718,39 @@ function rtCmd(cmd){
   if(selectedEl){
     const inner = selectedEl.querySelector('.el-inner');
     if(inner){
+      // ── Immediately save richHtml to savedStates so bold/italic survive refresh ──
+      // el.dataset.richHtml is the live-DOM guard that prevents globalSync overwriting.
+      // sv.richHtml in savedStates is what gets serialized and restored on reload.
+      // We must set both right now — not wait for blur — because globalSync can fire
+      // between rtCmd and the blur, and would overwrite if richHtml isn't already set.
+      const _rtHtml = inner.innerHTML;
+      if(_rtHtml && _rtHtml !== inner.textContent){
+        selectedEl.dataset.richHtml = _rtHtml;
+        const _eid = selectedEl.dataset.eid;
+        const _state = savedStates[currentTab];
+        if(_state && _eid){
+          _state.forEach(function(sv){
+            if(sv.eid === _eid){
+              sv.richHtml = _rtHtml;
+              sv.content  = getInnerText(inner);
+            }
+          });
+        }
+      } else if(cmd === 'removeFormat'){
+        // Formatting cleared — remove richHtml so globalSync can manage it again
+        delete selectedEl.dataset.richHtml;
+        const _eid2 = selectedEl.dataset.eid;
+        const _state2 = savedStates[currentTab];
+        if(_state2 && _eid2){
+          _state2.forEach(function(sv){
+            if(sv.eid === _eid2) delete sv.richHtml;
+          });
+        }
+      }
       if(inner._inlineInputHandler) inner._inlineInputHandler();
     }
   }
+  debouncedPersist();
 }
 
 // Unicode superscript character map
