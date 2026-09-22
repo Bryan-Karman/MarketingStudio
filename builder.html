@@ -2547,16 +2547,10 @@ function serializeTab(){
           }
         }
       }
-      // Store img src: keyed slots always use assets store; unkeyed use element src
+      // Store img src: prefer assets store (always up to date), fall back to element src
       if(el.dataset.type==='img'){
-        if(ak && assets[ak]){
-          obj.imgSrc = assets[ak];
-        } else if(!ak){
-          obj.imgSrc = img ? img.src : '';
-        } else {
-          obj.imgSrc = '';
-        }
-        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey;
+        obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
+        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey; // track logo identity
         // Save crop state if image has been cropped
         if(img && img.dataset.cropW){
           obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY;
@@ -2711,7 +2705,7 @@ function restoreTab(idx){
           el.dataset.svgKey=sv.svgKey;
         }
       } else {
-      // Use assets store as truth for keyed slots; only use imgSrc for unkeyed elements
+      // Use assets store as source of truth, fall back to saved imgSrc
       const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : (!sv.assetKey ? sv.imgSrc : '');
       if(src){
         if(img){
@@ -2846,7 +2840,6 @@ function applyTemplateLocks(idx){
       var field = el.dataset.field || '';
       var asset = el.dataset.assetKey || '';
       if(field === 'bullets') el.dataset.incomeAnchor = '0';
-      // Banner pills: always unlocked
       if(field === 'banner' || field === 'zh_banner') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
       // Income: unlocked
       if(field === 'income' || field === 'zh_income') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
@@ -3206,13 +3199,11 @@ function globalSync(){
       // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
       if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets' && inner.contentEditable !== 'true'){
         var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
+        // Use val directly (already in scope, clean newline-separated string from sidebar)
+        // rather than inner.textContent, which loses \n separators when plain-line divs
+        // are already present from a previous globalSync pass, causing lines to bunch together.
+        // For Auction (tab 8) income may be appended, so read back via getInnerText instead.
         var _val8 = (currentTab === 8) ? getInnerText(inner) : (val || '');
-        if(currentTab === 2 || currentTab === 3){
-          var _fi8=((document.getElementById('fi')||{}).value||'').trim();
-          if(_fi8){var _pfx8=_fi8.split(':')[0].trim().toLowerCase();_val8=_val8.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !((_pfx8&&lc.startsWith(_pfx8+':'))||lc===_fi8.toLowerCase());}).join('\n');}
-          el.dataset.incomeAnchor='0';
-          var _fbEl=document.getElementById('fbull');if(_fbEl&&_fbEl.value!==_val8)_fbEl.value=_val8;
-        }
         var _lines8 = _val8.split('\n');
         inner.innerHTML = _lines8.map(function(l, i){
           var mb = (i < _lines8.length - 1) ? 'margin-bottom:'+_ps8+'px;' : '';
@@ -4529,10 +4520,8 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           } else if(sv.type==='img'){
             const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
             const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
-            const src = (sv.assetKey && assets[sv.assetKey])
-              ? assets[sv.assetKey]
-              : (!sv.assetKey ? (sv.imgSrc||'') : '');
-            inner.style.background=(isLogo||isSvg||!src)?'transparent':'#c5ccc5';
+            inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5';
+            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
             if(src){
               const imgEl=document.createElement('img'); imgEl.src=src; imgEl.crossOrigin='anonymous';
               const _hasRealCrop=sv.cropW&&!isLogo&&!isSvg&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0;
@@ -4873,10 +4862,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
   // Pre-rasterise images in parallel
   const imgJobs=sorted.filter(sv=>sv.type==='img').map(async sv=>{
-    // Always use assets store for keyed slots — sv.imgSrc can be stale/corrupted
-    const src = (sv.assetKey && assets[sv.assetKey])
-      ? assets[sv.assetKey]
-      : (!sv.assetKey ? (sv.imgSrc||'') : '');
+    const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
     if(!src) return {eid:sv.eid,dataUrl:null};
     const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
     const isSvg=sv.svgKey||src.startsWith('data:image/svg');
@@ -5559,27 +5545,62 @@ function loadAsset(e,key){
 let _persistTimer=null;
 let _lastUserActivityTime = 0;
 let _lastSaveCompletedTime = 0;
-const USER_BUSY_WINDOW_MS = 2000;
-const POST_SAVE_WINDOW_MS = 3000;
+let _lastSaveAttemptTime = 0;
+let _pendingSaveState = null;   // holds state that failed to save, for retry
+let _saveRetryTimer = null;
+
+const USER_BUSY_WINDOW_MS = 2000;  // block sync for 2s after any user activity
+const POST_SAVE_WINDOW_MS = 4000;  // block sync for 4s after a save completes
+const SAVE_RETRY_DELAY_MS = 3000;  // retry a failed save after 3s
+
 function _markUserActivity(){ _lastUserActivityTime = Date.now(); }
 document.addEventListener('keydown',   _markUserActivity, true);
 document.addEventListener('mousedown', _markUserActivity, true);
 document.addEventListener('input',     _markUserActivity, true);
+
+async function _doSave(state){
+  // Save to localStorage FIRST — this is the safety net that survives failed network saves
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+  _lastSaveAttemptTime = Date.now();
+  const serverTs = await supabaseSave(state);
+  if(serverTs){
+    _lastKnownUpdatedAt = serverTs;
+    _lastSaveCompletedTime = Date.now();
+    _pendingSaveState = null;  // save succeeded — clear pending retry
+    clearTimeout(_saveRetryTimer);
+    setCdtStatus('saved','Saved ✓');
+    return true;
+  } else {
+    // Save failed — keep the state queued for retry
+    _pendingSaveState = state;
+    setCdtStatus('error','Save failed — retrying…');
+    // Schedule a retry in 3 seconds
+    clearTimeout(_saveRetryTimer);
+    _saveRetryTimer = setTimeout(async function(){
+      if(_pendingSaveState){
+        setCdtStatus('saving','Retrying save…');
+        // Re-collect state in case more changes happened since the failed save
+        const retryState = collectState();
+        const ok = await _doSave(retryState);
+        if(!ok) setCdtStatus('error','Save failed — will retry');
+      }
+    }, SAVE_RETRY_DELAY_MS);
+    return false;
+  }
+}
+
 function debouncedPersist(){
   clearTimeout(_persistTimer);
   _markUserActivity();
   setCdtStatus('saving','Saving…');
-  _persistTimer=setTimeout(async()=>{
-    const state=collectState();
-    try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
-    const serverTs=await supabaseSave(state);
-    if(serverTs){_lastKnownUpdatedAt=serverTs;_lastSaveCompletedTime=Date.now();setCdtStatus('saved','Saved ✓');}
-    else{setCdtStatus('error','Local only');}
-    _persistTimer=null;
-  },500);
+  _persistTimer = setTimeout(async()=>{
+    _persistTimer = null;
+    const state = collectState();
+    await _doSave(state);
+  }, 500);
 }
-function persistAll(){debouncedPersist();}
-function saveTab(){debouncedPersist();}
+function persistAll(){ debouncedPersist(); }
+function saveTab(){ debouncedPersist(); }
 
 let agentList=[];
 let _pendingAgentSlots=null;
@@ -5940,7 +5961,24 @@ async function init(){
     ca.scrollLeft = mouseX * ratio - (e.clientX - caRect.left);
     ca.scrollTop  = mouseY * ratio - (e.clientY - caRect.top);
   }, { passive: false });
-  window.addEventListener('beforeunload',()=>{clearTimeout(_persistTimer);try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){}});
+  window.addEventListener('beforeunload',()=>{
+    clearTimeout(_persistTimer);
+    clearTimeout(_saveRetryTimer);
+    const state = collectState();
+    // Always save to localStorage on close — this is the last line of defence
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+    // If there was a pending failed save, attempt one final synchronous-style save
+    // (navigator.sendBeacon is fire-and-forget but at least reaches the server)
+    if(_pendingSaveState !== null || _persistTimer !== null){
+      try{
+        const body = {portfolio_id:_portfolioId, property_id:_propertyId, state_json:JSON.stringify(state), updated_at:new Date().toISOString()};
+        navigator.sendBeacon && navigator.sendBeacon(
+          `${SUPA_URL}/rest/v1/projects`,
+          new Blob([JSON.stringify(body)], {type:'application/json'})
+        );
+      }catch(e){}
+    }
+  });
 }
 
 function _migrateEDMStates(){
@@ -6055,34 +6093,64 @@ applyState=function(data,skipZoom=false){const result=_origApplyState(data,skipZ
 
 let _liveSyncTimer=null,_toastTimer=null;
 function showSyncToast(msg){const t=document.getElementById('live-sync-toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
+
 function isUserBusy(){
   const now = Date.now();
+  // Block if user was active within last 2 seconds
   if(now - _lastUserActivityTime < USER_BUSY_WINDOW_MS) return true;
+  // Block if a save completed within last 4 seconds (let Supabase propagate)
   if(now - _lastSaveCompletedTime < POST_SAVE_WINDOW_MS) return true;
+  // Block if a save is currently pending or in-flight
   if(_persistTimer !== null) return true;
-  const active=document.activeElement;
-  if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;
-  if(active&&active.contentEditable==='true')return true;
+  // Block if we have a failed save waiting to retry — DO NOT sync over unsynced data
+  if(_pendingSaveState !== null) return true;
+  // Block if a sidebar input or canvas text element is being edited
+  const active = document.activeElement;
+  if(active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA') && active.closest('.sb')) return true;
+  if(active && active.contentEditable==='true') return true;
   return false;
 }
 
 async function liveSyncTick(){
-  if(isUserBusy())return;
+  if(isUserBusy()) return;
   try{
     const checkUrl=`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
     const checkRes=await fetch(checkUrl,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
-    if(!checkRes.ok)return;
-    const checkRows=await checkRes.json();if(!checkRows||!checkRows.length)return;
-    const remoteTs=checkRows[0].updated_at;if(remoteTs===_lastKnownUpdatedAt)return;
+    if(!checkRes.ok) return;
+    const checkRows=await checkRes.json(); if(!checkRows||!checkRows.length) return;
+    const remoteTs=checkRows[0].updated_at; if(remoteTs===_lastKnownUpdatedAt) return;
     if(!_lastKnownUpdatedAt){_lastKnownUpdatedAt=remoteTs;return;}
-    if(isUserBusy())return;
-    const result=await supabaseLoad();if(!result)return;if(isUserBusy())return;
-    const prevTab=currentTab;applyState(result.state,true);currentTab=prevTab;
+    // Re-check busy — network fetch takes time, user may have started editing
+    if(isUserBusy()) return;
+
+    // ── SAFETY CHECK: never overwrite local changes that haven't reached Supabase ──
+    // Compare localStorage save time against the remote timestamp.
+    // If our localStorage is newer than what we're about to load, our local data
+    // is the truth — push it to Supabase instead of pulling the old server state.
+    try{
+      const _localRaw = localStorage.getItem(LS_KEY);
+      if(_localRaw){
+        const _localData = JSON.parse(_localRaw);
+        // If we have local data and a pending save, push local data instead of pulling remote
+        if(_pendingSaveState !== null){
+          setCdtStatus('saving','Recovering unsaved changes…');
+          await _doSave(collectState());
+          return;
+        }
+      }
+    }catch(e){}
+
+    const result=await supabaseLoad(); if(!result) return;
+    if(isUserBusy()) return;  // final check before applying
+    const prevTab=currentTab;
+    applyState(result.state,true);
+    currentTab=prevTab;
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
-    if(savedStates[prevTab])restoreTab(prevTab);else buildTemplate(prevTab);
+    if(savedStates[prevTab]) restoreTab(prevTab); else buildTemplate(prevTab);
     CL_FIELD_IDS.forEach(id=>clEnforce(id));
     _lastKnownUpdatedAt=result.updatedAt||remoteTs;
-    setCdtStatus('saved','Saved ✓');showSyncToast('↻ Updated by another user');
+    setCdtStatus('saved','Saved ✓');
+    showSyncToast('↻ Updated by another user');
   }catch(e){console.warn('[CBRE] Live sync error:',e);}
 }
 function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
@@ -6134,17 +6202,11 @@ document.addEventListener('paste', function(e){
   inner._fromPaste = true;
   inner.dispatchEvent(new Event('input'));
   if(inner._inlineInputHandler) inner._inlineInputHandler();
-
-  // ── Update the props panel "Text Content" textarea immediately after paste ──
-  // The textarea is rendered once by showProps and won't update unless we push to it.
-  var _pastePropsTextarea = document.querySelector('#props-content textarea');
-  if(_pastePropsTextarea){
-    var _pasteText = getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ');
-    // Only update if this textarea drives the canvas element (not a sidebar field textarea)
-    var _pasteEl = inner.closest('.el');
-    if(_pasteEl && !_pasteEl.dataset.field){
-      _pastePropsTextarea.value = _pasteText;
-    }
+  // Update the props panel Text Content textarea immediately
+  var _pasteEl2 = inner.closest('.el');
+  if(_pasteEl2 && !_pasteEl2.dataset.field){
+    var _ppt = document.querySelector('#props-content textarea');
+    if(_ppt) _ppt.value = getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ');
   }
 }, true);
 
@@ -6698,54 +6760,27 @@ function restoreSelectionRange(){
 
 function rtCmd(cmd){
   restoreSelectionRange();
-  // removeFormat doesn't strip <sup> — handle manually
   if(cmd === 'removeFormat'){
     const sel = window.getSelection();
     if(sel && sel.rangeCount > 0){
       const range = sel.getRangeAt(0);
       const inner = selectedEl && selectedEl.querySelector('.el-inner');
-      if(inner){
-        inner.querySelectorAll('sup').forEach(function(sup){
-          if(range.intersectsNode(sup)){
-            const txt = document.createTextNode(sup.textContent);
-            sup.replaceWith(txt);
-          }
-        });
-      }
+      if(inner){ inner.querySelectorAll('sup').forEach(function(sup){ if(range.intersectsNode(sup)){ sup.replaceWith(document.createTextNode(sup.textContent)); } }); }
     }
   }
   document.execCommand(cmd, false, null);
   if(selectedEl){
     const inner = selectedEl.querySelector('.el-inner');
     if(inner){
-      // ── Immediately save richHtml to savedStates so bold/italic survive refresh ──
-      // el.dataset.richHtml is the live-DOM guard that prevents globalSync overwriting.
-      // sv.richHtml in savedStates is what gets serialized and restored on reload.
-      // We must set both right now — not wait for blur — because globalSync can fire
-      // between rtCmd and the blur, and would overwrite if richHtml isn't already set.
       const _rtHtml = inner.innerHTML;
       if(_rtHtml && _rtHtml !== inner.textContent){
         selectedEl.dataset.richHtml = _rtHtml;
-        const _eid = selectedEl.dataset.eid;
-        const _state = savedStates[currentTab];
-        if(_state && _eid){
-          _state.forEach(function(sv){
-            if(sv.eid === _eid){
-              sv.richHtml = _rtHtml;
-              sv.content  = getInnerText(inner);
-            }
-          });
-        }
-      } else if(cmd === 'removeFormat'){
-        // Formatting cleared — remove richHtml so globalSync can manage it again
+        const _eid=selectedEl.dataset.eid,_st=savedStates[currentTab];
+        if(_st&&_eid)_st.forEach(function(sv){if(sv.eid===_eid){sv.richHtml=_rtHtml;sv.content=getInnerText(inner);}});
+      } else if(cmd==='removeFormat'){
         delete selectedEl.dataset.richHtml;
-        const _eid2 = selectedEl.dataset.eid;
-        const _state2 = savedStates[currentTab];
-        if(_state2 && _eid2){
-          _state2.forEach(function(sv){
-            if(sv.eid === _eid2) delete sv.richHtml;
-          });
-        }
+        const _eid2=selectedEl.dataset.eid,_st2=savedStates[currentTab];
+        if(_st2&&_eid2)_st2.forEach(function(sv){if(sv.eid===_eid2)delete sv.richHtml;});
       }
       if(inner._inlineInputHandler) inner._inlineInputHandler();
     }
