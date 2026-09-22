@@ -2547,10 +2547,18 @@ function serializeTab(){
           }
         }
       }
-      // Store img src: prefer assets store (always up to date), fall back to element src
+      // Store img src: prefer assets store (always up to date)
+      // For keyed slots (img1, logo etc), imgSrc = assets[key] so PDF renderer always has the right URL.
+      // For unkeyed elements (manually placed, no assetKey), fall back to the img element's src.
       if(el.dataset.type==='img'){
-        obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
-        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey; // track logo identity
+        if(ak && assets[ak]){
+          obj.imgSrc = assets[ak]; // always use assets store for keyed slots
+        } else if(!ak){
+          obj.imgSrc = img ? img.src : ''; // unkeyed: use element src
+        } else {
+          obj.imgSrc = ''; // keyed but not yet uploaded — don't save a stale src
+        }
+        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey;
         // Save crop state if image has been cropped
         if(img && img.dataset.cropW){
           obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY;
@@ -2705,8 +2713,8 @@ function restoreTab(idx){
           el.dataset.svgKey=sv.svgKey;
         }
       } else {
-      // Use assets store as source of truth, fall back to saved imgSrc
-      const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : sv.imgSrc;
+      // Use assets store as truth for keyed slots; only use imgSrc for unkeyed elements
+      const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : (!sv.assetKey ? sv.imgSrc : '');
       if(src){
         if(img){
           img.src=src;
@@ -4520,8 +4528,11 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           } else if(sv.type==='img'){
             const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
             const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
-            inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5';
-            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
+            // Use assets store as truth for keyed slots; only fall back to imgSrc for unkeyed elements
+            const src = (sv.assetKey && assets[sv.assetKey])
+              ? assets[sv.assetKey]
+              : (!sv.assetKey ? (sv.imgSrc||'') : '');
+            inner.style.background=(isLogo||isSvg||!src)?'transparent':'#c5ccc5';
             if(src){
               const imgEl=document.createElement('img'); imgEl.src=src; imgEl.crossOrigin='anonymous';
               const _hasRealCrop=sv.cropW&&!isLogo&&!isSvg&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0;
@@ -4862,7 +4873,12 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
   // Pre-rasterise images in parallel
   const imgJobs=sorted.filter(sv=>sv.type==='img').map(async sv=>{
-    const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
+    // ── FIX: always use assets store for keyed slots (img1, logo, etc).
+    // sv.imgSrc can be stale/corrupted (e.g. containing a different asset's URL).
+    // Only fall back to sv.imgSrc for unkeyed elements (assetKey is empty).
+    const src = (sv.assetKey && assets[sv.assetKey])
+      ? assets[sv.assetKey]
+      : (!sv.assetKey ? (sv.imgSrc||'') : '');
     if(!src) return {eid:sv.eid,dataUrl:null};
     const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
     const isSvg=sv.svgKey||src.startsWith('data:image/svg');
@@ -5542,17 +5558,34 @@ function loadAsset(e,key){
 }
 
 let _persistTimer=null;
+// Track the last time the user did anything (keydown, click, input)
+// and the last time a save completed — live sync will not fire within these windows.
+let _lastUserActivityTime = 0;
+let _lastSaveCompletedTime = 0;
+const USER_BUSY_WINDOW_MS = 2000;  // block sync for 2s after any user activity
+const POST_SAVE_WINDOW_MS = 3000;  // block sync for 3s after a save completes
+
+function _markUserActivity(){ _lastUserActivityTime = Date.now(); }
+document.addEventListener('keydown',   _markUserActivity, true);
+document.addEventListener('mousedown', _markUserActivity, true);
+document.addEventListener('input',     _markUserActivity, true);
+
 function debouncedPersist(){
   clearTimeout(_persistTimer);
+  _markUserActivity();
   setCdtStatus('saving','Saving…');
   _persistTimer=setTimeout(async()=>{
     const state=collectState();
     try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
     const serverTs=await supabaseSave(state);
-    if(serverTs){_lastKnownUpdatedAt=serverTs;setCdtStatus('saved','Saved ✓');}
+    if(serverTs){
+      _lastKnownUpdatedAt=serverTs;
+      _lastSaveCompletedTime=Date.now(); // mark save completion time
+      setCdtStatus('saved','Saved ✓');
+    }
     else{setCdtStatus('error','Local only');}
     _persistTimer=null;
-  },1000);
+  },500); // reduced from 1000ms to 500ms for faster saves
 }
 function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
@@ -6031,7 +6064,21 @@ applyState=function(data,skipZoom=false){const result=_origApplyState(data,skipZ
 
 let _liveSyncTimer=null,_toastTimer=null;
 function showSyncToast(msg){const t=document.getElementById('live-sync-toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
-function isUserBusy(){const active=document.activeElement;if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;if(active&&active.contentEditable==='true')return true;if(_persistTimer!==null)return true;return false;}
+function isUserBusy(){
+  const now = Date.now();
+  // Block if user was active within the last 2 seconds
+  if(now - _lastUserActivityTime < USER_BUSY_WINDOW_MS) return true;
+  // Block if a save completed within the last 3 seconds (let Supabase propagate)
+  if(now - _lastSaveCompletedTime < POST_SAVE_WINDOW_MS) return true;
+  // Block if a save is currently pending
+  if(_persistTimer !== null) return true;
+  // Block if a sidebar input is focused
+  const active=document.activeElement;
+  if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;
+  // Block if a canvas text element is being edited inline
+  if(active&&active.contentEditable==='true')return true;
+  return false;
+}
 
 async function liveSyncTick(){
   if(isUserBusy())return;
