@@ -5254,7 +5254,7 @@ async function captureArtboard(){
 
   try {
     const canvas = await html2canvas(artboard,{
-      scale:1,
+      scale:2,
       useCORS:true,
       allowTaint:false,
       width:ARTBOARD_W,
@@ -5303,7 +5303,7 @@ async function exportCurrentPage(){
     const canvas = await captureArtboard();
     if(!canvas){ if(btn){btn.disabled=false;btn.textContent='⬇ Download Aerial';} return; }
     const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/jpeg',0.95);
+    a.href = canvas.toDataURL('image/jpeg',0.97);
     a.download = (propertyName||'Aerial')+' - Aerial'+(pages.length>1?' Page '+(currentPage+1):'')+'.jpg';
     document.body.appendChild(a);
     a.click();
@@ -5330,7 +5330,7 @@ async function exportAllPages(){
     const canvas = await captureArtboard();
     if(!canvas) continue;
     const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/jpeg',0.95);
+    a.href = canvas.toDataURL('image/jpeg',0.97);
     a.download = (propertyName||'Aerial')+' - Aerial'+(pages.length>1?' Page '+(i+1):'')+'.jpg';
     document.body.appendChild(a);
     a.click();
