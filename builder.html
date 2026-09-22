@@ -2549,8 +2549,10 @@ function serializeTab(){
       }
       // Store img src: prefer assets store (always up to date), fall back to element src
       if(el.dataset.type==='img'){
-        obj.imgSrc = (ak && assets[ak]) ? assets[ak] : (img ? img.src : '');
-        if(el.dataset.svgKey) obj.svgKey = el.dataset.svgKey; // track logo identity
+        if(ak && assets[ak]){ obj.imgSrc=assets[ak]; }
+        else if(!ak){ obj.imgSrc=img?img.src:''; }
+        else { obj.imgSrc=''; }
+        if(el.dataset.svgKey) obj.svgKey=el.dataset.svgKey;
         // Save crop state if image has been cropped
         if(img && img.dataset.cropW){
           obj.cropX=img.dataset.cropX; obj.cropY=img.dataset.cropY;
@@ -2705,8 +2707,7 @@ function restoreTab(idx){
           el.dataset.svgKey=sv.svgKey;
         }
       } else {
-      // Use assets store as source of truth, fall back to saved imgSrc
-      const src=(sv.assetKey && assets[sv.assetKey]) ? assets[sv.assetKey] : sv.imgSrc;
+      const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
       if(src){
         if(img){
           img.src=src;
@@ -2775,8 +2776,9 @@ function restoreTab(idx){
         } else if(el.dataset.agentSlot || el.dataset.agentBelow === '1'){
           // agents managed by repackEDMAgents — no edmOrigTop needed
         } else {
-          // Subtract prior growth to recover original template Y
-          var oT = (curT - _priorGrowth >= 2521) ? (curT - _priorGrowth) : curT;
+          // Subtract prior growth to recover original template Y.
+          // Threshold 2480 matches BC_BOTTOM in edmBodycopyAutoSize — catches img3 at Y=2493.
+          var oT = (curT - _priorGrowth >= 2480) ? (curT - _priorGrowth) : curT;
           var oH = (el.dataset.type==='rect' && curT <= 1871 && curH > 617) ? (curH - _priorGrowth) : curH;
           el.dataset.edmOrigTop = oT; el.dataset.edmOrigH = oH;
         }
@@ -2839,6 +2841,7 @@ function applyTemplateLocks(idx){
     art.querySelectorAll('.el').forEach(function(el){
       var field = el.dataset.field || '';
       var asset = el.dataset.assetKey || '';
+      if(field==='bullets') el.dataset.incomeAnchor='0';
       // Banner pills: always unlocked
       if(field === 'banner' || field === 'zh_banner') { el.dataset.locked='0'; el.classList.remove('locked-el'); el.style.cursor=''; return; }
       // Income: unlocked
@@ -2911,7 +2914,10 @@ function edmBodycopyAutoSize(){
   // ── Template constants (px) — match buildEDM bodycopy position ──
   var BC_TOP    = 1904;
   var BC_ORIG_H = 617;
-  var BC_BOTTOM = BC_TOP + BC_ORIG_H; // 2521 — original bottom of bodycopy
+  // BC_BOTTOM is set 28px BELOW the original bodycopy bottom (2521) so that img3
+  // at Y=2493 is included in the push-down. Previously 2521 left img3 above the
+  // threshold and it stayed fixed while bodycopy grew over it.
+  var BC_BOTTOM = 2480;
 
   // ── Measure how tall the current content actually is ──
   var bcW = parseFloat(bcEl.style.width) || 541;
@@ -3197,14 +3203,16 @@ function globalSync(){
       // Skip re-render while the element is actively being edited inline — the editor
       // manages the DOM with pre-wrap + \n text nodes, and re-rendering plain-line divs
       // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
-      if((currentTab === 2 || currentTab === 3 || currentTab === 8) && field === 'bullets' && inner.contentEditable !== 'true'){
-        var _ps8 = parseFloat(el.dataset.bulletParaSpacing||'10');
-        // Use val directly (already in scope, clean newline-separated string from sidebar)
-        // rather than inner.textContent, which loses \n separators when plain-line divs
-        // are already present from a previous globalSync pass, causing lines to bunch together.
-        // For Auction (tab 8) income may be appended, so read back via getInnerText instead.
-        var _val8 = (currentTab === 8) ? getInnerText(inner) : (val || '');
-        var _lines8 = _val8.split('\n');
+      if((currentTab===2||currentTab===3||currentTab===8)&&field==='bullets'&&inner.contentEditable!=='true'){
+        var _ps8=parseFloat(el.dataset.bulletParaSpacing||'10');
+        var _val8=(currentTab===8)?getInnerText(inner):(val||'');
+        if(currentTab===2||currentTab===3){
+          var _fi8=((document.getElementById('fi')||{}).value||'').trim();
+          if(_fi8){var _pfx8=_fi8.split(':')[0].trim().toLowerCase();_val8=_val8.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !((_pfx8&&lc.startsWith(_pfx8+':'))||lc===_fi8.toLowerCase());}).join('\n');}
+          el.dataset.incomeAnchor='0';
+          var _fbEl=document.getElementById('fbull');if(_fbEl&&_fbEl.value!==_val8)_fbEl.value=_val8;
+        }
+        var _lines8=_val8.split('\n');
         inner.innerHTML = _lines8.map(function(l, i){
           var mb = (i < _lines8.length - 1) ? 'margin-bottom:'+_ps8+'px;' : '';
           return '<div class="plain-line" style="display:block;'+mb+'">' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>';
@@ -4521,7 +4529,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
             const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
             const isSvg=sv.svgKey||(sv.imgSrc||'').startsWith('data:image/svg');
             inner.style.background=(isLogo||isSvg)?'transparent':'#c5ccc5';
-            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
+            const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
             if(src){
               const imgEl=document.createElement('img'); imgEl.src=src; imgEl.crossOrigin='anonymous';
               const _hasRealCrop=sv.cropW&&!isLogo&&!isSvg&&!String(sv.cropW).includes('%')&&parseFloat(sv.cropW)>0;
@@ -4862,7 +4870,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
   // Pre-rasterise images in parallel
   const imgJobs=sorted.filter(sv=>sv.type==='img').map(async sv=>{
-    const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(sv.imgSrc||'');
+    const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
     if(!src) return {eid:sv.eid,dataUrl:null};
     const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
     const isSvg=sv.svgKey||src.startsWith('data:image/svg');
@@ -5326,7 +5334,7 @@ function collectState(){
     customSizes:JSON.parse(JSON.stringify(_customSizes)),
     bleedSettings:JSON.parse(JSON.stringify(_bleedSettings)),
     fields:{fh:gv('fh'),fs:gv('fs'),fa1:gv('fa1'),fa2:gv('fa2'),fb:gv('fb'),fi:gv('fi'),
-      fbull:document.getElementById('fbull').value,fbc:document.getElementById('fbc').value,
+      fbull:(function(){var _rb=document.getElementById('fbull').value||'',_cf=((document.getElementById('fi')||{}).value||'').trim();if(_cf){var _cp=_cf.split(':')[0].trim().toLowerCase();_rb=_rb.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_cp&&lc.startsWith(_cp+':'))&&lc!==_cf.toLowerCase();}).join('\n');}return _rb;})(),fbc:document.getElementById('fbc').value,
       fm:gv('fm'),fd:gv('fd')} };
 }
 
@@ -5349,6 +5357,16 @@ function applyState(data,skipZoom=false){
     if(data.edmLinkPortfolio!=null){ const el=document.getElementById('fedm-link-portfolio'); if(el) el.value=data.edmLinkPortfolio; }
     if(data.edmLinkIMSubject!=null){ const el=document.getElementById('fedm-link-im-subject'); if(el) el.value=data.edmLinkIMSubject; }
     updateEdmCharCounts();
+    if(data.tabLayouts){
+      Object.values(data.tabLayouts).forEach(function(tabState){
+        if(!Array.isArray(tabState))return;
+        tabState.forEach(function(sv){
+          if(sv.type!=='img'||!sv.assetKey)return;
+          const _cs=(data.assets&&data.assets[sv.assetKey])||assets[sv.assetKey]||'';
+          if(!_cs)sv.imgSrc=''; else if(sv.imgSrc&&sv.imgSrc!==_cs)sv.imgSrc=_cs;
+        });
+      });
+    }
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
@@ -5356,7 +5374,8 @@ function applyState(data,skipZoom=false){
       const f=data.fields;
       const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=val;};
       set('fh',f.fh);set('fs',f.fs);set('fa1',f.fa1);set('fa2',f.fa2);set('fb',f.fb);set('fi',f.fi);
-      set('fbull',f.fbull);set('fbc',f.fbc);set('fm',f.fm);set('fd',f.fd);
+      if(f.fbull!=null){var _rFi=(f.fi||'').trim(),_rFiP=_rFi?_rFi.split(':')[0].trim().toLowerCase():'',_rB=f.fbull;if(_rFi){_rB=_rB.split('\n').filter(function(l){var lc=l.replace(/^\u2013\s*/,'').trim().toLowerCase();return !(_rFiP&&lc.startsWith(_rFiP+':'))&&lc!==_rFi.toLowerCase();}).join('\n');}set('fbull',_rB);}
+      set('fbc',f.fbc);set('fm',f.fm);set('fd',f.fd);
     }
     if(!skipZoom&&data.zoom){document.getElementById('zoom-range').value=data.zoom;setZoom(data.zoom);}
     if(data.currentTab!=null){ currentTab=parseInt(data.currentTab)||0; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===currentTab)); }
@@ -5542,17 +5561,23 @@ function loadAsset(e,key){
 }
 
 let _persistTimer=null;
+let _lastUserActivityTime=0,_lastSaveCompletedTime=0,_lastSaveAttemptTime=0;
+let _pendingSaveState=null,_saveRetryTimer=null;
+const USER_BUSY_WINDOW_MS=2000,POST_SAVE_WINDOW_MS=4000,SAVE_RETRY_DELAY_MS=3000;
+function _markUserActivity(){_lastUserActivityTime=Date.now();}
+document.addEventListener('keydown',_markUserActivity,true);
+document.addEventListener('mousedown',_markUserActivity,true);
+document.addEventListener('input',_markUserActivity,true);
+async function _doSave(state){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
+  _lastSaveAttemptTime=Date.now();
+  const serverTs=await supabaseSave(state);
+  if(serverTs){_lastKnownUpdatedAt=serverTs;_lastSaveCompletedTime=Date.now();_pendingSaveState=null;clearTimeout(_saveRetryTimer);setCdtStatus('saved','Saved ✓');return true;}
+  else{_pendingSaveState=state;setCdtStatus('error','Save failed — retrying…');clearTimeout(_saveRetryTimer);_saveRetryTimer=setTimeout(async function(){if(_pendingSaveState){setCdtStatus('saving','Retrying save…');await _doSave(collectState());}},SAVE_RETRY_DELAY_MS);return false;}
+}
 function debouncedPersist(){
-  clearTimeout(_persistTimer);
-  setCdtStatus('saving','Saving…');
-  _persistTimer=setTimeout(async()=>{
-    const state=collectState();
-    try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
-    const serverTs=await supabaseSave(state);
-    if(serverTs){_lastKnownUpdatedAt=serverTs;setCdtStatus('saved','Saved ✓');}
-    else{setCdtStatus('error','Local only');}
-    _persistTimer=null;
-  },1000);
+  clearTimeout(_persistTimer);_markUserActivity();setCdtStatus('saving','Saving…');
+  _persistTimer=setTimeout(async()=>{_persistTimer=null;await _doSave(collectState());},500);
 }
 function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
@@ -5916,7 +5941,14 @@ async function init(){
     ca.scrollLeft = mouseX * ratio - (e.clientX - caRect.left);
     ca.scrollTop  = mouseY * ratio - (e.clientY - caRect.top);
   }, { passive: false });
-  window.addEventListener('beforeunload',()=>{clearTimeout(_persistTimer);try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){}});
+  window.addEventListener('beforeunload',()=>{
+    clearTimeout(_persistTimer);clearTimeout(_saveRetryTimer);
+    const state=collectState();
+    try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
+    if(_pendingSaveState!==null||_persistTimer!==null){
+      try{const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:JSON.stringify(state),updated_at:new Date().toISOString()};navigator.sendBeacon&&navigator.sendBeacon(`${SUPA_URL}/rest/v1/projects`,new Blob([JSON.stringify(body)],{type:'application/json'}));}catch(e){}
+    }
+  });
 }
 
 function _migrateEDMStates(){
@@ -6031,8 +6063,17 @@ applyState=function(data,skipZoom=false){const result=_origApplyState(data,skipZ
 
 let _liveSyncTimer=null,_toastTimer=null;
 function showSyncToast(msg){const t=document.getElementById('live-sync-toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
-function isUserBusy(){const active=document.activeElement;if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;if(active&&active.contentEditable==='true')return true;if(_persistTimer!==null)return true;return false;}
-
+function isUserBusy(){
+  const now=Date.now();
+  if(now-_lastUserActivityTime<USER_BUSY_WINDOW_MS)return true;
+  if(now-_lastSaveCompletedTime<POST_SAVE_WINDOW_MS)return true;
+  if(_persistTimer!==null)return true;
+  if(_pendingSaveState!==null)return true;
+  const active=document.activeElement;
+  if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;
+  if(active&&active.contentEditable==='true')return true;
+  return false;
+}
 async function liveSyncTick(){
   if(isUserBusy())return;
   try{
@@ -6043,7 +6084,9 @@ async function liveSyncTick(){
     const remoteTs=checkRows[0].updated_at;if(remoteTs===_lastKnownUpdatedAt)return;
     if(!_lastKnownUpdatedAt){_lastKnownUpdatedAt=remoteTs;return;}
     if(isUserBusy())return;
-    const result=await supabaseLoad();if(!result)return;if(isUserBusy())return;
+    if(_pendingSaveState!==null){setCdtStatus('saving','Recovering unsaved changes…');await _doSave(collectState());return;}
+    const result=await supabaseLoad();if(!result)return;
+    if(isUserBusy())return;
     const prevTab=currentTab;applyState(result.state,true);currentTab=prevTab;
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
     if(savedStates[prevTab])restoreTab(prevTab);else buildTemplate(prevTab);
@@ -6098,10 +6141,9 @@ document.addEventListener('paste', function(e){
 
   // Flag that this input event is from a paste so _inlineInputHandler
   // knows to sync managed fields (bullets/bodycopy) back to the sidebar.
-  inner._fromPaste = true;
-  inner.dispatchEvent(new Event('input'));
-  if(inner._inlineInputHandler) inner._inlineInputHandler();
-}, true);
+  inner._fromPaste=true; inner.dispatchEvent(new Event('input')); if(inner._inlineInputHandler)inner._inlineInputHandler();
+  var _pEl=inner.closest('.el');if(_pEl&&!_pEl.dataset.field){var _ppt=document.querySelector('#props-content textarea');if(_ppt)_ppt.value=getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ');}
+},true);
 
 // ── Artboard paste for locked bullets/bodycopy elements ──────────────────
 document.addEventListener('keydown', function(e){
@@ -6653,29 +6695,25 @@ function restoreSelectionRange(){
 
 function rtCmd(cmd){
   restoreSelectionRange();
-  // removeFormat doesn't strip <sup> — handle manually
-  if(cmd === 'removeFormat'){
-    const sel = window.getSelection();
-    if(sel && sel.rangeCount > 0){
-      const range = sel.getRangeAt(0);
-      const inner = selectedEl && selectedEl.querySelector('.el-inner');
-      if(inner){
-        inner.querySelectorAll('sup').forEach(function(sup){
-          if(range.intersectsNode(sup)){
-            const txt = document.createTextNode(sup.textContent);
-            sup.replaceWith(txt);
-          }
-        });
-      }
-    }
-  }
-  document.execCommand(cmd, false, null);
+  if(cmd==='removeFormat'){const sel=window.getSelection();if(sel&&sel.rangeCount>0){const range=sel.getRangeAt(0);const inner=selectedEl&&selectedEl.querySelector('.el-inner');if(inner){inner.querySelectorAll('sup').forEach(function(sup){if(range.intersectsNode(sup))sup.replaceWith(document.createTextNode(sup.textContent));});}}}
+  document.execCommand(cmd,false,null);
   if(selectedEl){
-    const inner = selectedEl.querySelector('.el-inner');
+    const inner=selectedEl.querySelector('.el-inner');
     if(inner){
-      if(inner._inlineInputHandler) inner._inlineInputHandler();
+      const _rtHtml=inner.innerHTML;
+      if(_rtHtml&&_rtHtml!==inner.textContent){
+        selectedEl.dataset.richHtml=_rtHtml;
+        const _eid=selectedEl.dataset.eid,_st=savedStates[currentTab];
+        if(_st&&_eid)_st.forEach(function(sv){if(sv.eid===_eid){sv.richHtml=_rtHtml;sv.content=getInnerText(inner);}});
+      } else if(cmd==='removeFormat'){
+        delete selectedEl.dataset.richHtml;
+        const _eid2=selectedEl.dataset.eid,_st2=savedStates[currentTab];
+        if(_st2&&_eid2)_st2.forEach(function(sv){if(sv.eid===_eid2)delete sv.richHtml;});
+      }
+      if(inner._inlineInputHandler)inner._inlineInputHandler();
     }
   }
+  debouncedPersist();
 }
 
 // Unicode superscript character map
