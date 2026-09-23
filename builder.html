@@ -2515,6 +2515,8 @@ function applyPlainParaSpacing(inner, spacingPx){
   } else {
     lines = inner.textContent.split('\n');
   }
+  // Strip trailing blank lines to prevent phantom spacer divs on artboard
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
   function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   inner.innerHTML = lines.map(function(l){
     if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;margin-bottom:'+mb+'"></div>';
@@ -3030,8 +3032,10 @@ function restoreTab(idx){
           inner.style.whiteSpace = 'normal';
           inner.style.wordBreak = 'break-word';
         } else {
-          var _rbContent = (sv.content||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); }).join('\n');
-          inner.textContent = _rbContent;
+          var _rbLines = (sv.content||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
+          // Strip trailing blank lines to prevent phantom spacer divs on artboard
+          while(_rbLines.length && !_rbLines[_rbLines.length-1].trim()) _rbLines.pop();
+          inner.textContent = _rbLines.join('\n');
           inner.style.whiteSpace = 'pre-wrap';
           applyPlainParaSpacing(inner, _bpsRestore);
         }
@@ -3063,6 +3067,8 @@ function restoreTab(idx){
           delete sv.richHtml; // clear stale richHtml so it can't interfere
           delete el.dataset.richHtml;
           var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
+          // Strip trailing blank lines to prevent phantom spacer divs on artboard
+          while(_plainLines.length && !_plainLines[_plainLines.length-1].trim()) _plainLines.pop();
           inner.textContent = _plainLines.join('\n');
           inner.style.whiteSpace = 'pre-wrap';
           applyBullets(inner, true);
@@ -3663,7 +3669,10 @@ function globalSync(){
           if(!_bsp){ var _bspCss = inner.style.getPropertyValue('--bullet-spacing'); if(_bspCss) _bsp = parseFloat(_bspCss)||0; }
           var _bmb = _bsp > 0 ? ';margin-bottom:'+_bsp+'px' : '';
           function _besc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-          inner.innerHTML = _bval.split('\n').map(function(l){
+          var _bvalLines = _bval.split('\n');
+          // Strip trailing blank lines to prevent phantom spacer divs on artboard
+          while(_bvalLines.length && !_bvalLines[_bvalLines.length-1].trim()) _bvalLines.pop();
+          inner.innerHTML = _bvalLines.map(function(l){
             var t = l.replace(/^\u2013\s*/,'').trim();
             if(!t) return '<div style="display:flex;min-height:0.5em;"></div>';
             return '<div style="display:flex;align-items:baseline'+_bmb+'">'+
@@ -3687,6 +3696,8 @@ function globalSync(){
           var _fbEl=document.getElementById('fbull');if(_fbEl&&_fbEl.value!==_val8)_fbEl.value=_val8;
         }
         var _lines8=_val8.split('\n');
+        // Strip trailing blank lines to prevent phantom spacer divs on artboard
+        while(_lines8.length && !_lines8[_lines8.length-1].trim()) _lines8.pop();
         inner.innerHTML = _lines8.map(function(l, i){
           var mb = (i < _lines8.length - 1) ? 'margin-bottom:'+_ps8+'px;' : '';
           return '<div class="plain-line" style="display:block;'+mb+'">' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>';
@@ -3712,6 +3723,8 @@ function globalSync(){
         var _mb3 = _bps > 0 ? _bps+'px' : '0';
         function _pesc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
         var _plines = _bplainVal.split('\n');
+        // Strip trailing blank lines to prevent phantom spacer divs on artboard
+        while(_plines.length && !_plines[_plines.length-1].trim()) _plines.pop();
         inner.innerHTML = _plines.map(function(l, i){
           var isBold = _fi3 && i === _plines.length - 1;
           if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;margin-bottom:'+_mb3+'"></div>';
