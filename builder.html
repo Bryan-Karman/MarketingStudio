@@ -266,6 +266,56 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 #rich-toolbar button:hover{background:#3a3a3a;color:#fff;}
 #rich-toolbar button.active{background:#0d2b21;border-color:#5bbf7a;color:#5bbf7a;}
 
+/* ── VERSION HISTORY PANEL ── */
+#history-panel{
+  display:none;position:fixed;top:0;right:0;width:320px;height:100vh;
+  background:#151515;border-left:1px solid #2a2a2a;z-index:99998;
+  flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.6);
+}
+#history-panel.open{display:flex;}
+.hist-head{
+  padding:12px 14px;border-bottom:1px solid #2a2a2a;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.hist-title{font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.07em;}
+.hist-close{background:none;border:none;color:#666;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:2px;}
+.hist-close:hover{background:#2a2a2a;color:#fff;}
+.hist-body{flex:1;overflow-y:auto;padding:10px;}
+.hist-empty{padding:20px;font-size:12px;color:#555;text-align:center;line-height:1.6;}
+.hist-item{
+  border:1px solid #2a2a2a;border-radius:3px;padding:10px 12px;margin-bottom:8px;
+  background:#1a1a1a;
+}
+.hist-item:hover{border-color:#3a3a3a;}
+.hist-when{font-size:11px;font-weight:700;color:#ccc;margin-bottom:2px;}
+.hist-meta{font-size:10px;color:#555;margin-bottom:8px;}
+.hist-tabs{font-size:10px;color:#4a8a6a;margin-bottom:8px;}
+.hist-actions{display:flex;gap:6px;}
+.hist-btn-restore{
+  flex:1;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer;
+  background:#0d2b21;border:1px solid #2a5a3a;color:#5bbf7a;border-radius:2px;
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.hist-btn-restore:hover{background:#163d28;color:#17e88f;}
+.hist-btn-restore:disabled{background:#1a1a1a;color:#444;border-color:#2a2a2a;cursor:not-allowed;}
+.hist-btn-peek{
+  padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer;
+  background:#1e1e2a;border:1px solid #333;color:#7ab;border-radius:2px;
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.hist-btn-peek:hover{background:#252535;color:#adf;}
+.hist-saving-indicator{
+  padding:6px 10px;background:#0d2b21;border-top:1px solid #2a2a2a;
+  font-size:10px;color:#4a7a5a;text-align:center;flex-shrink:0;
+  letter-spacing:.04em;
+}
+.btn-history{
+  padding:3px 8px;font-size:9px;font-weight:700;background:#1a2a3a;
+  color:#7ab8e8;border:1px solid #2a4a6a;border-radius:2px;cursor:pointer;
+  text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;
+}
+.btn-history:hover{background:#253545;color:#fff;}
+
 /* ── TAB APPROVAL ── */
 #tab-approved-banner{
   display:none;
@@ -516,9 +566,29 @@ Line five</textarea>
     </div>
   </div>
 
+  <!-- VERSION HISTORY PANEL -->
+  <div id="history-panel">
+    <div class="hist-head">
+      <span class="hist-title">⏱ Version History</span>
+      <button class="hist-close" onclick="closeHistoryPanel()" title="Close">✕</button>
+    </div>
+    <div class="hist-body" id="hist-body">
+      <div class="hist-empty">Loading history…</div>
+    </div>
+    <div class="hist-saving-indicator" id="hist-saving-indicator" style="display:none;">
+      ● Saving version snapshot…
+    </div>
+  </div>
+
   <!-- RIGHT PROPERTIES PANEL -->
   <div class="props" id="props">
-    <div class="props-head"><span>Properties</span><button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team">Request Assistance</button></div>
+    <div class="props-head" style="flex-direction:column;align-items:flex-start;gap:5px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        <span>Properties</span>
+        <button class="btn-history" onclick="openHistoryPanel()" title="View and restore previous versions">⏱ History</button>
+      </div>
+      <button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team" style="width:100%;text-align:center;">Request Assistance</button>
+    </div>
     <div class="props-approve-row">
       <button class="btn-approve-tab" id="tab-approve-btn" onclick="toggleTabApproval()" title="Approve this tab — disconnects content feeds so sidebar changes don't affect it">● Approve Tab</button>
     </div>
@@ -993,8 +1063,14 @@ function createElement(cfg){
       undoSnapshot();
       inner.contentEditable='true';
       inner.style.cursor='text';
+      // Bullet elements need white-space:normal so text wraps within the box.
+      // pre-wrap causes horizontal scroll when typing long lines.
+      if(el.dataset.bullets==='1'){
+        inner.style.whiteSpace='normal';
+      }
       inner.focus();
       showRtb(inner);
+      _markInlineEdit(); // prevent live sync from interrupting
       // Paste is handled by the global capture listener (strips formatting, keeps plain text)
       inner._pasteHandler = null;
       // Remove any previously attached handler to avoid duplicates
@@ -1004,51 +1080,66 @@ function createElement(cfg){
       }
       function _inlineInputHandler(){
         const _el2=inner.closest('.el'),_f=_el2?_el2.dataset.field:'',_mgd=['bullets','bodycopy'];
-        if(_f&&_mgd.indexOf(_f)===-1){const _sid=fieldToSidebarId(_f),_sel=_sid?document.getElementById(_sid):null;if(_sel){const _txt=(inner.innerText||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();_sel.value=_txt;}}
-        else if(!_f){const _eid3=_el2?_el2.dataset.eid:null,_st3=savedStates[currentTab];if(_eid3&&_st3){const _cc=getInnerText(inner);_st3.forEach(function(sv){if(sv.eid===_eid3){sv.content=_cc;sv.richHtml=inner.innerHTML;sv.innerStyle=inner.getAttribute('style')||'';}});}}
+        if(_f && _mgd.indexOf(_f)===-1){
+          // Non-managed field: write to sidebar in real time
+          const _sid=fieldToSidebarId(_f),_sel=_sid?document.getElementById(_sid):null;
+          if(_sel){const _txt=(inner.innerText||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();_sel.value=_txt;}
+        } else if(_f && _mgd.indexOf(_f)!==-1){
+          // Managed field: sync to sidebar exactly like heading/subheading
+          // Just read innerText directly — same simple approach that works for all other fields
+          var _mgdSid = fieldToSidebarId(_f);
+          var _mgdSel = _mgdSid ? document.getElementById(_mgdSid) : null;
+          if(_mgdSel){
+            // Read lines from innerText — preserves line breaks naturally
+            var _mgdTxt = (inner.innerText||'').replace(/​/g,'').replace(/ /g,' ');
+            // Strip the dash prefix from each line (bullet elements add –  prefix)
+            var _mgdLines = _mgdTxt.split(String.fromCharCode(10)).map(function(l){
+              return l.replace(/^–\s*/,'').trimEnd();
+            });
+            // Strip trailing empty lines
+            while(_mgdLines.length && !_mgdLines[_mgdLines.length-1].trim()) _mgdLines.pop();
+            _mgdSel.value = _mgdLines.join(String.fromCharCode(10));
+          }
+          // Keep richHtml set so globalSync doesn't rebuild from stale sidebar while typing
+          if(_el2) _el2.dataset.richHtml = inner.innerHTML;
+        } else if(!_f){
+          const _eid3=_el2?_el2.dataset.eid:null,_st3=savedStates[currentTab];
+          if(_eid3&&_st3){const _cc=getInnerText(inner);_st3.forEach(function(sv){if(sv.eid===_eid3){sv.content=_cc;sv.richHtml=inner.innerHTML;sv.innerStyle=inner.getAttribute('style')||'';}});}
+        }
         if(_f && inner._fromPaste){
-          // Managed field triggered by paste: sync to sidebar and re-render immediately.
           inner._fromPaste = false;
-          var _sid2 = fieldToSidebarId(_f);
-          var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
-          if(_sel2){
-            var _pLines = (inner.innerText||inner.textContent||'')
-              .split('\n')
-              .map(function(l){ return l.replace(/^\u2013\s*/,'').trimEnd(); });
+          var _sid2p = fieldToSidebarId(_f);
+          var _sel2p = _sid2p ? document.getElementById(_sid2p) : null;
+          if(_sel2p){
+            var _pLines = (inner.innerText||inner.textContent||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trimEnd(); });
             while(_pLines.length && !_pLines[0].trim()) _pLines.shift();
             while(_pLines.length && !_pLines[_pLines.length-1].trim()) _pLines.pop();
-            _sel2.value = _pLines.join('\n');
+            _sel2p.value = _pLines.join('\n');
           }
           if(_el2 && _el2.dataset.richHtml) delete _el2.dataset.richHtml;
           if(typeof onBulletFieldChange === 'function') onBulletFieldChange();
         }
-        if(_el2 && inner.innerHTML !== (inner.textContent||'')){
-          _el2.dataset.richHtml = inner.innerHTML;
-          // Also persist richHtml to savedStates so tab-switches and refreshes preserve formatting
-          var _rtEid=_el2.dataset.eid,_rtField=_el2.dataset.field,_rtSt=savedStates[currentTab];
-          if(_rtSt&&_rtEid){
-            _rtSt.forEach(function(sv){
-              if(sv.eid===_rtEid||(sv.field&&sv.field===_rtField)){
-                sv.richHtml=inner.innerHTML;
-              }
-            });
-          }
-        } else if(_el2 && _el2.dataset.richHtml){
-          // Formatting was cleared (e.g. user deleted all bold text) — remove stale richHtml
-          delete _el2.dataset.richHtml;
-          var _clrEid=_el2.dataset.eid,_clrField=_el2.dataset.field,_clrSt=savedStates[currentTab];
-          if(_clrSt&&_clrEid){
-            _clrSt.forEach(function(sv){
-              if(sv.eid===_clrEid||(sv.field&&sv.field===_clrField)) delete sv.richHtml;
-            });
+        // Track richHtml for non-managed fields with bold/italic formatting
+        if(!_f || _mgd.indexOf(_f)===-1){
+          var _richRx2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+          var _hasRich2 = _richRx2.test(inner.innerHTML);
+          if(_el2 && _hasRich2){
+            _el2.dataset.richHtml = inner.innerHTML;
+            var _rtEid2=_el2.dataset.eid,_rtField2=_el2.dataset.field,_rtSt2=savedStates[currentTab];
+            if(_rtSt2&&_rtEid2){ _rtSt2.forEach(function(sv){ if(sv.eid===_rtEid2||(sv.field&&sv.field===_rtField2)) sv.richHtml=inner.innerHTML; }); }
+          } else if(_el2 && _el2.dataset.richHtml && !_hasRich2){
+            delete _el2.dataset.richHtml;
+            var _clrEid2=_el2.dataset.eid,_clrField2=_el2.dataset.field,_clrSt2=savedStates[currentTab];
+            if(_clrSt2&&_clrEid2){ _clrSt2.forEach(function(sv){ if(sv.eid===_clrEid2||(sv.field&&sv.field===_clrField2)) delete sv.richHtml; }); }
           }
         }
         debouncedPersist();
       }
       inner._inlineInputHandler=_inlineInputHandler;
-      inner.addEventListener('input', _inlineInputHandler);
+      inner.addEventListener('input', function(e){ _markInlineEdit(); _inlineInputHandler(e); });
       inner.addEventListener('keyup', _inlineInputHandler);
       inner.onkeydown=ev=>{
+        _markInlineEdit(); // refresh inline edit timer on every keypress
         handleRtbKeydown(ev, inner);
         if(ev.key==='Enter' && !ev.shiftKey){
           ev.preventDefault();
@@ -1056,73 +1147,135 @@ function createElement(cfg){
           var _isBrochureBullField = (el.dataset.field==='bullets' && (currentTab===0||currentTab===1));
           const _isBulletEl = el.dataset.bullets==='1' && !_isBrochureBullField;
           if(_isBulletEl){
-            // For bullet elements: read current lines, append new bullet, re-render
-            const _btSpans = inner.querySelectorAll('span.bt');
-            let _lines = [];
-            if(_btSpans.length){
-              _lines = Array.from(_btSpans).map(s=>s.textContent.replace(/^\u2013\s*/,'').trim()).filter(Boolean);
-            } else {
-              _lines = (inner.innerText||'').split('\n').map(l=>l.replace(/^\u2013\s*/,'').trim()).filter(Boolean);
-            }
-            // Find which line cursor is on and insert after it
-            const _sel2=window.getSelection();
-            let _insertAfter = _lines.length - 1; // default: end
-            if(_sel2&&_sel2.rangeCount){
-              const _r=_sel2.getRangeAt(0);
-              const _btArr=Array.from(_btSpans);
-              for(let _i=0;_i<_btArr.length;_i++){
-                if(_btArr[_i].contains(_r.startContainer)||_btArr[_i]===_r.startContainer){
-                  _insertAfter=_i; break;
+            // Find which div the cursor is currently in
+            const _sel2 = window.getSelection();
+            var _cursorDiv = null;
+            if(_sel2 && _sel2.rangeCount){
+              var _walkNode2 = _sel2.getRangeAt(0).startContainer;
+              while(_walkNode2 && _walkNode2 !== inner){
+                if(_walkNode2.nodeType===1 && _walkNode2.parentNode===inner){
+                  _cursorDiv = _walkNode2; break;
                 }
+                _walkNode2 = _walkNode2.parentNode;
               }
             }
-            _lines.splice(_insertAfter+1,0,'');
-            // Update sidebar if linked
-            const _sid3=fieldToSidebarId(el.dataset.field||'');
-            const _sel3=_sid3?document.getElementById(_sid3):null;
-            if(_sel3) _sel3.value=_lines.join('\n');
-            // Re-apply bullets
-            applyBullets(inner, true);
-            inner.innerHTML=''; // applyBullets will re-render from field
-            // Manually set innerHTML to our lines
-            const _sp=el.dataset.bulletParaSpacing||'4';
-            inner.innerHTML=_lines.map(function(l,i){
-              return '<div><span class="bt">– '+l+'</span></div>';
-            }).join('');
-            inner.style.setProperty('--bullet-spacing',_sp);
-            // Place cursor in the new empty span
-            const _newSpans=inner.querySelectorAll('span.bt');
-            const _targetSpan=_newSpans[_insertAfter+1];
-            if(_targetSpan){
-              const _nr=document.createRange();
-              _nr.setStart(_targetSpan,_targetSpan.childNodes.length);
+            // Get all child divs in order
+            const _allDivs = Array.from(inner.children);
+            let _insertAfterIdx = _allDivs.length - 1; // default: end
+            if(_cursorDiv){
+              const _cidx = _allDivs.indexOf(_cursorDiv);
+              if(_cidx >= 0) _insertAfterIdx = _cidx;
+            }
+            // Read spacing
+            var _sp = 0;
+            if(el.dataset.bulletParaSpacing) _sp = parseFloat(el.dataset.bulletParaSpacing)||0;
+            if(!_sp && inner.dataset.bulletSpacing) _sp = parseFloat(inner.dataset.bulletSpacing)||0;
+            if(!_sp){ var _spCss = inner.style.getPropertyValue('--bullet-spacing'); if(_spCss) _sp = parseFloat(_spCss)||0; }
+            if(!_sp) _sp = 4;
+            var _smb = _sp > 0 ? 'margin-bottom:'+_sp+'px;' : '';
+            // Insert a new empty bullet div after the cursor div
+            var _newBulletDiv = document.createElement('div');
+            _newBulletDiv.setAttribute('style','display:flex;align-items:baseline;'+_smb);
+            _newBulletDiv.innerHTML = '<span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt"></span>';
+            var _refDiv = _allDivs[_insertAfterIdx];
+            if(_refDiv && _refDiv.nextSibling){
+              inner.insertBefore(_newBulletDiv, _refDiv.nextSibling);
+            } else {
+              inner.appendChild(_newBulletDiv);
+            }
+            // Place cursor inside the new .bt span
+            var _newBt = _newBulletDiv.querySelector('.bt');
+            if(_newBt){
+              var _nr = document.createRange();
+              _nr.setStart(_newBt, 0);
               _nr.collapse(true);
               _sel2.removeAllRanges();
               _sel2.addRange(_nr);
             }
+            // Sync to sidebar immediately after inserting new line
+            _syncManagedToSidebar(inner);
+            // Keep richHtml set so globalSync doesn't interfere
+            el.dataset.richHtml = inner.innerHTML;
             if(inner._inlineInputHandler) inner._inlineInputHandler();
           } else {
             // Non-bullet: insert newline
             const sel=window.getSelection();
             if(!sel||!sel.rangeCount) return;
             const range=sel.getRangeAt(0);
-            range.deleteContents();
-            if(inner.style.whiteSpace==='pre-wrap'){
-              const textNode=document.createTextNode('\n');
-              range.insertNode(textNode);
-              range.setStartAfter(textNode);
-              range.setEndAfter(textNode);
+
+            // Check if this element uses plain-line divs (paragraph spacing)
+            const _existingPlainLines = inner.querySelectorAll('div.plain-line');
+            if(_existingPlainLines.length > 0){
+              // Find which plain-line div the cursor is currently in
+              var _curPlainLine = null;
+              var _walkNode = range.startContainer;
+              while(_walkNode && _walkNode !== inner){
+                if(_walkNode.nodeType===1 && _walkNode.classList && _walkNode.classList.contains('plain-line')){
+                  _curPlainLine = _walkNode; break;
+                }
+                _walkNode = _walkNode.parentNode;
+              }
+              // Read paragraph spacing from all sources
+              var _nlSp = 0;
+              if(el.dataset.bulletParaSpacing) _nlSp = parseFloat(el.dataset.bulletParaSpacing)||0;
+              if(!_nlSp && inner.dataset.bulletSpacing) _nlSp = parseFloat(inner.dataset.bulletSpacing)||0;
+              if(!_nlSp){ var _nlCss2 = inner.style.getPropertyValue('--bullet-spacing'); if(_nlCss2) _nlSp = parseFloat(_nlCss2)||0; }
+              var _nlMb = _nlSp > 0 ? 'margin-bottom:'+_nlSp+'px;' : '';
+              // Split the current plain-line at cursor position:
+              // content before cursor stays in current div, content after goes to new div
+              var _newDiv = document.createElement('div');
+              _newDiv.className = 'plain-line';
+              _newDiv.setAttribute('style', 'display:block;'+_nlMb);
+              if(_curPlainLine){
+                // Extract everything from cursor to end of current div into new div
+                var _splitRange = document.createRange();
+                _splitRange.setStart(range.startContainer, range.startOffset);
+                _splitRange.setEndAfter(_curPlainLine.lastChild || _curPlainLine);
+                var _extracted = _splitRange.extractContents();
+                var _extractedText = _extracted.textContent.replace(/\u200B/g,'').replace(/[\u200B]/g,'');
+                if(_extractedText.trim()){
+                  _newDiv.textContent = _extractedText;
+                } else {
+                  _newDiv.textContent = '';
+                }
+                // Insert new div immediately after current div
+                if(_curPlainLine.nextSibling){
+                  inner.insertBefore(_newDiv, _curPlainLine.nextSibling);
+                } else {
+                  inner.appendChild(_newDiv);
+                }
+              } else {
+                // No current plain-line found — append at end
+                _newDiv.textContent = '';
+                inner.appendChild(_newDiv);
+              }
+              // Place cursor at start of the new div
+              var _nr2 = document.createRange();
+              var _targetNode = _newDiv.firstChild || _newDiv;
+              _nr2.setStart(_targetNode, 0);
+              _nr2.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(_nr2);
             } else {
-              const br=document.createElement('br');
-              range.insertNode(br);
-              const after=document.createTextNode('\u200B');
-              range.setStartAfter(br);
-              range.insertNode(after);
-              range.setStartAfter(after);
-              range.collapse(true);
+              // Standard pre-wrap plain text — insert newline character
+              range.deleteContents();
+              if(inner.style.whiteSpace==='pre-wrap'){
+                const textNode=document.createTextNode('\n');
+                range.insertNode(textNode);
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+              } else {
+                const br=document.createElement('br');
+                range.insertNode(br);
+                const after=document.createTextNode('\u200B');
+                range.setStartAfter(br);
+                range.insertNode(after);
+                range.setStartAfter(after);
+                range.collapse(true);
+              }
+              sel.removeAllRanges();
+              sel.addRange(range);
             }
-            sel.removeAllRanges();
-            sel.addRange(range);
             if(inner._inlineInputHandler) inner._inlineInputHandler();
           }
         }
@@ -1178,15 +1331,21 @@ function createElement(cfg){
                 });
               }
               function _readLines(innerEl){
-                var bts=innerEl.querySelectorAll('span.bt');
-                if(bts.length) return Array.from(bts).map(function(s){return s.textContent.replace(/^–\s*/,'').trim();}).filter(Boolean);
-                var pds=innerEl.querySelectorAll('div.plain-line');
-                if(pds.length) return Array.from(pds).map(function(d){return d.textContent.replace(/^–\s*/,'').trim();}).filter(Boolean);
-                // Use innerText directly — it preserves \n line breaks correctly.
-                // The old div-fallback (querySelectorAll('div')) lost paragraph breaks because
-                // browsers create bare <div> on Enter in contentEditable and empty lines were
-                // dropped by .filter(Boolean). innerText handles both pre-wrap \n and <div> correctly.
-                return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();});
+                // Read all direct child divs in DOM order — this is the most reliable approach.
+                // Each div is one line. DON'T use filter(Boolean) — empty lines are valid content.
+                var allDivs = innerEl.querySelectorAll(':scope > div');
+                if(allDivs.length){
+                  return Array.from(allDivs).map(function(d){
+                    // Prefer .bt span text (bullet elements), fall back to div text
+                    var bt = d.querySelector('span.bt');
+                    var txt = bt ? bt.textContent : d.textContent;
+                    return txt.replace(/^\u2013\s*/,'').replace(/^–\s*/,'').replace(/\u200B/g,'').trim();
+                  });
+                }
+                // Pre-wrap fallback: split on newlines
+                return (innerEl.innerText||innerEl.textContent||'').split('\n').map(function(l){
+                  return l.replace(/^–\s*/,'').replace(/\u200B/g,'').trim();
+                });
               }
               if(fld==='bullets'||fld==='bodycopy'){
                 var _allLines = _readLines(innerEl);
@@ -1216,17 +1375,26 @@ function createElement(cfg){
             var _sid2 = fieldToSidebarId(_blurField);
             var _sel2 = _sid2 ? document.getElementById(_sid2) : null;
             if(_blurField && _sel2){
-              var _txt2 = _readInnerText(inner, _blurField);
-              _sel2.value = _txt2;
-              // Save richHtml for ALL text elements when actual HTML formatting exists.
-              // This includes brochure Highlight Points — plain-line divs can contain <b>/<i>.
-              var _hasRichFormatting = inner.innerHTML !== inner.textContent;
-              // For plain-line divs, check if any div actually contains HTML tags
-              var _blurPlainLines = inner.querySelectorAll('div.plain-line');
-              if(_hasRichFormatting && _blurPlainLines.length > 0){
-                _hasRichFormatting = Array.from(_blurPlainLines).some(function(d){ return d.innerHTML !== d.textContent; });
+              var _txt2;
+              if(_blurField === 'bodycopy' || _blurField === 'bullets'){
+                // Sidebar was already updated in real-time by _inlineInputHandler.
+                // Just read it back directly — it's already correct.
+                // This avoids _readLines trying to parse DOM structure that
+                // may not have .bt spans during/after contenteditable editing.
+                _txt2 = _sel2.value;
+              } else {
+                _txt2 = _readInnerText(inner, _blurField);
+                _sel2.value = _txt2;
               }
-              if(_hasRichFormatting){
+              // Only save richHtml if actual formatting tags exist (b, i, u, sup, strong, em).
+              // Bullet/plain-line divs and span.bt structure is NOT rich formatting —
+              // it's just layout. Using innerHTML !== textContent is too broad and
+              // locks globalSync out of managed fields after every edit.
+              var _isBrochureBulletsBlur = (_blurField === 'bullets' && (currentTab === 0 || currentTab === 1));
+              // For bodycopy/bullets: always set richHtml so globalSync skips this element.
+              // GlobalSync must NOT re-render managed bullet fields — the blur handler
+              // already wrote the correct content to the sidebar and savedStates.
+              if(!_isBrochureBulletsBlur){
                 el.dataset.richHtml = inner.innerHTML;
               } else {
                 delete el.dataset.richHtml;
@@ -1236,11 +1404,11 @@ function createElement(cfg){
                 savedStates[currentTab].forEach(function(sv){
                   if(sv.eid===_eid2||sv.field===_blurField){
                     sv.content=_txt2;
-                    if(_hasRichFormatting){
-                      sv.richHtml=inner.innerHTML;
-                    } else {
-                      delete sv.richHtml;
-                    }
+                    // Never save richHtml for managed bullet/bodycopy fields.
+                    // el.dataset.richHtml blocks globalSync (set above), but sv.richHtml
+                    // must NOT be saved — restore must always use sv.content via applyBullets
+                    // so the proper flex div structure is rebuilt cleanly on every restore.
+                    delete sv.richHtml;
                   }
                 });
               }
@@ -2247,7 +2415,8 @@ function setParaSpacing(v){
   if(selectedEl.dataset.bullets === '1'){
     // If element has richHtml formatting, update margin-bottom on existing divs only
     // so we don't wipe the bold/italic formatting by rebuilding from scratch
-    if(selectedEl.dataset.richHtml){
+    var _isMgdPs = (selectedEl.dataset.field==='bodycopy'||selectedEl.dataset.field==='bullets');
+    if(selectedEl.dataset.richHtml && !_isMgdPs){
       inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom = val > 0 ? val + 'px' : ''; });
       // Update the richHtml dataset to reflect the new spacing
       selectedEl.dataset.richHtml = inner.innerHTML;
@@ -2262,11 +2431,13 @@ function setParaSpacing(v){
     }
   } else {
     applyPlainParaSpacing(inner, val);
-    // After spacing update, sync richHtml on element if plain-line divs contain formatting
-    var _plainFormatted = Array.from(inner.querySelectorAll('div.plain-line')).some(function(d){ return d.innerHTML !== d.textContent; });
-    if(_plainFormatted){
+    // After spacing update, sync richHtml only if actual formatting tags exist
+    var _richRxSp = /<(b|i|u|sup|strong|em)[\s>]/i;
+    var _plainFormatted = _richRxSp.test(inner.innerHTML);
+    var _isMgdSp = (selectedEl.dataset.field==='bodycopy'||selectedEl.dataset.field==='bullets');
+    if(_plainFormatted && !_isMgdSp){
       selectedEl.dataset.richHtml = inner.innerHTML;
-    } else if(inner.innerHTML === inner.textContent){
+    } else if(!_plainFormatted){
       delete selectedEl.dataset.richHtml;
     }
   }
@@ -2639,7 +2810,12 @@ function serializeTab(){
     const obj={
       eid:el.dataset.eid, type:el.dataset.type, locked:el.dataset.locked||'0', bullets:el.dataset.bullets||'0',
       x:el.style.left, y:el.style.top, w:el.style.width, h:el.style.height, z:el.style.zIndex,
-      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:el.dataset.bulletParaSpacing||inner?.dataset?.bulletSpacing||'0', banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
+      field:el.dataset.field, assetKey:ak, combinedAgent:el.dataset.combinedAgent||'0', bulletParaSpacing:(function(){
+        var _bp = el.dataset.bulletParaSpacing;
+        if(!_bp || _bp==='0') _bp = inner ? inner.dataset.bulletSpacing : '';
+        if(!_bp || _bp==='0'){ var _bpEl = inner ? inner.style.getPropertyValue('--bullet-spacing') : ''; if(_bpEl) _bp = _bpEl.trim(); }
+        return _bp||'0';
+      })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
     };
     if(inner){
@@ -2648,10 +2824,19 @@ function serializeTab(){
       obj.innerStyle = _rawStyle;
       if(el.dataset.type==='text'){
         if(el.dataset.bullets==='1'){
-          // Bullet elements use flex div-per-line — read from .bt text spans
+          // Bullet elements: for managed fields (bodycopy/bullets), prefer sidebar value
+          // as it's always written by the blur handler and is authoritative.
+          // Fall back to DOM span reading for free-text bullet elements.
+          var _serField = el.dataset.field;
+          var _serSbId = _serField==='bodycopy' ? 'fbc' : (_serField==='bullets' ? 'fbull' : null);
+          var _serSbEl = _serSbId ? document.getElementById(_serSbId) : null;
+          var _serSbVal = _serSbEl ? (_serSbEl.value||'').trim() : '';
           const textSpans = inner.querySelectorAll('span.bt');
           var _rawLines;
-          if(textSpans.length > 0){
+          if(_serSbVal && _serSbEl){
+            // Use sidebar — authoritative for managed fields
+            _rawLines = _serSbVal.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
+          } else if(textSpans.length > 0){
             _rawLines = Array.from(textSpans).map(function(s){ return s.textContent; });
           } else {
             const divs = inner.querySelectorAll('div');
@@ -2671,10 +2856,11 @@ function serializeTab(){
               _rawLines = _rawLines.slice(0, -1);
             }
           }
-          // Filter out empty lines that came from empty spacing divs
-          _rawLines = _rawLines.filter(function(l){ return l.trim().length > 0; });
+          // Strip trailing empty lines only — preserve internal empty lines (intentional blanks)
+          while(_rawLines.length && !_rawLines[_rawLines.length-1].trim()) _rawLines.pop();
           obj.content = _rawLines.map(function(l){
-            return (l.startsWith('\u2013 ') ? '' : '\u2013 ') + l;
+            var t = l.replace(/^\u2013\s*/,'').trim();
+            return t ? '\u2013 ' + t : '';
           }).join('\n');
           // Save richHtml for bullet elements that have inline formatting (bold/italic/underline)
           // Check if any .bt span contains HTML elements (not just plain text)
@@ -2686,11 +2872,23 @@ function serializeTab(){
           if(!_bullHasFormatting && el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
             _bullHasFormatting = true;
           }
-          if(_bullHasFormatting){
-            obj.richHtml = el.dataset.richHtml || inner.innerHTML;
-            el.dataset.richHtml = obj.richHtml;
-          } else {
+          // Never save richHtml for managed fields (bodycopy/bullets).
+          // These always restore from obj.content via applyBullets — never from richHtml.
+          // el.dataset.richHtml is used only as a live globalSync blocker, not for persistence.
+          var _isMgdSer = (el.dataset.field==='bodycopy'||el.dataset.field==='bullets');
+          if(_isMgdSer){
             delete el.dataset.richHtml;
+            delete obj.richHtml;
+          } else {
+            var _richRxSer = /<(b|i|u|sup|strong|em)[\s>]/i;
+            var _realBullFmt = _bullHasFormatting && _richRxSer.test(inner.innerHTML);
+            if(_realBullFmt){
+              obj.richHtml = el.dataset.richHtml || inner.innerHTML;
+              el.dataset.richHtml = obj.richHtml;
+            } else {
+              delete el.dataset.richHtml;
+              delete obj.richHtml;
+            }
           }
         } else {
           // Save rich HTML if present (bold/italic/underline formatting)
@@ -2719,11 +2917,15 @@ function serializeTab(){
           if(_richCheck && _plainLineEls.length > 0){
             _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
           }
-          if(_richCheck){
+          var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+          var _isMgdSer2 = (el.dataset.field==='bodycopy'||el.dataset.field==='bullets');
+          var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich) && !_isMgdSer2;
+          if(_realRichCheck){
             obj.richHtml = _candidateRich;
             el.dataset.richHtml = _candidateRich;
           } else {
             delete el.dataset.richHtml;
+            delete obj.richHtml;
           }
         }
       }
@@ -2801,10 +3003,16 @@ function restoreTab(idx){
     if(sv.bullets==='1' && inner && sv.type==='text'){
       // ── BULLET ELEMENT RESTORE ──
       if(sv.innerStyle) inner.setAttribute('style', sv.innerStyle);
-      if(sv.bulletParaSpacing && sv.bulletParaSpacing !== '0'){
-        el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
-        inner.dataset.bulletSpacing = sv.bulletParaSpacing;
-        inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
+      // Restore bulletParaSpacing — use sv value, or fall back to innerStyle CSS var
+      var _svBps = sv.bulletParaSpacing;
+      if((!_svBps || _svBps === '0') && sv.innerStyle){
+        var _bpsCssMatch = sv.innerStyle.match(/--bullet-spacing:\s*([\d.]+)/);
+        if(_bpsCssMatch) _svBps = _bpsCssMatch[1];
+      }
+      if(_svBps && _svBps !== '0'){
+        el.dataset.bulletParaSpacing = _svBps;
+        inner.dataset.bulletSpacing = _svBps;
+        inner.style.setProperty('--bullet-spacing', _svBps);
       }
 
       // EXCEPTION: Brochure tabs (0,1) bullets field uses plain-line spacing, NOT dash bullets.
@@ -2813,8 +3021,10 @@ function restoreTab(idx){
       if(_isBrochureBulletsRestore){
         el.dataset.bullets = '0';
         var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
-        // If richHtml was saved (contains bold/italic formatting in plain-line divs), restore it directly
-        if(sv.richHtml){
+        // If richHtml was saved, only restore if it has real formatting tags AND field is not managed
+        var _richRxRst = /<(b|i|u|sup|strong|em)[\s>]/i;
+        var _isMgdRst = (sv.field==='bodycopy'||sv.field==='bullets');
+        if(sv.richHtml && _richRxRst.test(sv.richHtml) && !_isMgdRst){
           inner.innerHTML = sv.richHtml;
           el.dataset.richHtml = sv.richHtml;
           inner.style.whiteSpace = 'normal';
@@ -2837,13 +3047,21 @@ function restoreTab(idx){
           if(_rFi) _rLines.push(_rFi);
           _rawContent = _rLines.join('\n');
         }
-        // If richHtml was saved (bullet lines have bold/italic/underline formatting), restore it directly
-        if(sv.richHtml){
+        // Always restore bodycopy/bullets from sv.content via applyBullets.
+        // Never use sv.richHtml for managed fields — it captures raw inline-edit HTML
+        // which has unreliable structure. applyBullets always produces correct flex divs.
+        var _isMgdBRst = (sv.field==='bodycopy'||sv.field==='bullets');
+        var _richRxBRst = /<(b|i|u|sup|strong|em)[\s>]/i;
+        if(sv.richHtml && _richRxBRst.test(sv.richHtml) && !_isMgdBRst){
+          // Free-text bullet element with bold/italic: restore from richHtml directly
           inner.innerHTML = sv.richHtml;
           el.dataset.richHtml = sv.richHtml;
           inner.style.whiteSpace = 'normal';
           inner.style.wordBreak = 'break-word';
         } else {
+          // Managed field or no real formatting: always rebuild from content
+          delete sv.richHtml; // clear stale richHtml so it can't interfere
+          delete el.dataset.richHtml;
           var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
           inner.textContent = _plainLines.join('\n');
           inner.style.whiteSpace = 'pre-wrap';
@@ -2878,6 +3096,20 @@ function restoreTab(idx){
         inner.dataset.bulletSpacing = sv.bulletParaSpacing;
         inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
         if(inner) applyPlainParaSpacing(inner, parseFloat(sv.bulletParaSpacing));
+        // After plain-line restore, bold the last line if it looks like an income line
+        // This preserves the bold Net Income appearance after tab approval
+        var _fi_restore = ((document.getElementById('fi')||{}).value||'').trim();
+        if(_fi_restore){
+          var _plainDivs = inner.querySelectorAll('div.plain-line');
+          if(_plainDivs.length){
+            var _lastDiv = _plainDivs[_plainDivs.length-1];
+            var _lastTxt = (_lastDiv.textContent||'').trim();
+            var _fiPfxR = _fi_restore.split(':')[0].trim().toLowerCase();
+            if(_lastTxt.toLowerCase().startsWith(_fiPfxR+':')){
+              _lastDiv.style.fontWeight = '700';
+            }
+          }
+        }
       }
     }
     // Apply images AFTER innerStyle (overrides any display:none from innerStyle)
@@ -3219,6 +3451,28 @@ function _edmInjectIncome(){
   requestAnimationFrame(function(){ edmBodycopyAutoSize(); });
 }
 
+// Sync a managed field (bodycopy/bullets) from canvas to sidebar
+function _syncManagedToSidebar(innerEl){
+  if(!innerEl) return;
+  var _sEl = innerEl.closest('.el'); if(!_sEl) return;
+  var _sFld = _sEl.dataset.field;
+  if(_sFld !== 'bodycopy' && _sFld !== 'bullets') return;
+  var _sSbEl = document.getElementById(_sFld === 'bodycopy' ? 'fbc' : 'fbull');
+  if(!_sSbEl) return;
+  var _sDivs = Array.from(innerEl.querySelectorAll(':scope > div'));
+  var _sLines;
+  if(_sDivs.length){
+    _sLines = _sDivs.map(function(d){
+      var bt = d.querySelector('span.bt');
+      return (bt ? bt.textContent : d.textContent).replace(/^\u2013\s*/,'').replace(/\u200B/g,'').trim();
+    });
+  } else {
+    _sLines = (innerEl.innerText||'').split(String.fromCharCode(10)).map(function(l){ return l.replace(/^\u2013\s*/,'').replace(/\u200B/g,'').trim(); });
+  }
+  while(_sLines.length && !_sLines[_sLines.length-1]) _sLines.pop();
+  _sSbEl.value = _sLines.join(String.fromCharCode(10));
+}
+
 function globalSync(){
   // 0. Enforce character limits on ALL fields FIRST — before reading any values
   //    This means over-limit text can never reach the canvas under any circumstance
@@ -3259,12 +3513,23 @@ function globalSync(){
       const _aInner=_anchorEl.querySelector('.el-inner');
       if(_aInner && _aInner.contentEditable!=='true' && !_isAnchorBrochBullets && !_anchorEl.dataset.richHtml && !_tabApprovals[currentTab]){
         const _fi4=((document.getElementById('fi')||{}).value||'').trim();
-        const _btSpans=_aInner.querySelectorAll('span.bt');
-        let _baseLines=[];
-        if(_btSpans.length){
-          _baseLines=Array.from(_btSpans).map(function(s){return s.textContent.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+        // Read base lines from SIDEBAR not DOM — sidebar is authoritative after blur.
+        // Reading from DOM spans with filter(Boolean) drops lines the user just typed.
+        var _anchorField = _anchorEl.dataset.field || 'bodycopy';
+        var _anchorSidebarId = _anchorField==='bullets'?'fbull':'fbc';
+        var _anchorSidebarEl = document.getElementById(_anchorSidebarId);
+        var _anchorSidebarVal = _anchorSidebarEl ? (_anchorSidebarEl.value||'') : '';
+        // Fall back to DOM only if sidebar is empty
+        var _baseLines = [];
+        if(_anchorSidebarVal.trim()){
+          _baseLines = _anchorSidebarVal.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
         } else {
-          _baseLines=(_aInner.innerText||_aInner.textContent||'').split('\n').map(function(l){return l.replace(/^\u2013\s*/,'').trim();}).filter(Boolean);
+          var _btSpans4 = _aInner.querySelectorAll('span.bt');
+          if(_btSpans4.length){
+            _baseLines = Array.from(_btSpans4).map(function(s){ return s.textContent.replace(/^\u2013\s*/,'').trim(); });
+          } else {
+            _baseLines = (_aInner.innerText||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
+          }
         }
         const _fp=_fi4.split(':')[0].trim().toLowerCase();
         _baseLines=_baseLines.filter(function(l){ return !(_fp&&l.toLowerCase().startsWith(_fp+':')); });
@@ -3290,8 +3555,9 @@ function globalSync(){
     if(inner && el.dataset.type==='text'){
       // Skip elements currently being edited inline — don't interrupt typing
       if(inner.contentEditable === 'true') return;
-      // Skip elements that have rich HTML formatting (superscript, bold, italic etc.)
-      // — globalSync must not overwrite innerHTML with plain text
+      // Skip elements that have rich HTML set — globalSync must not overwrite
+      // innerHTML with plain text. The blur handler sets richHtml on blur so
+      // globalSync leaves the element alone; the sidebar drives content instead.
       if(el.dataset.richHtml) return;
       // For agent name fields on combined elements (Brochure/Brochure2), show name+phone together
       const agentPhoneMap = {agent1name:'fp1',agent2name:'fp2',agent3name:'fp3',agent4name:'fp4'};
@@ -3390,7 +3656,11 @@ function globalSync(){
             _blines2.push(_fi2b);
             _bval = _blines2.join('\n');
           }
-          var _bsp = parseFloat(el.dataset.bulletParaSpacing||'0');
+          // Read spacing from all storage locations (same priority as applyBullets)
+          var _bsp = 0;
+          if(el.dataset.bulletParaSpacing) _bsp = parseFloat(el.dataset.bulletParaSpacing)||0;
+          if(!_bsp && inner.dataset.bulletSpacing) _bsp = parseFloat(inner.dataset.bulletSpacing)||0;
+          if(!_bsp){ var _bspCss = inner.style.getPropertyValue('--bullet-spacing'); if(_bspCss) _bsp = parseFloat(_bspCss)||0; }
           var _bmb = _bsp > 0 ? ';margin-bottom:'+_bsp+'px' : '';
           function _besc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
           inner.innerHTML = _bval.split('\n').map(function(l){
@@ -5391,7 +5661,15 @@ function switchTab(idx,btn){
   // Only serialize + persist if the canvas has actual user edits.
   // If canvas is clean (just loaded/restored), serializing would capture
   // a blank or default state and overwrite the good saved data.
-  if(currentTab!==9 && _canvasDirty){ savedStates[currentTab]=serializeTab(); persistAll(); }
+  if(currentTab!==9 && _canvasDirty){
+    savedStates[currentTab]=serializeTab();
+    persistAll();
+    // Force a history snapshot when leaving a tab with real edits —
+    // captures the "finished working on this tab" moment regardless of time gap
+    const _stJson = JSON.stringify(collectState());
+    const _stTs   = new Date().toISOString();
+    _writeHistorySnapshot(_stJson, _stTs, true).catch(()=>{});
+  }
   currentTab=idx;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
@@ -5656,8 +5934,202 @@ async function supabaseSave(state){
       const r=await fetch(`${SUPA_URL}/rest/v1/projects`,{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
       const data=await r.json(); savedRow=Array.isArray(data)?data[0]:data;
     }
-    return savedRow?.updated_at||body.updated_at;
+    const ts = savedRow?.updated_at||body.updated_at;
+    // Write a history snapshot asynchronously — don't block the main save
+    if(ts) _writeHistorySnapshot(body.state_json, ts).catch(()=>{});
+    return ts;
   }catch(e){console.warn('Supabase save failed:',e);return null;}
+}
+
+// ── VERSION HISTORY ─────────────────────────────────────────────────────────
+// Smart snapshot rules:
+//   1. Minimum MIN_SNAPSHOT_GAP_MS between snapshots (default 10 minutes)
+//   2. Content fingerprint check — skip if nothing meaningful changed
+//   3. Force flag bypasses both — used on tab-switch, image upload, page unload
+// Keeps at most MAX_HISTORY versions per property (trims oldest automatically).
+const MAX_HISTORY = 10;
+const MIN_SNAPSHOT_GAP_MS = 10 * 60 * 1000; // 10 minutes
+let _historyPanelOpen = false;
+let _lastSnapshotTime = 0;      // timestamp of last written snapshot
+let _lastSnapshotFingerprint = ''; // fingerprint of last written snapshot
+
+function _snapshotFingerprint(stateJson){
+  // Lightweight fingerprint: field values + which tabs exist + tab count
+  // Cheap to compute, catches all real content changes
+  try{
+    const s = JSON.parse(stateJson);
+    const f = s.fields || {};
+    const tabKeys = Object.keys(s.tabLayouts || {}).sort().join(',');
+    return [f.fh,f.fs,f.fa1,f.fa2,f.fb,f.fi,f.fbull,f.fbc,f.fm,f.fd,tabKeys].join('|');
+  }catch(e){ return stateJson.length+''; }
+}
+
+async function _writeHistorySnapshot(stateJson, savedAt, force){
+  try{
+    const now = Date.now();
+    const fingerprint = _snapshotFingerprint(stateJson);
+
+    // Skip if not forced AND (too soon OR content unchanged)
+    if(!force){
+      if(now - _lastSnapshotTime < MIN_SNAPSHOT_GAP_MS){
+        return; // too soon since last snapshot
+      }
+      if(fingerprint === _lastSnapshotFingerprint && _lastSnapshotTime > 0){
+        return; // content identical to last snapshot
+      }
+    }
+
+    // Show indicator briefly
+    const ind = document.getElementById('hist-saving-indicator');
+    if(ind){ ind.style.display=''; setTimeout(()=>{ ind.style.display='none'; }, 2000); }
+
+    // Write snapshot
+    const writeRes = await fetch(SUPA_URL+'/rest/v1/project_history',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({
+        portfolio_id: _portfolioId,
+        property_id:  _propertyId,
+        state_json:   stateJson,
+        saved_at:     savedAt,
+        saved_by:     _currentUserName||'unknown'
+      })
+    });
+    if(!writeRes.ok) throw new Error('Write failed: '+writeRes.status);
+
+    // Update trackers
+    _lastSnapshotTime = now;
+    _lastSnapshotFingerprint = fingerprint;
+
+    // Trim to MAX_HISTORY — delete oldest beyond the limit
+    const listRes = await fetch(
+      SUPA_URL+'/rest/v1/project_history?portfolio_id=eq.'+encodeURIComponent(_portfolioId)+'&property_id=eq.'+encodeURIComponent(_propertyId)+'&select=id,saved_at&order=saved_at.desc',
+      {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
+    );
+    const all = await listRes.json();
+    if(all && all.length > MAX_HISTORY){
+      const toDelete = all.slice(MAX_HISTORY).map(r=>r.id);
+      for(const id of toDelete){
+        await fetch(SUPA_URL+'/rest/v1/project_history?id=eq.'+id,{
+          method:'DELETE',
+          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+        });
+      }
+    }
+    // Refresh panel if open
+    if(_historyPanelOpen) renderHistoryPanel();
+  }catch(e){ console.warn('[CBRE] History snapshot failed:',e); }
+}
+
+async function openHistoryPanel(){
+  _historyPanelOpen = true;
+  document.getElementById('history-panel').classList.add('open');
+  await renderHistoryPanel();
+}
+
+function closeHistoryPanel(){
+  _historyPanelOpen = false;
+  document.getElementById('history-panel').classList.remove('open');
+}
+
+let _currentUserName = '';
+
+async function renderHistoryPanel(){
+  const body = document.getElementById('hist-body');
+  if(!body) return;
+  body.innerHTML = '<div class="hist-empty">Loading…</div>';
+  try{
+    const res = await fetch(
+      SUPA_URL+'/rest/v1/project_history?portfolio_id=eq.'+encodeURIComponent(_portfolioId)+'&property_id=eq.'+encodeURIComponent(_propertyId)+'&select=id,saved_at,saved_by,state_json&order=saved_at.desc&limit=10',
+      {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
+    );
+    const rows = await res.json();
+    if(!rows||!rows.length){
+      body.innerHTML = '<div class="hist-empty">No history yet.<br><br>Snapshots are saved automatically every time the builder saves. Check back after making some changes.</div>';
+      return;
+    }
+    body.innerHTML = rows.map(function(row, i){
+      const d = new Date(row.saved_at);
+      const when = d.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+      const size = Math.round((row.state_json||'').length / 1024);
+      const by = row.saved_by && row.saved_by !== 'unknown' ? ' · ' + row.saved_by : '';
+      // Count how many tabs have content
+      let tabCount = 0;
+      try{ const s=JSON.parse(row.state_json); tabCount=Object.keys(s.tabLayouts||{}).length; }catch(e){}
+      const label = i===0 ? '<span style="background:#0d2b21;color:#17e88f;font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;margin-left:6px;border:1px solid #2a5a3a;">LATEST</span>' : '';
+      return `<div class="hist-item">
+        <div class="hist-when">${when}${label}</div>
+        <div class="hist-meta">${size}KB${by}</div>
+        <div class="hist-tabs">${tabCount} tab${tabCount!==1?'s':''} saved</div>
+        <div class="hist-actions">
+          <button class="hist-btn-restore" onclick="restoreFromHistory('${row.id}','${when}')" ${i===0?'disabled title="This is already the current version"':''}>
+            ${i===0?'✓ Current':'↩ Restore'}
+          </button>
+          <button class="hist-btn-peek" onclick="peekHistory('${row.id}','${when}')">Preview</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML = '<div class="hist-empty" style="color:#e05050;">Failed to load history.<br><br>Make sure the project_history table exists in Supabase.<br><br><small>'+e.message+'</small></div>';
+  }
+}
+
+async function restoreFromHistory(histId, label){
+  if(!confirm('Restore to version from ' + label + '?\n\nThis will replace the current state. You can undo this by restoring another version.')) return;
+  const body = document.getElementById('hist-body');
+  try{
+    // Fetch the snapshot
+    const res = await fetch(
+      SUPA_URL+'/rest/v1/project_history?id=eq.'+histId+'&select=state_json',
+      {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
+    );
+    const rows = await res.json();
+    if(!rows||!rows.length||!rows[0].state_json) throw new Error('Snapshot not found');
+    const state = JSON.parse(rows[0].state_json);
+    // Apply locally
+    applyState(state);
+    const prevTab = currentTab;
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
+    if(savedStates[prevTab]) restoreTab(prevTab); else buildTemplate(prevTab);
+    _updateTabApprovalUI();
+    // Mark dirty and save to projects table (this also writes a new history snapshot)
+    _canvasDirty = true;
+    await _doSave(collectState());
+    closeHistoryPanel();
+    showSyncToast('↩ Restored to version from ' + label);
+  }catch(e){
+    alert('Restore failed: ' + e.message);
+  }
+}
+
+async function peekHistory(histId, label){
+  try{
+    const res = await fetch(
+      SUPA_URL+'/rest/v1/project_history?id=eq.'+histId+'&select=state_json',
+      {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
+    );
+    const rows = await res.json();
+    if(!rows||!rows.length||!rows[0].state_json) throw new Error('Not found');
+    const state = JSON.parse(rows[0].state_json);
+    const fields = state.fields||{};
+    const tabs = Object.keys(state.tabLayouts||{});
+    const nl = String.fromCharCode(10);
+    const summary = [
+      'Version: ' + label,
+      '─────────────────────',
+      'Heading: ' + (fields.fh||'(empty)'),
+      'Sub-heading: ' + (fields.fs||'(empty)'),
+      'Address: ' + ([fields.fa1,fields.fa2].filter(Boolean).join(', ')||'(empty)'),
+      'Net Income: ' + (fields.fi||'(empty)'),
+      'Sale Method: ' + (fields.fm||'(empty)').replace(/\n/g,' '),
+      'Sale Date: ' + (fields.fd||'(empty)').replace(/\n/g,' '),
+      '─────────────────────',
+      'Tabs saved: ' + tabs.join(', '),
+    ].join(nl);
+    alert(summary);
+  }catch(e){
+    alert('Preview failed: ' + e.message);
+  }
 }
 
 async function supabaseLoad(){
@@ -5809,6 +6281,12 @@ function loadAsset(e,key){
     renderImgUploadSlots(); renderLogoUploadSlots();
     _canvasDirty = true; // image upload is a real user edit
     persistAll();
+    // Force snapshot after image upload — structural change always worth capturing
+    setTimeout(function(){
+      const _imgJson = JSON.stringify(collectState());
+      const _imgTs   = new Date().toISOString();
+      _writeHistorySnapshot(_imgJson, _imgTs, true).catch(()=>{});
+    }, 600); // slight delay so persistAll has time to settle
   };
   reader.readAsDataURL(f);
 }
@@ -6161,6 +6639,25 @@ async function init(){
       setTimeout(function(){ if(currentTab===2||currentTab===3) _edmInjectIncome(); }, 800);
     }
   });
+  // Capture current user name for history attribution (safe, after RAF settles)
+  try{
+    var _histSess=JSON.parse(localStorage.getItem('cbre_hub_session')||'null');
+    if(_histSess&&_histSess.name) _currentUserName=_histSess.name;
+  }catch(e){}
+  // Pre-load last snapshot fingerprint so first edit doesn't write a duplicate.
+  // Uses string concat to avoid template-literal parser issues in older browsers.
+  setTimeout(function(){
+    fetch(SUPA_URL+'/rest/v1/project_history?portfolio_id=eq.'+encodeURIComponent(_portfolioId)+'&property_id=eq.'+encodeURIComponent(_propertyId)+'&select=state_json,saved_at&order=saved_at.desc&limit=1',
+      {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
+    ).then(function(r){return r.json();}).then(function(rows){
+      if(rows&&rows.length&&rows[0].state_json){
+        _lastSnapshotFingerprint=_snapshotFingerprint(rows[0].state_json);
+        _lastSnapshotTime=new Date(rows[0].saved_at).getTime();
+        console.log('[CBRE] History: last snapshot loaded, fingerprint set');
+      }
+    }).catch(function(){});
+  }, 2000); // delay 2s so init is fully settled first
+
   document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',function(){
     _canvasDirty = true; // sidebar field edit is a real user action
     debouncedPersist();
@@ -6214,10 +6711,18 @@ async function init(){
     // This prevents a session that only viewed the property from overwriting good data.
     if(!_canvasDirty) return;
     const state=collectState();
-    try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
+    const stateJson=JSON.stringify(state);
+    const ts=new Date().toISOString();
+    try{localStorage.setItem(LS_KEY,stateJson);}catch(e){}
     if(_pendingSaveState!==null||_persistTimer!==null){
-      try{const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:JSON.stringify(state),updated_at:new Date().toISOString()};navigator.sendBeacon&&navigator.sendBeacon(`${SUPA_URL}/rest/v1/projects`,new Blob([JSON.stringify(body)],{type:'application/json'}));}catch(e){}
+      try{const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:stateJson,updated_at:ts};navigator.sendBeacon&&navigator.sendBeacon(`${SUPA_URL}/rest/v1/projects`,new Blob([JSON.stringify(body)],{type:'application/json'}));}catch(e){}
     }
+    // Force a final history snapshot using sendBeacon so it fires even as the page closes
+    // This captures the end-of-session state reliably
+    try{
+      const histBody={portfolio_id:_portfolioId,property_id:_propertyId,state_json:stateJson,saved_at:ts,saved_by:_currentUserName||'unknown'};
+      navigator.sendBeacon&&navigator.sendBeacon(`${SUPA_URL}/rest/v1/project_history`,new Blob([JSON.stringify(histBody)],{type:'application/json'}));
+    }catch(e){}
   });
 }
 
@@ -6333,46 +6838,60 @@ applyState=function(data,skipZoom=false){const result=_origApplyState(data,skipZ
 
 let _liveSyncTimer=null,_toastTimer=null;
 function showSyncToast(msg){const t=document.getElementById('live-sync-toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
+// Track when inline canvas editing was last active (separate from general activity)
+let _lastInlineEditTime = 0;
+function _markInlineEdit(){ _lastInlineEditTime = Date.now(); _markUserActivity(); }
+const INLINE_EDIT_WINDOW_MS = 15000; // 15 seconds — don't sync for 15s after last keypress in editor
+
 function isUserBusy(){
   const now=Date.now();
   if(now-_lastUserActivityTime<USER_BUSY_WINDOW_MS)return true;
   if(now-_lastSaveCompletedTime<POST_SAVE_WINDOW_MS)return true;
+  if(now-_lastInlineEditTime<INLINE_EDIT_WINDOW_MS)return true; // inline editing recently
   if(_persistTimer!==null)return true;
   if(_pendingSaveState!==null)return true;
   const active=document.activeElement;
   if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA')&&active.closest('.sb'))return true;
   if(active&&active.contentEditable==='true')return true;
+  // Also check if any canvas element is currently in edit mode
+  if(document.querySelector('.el-inner[contenteditable="true"]'))return true;
   return false;
 }
+// Hard guard: returns true if ANY canvas element is in inline edit mode right now
+function _isCanvasEditing(){
+  return !!document.querySelector('.el-inner[contenteditable="true"]');
+}
+
 async function liveSyncTick(){
-  if(isUserBusy())return;
+  // Never sync while user is busy OR while any canvas element is in edit mode
+  if(isUserBusy() || _isCanvasEditing()) return;
   try{
-    const checkUrl=`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=updated_at`;
+    const checkUrl=SUPA_URL+'/rest/v1/projects?portfolio_id=eq.'+encodeURIComponent(_portfolioId)+'&property_id=eq.'+encodeURIComponent(_propertyId)+'&select=updated_at';
     const checkRes=await fetch(checkUrl,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
     if(!checkRes.ok)return;
     const checkRows=await checkRes.json();if(!checkRows||!checkRows.length)return;
     const remoteTs=checkRows[0].updated_at;if(remoteTs===_lastKnownUpdatedAt)return;
     if(!_lastKnownUpdatedAt){_lastKnownUpdatedAt=remoteTs;return;}
-    if(isUserBusy())return;
+    // Re-check AFTER the network round trip — user may have started editing
+    if(isUserBusy() || _isCanvasEditing()) return;
     if(_pendingSaveState!==null){setCdtStatus('saving','Recovering unsaved changes…');await _doSave(collectState());return;}
     const result=await supabaseLoad();if(!result)return;
-    if(isUserBusy())return;
+    // Final check right before touching the DOM — this is the critical one
+    if(isUserBusy() || _isCanvasEditing()){
+      console.log('[CBRE] Sync aborted — user started editing during fetch');
+      return;
+    }
     const prevTab=currentTab;applyState(result.state,true);currentTab=prevTab;
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
-    // Only restore/rebuild if the incoming state actually has tab data.
-    // NEVER call buildTemplate during a live-sync — it would wipe the current canvas
-    // with template defaults, destroying any custom free-text work.
     if(savedStates[prevTab] && savedStates[prevTab].length){
       restoreTab(prevTab);
     }
-    // If no savedState for current tab arrived, leave the canvas as-is.
-    // The user can manually refresh if they want a full reset.
     CL_FIELD_IDS.forEach(id=>clEnforce(id));
     _lastKnownUpdatedAt=result.updatedAt||remoteTs;
     setCdtStatus('saved','Saved ✓');showSyncToast('↻ Updated by another user');
   }catch(e){console.warn('[CBRE] Live sync error:',e);}
 }
-function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,5000);}
+function startLiveSync(){_liveSyncTimer=setInterval(liveSyncTick,15000);}
 
 // ── Canvas paste guard ───────────────────────────────────────────────
 // Fires only when a canvas text box is in contentEditable mode (after double-click).
@@ -6511,15 +7030,40 @@ function toggleTabApproval(){
   } else {
     // Approve: snapshot current state then break all field links
     if(currentTab === 9) return; // can't approve Marketing Schedule
-    // 1. Serialize current tab so savedStates has a fresh snapshot
+    // 1. Run globalSync to ensure income is embedded into its anchor element
+    //    before we break the field links — this captures the final visual state.
+    globalSync();
+    // 2. Serialize current tab so savedStates has the correct visual snapshot
     savedStates[currentTab] = serializeTab();
-    // 2. Break all data-field links on live canvas elements
+    // 3. Break all data-field links on live canvas elements
     document.querySelectorAll('#artwork .el[data-field]').forEach(function(el){
+      // Save the current text content into sv.content before breaking the link
+      // so the element restores correctly from savedStates without needing globalSync.
+      var inner = el.querySelector('.el-inner');
+      if(inner && el.dataset.field){
+        var _approveEid = el.dataset.eid;
+        var _approveSt = savedStates[currentTab];
+        if(_approveSt && _approveEid){
+          _approveSt.forEach(function(sv){
+            if(sv.eid === _approveEid){
+              // Lock in current visual content
+              if(el.dataset.bullets === '1'){
+                var _aBt = Array.from(inner.querySelectorAll('span.bt'));
+                if(_aBt.length){
+                  sv.content = _aBt.map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); }).join('\n');
+                }
+              } else {
+                sv.content = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').trim();
+              }
+            }
+          });
+        }
+      }
       el.dataset.field = '';
       el.dataset.incomeAnchor = '0';
       el.dataset.combinedAgent = '0';
     });
-    // 3. Re-serialize with broken links so they're saved
+    // 4. Re-serialize with broken links so they're saved
     savedStates[currentTab] = serializeTab();
     // 4. Mark tab as approved
     _tabApprovals[currentTab] = true;
@@ -7014,7 +7558,9 @@ function rtCmd(cmd){
     const inner=selectedEl.querySelector('.el-inner');
     if(inner){
       const _rtHtml=inner.innerHTML;
-      const _hasFormatting=_rtHtml&&_rtHtml!==inner.textContent;
+      const _richRxRt=/<(b|i|u|sup|strong|em)[\s>]/i;
+      const _isMgdRt=(selectedEl.dataset.field==='bodycopy'||selectedEl.dataset.field==='bullets');
+      const _hasFormatting=_rtHtml&&_richRxRt.test(_rtHtml)&&!_isMgdRt;
       if(_hasFormatting){
         selectedEl.dataset.richHtml=_rtHtml;
         const _eid=selectedEl.dataset.eid,_field=selectedEl.dataset.field,_st=savedStates[currentTab];
