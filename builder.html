@@ -265,6 +265,36 @@ body.admin-mode .cl-limit-wrap{display:flex;}
 }
 #rich-toolbar button:hover{background:#3a3a3a;color:#fff;}
 #rich-toolbar button.active{background:#0d2b21;border-color:#5bbf7a;color:#5bbf7a;}
+
+/* ── TAB APPROVAL ── */
+#tab-approved-banner{
+  display:none;
+  background:#0d2b21;
+  border-top:2px solid #17e88f;
+  color:#17e88f;
+  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  text-align:center;padding:7px 16px;
+  pointer-events:none;
+  user-select:none;
+  flex-shrink:0;
+}
+#tab-approved-banner.show{display:block;}
+.props-approve-row{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px;border-bottom:1px solid #2a2a2a;
+  flex-shrink:0;
+}
+.btn-approve-tab{
+  flex:1;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer;
+  border:1px solid #555;border-radius:2px;background:#2a2a2a;color:#aaa;
+  text-transform:uppercase;letter-spacing:.05em;text-align:center;
+  transition:all .15s;
+}
+.btn-approve-tab:hover{background:#333;color:#fff;}
+.btn-approve-tab.approved{
+  background:#0d2b21;border-color:#17e88f;color:#17e88f;
+}
+.btn-approve-tab.approved:hover{background:#163d28;}
 #rich-toolbar .tb-sep{width:1px;height:16px;background:#333;margin:0 2px;}
 
 #live-sync-toast{
@@ -350,7 +380,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <button class="tb-btn btn-dl" id="dl-all-tb-btn" onclick="downloadAllSelectedPDF()" title="Download PDF of all selected marketing items">⬇ All PDFs</button>
     <button class="tb-btn btn-dl" id="edm-html-btn" onclick="exportEDMSections()" style="display:none;background:#1a4a6a;color:#7ad4f8;border:1px solid #2a6a9a;" title="Export EDM as hosted image sections for Campaign Monitor">⬇ EDM HTML</button>
     <button class="tb-btn btn-tmpl" id="view-all-tb-btn" onclick="showAllArtworks()" title="View all selected marketing items">⊞ View All</button>
-    <button class="tb-btn" id="approve-btn" onclick="toggleApproval()" style="background:#b85c00;color:#fff;border:none;border-radius:3px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.05em;">● IN PROGRESS</button>
+
     <div class="admin-badge" id="admin-badge" title="Admin mode — manage users from the Hub home page">⚙ ADMIN</div>
   </div>
   <div class="topbar-row2" id="tabs">
@@ -479,6 +509,7 @@ Line five</textarea>
     <div id="ms-schedule-pages" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:860px;"></div>
   </div>
   <div class="canvas-area" id="canvas-area" onmousedown="bgClick(event)">
+    <div id="tab-approved-banner">✓ APPROVED — content feeds disconnected for this tab</div>
     <div id="artboard-edge"></div>
     <div class="canvas-wrap" id="canvas-wrap">
       <div class="artwork" id="artwork"></div>
@@ -488,6 +519,9 @@ Line five</textarea>
   <!-- RIGHT PROPERTIES PANEL -->
   <div class="props" id="props">
     <div class="props-head"><span>Properties</span><button class="assist-btn" onclick="openAssistModal()" title="Request assistance from the studio team">Request Assistance</button></div>
+    <div class="props-approve-row">
+      <button class="btn-approve-tab" id="tab-approve-btn" onclick="toggleTabApproval()" title="Approve this tab — disconnects content feeds so sidebar changes don't affect it">● Approve Tab</button>
+    </div>
     <div class="props-scroll" id="props-content">
       <div class="props-empty">Select an element on the canvas to edit its properties here.</div>
     </div>
@@ -603,6 +637,8 @@ let _selectedEls = [];  // multi-select array
 let _marqueeEl = null;
 let assets={logo:'',logo2:'',logo3:'',logo4:'',img1:'',img2:'',img3:'',img4:'',img5:'',img6:'',img7:'',img8:'',agent1photo:'',agent2photo:'',agent3photo:'',agent4photo:''};
 let savedStates={};
+// Per-tab approval state: { tabIdx: true/false }
+let _tabApprovals = {};
 let nextId=1;
 let _lastKnownUpdatedAt=null; // tracks the Supabase updated_at we last loaded/saved
 // When true, buildTemplate will inject default SVG logos (fresh build).
@@ -2593,6 +2629,7 @@ function getInnerText(inner){
 }
 function serializeTab(){
   if(currentTab===9) return [];
+  _canvasDirty = true; // Serializing means real content exists — mark dirty
   const art=document.getElementById('artwork');
   const els=[];
   art.querySelectorAll('.el').forEach(el=>{
@@ -2942,7 +2979,10 @@ function restoreTab(idx){
     }
   }
   // Sync all field values so combined agents, bullets etc all populate correctly
-  globalSync();
+  // Skip for approved tabs — their content is frozen, don't let field values overwrite it
+  if(!_tabApprovals[idx]) globalSync();
+  // Canvas now matches saved state — reset dirty flag so we don't re-serialize until edited
+  _canvasDirty = false;
   // Patch any banner elements missing bannerPad (old saves before this was tracked)
   document.querySelectorAll('.el[data-banner="1"]').forEach(function(bel){
     if(!bel.dataset.bannerPad){
@@ -3044,7 +3084,10 @@ function resetTab(){
   if(confirm('Reset this tab to its default template? All your edits on this tab will be lost.')){
     delete savedStates[currentTab];
     delete _customSizes[currentTab]; // also reset any custom artboard size
+    delete _tabApprovals[currentTab]; // reset also clears approval
     buildTemplate(currentTab);
+    _updateTabApprovalUI();
+    _canvasDirty = true; // user explicitly reset — save the fresh template
     debouncedPersist();
   }
 }
@@ -3156,6 +3199,8 @@ function _edmInjectIncome(){
   if(inner.contentEditable === 'true') return;
   // Don't overwrite if element has rich text formatting (bold/italic/underline)
   if(bcEl.dataset.richHtml) return;
+  // Don't overwrite if this tab is approved (content is frozen)
+  if(_tabApprovals[currentTab]) return;
 
   var _fi  = ((document.getElementById('fi') ||{}).value||'').trim();
   var _fbc = ((document.getElementById('fbc')||{}).value||'');
@@ -3212,7 +3257,7 @@ function globalSync(){
       // Skip brochure bullets — income is appended by the plain-line render block
       var _isAnchorBrochBullets = (_anchorEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1));
       const _aInner=_anchorEl.querySelector('.el-inner');
-      if(_aInner && _aInner.contentEditable!=='true' && !_isAnchorBrochBullets && !_anchorEl.dataset.richHtml){
+      if(_aInner && _aInner.contentEditable!=='true' && !_isAnchorBrochBullets && !_anchorEl.dataset.richHtml && !_tabApprovals[currentTab]){
         const _fi4=((document.getElementById('fi')||{}).value||'').trim();
         const _btSpans=_aInner.querySelectorAll('span.bt');
         let _baseLines=[];
@@ -3416,7 +3461,12 @@ function globalSync(){
     if(isNaN(ti)) continue; // skip non-numeric keys like _marketingScheduleUrl
     if(ti===currentTab) continue; // live DOM already handled above
     if(!state || !Array.isArray(state)) continue;
+    // Skip approved tabs — their content is frozen, sidebar changes must not flow in
+    if(_tabApprovals[ti]) return;
     state.forEach(sv=>{
+      // Only update elements that are still linked to a field.
+      // Free-text elements (sv.field==='' or undefined) must never have their
+      // content overwritten by sidebar field values — they contain custom text.
       if(sv.type!=='text' || !sv.field) return;
       if(sv.field.startsWith('zh_')) return; // Chinese tab — skip
       const val=getFieldVal(sv.field);
@@ -3458,6 +3508,7 @@ function globalSync(){
 // Called when switching to a tab — rebuilds if fields have changed since last visit
 function syncTabOnEntry(idx){
   if(!savedStates[idx]) return; // will be built fresh -- already uses current field values
+  if(_tabApprovals[idx]) return; // approved tabs are frozen — don't re-sync fields
   const state=savedStates[idx];
   // Walk every element and push current field values in
   state.forEach(sv=>{
@@ -3861,6 +3912,8 @@ function buildTemplate(idx){
   }
   // Sync all field values into the newly built elements (ensures agents + all fields show correctly)
   globalSync();
+  // Canvas is freshly built from template — not dirty until user edits
+  _canvasDirty = false;
 }
 
 // ─── AFR 2-AGENT 228×398 ───
@@ -5335,7 +5388,10 @@ function copyEdmField(id){
 
 function switchTab(idx,btn){
   if(currentTab===9) _hideMarketingScheduleTab();
-  if(currentTab!==9){ savedStates[currentTab]=serializeTab(); persistAll(); }
+  // Only serialize + persist if the canvas has actual user edits.
+  // If canvas is clean (just loaded/restored), serializing would capture
+  // a blank or default state and overwrite the good saved data.
+  if(currentTab!==9 && _canvasDirty){ savedStates[currentTab]=serializeTab(); persistAll(); }
   currentTab=idx;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
@@ -5354,6 +5410,7 @@ function switchTab(idx,btn){
   if(idx===6) setTimeout(function(){ globalSync(); }, 50);
   fitZoomToTab();
   updateEdmMetaVisibility();
+  _updateTabApprovalUI();
   if(idx===2||idx===3){
     // Sync agent slots so fn1/fn2 hidden inputs are populated
     syncAllAgentSlots();
@@ -5464,8 +5521,10 @@ function toggleMITab(idx,cb){
 }
 
 function collectState(){
-  // Always capture current tab state before collecting everything
-  if(currentTab!==9) savedStates[currentTab]=serializeTab();
+  // Only re-serialize the current tab if the canvas has been dirtied since last load/restore.
+  // This prevents a freshly-built blank template (triggered by another user's live-sync)
+  // from overwriting good saved data with empty default content.
+  if(currentTab!==9 && _canvasDirty) savedStates[currentTab]=serializeTab();
   const _edmSubj=(document.getElementById('fedm-subject')||{}).value||'';
   const _edmS1=(document.getElementById('fedm-link-s1')||{}).value||'';
   const _edmS2=(document.getElementById('fedm-link-s2')||{}).value||'';
@@ -5487,7 +5546,7 @@ function collectState(){
   const _lnkBtn3=(document.getElementById('fedm-link-btn3')||{}).value||_edmLinkPortfolio;
   const _edmLinkIMSubject=(document.getElementById('fedm-link-im-subject')||{}).value||'';
   const _agentSlotsState=agentSlots.map(s=>({mode:s.mode,agentId:s.agentId,customName:s.customName,customPhone:s.customPhone,customEmail:s.customEmail||'',emailOverride:s.emailOverride||''}));
-  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmS1:_edmS1,edmS2:_edmS2,edmS3:_edmS3,edmS4:_edmS4,edmS5:_edmS5,edmBtn2:_edmBtn2,edmBtn3:_edmBtn3,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
+  return { v:5,currentTab,zoom:Math.round(zoom*100),assets,tabApprovals:JSON.parse(JSON.stringify(_tabApprovals)),tabLayouts:JSON.parse(JSON.stringify(savedStates)),layoutVariants:JSON.parse(JSON.stringify(_layoutVariants)),edmSubject:_edmSubj,edmS1:_edmS1,edmS2:_edmS2,edmS3:_edmS3,edmS4:_edmS4,edmS5:_edmS5,edmBtn2:_edmBtn2,edmBtn3:_edmBtn3,edmPreview:_edmPrev,edmLinkListing:_edmLinkListing,edmLinkPortfolio:_edmLinkPortfolio,edmLinkIMSubject:_edmLinkIMSubject,agentSlots:_agentSlotsState,
     deletedLogos:Object.fromEntries(Object.entries(_deletedLogos).map(([k,v])=>[k,[...v]])),
     miHidden:[..._miHidden],
     customSizes:JSON.parse(JSON.stringify(_customSizes)),
@@ -5526,6 +5585,7 @@ function applyState(data,skipZoom=false){
         });
       });
     }
+    if(data.tabApprovals){ _tabApprovals=data.tabApprovals; }
     if(data.tabLayouts&&Object.keys(data.tabLayouts).length>0){ savedStates=data.tabLayouts; }
     else if(data.savedStates&&Object.keys(data.savedStates).length>0){ savedStates=data.savedStates; }
     else { savedStates={}; }
@@ -5547,16 +5607,49 @@ function applyState(data,skipZoom=false){
     // not only after the requestAnimationFrame in init()
     if(typeof applyMIHidden === 'function') applyMIHidden();
     return true;
+  _canvasDirty = false; // Just loaded from server — nothing to save yet
   }catch(e){console.error('applyState failed',e);return false;}
 }
 
 async function supabaseSave(state){
   try{
-    const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:JSON.stringify(state),updated_at:new Date().toISOString()};
-    const check=await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${_portfolioId}&property_id=eq.${_propertyId}&select=id`,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
+    const now=new Date().toISOString();
+    const body={portfolio_id:_portfolioId,property_id:_propertyId,state_json:JSON.stringify(state),updated_at:now};
+    // ── CONCURRENCY GUARD ──────────────────────────────────────────────
+    // Fetch current server record to check both ID and updated_at timestamp.
+    // If server's updated_at is newer than what this session last loaded/saved,
+    // another session has written since we loaded — do NOT overwrite their work.
+    const check=await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${_portfolioId}&property_id=eq.${_propertyId}&select=id,updated_at`,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
     const rows=await check.json();
     let savedRow;
     if(rows&&rows.length){
+      const serverTs=rows[0].updated_at;
+      // If server is newer than our last known timestamp, another user saved recently.
+      // Only block if we have a known timestamp (not first save) and server is clearly newer.
+      if(_lastKnownUpdatedAt && serverTs && serverTs > _lastKnownUpdatedAt){
+        // Check if the difference is meaningful (>2s) to avoid clock-skew false positives
+        const serverTime=new Date(serverTs).getTime();
+        const knownTime=new Date(_lastKnownUpdatedAt).getTime();
+        if(serverTime - knownTime > 2000){
+          console.warn('[CBRE] Concurrency conflict: server is newer than our last save. Skipping overwrite.');
+          setCdtStatus('error','Conflict — another user saved. Refreshing…');
+          // Load their version so this session gets in sync, then show toast
+          setTimeout(async function(){
+            const fresh=await supabaseLoad();
+            if(fresh){
+              const prevTab=currentTab;
+              applyState(fresh.state,true);
+              currentTab=prevTab;
+              document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
+              if(savedStates[prevTab])restoreTab(prevTab);else buildTemplate(prevTab);
+              _lastKnownUpdatedAt=fresh.updatedAt||serverTs;
+              setCdtStatus('saved','Synced ✓');
+              showSyncToast('⚠ Another user saved — your view has been updated');
+            }
+          }, 500);
+          return null; // signal save was blocked
+        }
+      }
       const r=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${rows[0].id}`,{method:'PATCH',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
       const data=await r.json(); savedRow=Array.isArray(data)?data[0]:data;
     } else {
@@ -5714,16 +5807,23 @@ function loadAsset(e,key){
       }
     }
     renderImgUploadSlots(); renderLogoUploadSlots();
+    _canvasDirty = true; // image upload is a real user edit
     persistAll();
   };
   reader.readAsDataURL(f);
 }
+
+// Tracks whether the user has made any real edits since the last load/restore.
+// Prevents a freshly-built blank template from overwriting good saved data.
+let _canvasDirty = false;
+function _markCanvasDirty(){ _canvasDirty = true; }
 
 let _persistTimer=null;
 let _lastUserActivityTime=0,_lastSaveCompletedTime=0,_lastSaveAttemptTime=0;
 let _pendingSaveState=null,_saveRetryTimer=null;
 const USER_BUSY_WINDOW_MS=2000,POST_SAVE_WINDOW_MS=4000,SAVE_RETRY_DELAY_MS=3000;
 function _markUserActivity(){_lastUserActivityTime=Date.now();}
+function _markCanvasEdit(){_canvasDirty=true;_markUserActivity();}
 document.addEventListener('keydown',_markUserActivity,true);
 document.addEventListener('mousedown',_markUserActivity,true);
 document.addEventListener('input',_markUserActivity,true);
@@ -5735,7 +5835,11 @@ async function _doSave(state){
   else{_pendingSaveState=state;setCdtStatus('error','Save failed — retrying…');clearTimeout(_saveRetryTimer);_saveRetryTimer=setTimeout(async function(){if(_pendingSaveState){setCdtStatus('saving','Retrying save…');await _doSave(collectState());}},SAVE_RETRY_DELAY_MS);return false;}
 }
 function debouncedPersist(){
-  clearTimeout(_persistTimer);_markUserActivity();setCdtStatus('saving','Saving…');
+  clearTimeout(_persistTimer);_markUserActivity();
+  // Don't start a save timer if nothing has been edited — prevents blank
+  // template state from being saved when the page first loads/restores.
+  if(!_canvasDirty) return;
+  setCdtStatus('saving','Saving…');
   _persistTimer=setTimeout(async()=>{_persistTimer=null;await _doSave(collectState());},500);
 }
 function persistAll(){debouncedPersist();}
@@ -6027,6 +6131,7 @@ async function init(){
     } else {
       buildTemplate(currentTab);
     }
+    _updateTabApprovalUI();
     // Apply any custom artboard size for this tab
     const _cs = _customSizes[currentTab];
     if(_cs){
@@ -6056,7 +6161,10 @@ async function init(){
       setTimeout(function(){ if(currentTab===2||currentTab===3) _edmInjectIncome(); }, 800);
     }
   });
-  document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',debouncedPersist));
+  document.querySelectorAll('#fh,#fs,#fa1,#fa2,#fb,#fbull,#fi,#fbc,#fm,#fd,#fn1,#fp1,#fn2,#fp2,#fn3,#fp3').forEach(el=>el.addEventListener('input',function(){
+    _canvasDirty = true; // sidebar field edit is a real user action
+    debouncedPersist();
+  }));
   document.querySelectorAll('#fbull,#fi').forEach(function(el){el.addEventListener('input',globalSync);});
   // Additional: re-inject income into EDM bodycopy when fi changes
   var _fiEl = document.getElementById('fi');
@@ -6102,6 +6210,9 @@ async function init(){
   }, { passive: false });
   window.addEventListener('beforeunload',()=>{
     clearTimeout(_persistTimer);clearTimeout(_saveRetryTimer);
+    // Only save on unload if the canvas was actually edited in this session.
+    // This prevents a session that only viewed the property from overwriting good data.
+    if(!_canvasDirty) return;
     const state=collectState();
     try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
     if(_pendingSaveState!==null||_persistTimer!==null){
@@ -6248,7 +6359,14 @@ async function liveSyncTick(){
     if(isUserBusy())return;
     const prevTab=currentTab;applyState(result.state,true);currentTab=prevTab;
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
-    if(savedStates[prevTab])restoreTab(prevTab);else buildTemplate(prevTab);
+    // Only restore/rebuild if the incoming state actually has tab data.
+    // NEVER call buildTemplate during a live-sync — it would wipe the current canvas
+    // with template defaults, destroying any custom free-text work.
+    if(savedStates[prevTab] && savedStates[prevTab].length){
+      restoreTab(prevTab);
+    }
+    // If no savedState for current tab arrived, leave the canvas as-is.
+    // The user can manually refresh if they want a full reset.
     CL_FIELD_IDS.forEach(id=>clEnforce(id));
     _lastKnownUpdatedAt=result.updatedAt||remoteTs;
     setCdtStatus('saved','Saved ✓');showSyncToast('↻ Updated by another user');
@@ -6361,21 +6479,57 @@ async function downloadPDF(){
   btn.disabled=false;btn.textContent='⬇ PDF';
 }
 
-let _approvalStatus='in_progress';
-function updateApproveBtn(){
-  const btn=document.getElementById('approve-btn');if(!btn)return;
-  if(_approvalStatus==='approved'){btn.textContent='✓ APPROVED';btn.style.background='#1a7a3a';}
-  else{btn.textContent='● IN PROGRESS';btn.style.background='#b85c00';}
+// ── PER-TAB APPROVAL ──────────────────────────────────────────────
+function _updateTabApprovalUI(){
+  const approved = !!_tabApprovals[currentTab];
+  // Button in props panel
+  const btn = document.getElementById('tab-approve-btn');
+  if(btn){
+    if(approved){
+      btn.textContent = '✓ Approved — click to unlock';
+      btn.classList.add('approved');
+    } else {
+      btn.textContent = '● Approve Tab';
+      btn.classList.remove('approved');
+    }
+  }
+  // Canvas banner
+  const banner = document.getElementById('tab-approved-banner');
+  if(banner){
+    if(approved) banner.classList.add('show');
+    else banner.classList.remove('show');
+  }
 }
-async function toggleApproval(){
-  const wasApproved=_approvalStatus==='approved';_approvalStatus=wasApproved?'in_progress':'approved';updateApproveBtn();
-  try{await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}`,{method:'PATCH',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({approval_status:_approvalStatus,updated_at:new Date().toISOString()})});}catch(e){}
-  setCdtStatus('saved',_approvalStatus==='approved'?'Approved ✓':'In Progress');
+
+function toggleTabApproval(){
+  const approved = !!_tabApprovals[currentTab];
+  if(approved){
+    // Un-approve: just unlock — fields stay broken, no re-link
+    delete _tabApprovals[currentTab];
+    _updateTabApprovalUI();
+    debouncedPersist();
+  } else {
+    // Approve: snapshot current state then break all field links
+    if(currentTab === 9) return; // can't approve Marketing Schedule
+    // 1. Serialize current tab so savedStates has a fresh snapshot
+    savedStates[currentTab] = serializeTab();
+    // 2. Break all data-field links on live canvas elements
+    document.querySelectorAll('#artwork .el[data-field]').forEach(function(el){
+      el.dataset.field = '';
+      el.dataset.incomeAnchor = '0';
+      el.dataset.combinedAgent = '0';
+    });
+    // 3. Re-serialize with broken links so they're saved
+    savedStates[currentTab] = serializeTab();
+    // 4. Mark tab as approved
+    _tabApprovals[currentTab] = true;
+    _updateTabApprovalUI();
+    debouncedPersist();
+  }
 }
-async function loadApprovalStatus(){
-  try{const res=await fetch(`${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(_portfolioId)}&property_id=eq.${encodeURIComponent(_propertyId)}&select=approval_status`,{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});const rows=await res.json();if(rows&&rows.length&&rows[0].approval_status){_approvalStatus=rows[0].approval_status;}}catch(e){}
-  updateApproveBtn();
-}
+
+// Keep loadApprovalStatus as a no-op so any existing call sites don't error
+async function loadApprovalStatus(){}
 
 function getSelectedTabIndices(){
   const selected=[];
