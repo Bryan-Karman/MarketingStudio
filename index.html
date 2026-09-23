@@ -155,6 +155,8 @@ body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:
 .admin-btn.primary:hover{background:var(--gb);}
 .admin-btn.danger{background:#fff;color:#c0392b;border-color:#e8c0c0;}
 .admin-btn.danger:hover{background:#c0392b;color:#fff;}
+.card-btn-dup{padding:4px 9px;background:transparent;color:#4a7a4a;border:1px solid #b0d0b8;border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+.card-btn-dup:hover{background:#4a7a4a;color:#fff;border-color:#4a7a4a;}
 
 /* ── PAGE LAYOUT ── */
 .page{display:none;flex:1;flex-direction:column;}
@@ -479,6 +481,7 @@ function runGlobalSearch(query){
       // Open → as a real link — left-click navigates, right-click gives "Open in new tab"
       +'<a href="'+escHtml(url)+'" title="Open builder (right-click to open in new tab)" style="padding:4px 10px;background:var(--g);color:#fff;border:none;border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;display:inline-flex;align-items:center;">Open →</a>'
       +(isAdmin ? '<button onclick="(function(e){e.stopPropagation();openMoveProperty(\''+escHtml(pr.portfolioId)+'\',\''+escHtml(pr.id)+'\')})(event)" style="padding:4px 9px;background:transparent;color:#4a90a4;border:1px solid #b0d0dc;border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Move</button>' : '')
+      +(isAdmin ? '<button onclick="(function(e){e.stopPropagation();openDuplicateProperty(e,\''+escHtml(pr.portfolioId)+'\',\''+escHtml(pr.id)+'\')})(event)" style="padding:4px 9px;background:transparent;color:#4a7a4a;border:1px solid #b0d0b8;border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">⊕ Duplicate</button>' : '')
       +(isAdmin ? '<button onclick="(function(e){e.stopPropagation();deleteProperty(e,\''+escHtml(pr.portfolioId)+'\',\''+escHtml(pr.id)+'\')})(event)" style="padding:4px 9px;background:transparent;color:#c0392b;border:1px solid #e8c0c0;border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Delete</button>' : '')
       +'</div>';
   }).join('');
@@ -716,6 +719,25 @@ function runGlobalSearch(query){
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal('modal-property')">Cancel</button>
       <button class="modal-confirm" onclick="createProperty()">Add Property</button>
+    </div>
+  </div>
+</div>
+
+<!-- DUPLICATE PROPERTY MODAL -->
+<div class="modal-bg" id="modal-duplicate-property">
+  <div class="modal">
+    <div class="modal-title">Duplicate Property</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+      Creates an identical copy of <strong id="dup-source-name" style="color:var(--text);"></strong> including all layout data and images.
+    </div>
+    <div class="modal-field">
+      <label>New Property Name</label>
+      <input type="text" id="dup-property-name" placeholder="e.g. 456 New Street">
+    </div>
+    <div id="dup-property-err" style="font-size:11px;color:#c0392b;min-height:16px;margin-top:-4px;"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('modal-duplicate-property')">Cancel</button>
+      <button class="modal-confirm" id="dup-property-save" onclick="duplicateProperty()">Duplicate</button>
     </div>
   </div>
 </div>
@@ -1359,6 +1381,7 @@ async function renderProperties(){
   function _pc(pr){ if(!isAdmin) return ''; return '<span data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" onclick="openRenameProperty(this)" style="cursor:pointer;color:#888;font-size:13px;padding:2px 3px;flex-shrink:0;" title="Rename">✎</span>'; }
   function _del(pr){ if(!isAdmin) return ''; return '<button class="card-btn-del" onclick="deleteProperty(event,\'' + pr.portfolioId + '\',\''+pr.id+'\')">Delete</button>'; }
   function _move(pr){ if(!isAdmin) return ''; return '<button class="card-btn-move" onclick="openMoveProperty(\'' + pr.portfolioId + '\',\''+pr.id+'\')">Move →</button>'; }
+  function _dup(pr){ if(!isAdmin) return ''; return '<button class="card-btn-dup" onclick="openDuplicateProperty(event,\''+pr.portfolioId+'\',\''+pr.id+'\')">⊕ Duplicate</button>'; }
   var _dot = '<span class="approval-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#b85c00;flex-shrink:0;"></span>';
   var _stxt = '<span class="approval-status-txt" style="font-size:9px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;">In Progress</span>';
 
@@ -1379,6 +1402,7 @@ async function renderProperties(){
       _listRow += '<span class="approval-status-txt" style="font-size:10px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;">In Progress</span>';
       _listRow += '<button class="prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex-shrink:0;padding:5px 14px;background:#003f2d;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Open →</button>';
       _listRow += _move(pr);
+      _listRow += _dup(pr);
       _listRow += _del(pr);
       _listRow += '</div>';
       return _listRow;
@@ -1396,7 +1420,7 @@ async function renderProperties(){
         +'<div class="property-card-actions">'
         +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">Open Builder →</button>'
         +statusWrap
-        +(isAdmin ? '<div style="display:flex;gap:6px;margin-top:4px;width:100%;">'+_move(pr)+_del(pr)+'</div>' : '')
+        +(isAdmin ? '<div style="display:flex;gap:6px;margin-top:4px;width:100%;">'+_move(pr)+_dup(pr)+_del(pr)+'</div>' : '')
         +'</div></div>';
     }
   }).join('');
@@ -1517,6 +1541,92 @@ async function moveProperty(){
     document.getElementById('move-property-err').textContent = 'Move failed: '+(e.message||String(e));
   }finally{
     saveBtn.disabled=false; saveBtn.textContent='Move Property';
+  }
+}
+
+let _dupPortfolioId = null;
+let _dupPropertyId   = null;
+
+function openDuplicateProperty(e, portfolioId, propId){
+  e.stopPropagation();
+  _dupPortfolioId = portfolioId;
+  _dupPropertyId  = propId;
+  const prop = (properties[portfolioId]||[]).find(p=>p.id===propId);
+  document.getElementById('dup-source-name').textContent = prop ? prop.name : propId;
+  document.getElementById('dup-property-name').value = prop ? 'Copy of ' + prop.name : '';
+  document.getElementById('dup-property-err').textContent = '';
+  const saveBtn = document.getElementById('dup-property-save');
+  saveBtn.disabled = false; saveBtn.textContent = 'Duplicate';
+  document.getElementById('modal-duplicate-property').classList.add('open');
+  setTimeout(function(){
+    const inp = document.getElementById('dup-property-name');
+    if(inp){ inp.focus(); inp.select(); }
+  }, 60);
+}
+
+async function duplicateProperty(){
+  const newName = (document.getElementById('dup-property-name').value||'').trim();
+  const errEl   = document.getElementById('dup-property-err');
+  const saveBtn = document.getElementById('dup-property-save');
+  if(!newName){ errEl.textContent = 'Please enter a name for the duplicate.'; return; }
+  errEl.textContent = '';
+  saveBtn.disabled = true; saveBtn.textContent = 'Duplicating…';
+
+  const srcPortfolioId = _dupPortfolioId;
+  const srcPropId      = _dupPropertyId;
+  const srcProp = (properties[srcPortfolioId]||[]).find(p=>p.id===srcPropId);
+  if(!srcProp){ errEl.textContent = 'Source property not found.'; saveBtn.disabled=false; saveBtn.textContent='Duplicate'; return; }
+
+  const newId  = 'pr' + Date.now();
+  const now    = new Date().toISOString();
+  const newState = srcProp.state || '';
+
+  try{
+    // 1. Create the new property record
+    await SB.post('properties', {
+      id: newId, name: newName, state: newState,
+      product: 'marketing', portfolio_id: srcPortfolioId,
+      created_at: now, updated_at: now
+    });
+
+    // 2. Fetch the source project state_json from Supabase
+    const rows = await fetch(
+      SUPABASE_URL+'/rest/v1/projects?portfolio_id=eq.'+encodeURIComponent(srcPortfolioId)+'&property_id=eq.'+encodeURIComponent(srcPropId)+'&select=state_json',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer '+SUPABASE_ANON_KEY } }
+    ).then(r=>r.json());
+
+    if(rows && rows.length && rows[0].state_json){
+      // 3. Write an identical project record for the new property
+      await fetch(
+        SUPABASE_URL+'/rest/v1/projects',
+        {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer '+SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            portfolio_id: srcPortfolioId,
+            property_id:  newId,
+            state_json:   rows[0].state_json,
+            updated_at:   now
+          })
+        }
+      );
+    }
+
+    // 4. Update local cache and re-render
+    if(!properties[srcPortfolioId]) properties[srcPortfolioId] = [];
+    properties[srcPortfolioId].push({ id: newId, name: newName, state: newState, portfolioId: srcPortfolioId, updatedAt: now });
+    saveDemoData();
+    closeModal('modal-duplicate-property');
+    renderProperties();
+
+  }catch(err){
+    errEl.textContent = 'Duplicate failed: '+(err.message||String(err));
+    saveBtn.disabled = false; saveBtn.textContent = 'Duplicate';
   }
 }
 

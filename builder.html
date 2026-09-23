@@ -682,7 +682,16 @@ function pasteSelected(){
         el.dataset.bullets = sv.bullets;
         el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
         el.dataset.combinedAgent = sv.combinedAgent;
-        if(sv.bullets==='1' && inner) applyBullets(inner, true);
+        if(sv.bullets==='1' && inner){
+          if(sv.richHtml){
+            inner.innerHTML = sv.richHtml;
+            el.dataset.richHtml = sv.richHtml;
+            inner.style.whiteSpace = 'normal';
+            inner.style.wordBreak = 'break-word';
+          } else {
+            applyBullets(inner, true);
+          }
+        }
         if(sv.bulletParaSpacing && sv.bulletParaSpacing!=='0' && inner){
           applyPlainParaSpacing(inner, parseInt(sv.bulletParaSpacing));
         }
@@ -979,6 +988,24 @@ function createElement(cfg){
         }
         if(_el2 && inner.innerHTML !== (inner.textContent||'')){
           _el2.dataset.richHtml = inner.innerHTML;
+          // Also persist richHtml to savedStates so tab-switches and refreshes preserve formatting
+          var _rtEid=_el2.dataset.eid,_rtField=_el2.dataset.field,_rtSt=savedStates[currentTab];
+          if(_rtSt&&_rtEid){
+            _rtSt.forEach(function(sv){
+              if(sv.eid===_rtEid||(sv.field&&sv.field===_rtField)){
+                sv.richHtml=inner.innerHTML;
+              }
+            });
+          }
+        } else if(_el2 && _el2.dataset.richHtml){
+          // Formatting was cleared (e.g. user deleted all bold text) — remove stale richHtml
+          delete _el2.dataset.richHtml;
+          var _clrEid=_el2.dataset.eid,_clrField=_el2.dataset.field,_clrSt=savedStates[currentTab];
+          if(_clrSt&&_clrEid){
+            _clrSt.forEach(function(sv){
+              if(sv.eid===_clrEid||(sv.field&&sv.field===_clrField)) delete sv.richHtml;
+            });
+          }
         }
         debouncedPersist();
       }
@@ -1155,18 +1182,29 @@ function createElement(cfg){
             if(_blurField && _sel2){
               var _txt2 = _readInnerText(inner, _blurField);
               _sel2.value = _txt2;
-              // Save rich HTML BEFORE globalSync so setInnerText can preserve it
-              // Never save richHtml for brochure bullets — it would capture span.bt elements
-              // that cause dash bullets to appear on restore. Plain-line divs are rebuilt by globalSync.
-              var _isBrochureBulletsBlur = (_blurField === 'bullets' && (currentTab === 0 || currentTab === 1));
-              if(!_isBrochureBulletsBlur) el.dataset.richHtml = inner.innerHTML;
+              // Save richHtml for ALL text elements when actual HTML formatting exists.
+              // This includes brochure Highlight Points — plain-line divs can contain <b>/<i>.
+              var _hasRichFormatting = inner.innerHTML !== inner.textContent;
+              // For plain-line divs, check if any div actually contains HTML tags
+              var _blurPlainLines = inner.querySelectorAll('div.plain-line');
+              if(_hasRichFormatting && _blurPlainLines.length > 0){
+                _hasRichFormatting = Array.from(_blurPlainLines).some(function(d){ return d.innerHTML !== d.textContent; });
+              }
+              if(_hasRichFormatting){
+                el.dataset.richHtml = inner.innerHTML;
+              } else {
+                delete el.dataset.richHtml;
+              }
               if(savedStates[currentTab]){
                 var _eid2 = _blurEl ? _blurEl.dataset.eid : null;
                 savedStates[currentTab].forEach(function(sv){
                   if(sv.eid===_eid2||sv.field===_blurField){
                     sv.content=_txt2;
-                    if(!_isBrochureBulletsBlur) sv.richHtml=inner.innerHTML;
-                    else delete sv.richHtml; // clear any stale richHtml for brochure bullets
+                    if(_hasRichFormatting){
+                      sv.richHtml=inner.innerHTML;
+                    } else {
+                      delete sv.richHtml;
+                    }
                   }
                 });
               }
@@ -1178,7 +1216,25 @@ function createElement(cfg){
               }
               debouncedPersist();
             } else {
-              el.dataset.richHtml = inner.innerHTML;
+              // Free-text element (no managed field): only save richHtml if formatting exists
+              var _hasFreeRich = inner.innerHTML !== inner.textContent;
+              if(_hasFreeRich){
+                el.dataset.richHtml = inner.innerHTML;
+                if(savedStates[currentTab]){
+                  var _eid3 = _blurEl ? _blurEl.dataset.eid : null;
+                  savedStates[currentTab].forEach(function(sv){
+                    if(sv.eid===_eid3){ sv.richHtml=inner.innerHTML; sv.content=getInnerText(inner); }
+                  });
+                }
+              } else {
+                delete el.dataset.richHtml;
+                if(savedStates[currentTab]){
+                  var _eid3b = _blurEl ? _blurEl.dataset.eid : null;
+                  savedStates[currentTab].forEach(function(sv){
+                    if(sv.eid===_eid3b){ delete sv.richHtml; sv.content=getInnerText(inner); }
+                  });
+                }
+              }
               globalSync();
               debouncedPersist();
             }
@@ -2120,7 +2176,24 @@ function el_inner_set(prop, val){
   if(!selectedEl) return;
   undoSnapshot();
   const inner=selectedEl.querySelector('.el-inner');
-  if(inner){inner.style[prop]=val;var _e=selectedEl.dataset.eid,_s=savedStates[currentTab];if(_s&&_e)_s.forEach(function(sv){if(sv.eid===_e)sv.innerStyle=inner.getAttribute('style')||'';});}
+  if(inner){
+    inner.style[prop]=val;
+    const _e=selectedEl.dataset.eid, _field=selectedEl.dataset.field, _s=savedStates[currentTab];
+    if(_s){
+      let _matched=false;
+      _s.forEach(function(sv){
+        if(sv.eid===_e){ sv.innerStyle=inner.getAttribute('style')||''; _matched=true; }
+      });
+      // Also match by field in case eid differs (e.g. after reset tab)
+      if(!_matched && _field){
+        _s.forEach(function(sv){
+          if(sv.field===_field){ sv.innerStyle=inner.getAttribute('style')||''; }
+        });
+      }
+    }
+    // Force immediate serialize so the change is captured before any navigation
+    if(currentTab!==9) savedStates[currentTab]=serializeTab();
+  }
   debouncedPersist();
 }
 
@@ -2136,9 +2209,46 @@ function setParaSpacing(v){
   inner.style.setProperty('--bullet-spacing', String(val));
 
   if(selectedEl.dataset.bullets === '1'){
-    inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom = val > 0 ? val + 'px' : ''; });
-  } else { applyPlainParaSpacing(inner, val); }
-  var _e2=selectedEl.dataset.eid,_s2=savedStates[currentTab];if(_s2&&_e2)_s2.forEach(function(sv){if(sv.eid===_e2){sv.bulletParaSpacing=String(val);sv.innerStyle=inner.getAttribute('style')||'';}});
+    // If element has richHtml formatting, update margin-bottom on existing divs only
+    // so we don't wipe the bold/italic formatting by rebuilding from scratch
+    if(selectedEl.dataset.richHtml){
+      inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom = val > 0 ? val + 'px' : ''; });
+      // Update the richHtml dataset to reflect the new spacing
+      selectedEl.dataset.richHtml = inner.innerHTML;
+      var _rtEid2=selectedEl.dataset.eid,_rtField2=selectedEl.dataset.field,_rtSt2=savedStates[currentTab];
+      if(_rtSt2){
+        _rtSt2.forEach(function(sv){
+          if(sv.eid===_rtEid2||(sv.field&&sv.field===_rtField2)) sv.richHtml=inner.innerHTML;
+        });
+      }
+    } else {
+      inner.querySelectorAll('div').forEach(function(d){ d.style.marginBottom = val > 0 ? val + 'px' : ''; });
+    }
+  } else {
+    applyPlainParaSpacing(inner, val);
+    // After spacing update, sync richHtml on element if plain-line divs contain formatting
+    var _plainFormatted = Array.from(inner.querySelectorAll('div.plain-line')).some(function(d){ return d.innerHTML !== d.textContent; });
+    if(_plainFormatted){
+      selectedEl.dataset.richHtml = inner.innerHTML;
+    } else if(inner.innerHTML === inner.textContent){
+      delete selectedEl.dataset.richHtml;
+    }
+  }
+
+  var _e2=selectedEl.dataset.eid, _field2=selectedEl.dataset.field, _s2=savedStates[currentTab];
+  if(_s2){
+    let _matched2=false;
+    _s2.forEach(function(sv){
+      if(sv.eid===_e2){ sv.bulletParaSpacing=String(val); sv.innerStyle=inner.getAttribute('style')||''; _matched2=true; }
+    });
+    if(!_matched2 && _field2){
+      _s2.forEach(function(sv){
+        if(sv.field===_field2){ sv.bulletParaSpacing=String(val); sv.innerStyle=inner.getAttribute('style')||''; }
+      });
+    }
+  }
+  // Force immediate serialize
+  if(currentTab!==9) savedStates[currentTab]=serializeTab();
   debouncedPersist();
 }
 
@@ -2156,36 +2266,49 @@ function setBannerPad(side, v){
   var newPad = top + 'px ' + right + 'px ' + bottom + 'px';
   selectedEl.dataset.bannerPad = newPad;
   inner.style.padding = newPad;
+  if(currentTab!==9) savedStates[currentTab]=serializeTab();
   debouncedPersist();
 }
 
 // Apply paragraph spacing to plain (non-bullet) text by wrapping lines in divs
 function applyPlainParaSpacing(inner, spacingPx){
-  // Get current lines - either from existing plain divs or from textContent
-  var lines;
+  // Get current lines — preserve innerHTML of existing plain-line divs so bold/italic survives
+  var _applyEl = inner.closest ? inner.closest('.el') : null;
+  var _hasRichContent = _applyEl && _applyEl.dataset.richHtml;
   var plainDivs = inner.querySelectorAll('div.plain-line');
-  if(plainDivs.length > 0){
-    lines = Array.from(plainDivs).map(function(d){ return d.textContent; });
-  } else {
-    // Check if inner has any divs at all (might be first time)
-    var anyDivs = inner.querySelectorAll('div');
-    if(anyDivs.length > 0){
-      lines = Array.from(anyDivs).map(function(d){ return d.textContent; });
-    } else {
-      lines = inner.textContent.split('\n');
-    }
-  }
+  var mb = spacingPx > 0 ? spacingPx + 'px' : '0px';
 
-  if(spacingPx <= 0){
-    // Remove spacing — restore plain pre-wrap text
-    setInnerText(inner, lines.join('\n'));
-    inner.style.whiteSpace = 'pre-wrap';
+  if(plainDivs.length > 0){
+    // Update spacing on existing plain-line divs without rebuilding their content
+    // This preserves any bold/italic/underline formatting inside the divs
+    plainDivs.forEach(function(d, i){
+      if(spacingPx <= 0){
+        d.style.marginBottom = '';
+      } else {
+        d.style.marginBottom = mb;
+      }
+    });
+    if(spacingPx <= 0){
+      // Remove spacing — flatten back to pre-wrap text
+      var _flatLines = Array.from(plainDivs).map(function(d){ return d.textContent; });
+      inner.textContent = _flatLines.join('\n');
+      inner.style.whiteSpace = 'pre-wrap';
+      if(_applyEl) delete _applyEl.dataset.richHtml;
+    }
     return;
   }
 
-  // Wrap each line in a div with margin-bottom
+  if(spacingPx <= 0) return; // nothing to do if no existing divs and no spacing wanted
+
+  // First application — wrap lines in plain-line divs
+  var lines;
+  var anyDivs = inner.querySelectorAll('div');
+  if(anyDivs.length > 0){
+    lines = Array.from(anyDivs).map(function(d){ return d.textContent; });
+  } else {
+    lines = inner.textContent.split('\n');
+  }
   function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  var mb = spacingPx + 'px';
   inner.innerHTML = lines.map(function(l){
     if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;margin-bottom:'+mb+'"></div>';
     return '<div class="plain-line" style="margin-bottom:'+mb+'">' + esc(l) + '</div>';
@@ -2516,6 +2639,22 @@ function serializeTab(){
           obj.content = _rawLines.map(function(l){
             return (l.startsWith('\u2013 ') ? '' : '\u2013 ') + l;
           }).join('\n');
+          // Save richHtml for bullet elements that have inline formatting (bold/italic/underline)
+          // Check if any .bt span contains HTML elements (not just plain text)
+          var _bullHasFormatting = false;
+          if(textSpans.length > 0){
+            _bullHasFormatting = Array.from(textSpans).some(function(s){ return s.innerHTML !== s.textContent; });
+          }
+          // Also check el.dataset.richHtml set by rtCmd
+          if(!_bullHasFormatting && el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
+            _bullHasFormatting = true;
+          }
+          if(_bullHasFormatting){
+            obj.richHtml = el.dataset.richHtml || inner.innerHTML;
+            el.dataset.richHtml = obj.richHtml;
+          } else {
+            delete el.dataset.richHtml;
+          }
         } else {
           // Save rich HTML if present (bold/italic/underline formatting)
           // For plain-line spacing divs, save textContent as lines joined by \n
@@ -2532,17 +2671,21 @@ function serializeTab(){
           } else {
             obj.content = getInnerText(inner);
           }
-          // Never save richHtml for brochure Highlight Points — plain-line divs are rebuilt by globalSync
-          var _isSerBrochBullets = (el.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1));
-          if(!_isSerBrochBullets){
-            if(el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
-              obj.richHtml = el.dataset.richHtml;
-            } else if(inner.innerHTML !== inner.textContent && !inner.querySelector('div.plain-line')){
-              obj.richHtml = inner.innerHTML;
-              el.dataset.richHtml = inner.innerHTML;
-            }
+          // Save richHtml when there is actual HTML formatting (bold/italic/underline etc.)
+          // This applies to ALL text elements including brochure Highlight Points.
+          // plain-line divs can legitimately contain <b>/<i> spans from rtCmd.
+          var _candidateRich = el.dataset.richHtml || inner.innerHTML;
+          // Has formatting if HTML differs from plain text (accounting for plain-line wrappers)
+          var _plainLineEls = inner.querySelectorAll('div.plain-line');
+          var _richCheck = _candidateRich && _candidateRich !== inner.textContent;
+          // For plain-line elements, also check if any plain-line div contains HTML tags
+          if(_richCheck && _plainLineEls.length > 0){
+            _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
+          }
+          if(_richCheck){
+            obj.richHtml = _candidateRich;
+            el.dataset.richHtml = _candidateRich;
           } else {
-            // Clear any stale richHtml that may have been saved previously
             delete el.dataset.richHtml;
           }
         }
@@ -2632,14 +2775,19 @@ function restoreTab(idx){
       var _isBrochureBulletsRestore = (sv.field === 'bullets' && (idx === 0 || idx === 1));
       if(_isBrochureBulletsRestore){
         el.dataset.bullets = '0';
-        // Clear any stale richHtml that may contain span.bt elements from old saves
-        delete el.dataset.richHtml;
-        delete sv.richHtml;
         var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
-        var _rbContent = (sv.content||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); }).join('\n');
-        inner.textContent = _rbContent;
-        inner.style.whiteSpace = 'pre-wrap';
-        applyPlainParaSpacing(inner, _bpsRestore);
+        // If richHtml was saved (contains bold/italic formatting in plain-line divs), restore it directly
+        if(sv.richHtml){
+          inner.innerHTML = sv.richHtml;
+          el.dataset.richHtml = sv.richHtml;
+          inner.style.whiteSpace = 'normal';
+          inner.style.wordBreak = 'break-word';
+        } else {
+          var _rbContent = (sv.content||'').split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); }).join('\n');
+          inner.textContent = _rbContent;
+          inner.style.whiteSpace = 'pre-wrap';
+          applyPlainParaSpacing(inner, _bpsRestore);
+        }
       } else {
         el.dataset.bullets='1';
         var _rawContent = (sv.content||'');
@@ -2652,12 +2800,20 @@ function restoreTab(idx){
           if(_rFi) _rLines.push(_rFi);
           _rawContent = _rLines.join('\n');
         }
-        var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
-        inner.textContent = _plainLines.join('\n');
-        inner.style.whiteSpace = 'pre-wrap';
-        applyBullets(inner, true);
-        inner.style.whiteSpace = 'normal';
-        inner.style.wordBreak = 'break-word';
+        // If richHtml was saved (bullet lines have bold/italic/underline formatting), restore it directly
+        if(sv.richHtml){
+          inner.innerHTML = sv.richHtml;
+          el.dataset.richHtml = sv.richHtml;
+          inner.style.whiteSpace = 'normal';
+          inner.style.wordBreak = 'break-word';
+        } else {
+          var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
+          inner.textContent = _plainLines.join('\n');
+          inner.style.whiteSpace = 'pre-wrap';
+          applyBullets(inner, true);
+          inner.style.whiteSpace = 'normal';
+          inner.style.wordBreak = 'break-word';
+        }
       }
     } else {
       // ── NON-BULLET TEXT / RECT / IMG RESTORE ──
@@ -2998,6 +3154,8 @@ function _edmInjectIncome(){
   if(!inner) return;
   // Don't interrupt live inline editing of this element
   if(inner.contentEditable === 'true') return;
+  // Don't overwrite if element has rich text formatting (bold/italic/underline)
+  if(bcEl.dataset.richHtml) return;
 
   var _fi  = ((document.getElementById('fi') ||{}).value||'').trim();
   var _fbc = ((document.getElementById('fbc')||{}).value||'');
@@ -3054,7 +3212,7 @@ function globalSync(){
       // Skip brochure bullets — income is appended by the plain-line render block
       var _isAnchorBrochBullets = (_anchorEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1));
       const _aInner=_anchorEl.querySelector('.el-inner');
-      if(_aInner && _aInner.contentEditable!=='true' && !_isAnchorBrochBullets){
+      if(_aInner && _aInner.contentEditable!=='true' && !_isAnchorBrochBullets && !_anchorEl.dataset.richHtml){
         const _fi4=((document.getElementById('fi')||{}).value||'').trim();
         const _btSpans=_aInner.querySelectorAll('span.bt');
         let _baseLines=[];
@@ -3171,7 +3329,8 @@ function globalSync(){
         // Force bullets to '0' here as a self-healing correction if it was set incorrectly.
         var _isBrochureBullets = (field==='bullets' && (currentTab===0||currentTab===1));
         if(_isBrochureBullets) el.dataset.bullets = '0';
-        if(!_isBrochureBullets){
+        // Skip rebuild if element has rich text formatting — don't wipe bold/italic
+        if(!_isBrochureBullets && !el.dataset.richHtml){
           // Build bullet HTML directly from val (the sidebar textarea value).
           // Never read back from DOM — DOM content can lose \n depending on browser.
           var _bval = (val || '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
@@ -3203,7 +3362,7 @@ function globalSync(){
       // Skip re-render while the element is actively being edited inline — the editor
       // manages the DOM with pre-wrap + \n text nodes, and re-rendering plain-line divs
       // here stomps the just-inserted newline, requiring a double-Enter to get a line break.
-      if((currentTab===2||currentTab===3||currentTab===8)&&field==='bullets'&&inner.contentEditable!=='true'){
+      if((currentTab===2||currentTab===3||currentTab===8)&&field==='bullets'&&inner.contentEditable!=='true'&&!el.dataset.richHtml){
         var _ps8=parseFloat(el.dataset.bulletParaSpacing||'10');
         var _val8=(currentTab===8)?getInnerText(inner):(val||'');
         if(currentTab===2||currentTab===3){
@@ -3221,7 +3380,7 @@ function globalSync(){
       }
       // Brochure tabs (0,1): bullets field uses plain spacing + bold income
       // Build directly from val — never read back from DOM to avoid losing \n
-      if([0,1].indexOf(currentTab) > -1 && field === 'bullets'){
+      if([0,1].indexOf(currentTab) > -1 && field === 'bullets' && !el.dataset.richHtml){
         var _bps = parseFloat(el.dataset.bulletParaSpacing)||6;
         var _fi3 = ((document.getElementById('fi')||{}).value||'').trim();
         var _bplainVal = (val || '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
@@ -6701,18 +6860,33 @@ function rtCmd(cmd){
     const inner=selectedEl.querySelector('.el-inner');
     if(inner){
       const _rtHtml=inner.innerHTML;
-      if(_rtHtml&&_rtHtml!==inner.textContent){
+      const _hasFormatting=_rtHtml&&_rtHtml!==inner.textContent;
+      if(_hasFormatting){
         selectedEl.dataset.richHtml=_rtHtml;
-        const _eid=selectedEl.dataset.eid,_st=savedStates[currentTab];
-        if(_st&&_eid)_st.forEach(function(sv){if(sv.eid===_eid){sv.richHtml=_rtHtml;sv.content=getInnerText(inner);}});
+        const _eid=selectedEl.dataset.eid,_field=selectedEl.dataset.field,_st=savedStates[currentTab];
+        if(_st&&_eid){
+          _st.forEach(function(sv){
+            // Match by eid OR by field (managed fields share the same content)
+            if(sv.eid===_eid||(sv.field&&sv.field===_field)){
+              sv.richHtml=_rtHtml;
+              sv.content=getInnerText(inner);
+            }
+          });
+        }
       } else if(cmd==='removeFormat'){
         delete selectedEl.dataset.richHtml;
-        const _eid2=selectedEl.dataset.eid,_st2=savedStates[currentTab];
-        if(_st2&&_eid2)_st2.forEach(function(sv){if(sv.eid===_eid2)delete sv.richHtml;});
+        const _eid2=selectedEl.dataset.eid,_field2=selectedEl.dataset.field,_st2=savedStates[currentTab];
+        if(_st2&&_eid2){
+          _st2.forEach(function(sv){
+            if(sv.eid===_eid2||(sv.field&&sv.field===_field2)) delete sv.richHtml;
+          });
+        }
       }
       if(inner._inlineInputHandler)inner._inlineInputHandler();
     }
   }
+  // Immediately serialize so the bold/italic change is captured in savedStates
+  if(currentTab!==9) savedStates[currentTab]=serializeTab();
   debouncedPersist();
 }
 
