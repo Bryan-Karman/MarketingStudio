@@ -161,6 +161,7 @@ body{display:flex;flex-direction:column;overflow:hidden;font-family:'Calibre','F
 
 /* ELEMENTS */
 .el{position:absolute;cursor:move;user-select:none;}
+[data-income-el="1"]{display:none!important;}
 .el.selected{outline:2px solid #5bbf7a !important;outline-offset:1px;}
 .el-inner{position:absolute;inset:0;overflow:hidden;}
 .el.selected > .el-sel-ring{opacity:1;}
@@ -3824,7 +3825,36 @@ function globalSync(){
       }
       // Brochure tabs (0,1): bullets field uses plain spacing + bold income
       // Build directly from val — never read back from DOM to avoid losing \n
+      // Before rebuilding: check if savedStates has richHtml for this element.
+      // If el.dataset.richHtml was cleared somehow but sv.richHtml is saved,
+      // restore it so the rebuild is skipped and bold is preserved.
       if([0,1].indexOf(currentTab) > -1 && (field === 'bullets' || el.dataset.wasIncomeAnchor === '1') && !el.dataset.richHtml){
+        // Attempt to restore richHtml from savedStates before wiping DOM
+        var _svRich3 = null;
+        var _stArr3 = savedStates[currentTab];
+        var _eid3 = el.dataset.eid;
+        if(_stArr3 && _eid3){
+          _stArr3.forEach(function(sv3){
+            if(sv3.eid === _eid3 && sv3.richHtml) _svRich3 = sv3.richHtml;
+          });
+        }
+        if(_svRich3){
+          // richHtml exists in savedStates — restore it to the element and skip rebuild
+          el.dataset.richHtml = _svRich3;
+          inner.innerHTML = _svRich3;
+          // Also ensure income last-line bold is applied
+          var _reFi3 = ((document.getElementById('fi')||{}).value||'').trim();
+          if(_reFi3){
+            var _rePls3 = inner.querySelectorAll('div.plain-line');
+            if(_rePls3.length){
+              var _reLast3 = _rePls3[_rePls3.length-1];
+              var _rePfx3 = _reFi3.split(':')[0].trim().toLowerCase();
+              if((_reLast3.textContent||'').trim().toLowerCase().startsWith(_rePfx3+':')){
+                _reLast3.style.fontWeight = '700';
+              }
+            }
+          }
+        } else {
         var _bps = parseFloat(el.dataset.bulletParaSpacing)||6;
         var _fi3 = ((document.getElementById('fi')||{}).value||'').trim();
         var _bplainVal = (val || '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
@@ -3849,6 +3879,7 @@ function globalSync(){
           return '<div class="plain-line" style="display:block;margin-bottom:'+_mb3+';'+(isBold?'font-weight:700;':'')+'">'+_pesc(l)+'</div>';
         }).join('');
         inner.style.whiteSpace = 'normal';
+        } // end else (no svRich3)
       }
 
     }
@@ -5068,10 +5099,12 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
     currentTab = tabIdx;
     try {
       // ── EDM TABS: clone live artwork directly — it is already correct ──
-      // Rebuilding from savedStates causes income to appear in Highlight Points
-      // because sv.content may have stale data. The live DOM is always correct.
-      const _isEdmTab = (tabIdx === 2 || tabIdx === 3);
-      if(_isEdmTab && tabIdx === currentTab){
+      // ── ACTIVE TAB: clone live artwork directly — always pixel-perfect ──
+      // For non-active tabs, rebuild from savedStates.
+      // The live DOM already has income bold, user bold, etc exactly as on screen.
+      if(tabIdx === currentTab){
+        // Active tab: clone live DOM directly — it is already correctly rendered.
+        // This is the most reliable path for all tabs: what you see is what you get.
         // EDM is the active tab — live artwork is ready, just clone it
         const realArt = document.getElementById('artwork');
         offscreen.style.width  = realArt.style.width;
@@ -5097,7 +5130,9 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           el.dataset.field=sv.field||''; el.dataset.bullets=sv.bullets||'0';
           el.dataset.combinedAgent=sv.combinedAgent||'0';
           if(sv.bulletParaSpacing) el.dataset.bulletParaSpacing=sv.bulletParaSpacing;
-          // Skip standalone income element for non-EDM tabs
+          // Skip standalone income element for non-EDM tabs.
+          // Check both sv.field (pre-approval) and sv.incomeEl (post-approval, field cleared).
+          if(sv.incomeEl==='1'&&[2,3].indexOf(tabIdx)===-1){ return; }
           if(sv.field==='income'&&[2,3].indexOf(tabIdx)===-1){ return; }
           el.style.cssText='position:absolute;left:'+sv.x+';top:'+sv.y+';width:'+sv.w+';height:'+sv.h+';z-index:'+(parseInt(sv.z)||2)+';overflow:hidden;';
           const inner=document.createElement('div'); inner.className='el-inner';
@@ -5105,27 +5140,44 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
           if(sv.type==='text'){
             inner.style.overflow='hidden';
             const content=sv.content!==undefined?sv.content:'';
-            if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
+            // richHtml: use directly — preserves bold/italic set by B button
+            if(sv.richHtml){
+              inner.innerHTML=sv.richHtml;
+              // If this is an income anchor, ensure the last plain-line div is bold.
+              // sv.richHtml may not have font-weight:700 if saved before globalSync ran.
+              var _rhFi=(gv('fi')||document.getElementById('fi')?.value||''). trim();
+              var _rhIncome=((sv.field==='bullets'||sv.wasIncomeAnchor==='1')&&[0,1].indexOf(tabIdx)>-1&&_rhFi);
+              if(_rhIncome){
+                var _rhPls=inner.querySelectorAll('div.plain-line');
+                if(_rhPls.length>0){
+                  var _rhLast=_rhPls[_rhPls.length-1];
+                  var _rhLastTxt=(_rhLast.textContent||''). trim();
+                  var _rhPfx=_rhFi.split(':')[0].trim().toLowerCase();
+                  if(_rhLastTxt.toLowerCase().startsWith(_rhPfx+':')){
+                    _rhLast.style.fontWeight='700';
+                  }
+                }
+              }
+            } else if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
               const spacing=sv.bulletParaSpacing||'0';
               const mb=parseFloat(spacing)>0?';margin-bottom:'+spacing+'px':'';
-              // Append income for AFR/Auction tabs (5,6,8) on bullets field
               var _svBVal=content;
               var _svBFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
               if(sv.field==='bullets'&&[5,6,8].indexOf(tabIdx)>-1&&_svBFi){
                 var _alreadyHas=_svBVal.trim().endsWith(_svBFi);
-                if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n\u2013 '+_svBFi:'\u2013 '+_svBFi;
+                if(!_alreadyHas) _svBVal=_svBVal?_svBVal+'\n– '+_svBFi:'– '+_svBFi;
               }
               const lines=_svBVal.split('\n');
               inner.innerHTML=lines.map(l=>{
-                const text=l.startsWith('\u2013 ')?l.slice(2):l;
+                const text=l.startsWith('– ')?l.slice(2):l;
                 if(!text.trim()) return '<div style="display:flex;min-height:0.5em;"></div>';
-                return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+                return '<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span style="flex:1;min-width:0;">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
               }).join('');
             } else {
               const _ps=parseFloat(sv.bulletParaSpacing||'0');
               const _svFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-              const _svIncome=(sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_svFi);
-              // Income may already be in content (from serializeTab) - don't double-add
+              // wasIncomeAnchor handles approved tabs where sv.field has been cleared
+              const _svIncome=((sv.field==='bullets'||sv.wasIncomeAnchor==='1')&&[0,1].indexOf(tabIdx)>-1&&_svFi);
               var _svContent=content;
               if(_svIncome&&_svContent&&!_svContent.trim().endsWith(_svFi)){
                 _svContent=_svContent+'\n'+_svFi;
@@ -5134,7 +5186,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
                 const _svLines=_svContent.split('\n');
                 inner.innerHTML=_svLines.map(function(l,li){
                   var isBold=_svIncome&&li===_svLines.length-1;
-                  return '<div class="plain-line" style="display:block;margin-bottom:'+_ps+'px;'+(isBold?'font-weight:700;':'')+'">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+                  return '<div class="plain-line" style="display:block;margin-bottom:'+_ps+'px;'+(isBold?'font-weight:700;':'')+'">'+(l||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
                 }).join('');
               } else { inner.textContent=_svContent; }
             }
@@ -5176,13 +5228,13 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               _bVal=_bVal?_bVal+'\n\u2013 '+_bFi:'\u2013 '+_bFi;
             }
             const lines=_bVal.split('\n');
-            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
+            inner.innerHTML=lines.map(l=>{const text=l.startsWith('\u2013 ')?l.slice(2):l;if(!text.trim())return'<div style="display:flex;min-height:0.5em;"></div>';return'<div style="display:flex;align-items:baseline'+mb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span style=\"flex:1;min-width:0;\">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';}).join('');
           } else {
             const ps2=parseFloat(el.dataset.bulletParaSpacing||'0');
             // Append income for brochure tabs (0,1) on bullets field
             var _pdfVal=val;
             var _pdfFi=(gv('fi')||document.getElementById('fi')?.value||'').trim();
-            var _isIncomeBullets=(field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&_pdfFi);
+            var _isIncomeBullets=((field==='bullets'||el.dataset.wasIncomeAnchor==='1')&&[0,1].indexOf(tabIdx)>-1&&_pdfFi);
             if(_isIncomeBullets) _pdfVal=_pdfVal?_pdfVal+'\n'+_pdfFi:_pdfFi;
             if(ps2>0){
               const lines2=_pdfVal.split('\n');
@@ -5408,6 +5460,13 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
   if(tabIdx === 2 || tabIdx === 3){
     return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
   }
+  // Brochure tabs (0,1): use raster renderer for pixel-perfect bold/formatting accuracy.
+  // The native renderer reconstructs HTML from savedStates which loses font-weight:700
+  // set on plain-line divs by globalSync (income line bold). The raster renderer rebuilds
+  // the DOM correctly so bold always matches exactly what's on screen.
+  if(tabIdx === 0 || tabIdx === 1){
+    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
+  }
 
   let fonts = [];
   try { fonts = await loadPdfFonts(); } catch(e){ console.warn('Font load error',e); }
@@ -5447,7 +5506,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       } else { text = val; }
     }
     const fi = ((document.getElementById('fi')||{}).value||'').trim();
-    if(field==='bullets' && fi){
+    if((field==='bullets' || sv.wasIncomeAnchor==='1') && fi){
       if([5,6,8].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n\u2013 '+fi : '\u2013 '+fi; }
       else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text.trimEnd()+'\n'+fi : fi; }
     }
@@ -5524,7 +5583,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
   // Render each element (offset by bleedMm so artwork sits within the bleed margins)
   for(const sv of sorted){
-    if(sv.field==='income') continue;
+    if(sv.field==='income' || sv.incomeEl==='1') continue; // skip income placeholder always
     const ex=parseFloat(sv.x)*scaleX + _bleedMm, ey=parseFloat(sv.y)*scaleY + _bleedMm;
     const ew=parseFloat(sv.w)*scaleX, eh=parseFloat(sv.h)*scaleY;
     if(ew<=0||eh<=0) continue;
@@ -5550,7 +5609,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       const bsp=parseFloat(sv.bulletParaSpacing||'0')*scaleY;
       // Brochure tabs (0,1): bullets field uses plain-line spacing, not dash bullets.
       // Force isBullets=false regardless of what sv.bullets says (stale saves may have bullets:'1').
-      const _isBrochureBulletsField = (sv.field === 'bullets' && (tabIdx === 0 || tabIdx === 1));
+      const _isBrochureBulletsField = ((sv.field === 'bullets' || sv.wasIncomeAnchor === '1') && (tabIdx === 0 || tabIdx === 1));
       const isBullets = sv.bullets === '1' && !_isBrochureBulletsField;
 
       // Banner background pill — measure text, draw pill, centre text within it
@@ -5575,53 +5634,147 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
       const rawText=resolveText(sv);
       const lines=rawText.split('\n');
-      const maxW=ew*1.01; // jsPDF measures text slightly narrower than browser, so give extra room
-
-      // Starting Y — vertically centre single-line text, or start near top for multi-line
+      const maxW=ew*1.01;
       let curY=ey+fsMm*0.85;
-
-      // For banner: centre text vertically in the pill and horizontally in the pill
       let textX, jsPdfAlign;
       if(sv.banner==='1'){
-        textX=pillX+pillW2/2;
-        jsPdfAlign='center';
-        curY=ey+(eh/2)+(fsMm*0.35); // vertically centred
+        textX=pillX+pillW2/2; jsPdfAlign='center'; curY=ey+(eh/2)+(fsMm*0.35);
       } else {
-        textX = ta==='right' ? ex+ew : ta==='center' ? ex+ew/2 : ex;
-        jsPdfAlign = ta==='right'?'right':ta==='center'?'center':'left';
+        textX=ta==='right'?ex+ew:ta==='center'?ex+ew/2:ex;
+        jsPdfAlign=ta==='right'?'right':ta==='center'?'center':'left';
       }
+
+      // ── Rich-text segment parser ──────────────────────────────────────────────
+      // Parses sv.richHtml into per-line arrays of {text, bold} segments.
+      // Only used when sv.richHtml exists (user applied bold/italic via B button).
+      // Returns null when no richHtml — plain rendering path is used instead.
+      function _parseRichSegs(html){
+        var tmp=document.createElement('div'); tmp.innerHTML=html;
+        // Walk a node tree and collect {text,bold} segments
+        function walk(node, isBold){
+          var out=[];
+          node.childNodes.forEach(function(n){
+            if(n.nodeType===3){
+              if(n.textContent) out.push({text:n.textContent, bold:isBold});
+            } else {
+              var tag=n.nodeName.toUpperCase();
+              var fw=(n.style&&n.style.fontWeight)||'';
+              var childBold=isBold||(tag==='B'||tag==='STRONG')||(fw==='700'||fw==='bold');
+              out=out.concat(walk(n, childBold));
+            }
+          });
+          return out;
+        }
+        // Try path 1: div.plain-line (brochure highlight points)
+        var pls=tmp.querySelectorAll('div.plain-line');
+        if(pls.length>0){
+          var result=[];
+          pls.forEach(function(d){
+            if(!d.textContent.trim()) return;
+            var divBold=d.style.fontWeight==='700'||d.style.fontWeight==='bold';
+            var segs=walk(d, divBold);
+            if(segs.length) result.push(segs);
+          });
+          return result.length ? result : null;
+        }
+        // Try path 2: span.bt inside flex divs (body copy / bullets)
+        var btSpans=tmp.querySelectorAll('div > span.bt');
+        if(btSpans.length>0){
+          var result2=[];
+          btSpans.forEach(function(s){
+            if(!s.textContent.trim()) return;
+            var segs=walk(s, false);
+            if(segs.length) result2.push(segs);
+          });
+          return result2.length ? result2 : null;
+        }
+        return null;
+      }
+
+      // ── Segment line renderer ────────────────────────────────────────────────
+      // Renders an array of {text,bold} segments with correct word-wrapping.
+      // maxLineW: available width in mm. Returns final curY after rendering.
+      function _renderSegs(segs, startX, startY, maxLineW){
+        var cy=startY;
+        // Build word list with bold flag from segments
+        var words=[];
+        segs.forEach(function(seg){
+          // Split each segment into words, preserving which words are bold
+          var parts=seg.text.split(/(\s+)/);
+          parts.forEach(function(p){ if(p) words.push({text:p, bold:seg.bold}); });
+        });
+        var lineWords=[], lineW=0;
+        function flushLine(){
+          if(!lineWords.length) return;
+          var cx=startX;
+          lineWords.forEach(function(w){
+            setFont(pdf,ist.fontFamily,w.bold?'700':ist.fontWeight,hasFonts);
+            pdf.setFontSize(fsPt);
+            pdf.text(w.text,cx,cy,{align:'left',baseline:'alphabetic'});
+            cx+=pdf.getTextWidth(w.text);
+          });
+          cy+=lineH;
+          lineWords=[]; lineW=0;
+        }
+        words.forEach(function(w){
+          setFont(pdf,ist.fontFamily,w.bold?'700':ist.fontWeight,hasFonts);
+          pdf.setFontSize(fsPt);
+          var ww=pdf.getTextWidth(w.text);
+          if(lineWords.length && lineW+ww>maxLineW+0.1){
+            flushLine();
+          }
+          lineWords.push(w); lineW+=ww;
+        });
+        flushLine();
+        // Reset to element base weight
+        setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt);
+        return cy;
+      }
+
+      const _lineSegs = sv.richHtml ? _parseRichSegs(sv.richHtml) : null;
+
+      // ── Income bold detection ────────────────────────────────────────────────
+      // Income is the last plain-line div with font-weight:700 (set by globalSync).
+      // Detect it from sv.richHtml plain-line structure OR by field/wasIncomeAnchor.
+      const _isBulletOrAnchor=(sv.field==='bullets'||sv.wasIncomeAnchor==='1');
+      const _fi_val=((document.getElementById('fi')||{}).value||'').trim();
 
       lines.forEach((line,li)=>{
         if(curY>ey+eh+2) return;
-        // Bold income line on brochure tabs
-        const isBoldLine=sv.field==='bullets'&&[0,1].indexOf(tabIdx)>-1&&li===lines.length-1&&((document.getElementById('fi')||{}).value||'').trim();
-        if(isBoldLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
+        const isIncomeLine=_isBulletOrAnchor&&[0,1].indexOf(tabIdx)>-1&&li===lines.length-1&&_fi_val;
+        // Rich segments for this line (if user applied bold)
+        const _segs=_lineSegs&&li<_lineSegs.length?_lineSegs[li]:null;
 
         if(isBullets){
-          // Render dash + indented text separately so wrapped lines indent correctly
           const rawLine=line.startsWith('\u2013 ')?line.slice(2):line.replace(/^[\u2013\-] ?/,'');
           if(!rawLine.trim()){ curY+=lineH*0.5; return; }
           const dash='\u2013';
+          setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt);
           const dashW=pdf.getTextWidth(dash+'  ');
           const indentX=ex+dashW;
-          const textMaxW=maxW-dashW;
-          const wrappedText=pdf.splitTextToSize(rawLine,textMaxW);
-          wrappedText.forEach((wl,wi)=>{
-            if(curY>ey+eh+2) return;
-            if(wi===0) pdf.text(dash,ex,curY,{align:'left',baseline:'alphabetic'});
-            pdf.text(wl,indentX,curY,{align:'left',baseline:'alphabetic'});
-            curY+=lineH;
-          });
+          const textMaxW=ew-dashW;
+          pdf.text(dash,ex,curY,{align:'left',baseline:'alphabetic'});
+          if(_segs&&_segs.length>0){
+            // Rich segments: render with word-wrapping from indentX
+            curY=_renderSegs(_segs, indentX, curY, textMaxW);
+          } else {
+            if(isIncomeLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
+            const wrappedText=pdf.splitTextToSize(rawLine,textMaxW);
+            wrappedText.forEach(function(wl){ if(curY>ey+eh+2) return; pdf.text(wl,indentX,curY,{align:'left',baseline:'alphabetic'}); curY+=lineH; });
+            setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt);
+          }
         } else {
-          const wrapped=pdf.splitTextToSize(line,maxW);
-          wrapped.forEach(wl=>{
-            if(curY>ey+eh+2) return;
-            pdf.text(wl,textX,curY,{align:jsPdfAlign,baseline:'alphabetic'});
-            curY+=lineH;
-          });
+          if(_segs&&_segs.length>0){
+            // Rich segments for plain text (highlight points with partial bold)
+            curY=_renderSegs(_segs, textX, curY, maxW);
+          } else {
+            if(isIncomeLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
+            const wrapped=pdf.splitTextToSize(line,maxW);
+            wrapped.forEach(function(wl){ if(curY>ey+eh+2) return; pdf.text(wl,textX,curY,{align:jsPdfAlign,baseline:'alphabetic'}); curY+=lineH; });
+            if(isIncomeLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
+          }
         }
         if(bsp>0) curY+=bsp;
-        if(isBoldLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
       });
     }
   }
@@ -7179,24 +7332,84 @@ function toggleTabApproval(){
   // for every element type. Income re-append is handled in restoreTab.
 
   // Step 1: make sure income is visible in the DOM before serialising.
-  // richHtml on an incomeAnchor element blocks globalSync from running its
-  // plain-line block, so clear it first.
+  // richHtml on an incomeAnchor element blocks globalSync from rebuilding the
+  // plain-line divs with income embedded. We need to:
+  //   a) temporarily clear el.dataset.richHtml so globalSync runs
+  //   b) BUT preserve sv.richHtml in savedStates — it contains the user's bold formatting
+  //   c) After globalSync, restore richHtml with income bold merged in
+  var _savedAnchorRichHtml = {};
   document.querySelectorAll('#artwork .el[data-income-anchor="1"]').forEach(function(el){
+    // Save the richHtml before clearing (preserves user bold like "Office" bold)
+    if(el.dataset.richHtml) _savedAnchorRichHtml[el.dataset.eid] = el.dataset.richHtml;
     delete el.dataset.richHtml;
-    var _sv = savedStates[currentTab];
-    if(_sv){ _sv.forEach(function(s){ if(s.eid===el.dataset.eid) delete s.richHtml; }); }
+    // Do NOT delete sv.richHtml — we'll restore it after globalSync
   });
   globalSync(); // embeds income as bold last plain-line div
+  // Restore richHtml with income merged: take the globalSync output (which has income bold)
+  // and re-apply any user bold (<b> tags) that existed before.
+  // Strategy: globalSync built clean plain-line divs with income bold on the last div.
+  // The user's bold was on specific words — preserve it by merging back.
+  document.querySelectorAll('#artwork .el[data-income-anchor="1"]').forEach(function(el){
+    var _eid = el.dataset.eid;
+    var _oldRich = _savedAnchorRichHtml[_eid];
+    var inner = el.querySelector('.el-inner');
+    if(!inner) return;
+    if(_oldRich){
+      // The old richHtml had user bold. The current inner.innerHTML has income bold (font-weight:700 on last div).
+      // Merge: keep current structure (correct line count/income) but re-apply <b> tags from old.
+      // Parse old richHtml to find which lines had <b> tags and where.
+      var _oldTmp = document.createElement('div');
+      _oldTmp.innerHTML = _oldRich;
+      var _oldPls = _oldTmp.querySelectorAll('div.plain-line');
+      var _newPls = inner.querySelectorAll('div.plain-line');
+      if(_oldPls.length > 0 && _newPls.length > 0){
+        // Re-apply bold from old divs to new divs by index
+        // (new has one extra div for income, old may not)
+        _oldPls.forEach(function(oldDiv, i){
+          if(i < _newPls.length && oldDiv.innerHTML !== oldDiv.textContent){
+            // This old div had formatting — apply its innerHTML to the new div
+            // but preserve the new div's inline styles (margin, font-weight for income)
+            var newDiv = _newPls[i];
+            var keepStyle = newDiv.getAttribute('style') || '';
+            newDiv.innerHTML = oldDiv.innerHTML;
+            newDiv.setAttribute('style', keepStyle);
+          }
+        });
+      }
+      // Now set richHtml to the merged result
+      el.dataset.richHtml = inner.innerHTML;
+      // Also update sv.richHtml
+      var _svArr = savedStates[currentTab];
+      if(_svArr){ _svArr.forEach(function(s){ if(s.eid===_eid) s.richHtml = inner.innerHTML; }); }
+    }
+  });
 
-  // Step 2: snapshot canvas → savedStates
+  // Step 2: snapshot canvas → savedStates.
+  // Mark approved FIRST so serializeTab skips the income-strip logic
+  // (which only runs for non-approved tabs). This ensures income is kept
+  // in sv.content so the PDF renderer can detect and bold it correctly.
+  _tabApprovals[currentTab] = true;
   savedStates[currentTab] = serializeTab();
 
   // Step 3: in savedStates, clear sv.field on every element so nothing can
-  // overwrite content after approval. Also tag incomeAnchor elements so
-  // restoreTab knows to re-append income (serializeTab strips it by design).
+  // overwrite content after approval. Also tag incomeAnchor elements and
+  // ensure income is in sv.content for the PDF renderer.
+  var _fi_approve = ((document.getElementById('fi')||{}).value||'').trim();
   var _svList = savedStates[currentTab] || [];
   _svList.forEach(function(sv){
-    if(sv.incomeAnchor === '1') sv.wasIncomeAnchor = '1';
+    if(sv.incomeAnchor === '1'){
+      sv.wasIncomeAnchor = '1';
+      // Belt-and-suspenders: if income was still stripped, re-append it now
+      if(_fi_approve && sv.content){
+        var _pfx = _fi_approve.split(':')[0].trim().toLowerCase();
+        var _lines = sv.content.split('\n');
+        var _lastLine = (_lines[_lines.length-1]||'').trim().toLowerCase();
+        var _hasIncome = _lastLine === _fi_approve.toLowerCase() || (_pfx && _lastLine.startsWith(_pfx+':'));
+        if(!_hasIncome){
+          sv.content = sv.content.trimEnd() + '\n' + _fi_approve;
+        }
+      }
+    }
     sv.field         = '';
     sv.incomeAnchor  = '0';
     sv.combinedAgent = '0';
@@ -7224,8 +7437,7 @@ function toggleTabApproval(){
     _svList2.forEach(function(sv){ if(sv.eid===el.dataset.eid){ sv.assetKey=''; sv.imgSrc=src; } });
   });
 
-  // Step 6: mark approved and save
-  _tabApprovals[currentTab] = true;
+  // Step 6: save (tab was already marked approved in step 2)
   _updateTabApprovalUI();
   debouncedPersist();
 }
