@@ -2901,6 +2901,7 @@ function serializeTab(){
         return _bp||'0';
       })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
+      incomeEl:el.dataset.incomeEl||'0', elDisplay:el.style.display||'',
     };
     if(inner){
       // Ensure pre-wrap is in innerStyle if content has line breaks
@@ -3057,6 +3058,13 @@ function restoreTab(idx){
     if(sv.combinedAgent==='1') el.dataset.combinedAgent='1';
     if(sv.afrSaleCombo==='1') el.dataset.afrSaleCombo='1';
     if(sv.incomeAnchor==='1') el.dataset.incomeAnchor='1';
+    // Restore incomeEl flag and its display:none state (hidden placeholder element)
+    if(sv.incomeEl==='1'){
+      el.dataset.incomeEl='1';
+      el.style.display='none';
+    } else if(sv.elDisplay==='none'){
+      el.style.display='none';
+    }
     if(sv.agentOrigY) el.dataset.agentOrigY=sv.agentOrigY;
     if(sv.agentBelow==='1'){ el.dataset.agentBelow='1'; if(sv.agentBelowY) el.dataset.agentBelowY=sv.agentBelowY; }
     if(sv.agentManualY==='1') el.dataset.agentManualY='1';
@@ -4312,7 +4320,7 @@ function buildAFR4(W,H){
   mkT(11,248,351,15,gv('fa2')||'Street Address',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3});
   mkI(405,232,52,26,'logo','Image',{z:3});
   (function(){ var _e=mkT(11,266,217,78,document.getElementById('fbull').value,{color:'rgb(0,0,0)',fontSize:'12px',fontWeight:'300',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',field:'bullets',z:3,bullets:'1',bulletParaSpacing:'4'}); return _e; })();
-  (function(){ var _e=mkT(10,331,212,13,gv('fi')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
+  (function(){ var _e=mkT(11,331,212,13,gv('fi')||'',{color:'rgb(0,0,0)',fontSize:'12px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'income',z:3,bullets:'1'}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   // Sale method + date combined: "Investment Portfolio Auction, Closing 3pm AEST..."
   (function(){
     var _sm=gv('fm')||''; var _sd=gv('fd')||'';
@@ -4391,7 +4399,7 @@ function buildBrochure1(W,H){
   mkT(56,871,220,21,gv('fa1')||'Suburb State',{color:'rgb(1,42,45)',fontSize:'16px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address1',z:3,locked:'1'});
   mkT(56,892,223,20,gv('fa2')||'Address',{color:'rgb(1,42,45)',fontSize:'16px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'address2',z:3,locked:'1'});
   (function(){ var _e=mkT(37,932,231,160,document.getElementById('fbull').value,{color:'rgb(1,42,45)',fontSize:'16px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.25',field:'bullets',z:3,bulletParaSpacing:'8',locked:'1'}); _e.dataset.incomeAnchor='1'; _e.dataset.bulletParaSpacing='6'; applyPlainParaSpacing(_e.querySelector('.el-inner'),8); return _e; })();
-  (function(){ var _e=mkT(43,1055,234,20,gv('fi')||'',{color:'rgb(1,42,45)',fontSize:'16px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'income',z:3}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
+  (function(){ var _e=mkT(37,1055,234,20,gv('fi')||'',{color:'rgb(1,42,45)',fontSize:'16px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'income',z:3}); _e.dataset.incomeEl='1'; _e.style.display='none'; return _e; })();
   mkR(568,874,1,212,'rgb(221,221,221)',{z:2,locked:'1'});
   mkT(286,874,268,223,document.getElementById('fbc').value,{color:'rgb(77,77,79)',fontSize:'13px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.1',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'5',locked:'1'});
   mkT(590,874,168,19,'Contact',{color:'rgb(77,77,79)',fontSize:'13px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',z:3,locked:'1'});
@@ -6354,7 +6362,13 @@ function loadAsset(e,key){
       if(img){img.src=finalSrc;img.style.display='';img.style.objectFit=isLogo?'contain':'cover';}
       if(ph) ph.style.display='none';
     });
-    Object.keys(savedStates).forEach(ti=>{(savedStates[ti]||[]).forEach(sv=>{if(sv.assetKey===key)sv.imgSrc=finalSrc;});});
+    Object.keys(savedStates).forEach(ti=>{
+      // Don't update image src for approved tabs — their images are frozen at approval time.
+      // Approved tabs have sv.assetKey='' with sv.imgSrc already stamped, so this naturally
+      // skips them (assetKey===key won't match). But guard explicitly for safety.
+      if(_tabApprovals[parseInt(ti)]) return;
+      (savedStates[ti]||[]).forEach(sv=>{if(sv.assetKey===key)sv.imgSrc=finalSrc;});
+    });
     // Auto-place logo2/logo3/logo4 on canvas next to existing logo if not already there
     if(['logo2','logo3','logo4'].includes(key)){
       const _art = document.getElementById('artwork');
@@ -7125,44 +7139,88 @@ function toggleTabApproval(){
     _updateTabApprovalUI();
     debouncedPersist();
   } else {
-    // Approve: snapshot current state then break all field links
     if(currentTab === 9) return; // can't approve Marketing Schedule
-    // 1. Run globalSync to ensure income is embedded into its anchor element
-    //    before we break the field links — this captures the final visual state.
+
+    // ── Step 1: embed income into anchor element ──────────────────────────────
     globalSync();
-    // 2. Serialize current tab so savedStates has the correct visual snapshot
+
+    // ── Step 2: snapshot the live DOM into savedStates ───────────────────────
     savedStates[currentTab] = serializeTab();
-    // 3. Break all data-field links on live canvas elements
+
+    // ── Step 3: walk every linked element and lock in its current visual text ─
+    // For each element, we read the DOM directly (not the serializer) so we get
+    // the full rendered content including any income that globalSync embedded.
     document.querySelectorAll('#artwork .el[data-field]').forEach(function(el){
-      // Save the current text content into sv.content before breaking the link
-      // so the element restores correctly from savedStates without needing globalSync.
       var inner = el.querySelector('.el-inner');
-      if(inner && el.dataset.field){
-        var _approveEid = el.dataset.eid;
-        var _approveSt = savedStates[currentTab];
-        if(_approveSt && _approveEid){
-          _approveSt.forEach(function(sv){
-            if(sv.eid === _approveEid){
-              // Lock in current visual content
-              if(el.dataset.bullets === '1'){
-                var _aBt = Array.from(inner.querySelectorAll('span.bt'));
-                if(_aBt.length){
-                  sv.content = _aBt.map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); }).join('\n');
-                }
-              } else {
-                sv.content = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').trim();
-              }
-            }
-          });
-        }
+      var _eid = el.dataset.eid;
+      var _st = savedStates[currentTab];
+
+      if(inner && el.dataset.field && _st && _eid){
+        _st.forEach(function(sv){
+          if(sv.eid !== _eid) return;
+
+          if(el.dataset.incomeEl === '1'){
+            // Hidden income placeholder — keep it hidden, don't touch content
+            sv.elDisplay = 'none';
+            return;
+          }
+
+          // Read the full rendered content from the DOM right now.
+          // For plain-line elements (brochure bullets) this includes the bold income line.
+          // For dash-bullet elements this reads span.bt text.
+          var _plainDivs = inner.querySelectorAll('div.plain-line');
+          var _btSpans   = inner.querySelectorAll('span.bt');
+
+          if(_plainDivs.length > 0){
+            // Plain-line element (brochure highlight points) — read full lines including income
+            var _lines = Array.from(_plainDivs).map(function(d){ return d.textContent; });
+            while(_lines.length && !_lines[_lines.length-1].trim()) _lines.pop();
+            sv.content = _lines.join('\n');
+            // Clear any stale richHtml so restoreTab uses content + applyPlainParaSpacing
+            delete sv.richHtml;
+          } else if(_btSpans.length > 0){
+            // Dash-bullet element
+            var _btLines = Array.from(_btSpans).map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); });
+            while(_btLines.length && !_btLines[_btLines.length-1].trim()) _btLines.pop();
+            sv.content = _btLines.join('\n');
+          } else {
+            // Plain text element
+            sv.content = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').trim();
+          }
+        });
       }
+
+      // Break field link on the DOM element
       el.dataset.field = '';
       el.dataset.incomeAnchor = '0';
       el.dataset.combinedAgent = '0';
+
+      // Keep hidden income placeholder elements hidden
+      if(el.dataset.incomeEl === '1'){
+        el.style.display = 'none';
+      }
     });
-    // 4. Re-serialize with broken links so they're saved
-    savedStates[currentTab] = serializeTab();
-    // 4. Mark tab as approved
+
+    // ── Step 4: freeze images ─────────────────────────────────────────────────
+    document.querySelectorAll('#artwork .el[data-type="img"]').forEach(function(el){
+      var ak = el.dataset.assetKey || '';
+      if(!ak) return;
+      if(['logo','logo2','logo3','logo4'].includes(ak)) return; // logos stay global
+      var currentSrc = assets[ak] || '';
+      if(!currentSrc) return;
+      el.dataset.assetKey = '';
+      var img = el.querySelector('img');
+      if(img) img.src = currentSrc;
+      var _eid2 = el.dataset.eid;
+      var _st2 = savedStates[currentTab];
+      if(_st2 && _eid2){
+        _st2.forEach(function(sv){
+          if(sv.eid === _eid2){ sv.imgSrc = currentSrc; sv.assetKey = ''; }
+        });
+      }
+    });
+
+    // ── Step 5: mark approved and save ───────────────────────────────────────
     _tabApprovals[currentTab] = true;
     _updateTabApprovalUI();
     debouncedPersist();
