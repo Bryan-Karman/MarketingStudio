@@ -1085,22 +1085,27 @@ function createElement(cfg){
           const _sid=fieldToSidebarId(_f),_sel=_sid?document.getElementById(_sid):null;
           if(_sel){const _txt=(inner.innerText||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').trim();_sel.value=_txt;}
         } else if(_f && _mgd.indexOf(_f)!==-1){
-          // Managed field: sync to sidebar exactly like heading/subheading
-          // Just read innerText directly — same simple approach that works for all other fields
+          // Managed field: sync canvas to sidebar in real time.
+          // Read child divs directly -- NOT innerText, which inserts double newlines
+          // between flex/block divs and creates phantom blank lines in the sidebar.
           var _mgdSid = fieldToSidebarId(_f);
           var _mgdSel = _mgdSid ? document.getElementById(_mgdSid) : null;
           if(_mgdSel){
-            // Read lines from innerText — preserves line breaks naturally
-            var _mgdTxt = (inner.innerText||'').replace(/​/g,'').replace(/ /g,' ');
-            // Strip the dash prefix from each line (bullet elements add –  prefix)
-            var _mgdLines = _mgdTxt.split(String.fromCharCode(10)).map(function(l){
-              return l.replace(/^–\s*/,'').trimEnd();
-            });
-            // Strip trailing empty lines
+            var _mgdDivs = Array.from(inner.querySelectorAll(':scope > div'));
+            var _mgdLines;
+            if(_mgdDivs.length > 0){
+              _mgdLines = _mgdDivs.map(function(d){
+                var bt = d.querySelector('span.bt');
+                return (bt ? bt.textContent : d.textContent).replace(/^\u2013\s*/,'').replace(/\u200B/g,'').trimEnd();
+              });
+            } else {
+              _mgdLines = (inner.innerText||'').replace(/\u200B/g,'').replace(/\u00A0/g,' ').split('\n').map(function(l){
+                return l.replace(/^\u2013\s*/,'').trimEnd();
+              });
+            }
             while(_mgdLines.length && !_mgdLines[_mgdLines.length-1].trim()) _mgdLines.pop();
-            _mgdSel.value = _mgdLines.join(String.fromCharCode(10));
+            _mgdSel.value = _mgdLines.join('\n');
           }
-          // Keep richHtml set so globalSync doesn't rebuild from stale sidebar while typing
           if(_el2) _el2.dataset.richHtml = inner.innerHTML;
         } else if(!_f){
           const _eid3=_el2?_el2.dataset.eid:null,_st3=savedStates[currentTab];
@@ -2901,6 +2906,7 @@ function serializeTab(){
         return _bp||'0';
       })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
+      wasIncomeAnchor:el.dataset.wasIncomeAnchor||'0',
       incomeEl:el.dataset.incomeEl||'0', elDisplay:el.style.display||'',
     };
     if(inner){
@@ -2918,7 +2924,7 @@ function serializeTab(){
           var _serSbVal = _serSbEl ? (_serSbEl.value||'').trim() : '';
           const textSpans = inner.querySelectorAll('span.bt');
           var _rawLines;
-          if(_serSbVal && _serSbEl){
+          if(_serSbVal && _serSbEl && !_tabApprovals[currentTab]){
             // Use sidebar — authoritative for managed fields
             _rawLines = _serSbVal.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
           } else if(textSpans.length > 0){
@@ -2934,7 +2940,7 @@ function serializeTab(){
           }
           // Strip appended income from last line so it's never double-saved
           var _fi_strip = ((document.getElementById('fi')||{}).value||'').trim();
-          if(_fi_strip && _rawLines.length > 0){
+          if(_fi_strip && _rawLines.length > 0 && !_tabApprovals[currentTab]){
             var _last = _rawLines[_rawLines.length-1].trim();
             var _lastClean = _last.startsWith('\u2013 ') ? _last.slice(2) : _last;
             if(_lastClean === _fi_strip){
@@ -2976,7 +2982,7 @@ function serializeTab(){
             var _pdLines = Array.from(plainDivs).map(function(d){ return d.textContent; });
             // Strip appended income from last line (it is added at render time, not saved)
             var _fi_strip2 = ((document.getElementById('fi')||{}).value||'').trim();
-            if(_fi_strip2 && _pdLines.length > 0){
+            if(_fi_strip2 && _pdLines.length > 0 && !_tabApprovals[currentTab]){
               var _pdLast = _pdLines[_pdLines.length-1].trim();
               if(_pdLast === _fi_strip2){ _pdLines = _pdLines.slice(0,-1); }
             }
@@ -3058,6 +3064,7 @@ function restoreTab(idx){
     if(sv.combinedAgent==='1') el.dataset.combinedAgent='1';
     if(sv.afrSaleCombo==='1') el.dataset.afrSaleCombo='1';
     if(sv.incomeAnchor==='1') el.dataset.incomeAnchor='1';
+    if(sv.wasIncomeAnchor==='1') el.dataset.wasIncomeAnchor='1';
     // Restore incomeEl flag and its display:none state (hidden placeholder element)
     if(sv.incomeEl==='1'){
       el.dataset.incomeEl='1';
@@ -3102,7 +3109,7 @@ function restoreTab(idx){
 
       // EXCEPTION: Brochure tabs (0,1) bullets field uses plain-line spacing, NOT dash bullets.
       // If a stale save has bullets:'1' on this element, correct it to plain-line rendering.
-      var _isBrochureBulletsRestore = (sv.field === 'bullets' && (idx === 0 || idx === 1));
+      var _isBrochureBulletsRestore = ((sv.field === 'bullets' || sv.wasIncomeAnchor === '1') && (idx === 0 || idx === 1));
       if(_isBrochureBulletsRestore){
         el.dataset.bullets = '0';
         var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
@@ -3187,9 +3194,28 @@ function restoreTab(idx){
         inner.dataset.bulletSpacing = sv.bulletParaSpacing;
         inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
         if(inner) applyPlainParaSpacing(inner, parseFloat(sv.bulletParaSpacing));
-        // After plain-line restore, bold the last line if it looks like an income line
-        // This preserves the bold Net Income appearance after tab approval
+        // Re-append income if this was an incomeAnchor element (approval strips it from sv.content).
+        // wasIncomeAnchor is set by toggleTabApproval to mark these elements permanently.
         var _fi_restore = ((document.getElementById('fi')||{}).value||'').trim();
+        if(_fi_restore && sv.wasIncomeAnchor === '1'){
+          var _pfxR = _fi_restore.split(':')[0].trim().toLowerCase();
+          var _pdCheck = inner.querySelectorAll('div.plain-line');
+          var _hasInc = Array.from(_pdCheck).some(function(d){
+            var lc = (d.textContent||'').trim().toLowerCase();
+            return lc === _fi_restore.toLowerCase() || (_pfxR && lc.startsWith(_pfxR+':'));
+          });
+          if(!_hasInc){
+            // Income missing — append it as a new plain-line div with bold
+            var _bpsR = parseFloat(sv.bulletParaSpacing)||6;
+            var _mbR = _bpsR > 0 ? 'margin-bottom:'+_bpsR+'px;' : '';
+            var _incDiv = document.createElement('div');
+            _incDiv.className = 'plain-line';
+            _incDiv.setAttribute('style','display:block;'+_mbR+'font-weight:700;');
+            _incDiv.textContent = _fi_restore;
+            inner.appendChild(_incDiv);
+          }
+        }
+        // Bold the last line if it looks like an income line
         if(_fi_restore){
           var _plainDivs = inner.querySelectorAll('div.plain-line');
           if(_plainDivs.length){
@@ -3798,7 +3824,7 @@ function globalSync(){
       }
       // Brochure tabs (0,1): bullets field uses plain spacing + bold income
       // Build directly from val — never read back from DOM to avoid losing \n
-      if([0,1].indexOf(currentTab) > -1 && field === 'bullets' && !el.dataset.richHtml){
+      if([0,1].indexOf(currentTab) > -1 && (field === 'bullets' || el.dataset.wasIncomeAnchor === '1') && !el.dataset.richHtml){
         var _bps = parseFloat(el.dataset.bulletParaSpacing)||6;
         var _fi3 = ((document.getElementById('fi')||{}).value||'').trim();
         var _bplainVal = (val || '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
@@ -3837,7 +3863,7 @@ function globalSync(){
     if(ti===currentTab) continue; // live DOM already handled above
     if(!state || !Array.isArray(state)) continue;
     // Skip approved tabs — their content is frozen, sidebar changes must not flow in
-    if(_tabApprovals[ti]) return;
+    if(_tabApprovals[ti]) continue; // skip approved tabs — content is frozen
     state.forEach(sv=>{
       // Only update elements that are still linked to a field.
       // Free-text elements (sv.field==='' or undefined) must never have their
@@ -7134,97 +7160,69 @@ function _updateTabApprovalUI(){
 function toggleTabApproval(){
   const approved = !!_tabApprovals[currentTab];
   if(approved){
-    // Un-approve: just unlock — fields stay broken, no re-link
     delete _tabApprovals[currentTab];
     _updateTabApprovalUI();
     debouncedPersist();
-  } else {
-    if(currentTab === 9) return; // can't approve Marketing Schedule
-
-    // ── Step 1: embed income into anchor element ──────────────────────────────
-    globalSync();
-
-    // ── Step 2: snapshot the live DOM into savedStates ───────────────────────
-    savedStates[currentTab] = serializeTab();
-
-    // ── Step 3: walk every linked element and lock in its current visual text ─
-    // For each element, we read the DOM directly (not the serializer) so we get
-    // the full rendered content including any income that globalSync embedded.
-    document.querySelectorAll('#artwork .el[data-field]').forEach(function(el){
-      var inner = el.querySelector('.el-inner');
-      var _eid = el.dataset.eid;
-      var _st = savedStates[currentTab];
-
-      if(inner && el.dataset.field && _st && _eid){
-        _st.forEach(function(sv){
-          if(sv.eid !== _eid) return;
-
-          if(el.dataset.incomeEl === '1'){
-            // Hidden income placeholder — keep it hidden, don't touch content
-            sv.elDisplay = 'none';
-            return;
-          }
-
-          // Read the full rendered content from the DOM right now.
-          // For plain-line elements (brochure bullets) this includes the bold income line.
-          // For dash-bullet elements this reads span.bt text.
-          var _plainDivs = inner.querySelectorAll('div.plain-line');
-          var _btSpans   = inner.querySelectorAll('span.bt');
-
-          if(_plainDivs.length > 0){
-            // Plain-line element (brochure highlight points) — read full lines including income
-            var _lines = Array.from(_plainDivs).map(function(d){ return d.textContent; });
-            while(_lines.length && !_lines[_lines.length-1].trim()) _lines.pop();
-            sv.content = _lines.join('\n');
-            // Clear any stale richHtml so restoreTab uses content + applyPlainParaSpacing
-            delete sv.richHtml;
-          } else if(_btSpans.length > 0){
-            // Dash-bullet element
-            var _btLines = Array.from(_btSpans).map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); });
-            while(_btLines.length && !_btLines[_btLines.length-1].trim()) _btLines.pop();
-            sv.content = _btLines.join('\n');
-          } else {
-            // Plain text element
-            sv.content = (inner.innerText||inner.textContent||'').replace(/\u200B/g,'').trim();
-          }
-        });
-      }
-
-      // Break field link on the DOM element
-      el.dataset.field = '';
-      el.dataset.incomeAnchor = '0';
-      el.dataset.combinedAgent = '0';
-
-      // Keep hidden income placeholder elements hidden
-      if(el.dataset.incomeEl === '1'){
-        el.style.display = 'none';
-      }
-    });
-
-    // ── Step 4: freeze images ─────────────────────────────────────────────────
-    document.querySelectorAll('#artwork .el[data-type="img"]').forEach(function(el){
-      var ak = el.dataset.assetKey || '';
-      if(!ak) return;
-      if(['logo','logo2','logo3','logo4'].includes(ak)) return; // logos stay global
-      var currentSrc = assets[ak] || '';
-      if(!currentSrc) return;
-      el.dataset.assetKey = '';
-      var img = el.querySelector('img');
-      if(img) img.src = currentSrc;
-      var _eid2 = el.dataset.eid;
-      var _st2 = savedStates[currentTab];
-      if(_st2 && _eid2){
-        _st2.forEach(function(sv){
-          if(sv.eid === _eid2){ sv.imgSrc = currentSrc; sv.assetKey = ''; }
-        });
-      }
-    });
-
-    // ── Step 5: mark approved and save ───────────────────────────────────────
-    _tabApprovals[currentTab] = true;
-    _updateTabApprovalUI();
-    debouncedPersist();
+    return;
   }
+  if(currentTab === 9) return;
+
+  // Approval: freeze this tab exactly as it looks right now.
+  // Strategy: serialize the live canvas into savedStates, then clear every
+  // sv.field so globalSync/syncTabOnEntry can never overwrite content again.
+  // We do NOT touch sv.content at all — serializeTab captures it correctly
+  // for every element type. Income re-append is handled in restoreTab.
+
+  // Step 1: make sure income is visible in the DOM before serialising.
+  // richHtml on an incomeAnchor element blocks globalSync from running its
+  // plain-line block, so clear it first.
+  document.querySelectorAll('#artwork .el[data-income-anchor="1"]').forEach(function(el){
+    delete el.dataset.richHtml;
+    var _sv = savedStates[currentTab];
+    if(_sv){ _sv.forEach(function(s){ if(s.eid===el.dataset.eid) delete s.richHtml; }); }
+  });
+  globalSync(); // embeds income as bold last plain-line div
+
+  // Step 2: snapshot canvas → savedStates
+  savedStates[currentTab] = serializeTab();
+
+  // Step 3: in savedStates, clear sv.field on every element so nothing can
+  // overwrite content after approval. Also tag incomeAnchor elements so
+  // restoreTab knows to re-append income (serializeTab strips it by design).
+  var _svList = savedStates[currentTab] || [];
+  _svList.forEach(function(sv){
+    if(sv.incomeAnchor === '1') sv.wasIncomeAnchor = '1';
+    sv.field         = '';
+    sv.incomeAnchor  = '0';
+    sv.combinedAgent = '0';
+    if(sv.incomeEl   === '1') sv.elDisplay = 'none';
+  });
+
+  // Step 4: mirror field-link removal on live DOM elements (for immediate display)
+  document.querySelectorAll('#artwork .el').forEach(function(el){
+    el.dataset.field         = '';
+    el.dataset.incomeAnchor  = '0';
+    el.dataset.combinedAgent = '0';
+    if(el.dataset.incomeEl === '1') el.style.display = 'none';
+  });
+
+  // Step 5: freeze images — detach from shared asset store
+  document.querySelectorAll('#artwork .el[data-type="img"]').forEach(function(el){
+    var ak = el.dataset.assetKey || '';
+    if(!ak || ['logo','logo2','logo3','logo4'].includes(ak)) return;
+    var src = assets[ak] || '';
+    if(!src) return;
+    el.dataset.assetKey = '';
+    var img = el.querySelector('img');
+    if(img) img.src = src;
+    var _svList2 = savedStates[currentTab] || [];
+    _svList2.forEach(function(sv){ if(sv.eid===el.dataset.eid){ sv.assetKey=''; sv.imgSrc=src; } });
+  });
+
+  // Step 6: mark approved and save
+  _tabApprovals[currentTab] = true;
+  _updateTabApprovalUI();
+  debouncedPersist();
 }
 
 // Keep loadApprovalStatus as a no-op so any existing call sites don't error
