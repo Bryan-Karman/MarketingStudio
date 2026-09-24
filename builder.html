@@ -663,9 +663,9 @@ const _RAW_FN_SOURCE = (()=>{
 const DK='#0d2b21',G='#4a9b6f',GB='#5bbf7a';
 const HF="'Financier Display',Georgia,serif";
 const BF="'Calibre','Franklin Gothic Medium',Arial,sans-serif"; // Calibre embedded
-const PDF_MM=[[210,297],[410,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,181.5],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186],[314,242],[374,242],[194,122]];
+const PDF_MM=[[210,297],[420,297],[212.3,1547.5],[212.3,1547.5],[317.5,317.5],[60.5,105.5],[123,105.5],[240,181.5],[297,420],[210,297],[260,100],[134.5,92],[262,92],[260,186],[314,242],[374,242],[194,122]];
 const TAB_NAMES=['Brochure','Brochure2','EDM','EDMAsianDesk','LinkedIn','AFR2Mods','AFR4Mods','Signboard8x6','Auction','MarketingSchedule','PressAd10x7','PressAdM3x3WA','PressAdM3x6','PressAdT44','Signboard10x8','Signboard12x8','Signboard6x4'];
-const SIZES=[[794,1123],[1550,1123],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,686],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703],[1187,915],[1414,915],[733,461]];
+const SIZES=[[794,1123],[1587,1123],[600,4387],[600,4387],[800,800],[228,398],[464,398],[907,686],[794,1123],[595,842],[983,378],[509,348],[991,348],[983,703],[1187,915],[1414,915],[733,461]];
 
 
 // ═══════════════════════════════════
@@ -1119,8 +1119,8 @@ function createElement(cfg){
           if(_el2 && _el2.dataset.richHtml) delete _el2.dataset.richHtml;
           if(typeof onBulletFieldChange === 'function') onBulletFieldChange();
         }
-        // Track richHtml for non-managed fields with bold/italic formatting
-        if(!_f || _mgd.indexOf(_f)===-1){
+        // Track richHtml for ALL fields (including managed bodycopy/bullets) with bold/italic
+        {
           var _richRx2 = /<(b|i|u|sup|strong|em)[\s>]/i;
           var _hasRich2 = _richRx2.test(inner.innerHTML);
           if(_el2 && _hasRich2){
@@ -1128,11 +1128,48 @@ function createElement(cfg){
             var _rtEid2=_el2.dataset.eid,_rtField2=_el2.dataset.field,_rtSt2=savedStates[currentTab];
             if(_rtSt2&&_rtEid2){ _rtSt2.forEach(function(sv){ if(sv.eid===_rtEid2||(sv.field&&sv.field===_rtField2)) sv.richHtml=inner.innerHTML; }); }
           } else if(_el2 && _el2.dataset.richHtml && !_hasRich2){
-            delete _el2.dataset.richHtml;
+            // Only clear richHtml dataset on element if no formatting remains.
+            // For managed fields mid-edit, keep it set to block globalSync from
+            // interrupting typing — the blur handler clears it if needed.
+            if(!_f || _mgd.indexOf(_f)===-1){
+              delete _el2.dataset.richHtml;
+            }
             var _clrEid2=_el2.dataset.eid,_clrField2=_el2.dataset.field,_clrSt2=savedStates[currentTab];
             if(_clrSt2&&_clrEid2){ _clrSt2.forEach(function(sv){ if(sv.eid===_clrEid2||(sv.field&&sv.field===_clrField2)) delete sv.richHtml; }); }
           }
         }
+        // ── Keep Properties panel "Text Content" textarea in sync ──
+        // When editing directly on the artboard, the right-panel textarea must
+        // stay current so it reflects what the user is typing at all times.
+        (function(){
+          var _propsTa = document.querySelector('#props-content textarea');
+          if(!_propsTa) return; // props panel not showing a text element
+          var _syncEl = _el2;
+          if(!_syncEl) return;
+          var _syncInner = _syncEl.querySelector('.el-inner');
+          if(!_syncInner) return;
+          var _syncLines;
+          if(_syncEl.dataset.bullets === '1'){
+            var _btS = _syncInner.querySelectorAll('span.bt');
+            if(_btS.length > 0){
+              _syncLines = Array.from(_btS).map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); });
+            } else {
+              _syncLines = (getInnerText(_syncInner)||'').split('\n');
+            }
+          } else {
+            _syncLines = (getInnerText(_syncInner)||'').split('\n');
+          }
+          // Strip income from end so it doesn't pollute the textarea display
+          var _fiSync = ((document.getElementById('fi')||{}).value||'').trim();
+          if(_fiSync && _syncLines.length){
+            var _lastSync = _syncLines[_syncLines.length-1].trim();
+            var _fiPfxSync = _fiSync.split(':')[0].trim().toLowerCase();
+            if(_lastSync === _fiSync || (_fiPfxSync && _lastSync.toLowerCase().startsWith(_fiPfxSync+':'))) {
+              _syncLines = _syncLines.slice(0,-1);
+            }
+          }
+          _propsTa.value = _syncLines.join('\n');
+        })();
         debouncedPersist();
       }
       inner._inlineInputHandler=_inlineInputHandler;
@@ -1386,17 +1423,16 @@ function createElement(cfg){
                 _txt2 = _readInnerText(inner, _blurField);
                 _sel2.value = _txt2;
               }
-              // Only save richHtml if actual formatting tags exist (b, i, u, sup, strong, em).
-              // Bullet/plain-line divs and span.bt structure is NOT rich formatting —
-              // it's just layout. Using innerHTML !== textContent is too broad and
-              // locks globalSync out of managed fields after every edit.
-              var _isBrochureBulletsBlur = (_blurField === 'bullets' && (currentTab === 0 || currentTab === 1));
-              // For bodycopy/bullets: always set richHtml so globalSync skips this element.
-              // GlobalSync must NOT re-render managed bullet fields — the blur handler
-              // already wrote the correct content to the sidebar and savedStates.
-              if(!_isBrochureBulletsBlur){
+              // Check if the element has real formatting (bold/italic/underline/sup).
+              // Bullet/plain-line divs and span.bt structure is NOT rich formatting — just layout.
+              var _richRxBlur = /<(b|i|u|sup|strong|em)[\s>]/i;
+              var _blurHasFormatting = _richRxBlur.test(inner.innerHTML);
+              if(_blurHasFormatting){
+                // Bold/italic present: set richHtml on element AND persist in savedStates.
+                // globalSync skips elements with el.dataset.richHtml set, so formatting survives.
                 el.dataset.richHtml = inner.innerHTML;
               } else {
+                // No formatting: clear richHtml so globalSync can manage this element normally.
                 delete el.dataset.richHtml;
               }
               if(savedStates[currentTab]){
@@ -1404,11 +1440,12 @@ function createElement(cfg){
                 savedStates[currentTab].forEach(function(sv){
                   if(sv.eid===_eid2||sv.field===_blurField){
                     sv.content=_txt2;
-                    // Never save richHtml for managed bullet/bodycopy fields.
-                    // el.dataset.richHtml blocks globalSync (set above), but sv.richHtml
-                    // must NOT be saved — restore must always use sv.content via applyBullets
-                    // so the proper flex div structure is rebuilt cleanly on every restore.
-                    delete sv.richHtml;
+                    if(_blurHasFormatting){
+                      // Persist richHtml so bold/italic survives page refresh.
+                      sv.richHtml = inner.innerHTML;
+                    } else {
+                      delete sv.richHtml;
+                    }
                   }
                 });
               }
@@ -1442,6 +1479,35 @@ function createElement(cfg){
               globalSync();
               debouncedPersist();
             }
+            // ── After blur: refresh the Properties panel textarea so it matches canvas ──
+            // This ensures the panel always shows the current text even if edited on artboard.
+            (function(){
+              var _propsTaBlur = document.querySelector('#props-content textarea');
+              if(!_propsTaBlur) return;
+              if(!_blurEl) return;
+              var _blurInner = _blurEl.querySelector('.el-inner');
+              if(!_blurInner) return;
+              var _blurLines;
+              if(_blurEl.dataset.bullets === '1'){
+                var _btBlur = _blurInner.querySelectorAll('span.bt');
+                if(_btBlur.length > 0){
+                  _blurLines = Array.from(_btBlur).map(function(s){ return s.textContent.replace(/^\u2013\s*/,''); });
+                } else {
+                  _blurLines = (getInnerText(_blurInner)||'').split('\n');
+                }
+              } else {
+                _blurLines = (getInnerText(_blurInner)||'').split('\n');
+              }
+              var _fiBlur = ((document.getElementById('fi')||{}).value||'').trim();
+              if(_fiBlur && _blurLines.length){
+                var _lastBlur = _blurLines[_blurLines.length-1].trim();
+                var _fiPfxBlur = _fiBlur.split(':')[0].trim().toLowerCase();
+                if(_lastBlur === _fiBlur || (_fiPfxBlur && _lastBlur.toLowerCase().startsWith(_fiPfxBlur+':'))) {
+                  _blurLines = _blurLines.slice(0,-1);
+                }
+              }
+              _propsTaBlur.value = _blurLines.join('\n');
+            })();
           }
         }, 80);
       };
@@ -2546,7 +2612,23 @@ function el_inner_txt(val){
   } else {
     // For unmanaged/manual fields: set textContent directly preserving line breaks
     if(inner && inner.contentEditable!=='true'){
-      setInnerText(inner, val);
+      // If this element has paragraph spacing, rebuild plain-line divs instead of flat textContent
+      var _ps = parseFloat(selectedEl.dataset.bulletParaSpacing) || 0;
+      if(_ps > 0 && selectedEl.dataset.bullets !== '1'){
+        // Rebuild plain-line divs so spacing is preserved
+        var _newLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+        // Strip trailing blank lines
+        while(_newLines.length && !_newLines[_newLines.length-1].trim()) _newLines.pop();
+        function _elTxtEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        var _mb = _ps > 0 ? 'margin-bottom:'+_ps+'px;' : '';
+        inner.innerHTML = _newLines.map(function(l){
+          if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;'+_mb+'"></div>';
+          return '<div class="plain-line" style="display:block;'+_mb+'">'+_elTxtEsc(l)+'</div>';
+        }).join('');
+        inner.style.whiteSpace = 'normal';
+      } else {
+        setInnerText(inner, val);
+      }
     }
     // Save to savedStates so line breaks persist on refresh
     if(savedStates[currentTab]){
@@ -2874,23 +2956,16 @@ function serializeTab(){
           if(!_bullHasFormatting && el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
             _bullHasFormatting = true;
           }
-          // Never save richHtml for managed fields (bodycopy/bullets).
-          // These always restore from obj.content via applyBullets — never from richHtml.
-          // el.dataset.richHtml is used only as a live globalSync blocker, not for persistence.
-          var _isMgdSer = (el.dataset.field==='bodycopy'||el.dataset.field==='bullets');
-          if(_isMgdSer){
+          // Save richHtml for ALL bullet fields including managed ones (bodycopy/bullets).
+          // globalSync skips elements with el.dataset.richHtml set, so bold/italic persists.
+          var _richRxSer = /<(b|i|u|sup|strong|em)[\s>]/i;
+          var _realBullFmt = _bullHasFormatting && _richRxSer.test(inner.innerHTML);
+          if(_realBullFmt){
+            obj.richHtml = el.dataset.richHtml || inner.innerHTML;
+            el.dataset.richHtml = obj.richHtml;
+          } else {
             delete el.dataset.richHtml;
             delete obj.richHtml;
-          } else {
-            var _richRxSer = /<(b|i|u|sup|strong|em)[\s>]/i;
-            var _realBullFmt = _bullHasFormatting && _richRxSer.test(inner.innerHTML);
-            if(_realBullFmt){
-              obj.richHtml = el.dataset.richHtml || inner.innerHTML;
-              el.dataset.richHtml = obj.richHtml;
-            } else {
-              delete el.dataset.richHtml;
-              delete obj.richHtml;
-            }
           }
         } else {
           // Save rich HTML if present (bold/italic/underline formatting)
@@ -2920,8 +2995,8 @@ function serializeTab(){
             _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
           }
           var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
-          var _isMgdSer2 = (el.dataset.field==='bodycopy'||el.dataset.field==='bullets');
-          var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich) && !_isMgdSer2;
+          // Allow richHtml for ALL fields — globalSync guards against overwriting bold.
+          var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
           if(_realRichCheck){
             obj.richHtml = _candidateRich;
             el.dataset.richHtml = _candidateRich;
@@ -3025,8 +3100,8 @@ function restoreTab(idx){
         var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
         // If richHtml was saved, only restore if it has real formatting tags AND field is not managed
         var _richRxRst = /<(b|i|u|sup|strong|em)[\s>]/i;
-        var _isMgdRst = (sv.field==='bodycopy'||sv.field==='bullets');
-        if(sv.richHtml && _richRxRst.test(sv.richHtml) && !_isMgdRst){
+        // Restore richHtml for ALL fields — bold/italic is user intent and must persist.
+        if(sv.richHtml && _richRxRst.test(sv.richHtml)){
           inner.innerHTML = sv.richHtml;
           el.dataset.richHtml = sv.richHtml;
           inner.style.whiteSpace = 'normal';
@@ -3051,20 +3126,19 @@ function restoreTab(idx){
           if(_rFi) _rLines.push(_rFi);
           _rawContent = _rLines.join('\n');
         }
-        // Always restore bodycopy/bullets from sv.content via applyBullets.
-        // Never use sv.richHtml for managed fields — it captures raw inline-edit HTML
-        // which has unreliable structure. applyBullets always produces correct flex divs.
-        var _isMgdBRst = (sv.field==='bodycopy'||sv.field==='bullets');
+        // Restore richHtml for ALL fields including managed ones (bodycopy/bullets).
+        // Bold/italic is user intent and must survive refresh. globalSync skips elements
+        // with el.dataset.richHtml set so it won't overwrite the formatting.
         var _richRxBRst = /<(b|i|u|sup|strong|em)[\s>]/i;
-        if(sv.richHtml && _richRxBRst.test(sv.richHtml) && !_isMgdBRst){
-          // Free-text bullet element with bold/italic: restore from richHtml directly
+        if(sv.richHtml && _richRxBRst.test(sv.richHtml)){
+          // Element has bold/italic formatting: restore from richHtml directly
           inner.innerHTML = sv.richHtml;
           el.dataset.richHtml = sv.richHtml;
           inner.style.whiteSpace = 'normal';
           inner.style.wordBreak = 'break-word';
         } else {
-          // Managed field or no real formatting: always rebuild from content
-          delete sv.richHtml; // clear stale richHtml so it can't interfere
+          // No rich formatting: rebuild from content via applyBullets
+          delete sv.richHtml;
           delete el.dataset.richHtml;
           var _plainLines = _rawContent.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,''); });
           // Strip trailing blank lines to prevent phantom spacer divs on artboard
@@ -3098,6 +3172,9 @@ function restoreTab(idx){
       }
       if(sv.bulletParaSpacing && parseFloat(sv.bulletParaSpacing) > 0 && sv.type==='text'){
         // Plain text with paragraph spacing — re-apply line divs
+        // SKIP if richHtml was already restored above — it already contains the correct
+        // div.plain-line structure with any bold/italic intact. Rebuilding would wipe formatting.
+        if(!sv.richHtml){
         el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
         inner.dataset.bulletSpacing = sv.bulletParaSpacing;
         inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
@@ -3115,6 +3192,13 @@ function restoreTab(idx){
               _lastDiv.style.fontWeight = '700';
             }
           }
+        }
+        } else {
+          // richHtml was restored — just re-tag the spacing data so paragraph spacing
+          // controls still work correctly; don't rebuild the DOM.
+          el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
+          inner.dataset.bulletSpacing = sv.bulletParaSpacing;
+          inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
         }
       }
     }
@@ -7572,8 +7656,10 @@ function rtCmd(cmd){
     if(inner){
       const _rtHtml=inner.innerHTML;
       const _richRxRt=/<(b|i|u|sup|strong|em)[\s>]/i;
-      const _isMgdRt=(selectedEl.dataset.field==='bodycopy'||selectedEl.dataset.field==='bullets');
-      const _hasFormatting=_rtHtml&&_richRxRt.test(_rtHtml)&&!_isMgdRt;
+      // Allow richHtml for ALL fields including managed ones (bodycopy/bullets).
+      // globalSync already skips elements that have el.dataset.richHtml set,
+      // so bold/italic on managed fields is safe — globalSync won't wipe it.
+      const _hasFormatting=_rtHtml&&_richRxRt.test(_rtHtml);
       if(_hasFormatting){
         selectedEl.dataset.richHtml=_rtHtml;
         const _eid=selectedEl.dataset.eid,_field=selectedEl.dataset.field,_st=savedStates[currentTab];
