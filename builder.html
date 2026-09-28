@@ -3404,6 +3404,9 @@ function restoreTab(idx){
       });
     }
   }
+  // Lock EDM positions BEFORE globalSync so repackEDMAgents/edmBodycopyAutoSize
+  // cannot overwrite the restored y positions during the sync call.
+  if(idx===2||idx===3) _edmPositionsLocked = true;
   // Sync all field values so combined agents, bullets etc all populate correctly
   // Skip for approved tabs — their content is frozen, don't let field values overwrite it
   if(!_tabApprovals[idx]) globalSync();
@@ -4972,10 +4975,10 @@ function buildEDM(W,H){
   mkR(0,1867,600,2066,'rgb(255,255,255)',{z:2,locked:'1'});
   mkT(34,1904,541,617,document.getElementById('fbc').value,{color:'rgb(51,51,51)',fontSize:'28px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.2',field:'bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
   mkI(0,2493,600,368,'img3','Image',{z:2});
+  mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3,locked:'1'});
   (function(){
     function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
     function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
-    tagBelow(mkT(34,2901,444,96,'For more information contact the sales team',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',lineHeight:'1.15',z:3,locked:'1'}),2901);
     tagAgent(mkI(34,3006,113,113,'agent1photo','Image',{z:3}),1,3006);
     tagAgent(mkT(184,3008,402,40,gv('fn1')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontWeight:'500',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1name',z:3}),1,3008);
     tagAgent(mkT(184,3054,402,40,gv('fp1')||'',{color:'rgb(1,42,45)',fontSize:'34px',fontFamily:'Calibre,"Franklin Gothic Medium",Arial,sans-serif',field:'agent1num',z:3}),1,3054);
@@ -5087,10 +5090,10 @@ function buildEDMAsianDesk(W,H){
   mkR(0,1834,600,2066,'rgb(255,255,255)',{z:2}); // white bg for body/agents/buttons
   mkT(34,1901,532,584,'',{color:'rgb(51, 51, 51)',fontSize:'28px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.2',field:'zh_bodycopy',z:3,bullets:'1',bulletParaSpacing:'17',locked:'1'});
   mkI(0,2518,600,368,'img3','Image',{z:2,locked:'1'});
+  mkT(34,2920,533,96,'',{color:'rgb(1, 42, 45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3,locked:'1'});
   (function(){
     function tagAgent(el,slot,origY){ el.dataset.agentSlot=slot; el.dataset.agentOrigY=origY; return el; }
     function tagBelow(el,baseY){ el.dataset.agentBelow='1'; el.dataset.agentBelowY=baseY; return el; }
-    tagBelow(mkT(34,2920,533,96,'',{color:'rgb(1, 42, 45)',fontSize:'34px',fontWeight:'600',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',lineHeight:'1.15',field:'zh_contact_label',z:3,locked:'1'}),2920);
     tagAgent(mkI(34,2986,113,113,'agent1photo','Image',{z:3}), 1, 2986);
     tagAgent(mkT(184,3003,402,51,gv('fn1')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1name',z:3}), 1, 3003);
     tagAgent(mkT(184,3048,402,45,gv('fp1')||'',{color:'rgb(1, 42, 45)',fontSize:'31px',fontFamily:'Calibre, "Franklin Gothic Medium", Arial, sans-serif',field:'agent1num',z:3}), 1, 3048);
