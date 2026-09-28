@@ -2844,19 +2844,31 @@ function toggleBullets(){
   if(!selectedEl) return;
   // Never allow bullet toggle on brochure highlight points field
   if(selectedEl.dataset.field === 'bullets' && (currentTab === 0 || currentTab === 1)) return;
+  undoSnapshot();
   const on = selectedEl.dataset.bullets !== '1';
   selectedEl.dataset.bullets = on ? '1' : '0';
   const inner = selectedEl.querySelector('.el-inner');
   applyBullets(inner, on);
-  // Update text-indent for hanging indent on wrapped lines
   if(inner){
     if(on){
       inner.style.paddingLeft = '0';
       inner.style.textIndent = '0';
     }
   }
+  // Immediately write the new bullets state into savedStates so collectState()
+  // doesn't need _canvasDirty to be true — the toggle must always persist.
+  if(currentTab !== 9){
+    var _tbSt = savedStates[currentTab];
+    if(_tbSt){
+      var _tbEid = selectedEl.dataset.eid;
+      _tbSt.forEach(function(sv){
+        if(sv.eid === _tbEid){ sv.bullets = on ? '1' : '0'; }
+      });
+    }
+  }
+  _canvasDirty = true;
   debouncedPersist();
-  showProps(selectedEl); // refresh panel
+  showProps(selectedEl);
 }
 
 function toggleLock(){
