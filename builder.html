@@ -2467,6 +2467,12 @@ function el_set(prop, val){
   if(!selectedEl) return;
   undoSnapshot();
   selectedEl.style[prop]=val;
+  // If position was changed via the properties panel, treat it the same as a drag
+  if(prop==='top'||prop==='left'){
+    selectedEl.dataset.userMoved='1';
+    if(currentTab===2||currentTab===3) selectedEl.dataset.agentManualY='1';
+  }
+  debouncedPersist();
 }
 function el_inner_set(prop, val){
   if(!selectedEl) return;
@@ -3579,24 +3585,13 @@ function edmBodycopyAutoSize(){
   art.querySelectorAll('.el').forEach(function(el){
     if(el === bcEl) return;
     if(el.dataset.agentSlot || el.dataset.agentBelow === '1') return; // agents handled below
+    // ── USER-MOVED OVERRIDE ──
+    // If the user has manually dragged this element, NEVER reposition it.
+    // The saved y value IS the final position. Skip completely.
+    if(el.dataset.userMoved === '1') return;
 
     var origTop = parseFloat(el.dataset.edmOrigTop);
     var origH   = parseFloat(el.dataset.edmOrigH);
-
-    // If user has manually positioned this element, use edmOrigTop as the anchor.
-    // edmOrigTop is set once (in restoreTab or on first autoSize call) to the user's
-    // chosen position. We must NOT re-read el.style.top here on repeat calls because
-    // after the first push el.style.top already includes growth and would double-push.
-    if(el.dataset.userMoved === '1'){
-      if(isNaN(origTop)){
-        // First time — snapshot from actual DOM position (correct on first call)
-        origTop = parseFloat(el.style.top) || 0;
-        origH   = parseFloat(el.style.height) || 0;
-        el.dataset.edmOrigTop = origTop;
-        el.dataset.edmOrigH   = origH;
-      }
-      // origTop is now the stable user-chosen anchor — fall through to push logic below
-    }
 
     // Fallback: tag it now from current position (only correct right after fresh build)
     if(isNaN(origTop)){
