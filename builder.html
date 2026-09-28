@@ -1109,14 +1109,8 @@ function createElement(cfg){
           }
           if(_el2) _el2.dataset.richHtml = inner.innerHTML;
         } else if(!_f){
-          // Free-text element (field='', bullets='1'): save content from span.bt spans.
           const _eid3=_el2?_el2.dataset.eid:null,_st3=savedStates[currentTab];
-          if(_eid3&&_st3){
-            const _cc=getInnerText(inner);
-            _st3.forEach(function(sv){
-              if(sv.eid===_eid3){ sv.content=_cc; }
-            });
-          }
+          if(_eid3&&_st3){const _cc=getInnerText(inner);_st3.forEach(function(sv){if(sv.eid===_eid3){sv.content=_cc;sv.richHtml=inner.innerHTML;sv.innerStyle=inner.getAttribute('style')||'';}});}
         }
         if(_f && inner._fromPaste){
           inner._fromPaste = false;
@@ -1140,6 +1134,9 @@ function createElement(cfg){
             var _rtEid2=_el2.dataset.eid,_rtField2=_el2.dataset.field,_rtSt2=savedStates[currentTab];
             if(_rtSt2&&_rtEid2){ _rtSt2.forEach(function(sv){ if(sv.eid===_rtEid2||(sv.field&&sv.field===_rtField2)) sv.richHtml=inner.innerHTML; }); }
           } else if(_el2 && _el2.dataset.richHtml && !_hasRich2){
+            // Only clear richHtml dataset on element if no formatting remains.
+            // For managed fields mid-edit, keep it set to block globalSync from
+            // interrupting typing — the blur handler clears it if needed.
             if(!_f || _mgd.indexOf(_f)===-1){
               delete _el2.dataset.richHtml;
             }
@@ -1466,61 +1463,26 @@ function createElement(cfg){
               }
               debouncedPersist();
             } else {
-              // Free-text element (field='', bullets='1'):
-              // Read the current DOM, rebuild clean span.bt structure, save sv.content,
-              // update the props panel textarea, then persist.
-              var _freeLines = [];
-              // During contentEditable the browser creates raw divs — read them all
-              var _freeChildDivs = Array.from(inner.querySelectorAll(':scope > div'));
-              if(_freeChildDivs.length){
-                _freeLines = _freeChildDivs.map(function(d){
-                  var bt = d.querySelector('span.bt');
-                  return (bt ? bt.textContent : d.textContent)
-                    .replace(/^–\s*/,'').replace(/​/g,'').trim();
-                }).filter(function(l){ return l !== ''; });
+              // Free-text element (no managed field): only save richHtml if formatting exists
+              var _hasFreeRich = inner.innerHTML !== inner.textContent;
+              if(_hasFreeRich){
+                el.dataset.richHtml = inner.innerHTML;
+                if(savedStates[currentTab]){
+                  var _eid3 = _blurEl ? _blurEl.dataset.eid : null;
+                  savedStates[currentTab].forEach(function(sv){
+                    if(sv.eid===_eid3){ sv.richHtml=inner.innerHTML; sv.content=getInnerText(inner); }
+                  });
+                }
               } else {
-                _freeLines = (inner.innerText||inner.textContent||'')
-                  .split('
-')
-                  .map(function(l){ return l.replace(/^–\s*/,'').replace(/​/g,'').trim(); })
-                  .filter(function(l){ return l !== ''; });
+                delete el.dataset.richHtml;
+                if(savedStates[currentTab]){
+                  var _eid3b = _blurEl ? _blurEl.dataset.eid : null;
+                  savedStates[currentTab].forEach(function(sv){
+                    if(sv.eid===_eid3b){ delete sv.richHtml; sv.content=getInnerText(inner); }
+                  });
+                }
               }
-              // Strip any income line that got frozen in
-              var _fiFree = ((document.getElementById('fi')||{}).value||'').trim();
-              if(_fiFree){
-                var _fiPfxFree = _fiFree.split(':')[0].trim().toLowerCase();
-                _freeLines = _freeLines.filter(function(l){
-                  return l !== _fiFree && !(_fiPfxFree && l.toLowerCase().startsWith(_fiPfxFree+':'));
-                });
-              }
-              var _freeContent = _freeLines.join('
-');
-              // Rebuild clean span.bt structure so serializeTab reads correctly
-              var _freeSp = parseFloat(_blurEl.dataset.bulletParaSpacing||'0') ||
-                            parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0') || 4;
-              var _freeMb = _freeSp > 0 ? 'margin-bottom:'+_freeSp+'px;' : '';
-              function _freeEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-              inner.innerHTML = _freeLines.map(function(l){
-                return '<div style="display:flex;align-items:baseline;'+_freeMb+'">'
-                  + '<span style="flex:0 0 auto;margin-right:0.25em;">–</span>'
-                  + '<span class="bt">'+_freeEsc(l)+'</span></div>';
-              }).join('');
-              inner.style.whiteSpace = 'normal';
-              inner.style.wordBreak = 'break-word';
-              // Save content into savedStates immediately — do not rely on serializeTab alone
-              if(savedStates[currentTab]){
-                var _eidFree2 = _blurEl ? _blurEl.dataset.eid : null;
-                savedStates[currentTab].forEach(function(sv){
-                  if(sv.eid === _eidFree2){
-                    sv.content = _freeContent;
-                    delete sv.richHtml;
-                  }
-                });
-              }
-              // Update props panel textarea so it matches the artboard
-              var _propsTaFree = document.querySelector('#props-content textarea');
-              if(_propsTaFree) _propsTaFree.value = _freeLines.join('
-');
+              globalSync();
               debouncedPersist();
             }
             // ── After blur: refresh the Properties panel textarea so it matches canvas ──
@@ -2291,14 +2253,11 @@ function showProps(el){
       {v:'agent3name',l:'Agent 3 Name'},{v:'agent3num',l:'Agent 3 Number'},
     ];
     const _fOpts=_fieldOptions.map(function(o){ return '<option value="'+o.v+'" '+((_cf===o.v)?'selected':'')+'>'+o.l+'</option>'; }).join('');
-    const _isIncomeAnchor = el.dataset.incomeAnchor === '1';
-    const _borderColor = _cf ? 'var(--gb)' : (_isIncomeAnchor ? '#7a4a00' : '#2a2a2a');
-    html+=`<div style="border:1px solid ${_borderColor};border-radius:3px;padding:8px 10px;margin-bottom:2px;background:#141414;">
+    html+=`<div style="border:1px solid ${_cf?'var(--gb)':'#2a2a2a'};border-radius:3px;padding:8px 10px;margin-bottom:2px;background:#141414;">
       <div style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Content Field Link</div>
       <select onchange="el_set_field(this.value)" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid ${_cf?'var(--gb)':'#333'};border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;margin-bottom:4px;">${_fOpts}</select>
-      <div style="font-size:9px;color:${_cf?'#5bbf7a':(_isIncomeAnchor?'#f0a030':'#555')};line-height:1.4;${(_cf||_isIncomeAnchor)?'margin-bottom:6px;':''}">${_cf?'&#10003; Linked \u2014 updates automatically':(_isIncomeAnchor?'&#9888; Auto-updated by Net Income field':'Not linked \u2014 manual only')}</div>
+      <div style="font-size:9px;color:${_cf?'#5bbf7a':'#555'};line-height:1.4;${_cf?'margin-bottom:6px;':''}">${_cf?'&#10003; Linked \u2014 updates automatically':'Not linked \u2014 manual only'}</div>
       ${_cf?'<button onclick="breakFieldLink()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break the link so this element can be edited independently">&#9986; Break Text Link</button>':''}
-      ${(!_cf&&_isIncomeAnchor)?'<button onclick="breakIncomeAnchor()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break the income link so this text box can be edited independently">&#9986; Break Income Link</button>':''}
     </div>`;
   }
 
@@ -2657,44 +2616,40 @@ function el_inner_txt(val){
       }
     }
   } else {
-    // Unmanaged field (no sidebar) — write directly to the element.
+    // For unmanaged/manual fields: set textContent directly preserving line breaks
     if(inner && inner.contentEditable!=='true'){
-      if(selectedEl.dataset.bullets==='1'){
-        // Bullet element: rebuild span.bt structure from the typed lines
-        var _ps = parseFloat(selectedEl.dataset.bulletParaSpacing) || parseFloat(inner.style.getPropertyValue('--bullet-spacing')) || 4;
-        var _mb2 = _ps > 0 ? 'margin-bottom:'+_ps+'px;' : '';
-        var _btLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-        while(_btLines.length && !_btLines[_btLines.length-1].trim()) _btLines.pop();
-        function _esc2(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-        inner.innerHTML = _btLines.map(function(l){
-          var t = (l||'').replace(/^\u2013\s*/,'').replace(/^-\s*/,'');
-          return '<div style="display:flex;align-items:baseline;'+_mb2+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+_esc2(t)+'</span></div>';
+      // If this element has paragraph spacing, rebuild plain-line divs instead of flat textContent
+      var _ps = parseFloat(selectedEl.dataset.bulletParaSpacing) || 0;
+      if(_ps > 0 && selectedEl.dataset.bullets !== '1'){
+        // Rebuild plain-line divs so spacing is preserved
+        var _newLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+        // Strip trailing blank lines
+        while(_newLines.length && !_newLines[_newLines.length-1].trim()) _newLines.pop();
+        function _elTxtEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        var _mb = _ps > 0 ? 'margin-bottom:'+_ps+'px;' : '';
+        inner.innerHTML = _newLines.map(function(l){
+          if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;'+_mb+'"></div>';
+          return '<div class="plain-line" style="display:block;'+_mb+'">'+_elTxtEsc(l)+'</div>';
         }).join('');
         inner.style.whiteSpace = 'normal';
-        inner.style.wordBreak = 'break-word';
       } else {
-        var _ps2 = parseFloat(selectedEl.dataset.bulletParaSpacing) || 0;
-        if(_ps2 > 0){
-          var _newLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-          while(_newLines.length && !_newLines[_newLines.length-1].trim()) _newLines.pop();
-          function _elTxtEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-          var _mb = _ps2 > 0 ? 'margin-bottom:'+_ps2+'px;' : '';
-          inner.innerHTML = _newLines.map(function(l){
-            if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;'+_mb+'"></div>';
-            return '<div class="plain-line" style="display:block;'+_mb+'">'+_elTxtEsc(l)+'</div>';
-          }).join('');
-          inner.style.whiteSpace = 'normal';
-        } else {
-          inner.textContent = val || '';
-          inner.style.whiteSpace = 'pre-wrap';
-          inner.style.wordBreak = 'break-word';
-        }
+        setInnerText(inner, val);
       }
     }
+    // Save to savedStates so line breaks persist on refresh
     if(savedStates[currentTab]){
       const _eid = selectedEl.dataset.eid;
       savedStates[currentTab].forEach(function(sv){
-        if(sv.eid === _eid){ sv.content = val; }
+        if(sv.eid === _eid){
+          sv.content = val;
+          // Ensure innerStyle has pre-wrap so line breaks render correctly on restore
+          if(val.includes('\n')){
+            if(!sv.innerStyle) sv.innerStyle = '';
+            if(!sv.innerStyle.includes('white-space')){
+              sv.innerStyle = sv.innerStyle + ';white-space:pre-wrap;word-break:break-word;';
+            }
+          }
+        }
       });
     }
     if(field){
@@ -2724,74 +2679,37 @@ function el_set_field(fieldKey){
   showProps(selectedEl);
 }
 
-// ── _convertToFreeText ─────────────────────────────────────────────────────
-// Breaks all auto-update links on a text element, making it fully independent.
-// Keeps bullets='1' so the existing bullet DOM machinery (Enter key, serialize,
-// restore via applyBullets) continues to work — we just clear the field link
-// and income anchor so nothing ever overwrites the content again.
-function _convertToFreeText(el){
-  if(!el || el.dataset.type !== 'text') return;
-  const inner = el.querySelector('.el-inner');
-
-  // Strip the trailing income line from the DOM so it isn't baked into the content.
-  if(inner){
-    var _fi = ((document.getElementById('fi')||{}).value||'').trim();
-    if(_fi){
-      var _fiPfx = _fi.split(':')[0].trim().toLowerCase();
-      Array.from(inner.querySelectorAll(':scope > div')).forEach(function(d){
-        var bt = d.querySelector('span.bt');
-        var txt = (bt ? bt.textContent : d.textContent).replace(/^\u2013\s*/,'').trim();
-        if(txt === _fi || (_fiPfx && txt.toLowerCase().startsWith(_fiPfx+':'))) d.remove();
-      });
-      Array.from(inner.querySelectorAll('div.plain-line')).forEach(function(d){
-        var txt = d.textContent.trim();
-        if(txt === _fi || (_fiPfx && txt.toLowerCase().startsWith(_fiPfx+':'))) d.remove();
-      });
-    }
-  }
-
-  // Read the current clean text content (income already stripped above)
-  var currentContent = inner ? getInnerText(inner) : '';
-
-  // Clear ONLY the auto-update hooks. Keep bullets='1' so the bullet
-  // DOM machinery (Enter key, serializeTab span.bt reading, restoreTab
-  // applyBullets rebuild, whiteSpace:normal on dblclick) all keep working.
-  el.dataset.field         = '';
-  el.dataset.incomeAnchor  = '0';
-  el.dataset.combinedAgent = '0';
-  delete el.dataset.afrSaleCombo;
-  // bullets stays as-is (usually '1') — do NOT change it
-
-  // Persist the clean state into savedStates
-  var tabState = savedStates[currentTab];
-  if(tabState){
-    tabState.forEach(function(sv){
-      if(sv.eid === el.dataset.eid){
-        sv.field         = '';
-        sv.incomeAnchor  = '0';
-        sv.combinedAgent = '0';
-        sv.content       = currentContent;
-        // bullets stays as-is in sv too
-      }
-    });
-  }
-}
-
 function breakFieldLink(){
   if(!selectedEl || selectedEl.dataset.type!=='text') return;
   const curField = selectedEl.dataset.field;
   if(!curField){ alert('This element has no field link.'); return; }
   undoSnapshot();
-  _convertToFreeText(selectedEl);
-  debouncedPersist();
-  showProps(selectedEl);
-}
-
-function breakIncomeAnchor(){
-  if(!selectedEl || selectedEl.dataset.type!=='text') return;
-  if(selectedEl.dataset.incomeAnchor !== '1'){ alert('This element has no income link.'); return; }
-  undoSnapshot();
-  _convertToFreeText(selectedEl);
+  // Snapshot current text content before unlinking
+  const inner = selectedEl.querySelector('.el-inner');
+  const currentText = inner ? getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ') : '';
+  // Clear the field link AND all related field-driven behaviour
+  selectedEl.dataset.field = '';
+  selectedEl.dataset.bullets = '0';         // stop applyBullets from running
+  selectedEl.dataset.incomeAnchor = '0';    // stop income appending
+  selectedEl.dataset.combinedAgent = '0';   // stop combined agent formatting
+  // Keep the current visual text as plain text
+  if(inner){
+    setInnerText(inner, currentText);
+    inner.style.whiteSpace = 'pre-wrap';
+  }
+  // Update savedStates for the CURRENT TAB ONLY
+  const tabState = savedStates[currentTab];
+  if(tabState){
+    tabState.forEach(function(sv){
+      if(sv.eid === selectedEl.dataset.eid){
+        sv.field = '';
+        sv.bullets = '0';
+        sv.incomeAnchor = '0';
+        sv.combinedAgent = '0';
+        sv.content = currentText;
+      }
+    });
+  }
   debouncedPersist();
   showProps(selectedEl);
 }
@@ -2967,18 +2885,6 @@ function getInnerText(inner){
   // bullet spans
   const btSpans = inner.querySelectorAll('span.bt');
   if(btSpans.length > 0) return Array.from(btSpans).map(s=>s.textContent).join('\n');
-  // Browser-generated divs from contentEditable (free-text inline editing)
-  // Each div = one line; plain text nodes before any div count as first line.
-  const childDivs = inner.querySelectorAll(':scope > div');
-  if(childDivs.length > 0){
-    var lines = [];
-    // Any text nodes before the first div
-    inner.childNodes.forEach(function(n){
-      if(n.nodeType === 3 && n.textContent.trim()) lines.push(n.textContent);
-    });
-    childDivs.forEach(function(d){ lines.push(d.textContent); });
-    return lines.join('\n');
-  }
   // Pre-wrap textContent preserves \n characters directly
   return inner.textContent || '';
 }
@@ -3072,7 +2978,6 @@ function serializeTab(){
         } else {
           // Save rich HTML if present (bold/italic/underline formatting)
           // For plain-line spacing divs, save textContent as lines joined by \n
-          // getInnerText now also handles browser contentEditable divs correctly
           var plainDivs = inner.querySelectorAll('div.plain-line');
           if(plainDivs.length > 0){
             var _pdLines = Array.from(plainDivs).map(function(d){ return d.textContent; });
@@ -3084,17 +2989,21 @@ function serializeTab(){
             }
             obj.content = _pdLines.join('\n');
           } else {
-            // getInnerText handles: pre-wrap \n, browser divs, span.bt
             obj.content = getInnerText(inner);
           }
-          // Save richHtml only when bold/italic formatting is present
+          // Save richHtml when there is actual HTML formatting (bold/italic/underline etc.)
+          // This applies to ALL text elements including brochure Highlight Points.
+          // plain-line divs can legitimately contain <b>/<i> spans from rtCmd.
           var _candidateRich = el.dataset.richHtml || inner.innerHTML;
+          // Has formatting if HTML differs from plain text (accounting for plain-line wrappers)
           var _plainLineEls = inner.querySelectorAll('div.plain-line');
           var _richCheck = _candidateRich && _candidateRich !== inner.textContent;
+          // For plain-line elements, also check if any plain-line div contains HTML tags
           if(_richCheck && _plainLineEls.length > 0){
             _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
           }
           var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+          // Allow richHtml for ALL fields — globalSync guards against overwriting bold.
           var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
           if(_realRichCheck){
             obj.richHtml = _candidateRich;
@@ -3467,15 +3376,10 @@ function applyTemplateLocks(idx){
       // Clear incomeAnchor from all elements first
       els.forEach(function(el){ delete el.dataset.incomeAnchor; });
       // Set incomeAnchor on the free-text right column (z-index 50, no field link)
-      // BUT only if the user has not already broken the income link (saved as incomeAnchor '0')
       const rightBox = els.find(function(el){
-        return el.dataset.field==='' && parseInt(el.style.zIndex||'0')===50;
+        return el.dataset.field==='' && el.dataset.bullets==='1' && parseInt(el.style.zIndex||'0')===50;
       });
-      if(rightBox){
-        var _sv6 = savedStates[idx] && savedStates[idx].find(function(s){ return s.eid === rightBox.dataset.eid; });
-        var _userBroke = _sv6 && _sv6.incomeAnchor === '0';
-        if(!_userBroke){ rightBox.dataset.incomeAnchor='1'; }
-      }
+      if(rightBox){ rightBox.dataset.incomeAnchor='1'; }
     }
     return;
   }
