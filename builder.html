@@ -2253,11 +2253,14 @@ function showProps(el){
       {v:'agent3name',l:'Agent 3 Name'},{v:'agent3num',l:'Agent 3 Number'},
     ];
     const _fOpts=_fieldOptions.map(function(o){ return '<option value="'+o.v+'" '+((_cf===o.v)?'selected':'')+'>'+o.l+'</option>'; }).join('');
-    html+=`<div style="border:1px solid ${_cf?'var(--gb)':'#2a2a2a'};border-radius:3px;padding:8px 10px;margin-bottom:2px;background:#141414;">
+    const _isIncomeAnchor = el.dataset.incomeAnchor === '1';
+    const _borderColor = _cf ? 'var(--gb)' : (_isIncomeAnchor ? '#7a4a00' : '#2a2a2a');
+    html+=`<div style="border:1px solid ${_borderColor};border-radius:3px;padding:8px 10px;margin-bottom:2px;background:#141414;">
       <div style="font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Content Field Link</div>
       <select onchange="el_set_field(this.value)" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid ${_cf?'var(--gb)':'#333'};border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;margin-bottom:4px;">${_fOpts}</select>
-      <div style="font-size:9px;color:${_cf?'#5bbf7a':'#555'};line-height:1.4;${_cf?'margin-bottom:6px;':''}">${_cf?'&#10003; Linked \u2014 updates automatically':'Not linked \u2014 manual only'}</div>
+      <div style="font-size:9px;color:${_cf?'#5bbf7a':(_isIncomeAnchor?'#f0a030':'#555')};line-height:1.4;${(_cf||_isIncomeAnchor)?'margin-bottom:6px;':''}">${_cf?'&#10003; Linked \u2014 updates automatically':(_isIncomeAnchor?'&#9888; Auto-updated by Net Income field':'Not linked \u2014 manual only')}</div>
       ${_cf?'<button onclick="breakFieldLink()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break the link so this element can be edited independently">&#9986; Break Text Link</button>':''}
+      ${(!_cf&&_isIncomeAnchor)?'<button onclick="breakIncomeAnchor()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break the income link so this text box can be edited independently">&#9986; Break Income Link</button>':''}
     </div>`;
   }
 
@@ -2706,6 +2709,36 @@ function breakFieldLink(){
         sv.bullets = '0';
         sv.incomeAnchor = '0';
         sv.combinedAgent = '0';
+        sv.content = currentText;
+      }
+    });
+  }
+  debouncedPersist();
+  showProps(selectedEl);
+}
+
+function breakIncomeAnchor(){
+  if(!selectedEl || selectedEl.dataset.type!=='text') return;
+  if(selectedEl.dataset.incomeAnchor !== '1'){ alert('This element has no income link.'); return; }
+  undoSnapshot();
+  // Snapshot current visible text before breaking the link
+  const inner = selectedEl.querySelector('.el-inner');
+  const currentText = inner ? getInnerText(inner).replace(/\u200B/g,'').replace(/\u00A0/g,' ') : '';
+  // Remove the income anchor so globalSync stops overwriting this box
+  selectedEl.dataset.incomeAnchor = '0';
+  selectedEl.dataset.bullets = '0';       // stop applyBullets reformatting
+  // Keep the current visual text as plain editable text
+  if(inner){
+    setInnerText(inner, currentText);
+    inner.style.whiteSpace = 'pre-wrap';
+  }
+  // Persist the broken link into savedStates for this tab
+  const tabState = savedStates[currentTab];
+  if(tabState){
+    tabState.forEach(function(sv){
+      if(sv.eid === selectedEl.dataset.eid){
+        sv.incomeAnchor = '0';
+        sv.bullets = '0';
         sv.content = currentText;
       }
     });
