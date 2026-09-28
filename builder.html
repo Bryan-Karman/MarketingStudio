@@ -1466,8 +1466,61 @@ function createElement(cfg){
               }
               debouncedPersist();
             } else {
-              // Free-text element (field='', bullets='1'): just persist, no sidebar to update.
-              globalSync();
+              // Free-text element (field='', bullets='1'):
+              // Read the current DOM, rebuild clean span.bt structure, save sv.content,
+              // update the props panel textarea, then persist.
+              var _freeLines = [];
+              // During contentEditable the browser creates raw divs — read them all
+              var _freeChildDivs = Array.from(inner.querySelectorAll(':scope > div'));
+              if(_freeChildDivs.length){
+                _freeLines = _freeChildDivs.map(function(d){
+                  var bt = d.querySelector('span.bt');
+                  return (bt ? bt.textContent : d.textContent)
+                    .replace(/^–\s*/,'').replace(/​/g,'').trim();
+                }).filter(function(l){ return l !== ''; });
+              } else {
+                _freeLines = (inner.innerText||inner.textContent||'')
+                  .split('
+')
+                  .map(function(l){ return l.replace(/^–\s*/,'').replace(/​/g,'').trim(); })
+                  .filter(function(l){ return l !== ''; });
+              }
+              // Strip any income line that got frozen in
+              var _fiFree = ((document.getElementById('fi')||{}).value||'').trim();
+              if(_fiFree){
+                var _fiPfxFree = _fiFree.split(':')[0].trim().toLowerCase();
+                _freeLines = _freeLines.filter(function(l){
+                  return l !== _fiFree && !(_fiPfxFree && l.toLowerCase().startsWith(_fiPfxFree+':'));
+                });
+              }
+              var _freeContent = _freeLines.join('
+');
+              // Rebuild clean span.bt structure so serializeTab reads correctly
+              var _freeSp = parseFloat(_blurEl.dataset.bulletParaSpacing||'0') ||
+                            parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0') || 4;
+              var _freeMb = _freeSp > 0 ? 'margin-bottom:'+_freeSp+'px;' : '';
+              function _freeEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+              inner.innerHTML = _freeLines.map(function(l){
+                return '<div style="display:flex;align-items:baseline;'+_freeMb+'">'
+                  + '<span style="flex:0 0 auto;margin-right:0.25em;">–</span>'
+                  + '<span class="bt">'+_freeEsc(l)+'</span></div>';
+              }).join('');
+              inner.style.whiteSpace = 'normal';
+              inner.style.wordBreak = 'break-word';
+              // Save content into savedStates immediately — do not rely on serializeTab alone
+              if(savedStates[currentTab]){
+                var _eidFree2 = _blurEl ? _blurEl.dataset.eid : null;
+                savedStates[currentTab].forEach(function(sv){
+                  if(sv.eid === _eidFree2){
+                    sv.content = _freeContent;
+                    delete sv.richHtml;
+                  }
+                });
+              }
+              // Update props panel textarea so it matches the artboard
+              var _propsTaFree = document.querySelector('#props-content textarea');
+              if(_propsTaFree) _propsTaFree.value = _freeLines.join('
+');
               debouncedPersist();
             }
             // ── After blur: refresh the Properties panel textarea so it matches canvas ──
