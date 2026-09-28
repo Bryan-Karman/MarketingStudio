@@ -1174,9 +1174,9 @@ function createElement(cfg){
           } else {
             _syncLines = (getInnerText(_syncInner)||'').split('\n');
           }
-          // Strip income from end so it doesn't pollute the textarea display
+          // Only strip income from linked elements — free-text shows exactly what was typed
           var _fiSync = ((document.getElementById('fi')||{}).value||'').trim();
-          if(_fiSync && _syncLines.length){
+          if(_fiSync && _syncLines.length && _syncEl.dataset.field){
             var _lastSync = _syncLines[_syncLines.length-1].trim();
             var _fiPfxSync = _fiSync.split(':')[0].trim().toLowerCase();
             if(_lastSync === _fiSync || (_fiPfxSync && _lastSync.toLowerCase().startsWith(_fiPfxSync+':'))) {
@@ -1481,8 +1481,8 @@ function createElement(cfg){
               } else {
                 _fl=(inner.innerText||inner.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();}).filter(Boolean);
               }
-              var _fiFr=((document.getElementById('fi')||{}).value||'').trim();
-              if(_fiFr){var _fpFr=_fiFr.split(':')[0].trim().toLowerCase();_fl=_fl.filter(function(l){return l!==_fiFr&&!(_fpFr&&l.toLowerCase().startsWith(_fpFr+':'));});}
+              // Never strip income from free-text elements — user typed it intentionally
+              var _fiFr=''; // no income stripping for free-text
               var _fc=_fl.join('\n');
               var _fsp=parseFloat(_blurEl.dataset.bulletParaSpacing||'0')||parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0')||4;
               var _fmb=_fsp>0?'margin-bottom:'+_fsp+'px;':'';
@@ -1517,7 +1517,7 @@ function createElement(cfg){
                 _blurLines = (getInnerText(_blurInner)||'').split('\n');
               }
               var _fiBlur = ((document.getElementById('fi')||{}).value||'').trim();
-              if(_fiBlur && _blurLines.length){
+              if(_fiBlur && _blurLines.length && _blurField){
                 var _lastBlur = _blurLines[_blurLines.length-1].trim();
                 var _fiPfxBlur = _fiBlur.split(':')[0].trim().toLowerCase();
                 if(_lastBlur === _fiBlur || (_fiPfxBlur && _lastBlur.toLowerCase().startsWith(_fiPfxBlur+':'))) {
@@ -2700,17 +2700,7 @@ function el_set_field(fieldKey){
 function _convertToFreeText(el){
   if(!el || el.dataset.type !== 'text') return;
   const inner = el.querySelector('.el-inner');
-  if(inner){
-    var _fi = ((document.getElementById('fi')||{}).value||'').trim();
-    if(_fi){
-      var _fiPfx = _fi.split(':')[0].trim().toLowerCase();
-      Array.from(inner.querySelectorAll(':scope > div')).forEach(function(d){
-        var bt = d.querySelector('span.bt');
-        var txt = (bt ? bt.textContent : d.textContent).replace('–','').trim();
-        if(txt === _fi || (_fiPfx && txt.toLowerCase().startsWith(_fiPfx+':'))) d.remove();
-      });
-    }
-  }
+  // Do NOT strip income here — the user may have typed it themselves
   var currentContent = inner ? getInnerText(inner) : '';
   el.dataset.field         = '';
   el.dataset.incomeAnchor  = '0';
@@ -2981,9 +2971,9 @@ function serializeTab(){
                 })
               : (inner.textContent||'').split('\n');
           }
-          // Strip appended income from last line so it's never double-saved
+          // Strip appended income from last line — only for linked elements, never free-text
           var _fi_strip = ((document.getElementById('fi')||{}).value||'').trim();
-          if(_fi_strip && _rawLines.length > 0 && !_tabApprovals[currentTab]){
+          if(_fi_strip && _serField && _rawLines.length > 0 && !_tabApprovals[currentTab]){
             var _last = _rawLines[_rawLines.length-1].trim();
             var _lastClean = _last.startsWith('\u2013 ') ? _last.slice(2) : _last;
             if(_lastClean === _fi_strip){
