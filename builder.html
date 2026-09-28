@@ -1109,19 +1109,12 @@ function createElement(cfg){
           }
           if(_el2) _el2.dataset.richHtml = inner.innerHTML;
         } else if(!_f){
-          // Free-text element (no field link, no income anchor).
-          // innerHTML IS the visual truth — save it directly on every keystroke.
+          // Free-text element (field='', bullets='1'): save content from span.bt spans.
           const _eid3=_el2?_el2.dataset.eid:null,_st3=savedStates[currentTab];
           if(_eid3&&_st3){
-            var _freeHtml = inner.innerHTML;
-            var _freeText = getInnerText(inner);
-            _el2.dataset.richHtml = _freeHtml; // keeps globalSync from touching this element
+            const _cc=getInnerText(inner);
             _st3.forEach(function(sv){
-              if(sv.eid===_eid3){
-                sv.richHtml  = _freeHtml;
-                sv.content   = _freeText;
-                sv.innerStyle = inner.getAttribute('style')||'';
-              }
+              if(sv.eid===_eid3){ sv.content=_cc; }
             });
           }
         }
@@ -1147,16 +1140,11 @@ function createElement(cfg){
             var _rtEid2=_el2.dataset.eid,_rtField2=_el2.dataset.field,_rtSt2=savedStates[currentTab];
             if(_rtSt2&&_rtEid2){ _rtSt2.forEach(function(sv){ if(sv.eid===_rtEid2||(sv.field&&sv.field===_rtField2)) sv.richHtml=inner.innerHTML; }); }
           } else if(_el2 && _el2.dataset.richHtml && !_hasRich2){
-            // Never clear richHtml on free-text elements — innerHTML is their visual truth
-            // and must survive every keystroke regardless of bold/italic presence.
-            var _isFreeEl2 = (!_el2.dataset.field || _el2.dataset.field==='') && _el2.dataset.bullets==='0';
-            if(!_isFreeEl2){
-              if(!_f || _mgd.indexOf(_f)===-1){
-                delete _el2.dataset.richHtml;
-              }
-              var _clrEid2=_el2.dataset.eid,_clrField2=_el2.dataset.field,_clrSt2=savedStates[currentTab];
-              if(_clrSt2&&_clrEid2){ _clrSt2.forEach(function(sv){ if(sv.eid===_clrEid2||(sv.field&&sv.field===_clrField2)) delete sv.richHtml; }); }
+            if(!_f || _mgd.indexOf(_f)===-1){
+              delete _el2.dataset.richHtml;
             }
+            var _clrEid2=_el2.dataset.eid,_clrField2=_el2.dataset.field,_clrSt2=savedStates[currentTab];
+            if(_clrSt2&&_clrEid2){ _clrSt2.forEach(function(sv){ if(sv.eid===_clrEid2||(sv.field&&sv.field===_clrField2)) delete sv.richHtml; }); }
           }
         }
         // ── Keep Properties panel "Text Content" textarea in sync ──
@@ -1203,9 +1191,7 @@ function createElement(cfg){
           ev.preventDefault();
           // Never add bullet prefix on brochure Highlight Points (tabs 0,1 field 'bullets')
           var _isBrochureBullField = (el.dataset.field==='bullets' && (currentTab===0||currentTab===1));
-          // Also treat free-text elements that still have span.bt structure as bullet elements
-          var _hasBtStructure = inner.querySelectorAll('span.bt').length > 0;
-          const _isBulletEl = (el.dataset.bullets==='1' || _hasBtStructure) && !_isBrochureBullField;
+          const _isBulletEl = el.dataset.bullets==='1' && !_isBrochureBullField;
           if(_isBulletEl){
             // Find which div the cursor is currently in
             const _sel2 = window.getSelection();
@@ -1480,24 +1466,8 @@ function createElement(cfg){
               }
               debouncedPersist();
             } else {
-              // Free-text element (no field link, no income anchor).
-              // innerHTML is the visual truth — save it as-is. No conversion, no stripping.
-              var _freeHtml2 = inner.innerHTML;
-              var _freeText2 = getInnerText(inner);
-              el.dataset.richHtml = _freeHtml2; // globalSync skip-guard
-              if(savedStates[currentTab]){
-                var _eidFree = _blurEl ? _blurEl.dataset.eid : null;
-                savedStates[currentTab].forEach(function(sv){
-                  if(sv.eid===_eidFree){
-                    sv.richHtml      = _freeHtml2;
-                    sv.content       = _freeText2;
-                    sv.innerStyle    = inner.getAttribute('style')||'';
-                    sv.bullets       = '0';
-                    sv.incomeAnchor  = '0';
-                    sv.bulletParaSpacing = sv.bulletParaSpacing || '0';
-                  }
-                });
-              }
+              // Free-text element (field='', bullets='1'): just persist, no sidebar to update.
+              globalSync();
               debouncedPersist();
             }
             // ── After blur: refresh the Properties panel textarea so it matches canvas ──
@@ -2634,53 +2604,44 @@ function el_inner_txt(val){
       }
     }
   } else {
-    // Unmanaged / free-text element (no field link or broken link).
+    // Unmanaged field (no sidebar) — write directly to the element.
     if(inner && inner.contentEditable!=='true'){
-      var _ps = parseFloat(selectedEl.dataset.bulletParaSpacing) || 0;
-      var _isTrulyFree = selectedEl.dataset.bullets==='0' && selectedEl.dataset.incomeAnchor!=='1';
-      var _hasBtNow = inner.querySelectorAll('span.bt').length > 0;
-      if(_isTrulyFree && _hasBtNow){
-        // Free-text element with bullet visual structure: rebuild span.bt divs from typed lines
-        var _ftLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-        while(_ftLines.length && !_ftLines[_ftLines.length-1].trim()) _ftLines.pop();
-        var _ftSp = _ps || parseFloat(inner.style.getPropertyValue('--bullet-spacing')) || 4;
-        var _ftMb = _ftSp > 0 ? 'margin-bottom:'+_ftSp+'px;' : '';
-        inner.innerHTML = _ftLines.map(function(l){
+      if(el.dataset.bullets==='1'){
+        // Bullet element: rebuild span.bt structure from the typed lines
+        var _ps = parseFloat(selectedEl.dataset.bulletParaSpacing) || parseFloat(inner.style.getPropertyValue('--bullet-spacing')) || 4;
+        var _mb2 = _ps > 0 ? 'margin-bottom:'+_ps+'px;' : '';
+        var _btLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+        while(_btLines.length && !_btLines[_btLines.length-1].trim()) _btLines.pop();
+        function _esc2(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        inner.innerHTML = _btLines.map(function(l){
           var t = (l||'').replace(/^\u2013\s*/,'').replace(/^-\s*/,'');
-          return '<div style="display:flex;align-items:baseline;'+_ftMb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+t.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+          return '<div style="display:flex;align-items:baseline;'+_mb2+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+_esc2(t)+'</span></div>';
         }).join('');
         inner.style.whiteSpace = 'normal';
         inner.style.wordBreak = 'break-word';
-      } else if(_ps > 0 && selectedEl.dataset.bullets !== '1' && !_isTrulyFree){
-        // Still-managed non-bullet spacing element: rebuild plain-line divs
-        var _newLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-        while(_newLines.length && !_newLines[_newLines.length-1].trim()) _newLines.pop();
-        function _elTxtEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-        var _mb = _ps > 0 ? 'margin-bottom:'+_ps+'px;' : '';
-        inner.innerHTML = _newLines.map(function(l){
-          if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;'+_mb+'"></div>';
-          return '<div class="plain-line" style="display:block;'+_mb+'">'+_elTxtEsc(l)+'</div>';
-        }).join('');
-        inner.style.whiteSpace = 'normal';
       } else {
-        // Plain free-text: pre-wrap textContent
-        inner.textContent = val || '';
-        inner.style.whiteSpace = 'pre-wrap';
-        inner.style.wordBreak = 'break-word';
+        var _ps2 = parseFloat(selectedEl.dataset.bulletParaSpacing) || 0;
+        if(_ps2 > 0){
+          var _newLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+          while(_newLines.length && !_newLines[_newLines.length-1].trim()) _newLines.pop();
+          function _elTxtEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+          var _mb = _ps2 > 0 ? 'margin-bottom:'+_ps2+'px;' : '';
+          inner.innerHTML = _newLines.map(function(l){
+            if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;'+_mb+'"></div>';
+            return '<div class="plain-line" style="display:block;'+_mb+'">'+_elTxtEsc(l)+'</div>';
+          }).join('');
+          inner.style.whiteSpace = 'normal';
+        } else {
+          inner.textContent = val || '';
+          inner.style.whiteSpace = 'pre-wrap';
+          inner.style.wordBreak = 'break-word';
+        }
       }
     }
-    // Save innerHTML as richHtml (the visual truth for free-text elements)
     if(savedStates[currentTab]){
       const _eid = selectedEl.dataset.eid;
-      var _eitHtml = inner ? inner.innerHTML : '';
-      var _eitStyle = inner ? (inner.getAttribute('style')||'') : '';
-      selectedEl.dataset.richHtml = _eitHtml;
       savedStates[currentTab].forEach(function(sv){
-        if(sv.eid === _eid){
-          sv.content    = val;
-          sv.richHtml   = _eitHtml;
-          sv.innerStyle = _eitStyle;
-        }
+        if(sv.eid === _eid){ sv.content = val; }
       });
     }
     if(field){
@@ -2711,27 +2672,24 @@ function el_set_field(fieldKey){
 }
 
 // ── _convertToFreeText ─────────────────────────────────────────────────────
-// Marks a text element as fully independent (no field link, no income anchor).
-// Keeps the visual DOM exactly as-is — whatever the element looks like right now
-// is frozen as its richHtml so restore reproduces it pixel-perfectly.
-// Clears only the data hooks that drive auto-updates; never touches the DOM style.
+// Breaks all auto-update links on a text element, making it fully independent.
+// Keeps bullets='1' so the existing bullet DOM machinery (Enter key, serialize,
+// restore via applyBullets) continues to work — we just clear the field link
+// and income anchor so nothing ever overwrites the content again.
 function _convertToFreeText(el){
   if(!el || el.dataset.type !== 'text') return;
   const inner = el.querySelector('.el-inner');
 
-  // Strip the trailing income line from the DOM before freezing, so it isn't baked in.
+  // Strip the trailing income line from the DOM so it isn't baked into the content.
   if(inner){
     var _fi = ((document.getElementById('fi')||{}).value||'').trim();
     if(_fi){
       var _fiPfx = _fi.split(':')[0].trim().toLowerCase();
-      // Remove income from span.bt bullet structure
-      var _btDivs = Array.from(inner.querySelectorAll(':scope > div'));
-      _btDivs.forEach(function(d){
+      Array.from(inner.querySelectorAll(':scope > div')).forEach(function(d){
         var bt = d.querySelector('span.bt');
         var txt = (bt ? bt.textContent : d.textContent).replace(/^\u2013\s*/,'').trim();
         if(txt === _fi || (_fiPfx && txt.toLowerCase().startsWith(_fiPfx+':'))) d.remove();
       });
-      // Remove income from plain-line divs
       Array.from(inner.querySelectorAll('div.plain-line')).forEach(function(d){
         var txt = d.textContent.trim();
         if(txt === _fi || (_fiPfx && txt.toLowerCase().startsWith(_fiPfx+':'))) d.remove();
@@ -2739,32 +2697,28 @@ function _convertToFreeText(el){
     }
   }
 
-  // Freeze the current visual HTML as richHtml — this is the single source of truth.
-  var frozenHtml  = inner ? inner.innerHTML : '';
-  var frozenStyle = inner ? (inner.getAttribute('style')||'') : '';
-  var frozenText  = inner ? getInnerText(inner) : '';
+  // Read the current clean text content (income already stripped above)
+  var currentContent = inner ? getInnerText(inner) : '';
 
-  // Clear ALL auto-update flags on the element
+  // Clear ONLY the auto-update hooks. Keep bullets='1' so the bullet
+  // DOM machinery (Enter key, serializeTab span.bt reading, restoreTab
+  // applyBullets rebuild, whiteSpace:normal on dblclick) all keep working.
   el.dataset.field         = '';
-  el.dataset.bullets       = '0';
   el.dataset.incomeAnchor  = '0';
   el.dataset.combinedAgent = '0';
-  el.dataset.richHtml      = frozenHtml;   // used by globalSync skip-guard & restore
   delete el.dataset.afrSaleCombo;
+  // bullets stays as-is (usually '1') — do NOT change it
 
-  // Persist into savedStates so restore reproduces exactly this appearance
+  // Persist the clean state into savedStates
   var tabState = savedStates[currentTab];
   if(tabState){
     tabState.forEach(function(sv){
       if(sv.eid === el.dataset.eid){
-        sv.field             = '';
-        sv.bullets           = '0';
-        sv.incomeAnchor      = '0';
-        sv.combinedAgent     = '0';
-        sv.richHtml          = frozenHtml;
-        sv.content           = frozenText;
-        sv.innerStyle        = frozenStyle;
-        sv.bulletParaSpacing = sv.bulletParaSpacing || '0'; // keep spacing value for Enter key
+        sv.field         = '';
+        sv.incomeAnchor  = '0';
+        sv.combinedAgent = '0';
+        sv.content       = currentContent;
+        // bullets stays as-is in sv too
       }
     });
   }
@@ -3080,30 +3034,21 @@ function serializeTab(){
             // getInnerText handles: pre-wrap \n, browser divs, span.bt
             obj.content = getInnerText(inner);
           }
-          // Free-text elements (no field link, bullets='0') use innerHTML as their
-          // complete visual truth — always save it regardless of bold/italic content.
-          var _isFreeTextEl = (!el.dataset.field || el.dataset.field==='') && el.dataset.bullets==='0';
-          if(_isFreeTextEl){
-            var _ftHtml = inner.innerHTML;
-            obj.richHtml = _ftHtml;
-            el.dataset.richHtml = _ftHtml;
+          // Save richHtml only when bold/italic formatting is present
+          var _candidateRich = el.dataset.richHtml || inner.innerHTML;
+          var _plainLineEls = inner.querySelectorAll('div.plain-line');
+          var _richCheck = _candidateRich && _candidateRich !== inner.textContent;
+          if(_richCheck && _plainLineEls.length > 0){
+            _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
+          }
+          var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+          var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
+          if(_realRichCheck){
+            obj.richHtml = _candidateRich;
+            el.dataset.richHtml = _candidateRich;
           } else {
-            // For linked/managed elements: only save richHtml when bold/italic formatting exists
-            var _candidateRich = el.dataset.richHtml || inner.innerHTML;
-            var _plainLineEls = inner.querySelectorAll('div.plain-line');
-            var _richCheck = _candidateRich && _candidateRich !== inner.textContent;
-            if(_richCheck && _plainLineEls.length > 0){
-              _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
-            }
-            var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
-            var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
-            if(_realRichCheck){
-              obj.richHtml = _candidateRich;
-              el.dataset.richHtml = _candidateRich;
-            } else {
-              delete el.dataset.richHtml;
-              delete obj.richHtml;
-            }
+            delete el.dataset.richHtml;
+            delete obj.richHtml;
           }
         }
       }
@@ -3279,9 +3224,7 @@ function restoreTab(idx){
           inner.style.wordBreak = 'break-word';
         }
       }
-      // Skip bullet/para spacing rebuild for truly free-text elements (link was broken by user)
-      var _isTrulyFreeSv = sv.bullets==='0' && sv.incomeAnchor==='0';
-      if(sv.bulletParaSpacing && parseFloat(sv.bulletParaSpacing) > 0 && sv.type==='text' && !_isTrulyFreeSv){
+      if(sv.bulletParaSpacing && parseFloat(sv.bulletParaSpacing) > 0 && sv.type==='text'){
         // Plain text with paragraph spacing — re-apply line divs
         // SKIP if richHtml was already restored above — it already contains the correct
         // div.plain-line structure with any bold/italic intact. Rebuilding would wipe formatting.
