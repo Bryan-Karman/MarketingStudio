@@ -1109,17 +1109,16 @@ function createElement(cfg){
           }
           if(_el2) _el2.dataset.richHtml = inner.innerHTML;
         } else if(!_f){
-          // Free-text bullet element: save content from span.bt spans and sync textarea
+          // Free-text: read from whatever DOM structure exists (span.bt or browser divs)
           const _eid3=_el2?_el2.dataset.eid:null,_st3=savedStates[currentTab];
           if(_eid3&&_st3){
-            var _btSpans3 = inner.querySelectorAll('span.bt');
-            var _cc3 = _btSpans3.length
-              ? Array.from(_btSpans3).map(function(s){ return s.textContent.replace(/^–\s*/,''); }).join('\n')
-              : getInnerText(inner);
-            _st3.forEach(function(sv){ if(sv.eid===_eid3){ sv.content=_cc3; } });
-            // Keep props panel textarea in sync
-            var _propsTa3 = document.querySelector('#props-content textarea');
-            if(_propsTa3) _propsTa3.value = _cc3;
+            var _bt3=inner.querySelectorAll('span.bt'),_rd3=inner.querySelectorAll(':scope > div'),_cc3;
+            if(_bt3.length) _cc3=Array.from(_bt3).map(function(s){return s.textContent.replace(/^–\s*/,'');}).join('\n');
+            else if(_rd3.length) _cc3=Array.from(_rd3).map(function(d){return d.textContent.replace(/^–\s*/,'').trim();}).filter(Boolean).join('\n');
+            else _cc3=(inner.innerText||inner.textContent||'').trim();
+            _st3.forEach(function(sv){if(sv.eid===_eid3){sv.content=_cc3;}});
+            var _pt3=document.querySelector('#props-content textarea');
+            if(_pt3) _pt3.value=_cc3;
           }
         }
         if(_f && inner._fromPaste){
@@ -1473,49 +1472,29 @@ function createElement(cfg){
               }
               debouncedPersist();
             } else {
-              // Free-text element (field='', bullets='1'): read DOM, rebuild clean
-              // span.bt structure, save sv.content, update props textarea, then persist.
-              var _freeChildDivs = Array.from(inner.querySelectorAll(':scope > div'));
-              var _freeLines = [];
-              if(_freeChildDivs.length){
-                _freeLines = _freeChildDivs.map(function(d){
-                  var bt = d.querySelector('span.bt');
-                  return (bt ? bt.textContent : d.textContent).replace(/^–\s*/,'').replace(/\u200B/g,'').trim();
-                }).filter(function(l){ return l !== ''; });
+              // Free-text element (field='', bullets='1'): read all child divs,
+              // rebuild clean span.bt structure, save sv.content, update textarea.
+              var _fd=Array.from(inner.querySelectorAll(':scope > div'));
+              var _fl=[];
+              if(_fd.length){
+                _fl=_fd.map(function(d){var bt=d.querySelector('span.bt');return(bt?bt.textContent:d.textContent).replace(/^–\s*/,'').trim();}).filter(Boolean);
               } else {
-                _freeLines = (inner.innerText||inner.textContent||'').split('\n').map(function(l){
-                  return l.replace(/^–\s*/,'').replace(/\u200B/g,'').trim();
-                }).filter(function(l){ return l !== ''; });
+                _fl=(inner.innerText||inner.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();}).filter(Boolean);
               }
-              // Strip any income line
-              var _fiFree = ((document.getElementById('fi')||{}).value||'').trim();
-              if(_fiFree){
-                var _fiPfxFree = _fiFree.split(':')[0].trim().toLowerCase();
-                _freeLines = _freeLines.filter(function(l){
-                  return l !== _fiFree && !(_fiPfxFree && l.toLowerCase().startsWith(_fiPfxFree+':'));
-                });
-              }
-              var _freeContent = _freeLines.join('\n');
-              // Rebuild clean span.bt structure so serializeTab reads correctly
-              var _freeSp = parseFloat(_blurEl.dataset.bulletParaSpacing||'0') ||
-                            parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0') || 4;
-              var _freeMb = _freeSp > 0 ? 'margin-bottom:'+_freeSp+'px;' : '';
-              function _freeEsc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-              inner.innerHTML = _freeLines.map(function(l){
-                return '<div style="display:flex;align-items:baseline;'+_freeMb+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span class="bt">'+_freeEsc(l)+'</span></div>';
-              }).join('');
-              inner.style.whiteSpace = 'normal';
-              inner.style.wordBreak = 'break-word';
-              // Save directly into savedStates
+              var _fiFr=((document.getElementById('fi')||{}).value||'').trim();
+              if(_fiFr){var _fpFr=_fiFr.split(':')[0].trim().toLowerCase();_fl=_fl.filter(function(l){return l!==_fiFr&&!(_fpFr&&l.toLowerCase().startsWith(_fpFr+':'));});}
+              var _fc=_fl.join('\n');
+              var _fsp=parseFloat(_blurEl.dataset.bulletParaSpacing||'0')||parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0')||4;
+              var _fmb=_fsp>0?'margin-bottom:'+_fsp+'px;':'';
+              function _fesc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+              inner.innerHTML=_fl.map(function(l){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span class="bt">'+_fesc(l)+'</span></div>';}).join('');
+              inner.style.whiteSpace='normal';inner.style.wordBreak='break-word';
               if(savedStates[currentTab]){
-                var _eidFree2 = _blurEl ? _blurEl.dataset.eid : null;
-                savedStates[currentTab].forEach(function(sv){
-                  if(sv.eid === _eidFree2){ sv.content = _freeContent; delete sv.richHtml; }
-                });
+                var _feid=_blurEl?_blurEl.dataset.eid:null;
+                savedStates[currentTab].forEach(function(sv){if(sv.eid===_feid){sv.content=_fc;delete sv.richHtml;}});
               }
-              // Update props panel textarea
-              var _propsTaFree = document.querySelector('#props-content textarea');
-              if(_propsTaFree) _propsTaFree.value = _freeLines.join('\n');
+              var _fta=document.querySelector('#props-content textarea');
+              if(_fta) _fta.value=_fl.join('\n');
               debouncedPersist();
             }
             // ── After blur: refresh the Properties panel textarea so it matches canvas ──
@@ -2293,8 +2272,8 @@ function showProps(el){
       <select onchange="el_set_field(this.value)" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid ${_cf?'var(--gb)':'#333'};border-radius:2px;background:#242424;color:#ddd;outline:none;font-family:inherit;margin-bottom:4px;">${_fOpts}</select>
       <div style="font-size:9px;color:${_cf?'#5bbf7a':(_isIncomeAnchor?'#f0a030':'#555')};line-height:1.4;${(_cf||_isIncomeAnchor)?'margin-bottom:6px;':''}">${_cf?'&#10003; Linked — updates automatically':(_isIncomeAnchor?'&#9888; Auto-updated by Net Income field':'Not linked — manual only')}</div>
       ${_cf?'<button onclick="breakFieldLink()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break the link so this element can be edited independently">&#9986; Break Text Link</button>':''}
-      ${(!_cf&&_isIncomeAnchor)?'<button onclick="breakIncomeAnchor()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;" title="Break income link to edit independently">&#9986; Break Income Link</button>':''}
-        </div>`;
+      ${(!_cf&&_isIncomeAnchor)?'<button onclick="breakIncomeAnchor()" style="width:100%;padding:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #7a4a00;border-radius:2px;background:#2a1800;color:#f0a030;text-align:center;">&#9986; Break Income Link</button>':''}
+    </div>`;
   }
 
   if(type==='rect'){
@@ -2670,14 +2649,14 @@ function el_inner_txt(val){
         inner.style.whiteSpace = 'normal';
       } else if(selectedEl.dataset.bullets==='1'){
         // Free-text bullet element: rebuild span.bt divs from typed lines
-        var _psBt = parseFloat(selectedEl.dataset.bulletParaSpacing) || parseFloat(inner.style.getPropertyValue('--bullet-spacing')) || 4;
+        var _psBt = parseFloat(selectedEl.dataset.bulletParaSpacing)||parseFloat(inner.style.getPropertyValue('--bullet-spacing'))||4;
         var _mbBt = _psBt > 0 ? 'margin-bottom:'+_psBt+'px;' : '';
-        var _btLines = (val||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+        var _btLines = (val||'').split('\n');
         while(_btLines.length && !_btLines[_btLines.length-1].trim()) _btLines.pop();
         function _escBt(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
         inner.innerHTML = _btLines.map(function(l){
-          var t = (l||'').replace(/^\u2013\s*/,'').replace(/^-\s*/,'');
-          return '<div style="display:flex;align-items:baseline;'+_mbBt+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+_escBt(t)+'</span></div>';
+          var t = (l||'').replace(/^–\s*/,'').replace(/^-\s*/,'');
+          return '<div style="display:flex;align-items:baseline;'+_mbBt+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span class="bt">'+_escBt(t)+'</span></div>';
         }).join('');
         inner.style.whiteSpace = 'normal';
         inner.style.wordBreak = 'break-word';
@@ -2721,7 +2700,6 @@ function el_set_field(fieldKey){
 function _convertToFreeText(el){
   if(!el || el.dataset.type !== 'text') return;
   const inner = el.querySelector('.el-inner');
-  // Strip trailing income line from DOM
   if(inner){
     var _fi = ((document.getElementById('fi')||{}).value||'').trim();
     if(_fi){
@@ -2734,7 +2712,6 @@ function _convertToFreeText(el){
     }
   }
   var currentContent = inner ? getInnerText(inner) : '';
-  // Keep bullets as-is — only clear the auto-update hooks
   el.dataset.field         = '';
   el.dataset.incomeAnchor  = '0';
   el.dataset.combinedAgent = '0';
@@ -2743,10 +2720,7 @@ function _convertToFreeText(el){
   if(tabState){
     tabState.forEach(function(sv){
       if(sv.eid === el.dataset.eid){
-        sv.field         = '';
-        sv.incomeAnchor  = '0';
-        sv.combinedAgent = '0';
-        sv.content       = currentContent;
+        sv.field = ''; sv.incomeAnchor = '0'; sv.combinedAgent = '0'; sv.content = currentContent;
       }
     });
   }
@@ -2770,7 +2744,6 @@ function breakIncomeAnchor(){
   debouncedPersist();
   showProps(selectedEl);
 }
-
 function el_set_asset(key){
   if(!selectedEl) return;
   undoSnapshot();
@@ -2985,6 +2958,18 @@ function serializeTab(){
           if(_serSbVal && _serSbEl && !_tabApprovals[currentTab]){
             // Use sidebar — authoritative for managed fields
             _rawLines = _serSbVal.split('\n').map(function(l){ return l.replace(/^\u2013\s*/,'').trim(); });
+          } else if(!_serField){
+            // Free-text: savedStates.content is authoritative (written every keypress)
+            var _stFT=savedStates[currentTab]&&savedStates[currentTab].find(function(sv){return sv.eid===el.dataset.eid;});
+            var _stFC=_stFT?(_stFT.content||''):'';
+            if(_stFC){
+              _rawLines=_stFC.split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();});
+            } else if(textSpans.length>0){
+              _rawLines=Array.from(textSpans).map(function(s){return s.textContent;});
+            } else {
+              var _divs8=inner.querySelectorAll('div');
+              _rawLines=_divs8.length>0?Array.from(_divs8).map(function(d){var t=d.textContent;return t.startsWith('– ')?t.slice(2):t;}):(inner.textContent||'').split('\n');
+            }
           } else if(textSpans.length > 0){
             _rawLines = Array.from(textSpans).map(function(s){ return s.textContent; });
           } else {
@@ -3433,14 +3418,13 @@ function applyTemplateLocks(idx){
       // Clear incomeAnchor from all elements first
       els.forEach(function(el){ delete el.dataset.incomeAnchor; });
       // Set incomeAnchor on the free-text right column (z-index 50, no field link)
-      // BUT only if the user has not already broken the income link (saved as incomeAnchor '0')
+      // Only re-set incomeAnchor if user hasn't already broken the link
       const rightBox = els.find(function(el){
         return el.dataset.field==='' && parseInt(el.style.zIndex||'0')===50;
       });
       if(rightBox){
         var _sv6 = savedStates[idx] && savedStates[idx].find(function(s){ return s.eid === rightBox.dataset.eid; });
-        var _userBroke = _sv6 && _sv6.incomeAnchor === '0';
-        if(!_userBroke){ rightBox.dataset.incomeAnchor='1'; }
+        if(!(_sv6 && _sv6.incomeAnchor === '0')){ rightBox.dataset.incomeAnchor='1'; }
       }
     }
     return;
