@@ -1649,16 +1649,21 @@ function createElement(cfg){
           saveCropData(img);
           debouncedPersist();
         } else {
-          // If this is an EDM agent element that was moved, mark it as manually positioned
-          // so repackEDMAgents won't override the user's position
-          if((currentTab===2||currentTab===3) && committed){
-            const _elToMark = groupStarts ? groupStarts.map(p=>p.el) : [el];
-            _elToMark.forEach(function(me){
-              if(me.dataset.agentOrigY || me.dataset.agentBelow==='1'){
-                me.dataset.agentManualY='1';
-              }
-            });
-          }
+          // Mark any moved element with a universal position override flag so that
+          // repackEDMAgents and any other auto-layout logic never overrides a
+          // position the user has explicitly set, regardless of which tab they are on.
+          const _elToMark = groupStarts ? groupStarts.map(p=>p.el) : [el];
+          _elToMark.forEach(function(me){
+            // Universal override: set on every element across every tab
+            me.dataset.userMoved='1';
+            // EDM-specific: mark agent elements so repackEDMAgents skips them.
+            // Previously this was gated on agentOrigY/agentBelow being present,
+            // which meant freshly-added or re-loaded agent elements were not protected.
+            // Now we set it unconditionally whenever ANY element on the EDM tabs is moved.
+            if(currentTab===2||currentTab===3){
+              me.dataset.agentManualY='1';
+            }
+          });
           debouncedPersist();
         }
       }
@@ -2937,7 +2942,8 @@ function serializeTab(){
         if(!_bp || _bp==='0') _bp = inner ? inner.dataset.bulletSpacing : '';
         if(!_bp || _bp==='0'){ var _bpEl = inner ? inner.style.getPropertyValue('--bullet-spacing') : ''; if(_bpEl) _bp = _bpEl.trim(); }
         return _bp||'0';
-      })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'',
+      })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'', userMoved:el.dataset.userMoved||'',
+      edmOrigTop:el.dataset.edmOrigTop||'', edmOrigH:el.dataset.edmOrigH||'',
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
       wasIncomeAnchor:el.dataset.wasIncomeAnchor||'0',
       incomeEl:el.dataset.incomeEl||'0', elDisplay:el.style.display||'',
@@ -3120,6 +3126,13 @@ function restoreTab(idx){
     if(sv.agentOrigY) el.dataset.agentOrigY=sv.agentOrigY;
     if(sv.agentBelow==='1'){ el.dataset.agentBelow='1'; if(sv.agentBelowY) el.dataset.agentBelowY=sv.agentBelowY; }
     if(sv.agentManualY==='1') el.dataset.agentManualY='1';
+    if(sv.userMoved==='1') el.dataset.userMoved='1';
+    // Restore the EDM push-down anchor so edmBodycopyAutoSize doesn't have to
+    // guess from whatever position the element happens to be in at snapshot time.
+    // For user-moved elements this will be re-anchored from their actual position
+    // anyway, but restoring it here makes the initial state consistent.
+    if(sv.edmOrigTop) el.dataset.edmOrigTop=sv.edmOrigTop;
+    if(sv.edmOrigH)   el.dataset.edmOrigH=sv.edmOrigH;
     if(sv.banner==='1'){
       el.dataset.banner='1';
       if(sv.bannerPad) el.dataset.bannerPad=sv.bannerPad;
@@ -3553,12 +3566,25 @@ function edmBodycopyAutoSize(){
   // ── Push every non-agent, non-bodycopy element that sits below BC_BOTTOM ──
   // Use data-edmOrigTop (set at build/restore time) as the stable original position.
   // If not set, fall back to current position (handles elements added after load).
+  // IMPORTANT: if the user has manually moved an element (data-userMoved='1'), always
+  // use its actual current top as the base — never the stale build-time origTop —
+  // so the push-down is relative to where the user left it, not the template default.
   art.querySelectorAll('.el').forEach(function(el){
     if(el === bcEl) return;
     if(el.dataset.agentSlot || el.dataset.agentBelow === '1') return; // agents handled below
 
     var origTop = parseFloat(el.dataset.edmOrigTop);
     var origH   = parseFloat(el.dataset.edmOrigH);
+
+    // If user has manually positioned this element, re-anchor edmOrigTop to
+    // their chosen position so the growth offset is applied from there.
+    if(el.dataset.userMoved === '1'){
+      origTop = parseFloat(el.style.top) || 0;
+      origH   = parseFloat(el.style.height) || 0;
+      // Update the stored original so future calls also use the user's position
+      el.dataset.edmOrigTop = origTop;
+      el.dataset.edmOrigH   = origH;
+    }
 
     // Fallback: tag it now from current position (only correct right after fresh build)
     if(isNaN(origTop)){
@@ -7611,7 +7637,7 @@ function repackEDMAgents(){
       el.style.visibility   = isActive ? '' : 'hidden';
       el.style.display      = isActive ? '' : 'none';
       el.style.pointerEvents = isActive ? '' : 'none';
-      if(isActive && el.dataset.agentManualY !== '1'){
+      if(isActive && el.dataset.agentManualY !== '1' && el.dataset.userMoved !== '1'){
         // origY = original template position of this element (e.g. 3006, 3008, 3054)
         var origY = parseFloat(el.dataset.agentOrigY);
         if(isNaN(origY)){
@@ -7627,7 +7653,7 @@ function repackEDMAgents(){
         el.style.top = (packedY[slotNum-1] + offsetInSlot) + 'px';
       }
     } else if(el.dataset.agentBelow === '1'){
-      if(el.dataset.agentManualY === '1') return;
+      if(el.dataset.agentManualY === '1' || el.dataset.userMoved === '1') return;
       var belowOrigY = parseFloat(el.dataset.agentBelowY);
       if(!isNaN(belowOrigY)){
         // Position = original Y + bodycopy growth - space freed by hidden agents
