@@ -3409,10 +3409,15 @@ function applyTemplateLocks(idx){
       // Clear incomeAnchor from all elements first
       els.forEach(function(el){ delete el.dataset.incomeAnchor; });
       // Set incomeAnchor on the free-text right column (z-index 50, no field link)
+      // BUT only if the user has not already broken the income link (saved as incomeAnchor '0')
       const rightBox = els.find(function(el){
-        return el.dataset.field==='' && el.dataset.bullets==='1' && parseInt(el.style.zIndex||'0')===50;
+        return el.dataset.field==='' && parseInt(el.style.zIndex||'0')===50;
       });
-      if(rightBox){ rightBox.dataset.incomeAnchor='1'; }
+      if(rightBox){
+        var _sv6 = savedStates[idx] && savedStates[idx].find(function(s){ return s.eid === rightBox.dataset.eid; });
+        var _userBroke = _sv6 && _sv6.incomeAnchor === '0';
+        if(!_userBroke){ rightBox.dataset.incomeAnchor='1'; }
+      }
     }
     return;
   }
