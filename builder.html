@@ -2606,7 +2606,7 @@ function el_inner_txt(val){
   } else {
     // Unmanaged field (no sidebar) — write directly to the element.
     if(inner && inner.contentEditable!=='true'){
-      if(el.dataset.bullets==='1'){
+      if(selectedEl.dataset.bullets==='1'){
         // Bullet element: rebuild span.bt structure from the typed lines
         var _ps = parseFloat(selectedEl.dataset.bulletParaSpacing) || parseFloat(inner.style.getPropertyValue('--bullet-spacing')) || 4;
         var _mb2 = _ps > 0 ? 'margin-bottom:'+_ps+'px;' : '';
