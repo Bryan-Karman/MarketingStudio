@@ -1654,16 +1654,13 @@ function createElement(cfg){
           // position the user has explicitly set, regardless of which tab they are on.
           const _elToMark = groupStarts ? groupStarts.map(p=>p.el) : [el];
           _elToMark.forEach(function(me){
-            // Universal override: set on every element across every tab
             me.dataset.userMoved='1';
-            // EDM-specific: mark agent elements so repackEDMAgents skips them.
-            // Previously this was gated on agentOrigY/agentBelow being present,
-            // which meant freshly-added or re-loaded agent elements were not protected.
-            // Now we set it unconditionally whenever ANY element on the EDM tabs is moved.
+            _edmPositionsLocked = false;
             if(currentTab===2||currentTab===3){
               me.dataset.agentManualY='1';
             }
           });
+          _canvasDirty = true; // drag is always a real user edit — must save
           debouncedPersist();
         }
       }
@@ -1725,7 +1722,7 @@ function startDrag(e, el){
     if(_cwD2) _cwD2.classList.remove('dragging-el');
     window.removeEventListener('mousemove',mv);
     window.removeEventListener('mouseup',up);
-    if(dragging) debouncedPersist();
+    if(dragging){ _canvasDirty = true; debouncedPersist(); }
   }
   window.addEventListener('mousemove',mv);
   window.addEventListener('mouseup',up);
@@ -2471,6 +2468,8 @@ function el_set(prop, val){
   if(prop==='top'||prop==='left'){
     selectedEl.dataset.userMoved='1';
     if(currentTab===2||currentTab===3) selectedEl.dataset.agentManualY='1';
+    _edmPositionsLocked = false;
+    _canvasDirty = true; // position change via panel is always a real edit — must save
   }
   debouncedPersist();
 }
@@ -3431,6 +3430,9 @@ function restoreTab(idx){
   applyTemplateLocks(idx);
   // Inject income (also sizes bodycopy + repacks agents). Two passes for safety.
   if(idx===2||idx===3){
+    // Lock positions — saved y values are the truth. The layout engines must not
+    // overwrite them. The lock is cleared the first time the user edits anything.
+    _edmPositionsLocked = true;
     setTimeout(function(){ _edmInjectIncome(); }, 150);
     setTimeout(function(){ if(currentTab===idx) _edmInjectIncome(); }, 600);
   }
@@ -3517,6 +3519,7 @@ function resetTab(){
     delete _customSizes[currentTab]; // also reset any custom artboard size
     delete _tabApprovals[currentTab]; // reset also clears approval
     buildTemplate(currentTab);
+    _edmPositionsLocked = false; // fresh build — layout engine runs freely
     _updateTabApprovalUI();
     _canvasDirty = true; // user explicitly reset — save the fresh template
     debouncedPersist();
@@ -3532,9 +3535,15 @@ function resetTab(){
 // Uses ONLY hardcoded template constants + live measured content height.
 // Never depends on saved/restored DOM state or snapshot baselines.
 var _edmBodycopyGrowth = 0;
+// When true, the EDM was just restored from a cloud/local save.
+// The saved y-positions ARE the final positions — skip all layout engine
+// repositioning until the user makes a real edit.
+var _edmPositionsLocked = false;
 
 function edmBodycopyAutoSize(){
   if(currentTab !== 2 && currentTab !== 3) return;
+  // Positions are locked — saved y values are authoritative. Don't touch anything.
+  if(_edmPositionsLocked) return;
   var art = document.getElementById('artwork');
   var bcEl = art && art.querySelector('.el[data-field="bodycopy"]');
   if(!bcEl) return;
@@ -6670,14 +6679,14 @@ function loadAsset(e,key){
 // Tracks whether the user has made any real edits since the last load/restore.
 // Prevents a freshly-built blank template from overwriting good saved data.
 let _canvasDirty = false;
-function _markCanvasDirty(){ _canvasDirty = true; }
+function _markCanvasDirty(){ _canvasDirty = true; _edmPositionsLocked = false; }
 
 let _persistTimer=null;
 let _lastUserActivityTime=0,_lastSaveCompletedTime=0,_lastSaveAttemptTime=0;
 let _pendingSaveState=null,_saveRetryTimer=null;
 const USER_BUSY_WINDOW_MS=2000,POST_SAVE_WINDOW_MS=4000,SAVE_RETRY_DELAY_MS=3000;
 function _markUserActivity(){_lastUserActivityTime=Date.now();}
-function _markCanvasEdit(){_canvasDirty=true;_markUserActivity();}
+function _markCanvasEdit(){_canvasDirty=true;_edmPositionsLocked=false;_markUserActivity();}
 document.addEventListener('keydown',_markUserActivity,true);
 document.addEventListener('mousedown',_markUserActivity,true);
 document.addEventListener('input',_markUserActivity,true);
@@ -7010,7 +7019,9 @@ async function init(){
     applyMIHidden();
     // For EDM: inject income (which also auto-sizes and repacks agents).
     // Two passes: 250ms for initial render, 800ms safety net after all async init settles.
+    // If we restored from a save, positions are locked — the layout engine must not move things.
     if(currentTab===2||currentTab===3){
+      _edmPositionsLocked = true;
       setTimeout(_edmInjectIncome, 250);
       setTimeout(function(){ if(currentTab===2||currentTab===3) _edmInjectIncome(); }, 800);
     }
@@ -7583,7 +7594,7 @@ init().then(async()=>{
   // After all async init settles, sync agents and re-inject income (which repacks everything).
   setTimeout(function(){
     syncAllAgentSlots();
-    setTimeout(function(){ if(currentTab===2||currentTab===3) _edmInjectIncome(); }, 80);
+    setTimeout(function(){ if(currentTab===2||currentTab===3){ _edmPositionsLocked=true; _edmInjectIncome(); } }, 80);
   }, 400);
 });
 
@@ -7591,6 +7602,8 @@ init().then(async()=>{
 // Hides empty agent slots and shifts elements below up
 function repackEDMAgents(){
   if(currentTab !== 2 && currentTab !== 3) return;
+  // Positions are locked — saved y values are authoritative. Don't touch anything.
+  if(_edmPositionsLocked) return;
   const art = document.getElementById('artwork');
   if(!art) return;
 
