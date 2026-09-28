@@ -2942,7 +2942,7 @@ function serializeTab(){
         if(!_bp || _bp==='0') _bp = inner ? inner.dataset.bulletSpacing : '';
         if(!_bp || _bp==='0'){ var _bpEl = inner ? inner.style.getPropertyValue('--bullet-spacing') : ''; if(_bpEl) _bp = _bpEl.trim(); }
         return _bp||'0';
-      })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'', userMoved:el.dataset.userMoved||'',
+      })(), banner:el.dataset.banner||'0', bannerPad:el.dataset.bannerPad||'', agentSlot:el.dataset.agentSlot||'', agentOrigY:el.dataset.agentOrigY||'', agentBelow:el.dataset.agentBelow||'', agentBelowY:el.dataset.agentBelowY||'', agentManualY:el.dataset.agentManualY||'', userMoved:el.dataset.userMoved||'',
       edmOrigTop:el.dataset.edmOrigTop||'', edmOrigH:el.dataset.edmOrigH||'',
       afrSaleCombo:el.dataset.afrSaleCombo||'0', incomeAnchor:el.dataset.incomeAnchor||'0',
       wasIncomeAnchor:el.dataset.wasIncomeAnchor||'0',
@@ -3123,6 +3123,7 @@ function restoreTab(idx){
     } else if(sv.elDisplay==='none'){
       el.style.display='none';
     }
+    if(sv.agentSlot) el.dataset.agentSlot=sv.agentSlot;
     if(sv.agentOrigY) el.dataset.agentOrigY=sv.agentOrigY;
     if(sv.agentBelow==='1'){ el.dataset.agentBelow='1'; if(sv.agentBelowY) el.dataset.agentBelowY=sv.agentBelowY; }
     if(sv.agentManualY==='1') el.dataset.agentManualY='1';
@@ -3382,6 +3383,12 @@ function restoreTab(idx){
           el.dataset.edmOrigTop = '1904'; el.dataset.edmOrigH = '617';
         } else if(el.dataset.agentSlot || el.dataset.agentBelow === '1'){
           // agents managed by repackEDMAgents — no edmOrigTop needed
+        } else if(el.dataset.userMoved === '1'){
+          // User manually positioned this element — anchor edmOrigTop to their chosen
+          // position so the push-down is always relative to where they left it.
+          // Never subtract priorGrowth here: the saved y IS the user's final position.
+          el.dataset.edmOrigTop = curT;
+          el.dataset.edmOrigH   = curH;
         } else {
           // Subtract prior growth to recover original template Y.
           // Threshold 2480 matches BC_BOTTOM in edmBodycopyAutoSize — catches img3 at Y=2493.
@@ -3576,14 +3583,19 @@ function edmBodycopyAutoSize(){
     var origTop = parseFloat(el.dataset.edmOrigTop);
     var origH   = parseFloat(el.dataset.edmOrigH);
 
-    // If user has manually positioned this element, re-anchor edmOrigTop to
-    // their chosen position so the growth offset is applied from there.
+    // If user has manually positioned this element, use edmOrigTop as the anchor.
+    // edmOrigTop is set once (in restoreTab or on first autoSize call) to the user's
+    // chosen position. We must NOT re-read el.style.top here on repeat calls because
+    // after the first push el.style.top already includes growth and would double-push.
     if(el.dataset.userMoved === '1'){
-      origTop = parseFloat(el.style.top) || 0;
-      origH   = parseFloat(el.style.height) || 0;
-      // Update the stored original so future calls also use the user's position
-      el.dataset.edmOrigTop = origTop;
-      el.dataset.edmOrigH   = origH;
+      if(isNaN(origTop)){
+        // First time — snapshot from actual DOM position (correct on first call)
+        origTop = parseFloat(el.style.top) || 0;
+        origH   = parseFloat(el.style.height) || 0;
+        el.dataset.edmOrigTop = origTop;
+        el.dataset.edmOrigH   = origH;
+      }
+      // origTop is now the stable user-chosen anchor — fall through to push logic below
     }
 
     // Fallback: tag it now from current position (only correct right after fresh build)
