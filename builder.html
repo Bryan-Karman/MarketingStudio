@@ -1147,14 +1147,16 @@ function createElement(cfg){
             var _rtEid2=_el2.dataset.eid,_rtField2=_el2.dataset.field,_rtSt2=savedStates[currentTab];
             if(_rtSt2&&_rtEid2){ _rtSt2.forEach(function(sv){ if(sv.eid===_rtEid2||(sv.field&&sv.field===_rtField2)) sv.richHtml=inner.innerHTML; }); }
           } else if(_el2 && _el2.dataset.richHtml && !_hasRich2){
-            // Only clear richHtml dataset on element if no formatting remains.
-            // For managed fields mid-edit, keep it set to block globalSync from
-            // interrupting typing — the blur handler clears it if needed.
-            if(!_f || _mgd.indexOf(_f)===-1){
-              delete _el2.dataset.richHtml;
+            // Never clear richHtml on free-text elements — innerHTML is their visual truth
+            // and must survive every keystroke regardless of bold/italic presence.
+            var _isFreeEl2 = (!_el2.dataset.field || _el2.dataset.field==='') && _el2.dataset.bullets==='0';
+            if(!_isFreeEl2){
+              if(!_f || _mgd.indexOf(_f)===-1){
+                delete _el2.dataset.richHtml;
+              }
+              var _clrEid2=_el2.dataset.eid,_clrField2=_el2.dataset.field,_clrSt2=savedStates[currentTab];
+              if(_clrSt2&&_clrEid2){ _clrSt2.forEach(function(sv){ if(sv.eid===_clrEid2||(sv.field&&sv.field===_clrField2)) delete sv.richHtml; }); }
             }
-            var _clrEid2=_el2.dataset.eid,_clrField2=_el2.dataset.field,_clrSt2=savedStates[currentTab];
-            if(_clrSt2&&_clrEid2){ _clrSt2.forEach(function(sv){ if(sv.eid===_clrEid2||(sv.field&&sv.field===_clrField2)) delete sv.richHtml; }); }
           }
         }
         // ── Keep Properties panel "Text Content" textarea in sync ──
@@ -3078,26 +3080,30 @@ function serializeTab(){
             // getInnerText handles: pre-wrap \n, browser divs, span.bt
             obj.content = getInnerText(inner);
           }
-          // Save richHtml when there is actual HTML formatting (bold/italic/underline etc.)
-          // This applies to ALL text elements including brochure Highlight Points.
-          // plain-line divs can legitimately contain <b>/<i> spans from rtCmd.
-          var _candidateRich = el.dataset.richHtml || inner.innerHTML;
-          // Has formatting if HTML differs from plain text (accounting for plain-line wrappers)
-          var _plainLineEls = inner.querySelectorAll('div.plain-line');
-          var _richCheck = _candidateRich && _candidateRich !== inner.textContent;
-          // For plain-line elements, also check if any plain-line div contains HTML tags
-          if(_richCheck && _plainLineEls.length > 0){
-            _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
-          }
-          var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
-          // Allow richHtml for ALL fields — globalSync guards against overwriting bold.
-          var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
-          if(_realRichCheck){
-            obj.richHtml = _candidateRich;
-            el.dataset.richHtml = _candidateRich;
+          // Free-text elements (no field link, bullets='0') use innerHTML as their
+          // complete visual truth — always save it regardless of bold/italic content.
+          var _isFreeTextEl = (!el.dataset.field || el.dataset.field==='') && el.dataset.bullets==='0';
+          if(_isFreeTextEl){
+            var _ftHtml = inner.innerHTML;
+            obj.richHtml = _ftHtml;
+            el.dataset.richHtml = _ftHtml;
           } else {
-            delete el.dataset.richHtml;
-            delete obj.richHtml;
+            // For linked/managed elements: only save richHtml when bold/italic formatting exists
+            var _candidateRich = el.dataset.richHtml || inner.innerHTML;
+            var _plainLineEls = inner.querySelectorAll('div.plain-line');
+            var _richCheck = _candidateRich && _candidateRich !== inner.textContent;
+            if(_richCheck && _plainLineEls.length > 0){
+              _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
+            }
+            var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+            var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
+            if(_realRichCheck){
+              obj.richHtml = _candidateRich;
+              el.dataset.richHtml = _candidateRich;
+            } else {
+              delete el.dataset.richHtml;
+              delete obj.richHtml;
+            }
           }
         }
       }
