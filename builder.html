@@ -5241,14 +5241,27 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
               var _rhFi=(gv('fi')||document.getElementById('fi')?.value||''). trim();
               var _rhIncome=((sv.field==='bullets'||sv.wasIncomeAnchor==='1')&&[0,1].indexOf(tabIdx)>-1&&_rhFi);
               if(_rhIncome){
+                // Bold whichever plain-line div contains the income value.
+                // Search all divs (not just last) and match by full text or prefix.
+                // This handles existing saves where income may not be the last div
+                // and font-weight:700 may not have been set when richHtml was saved.
                 var _rhPls=inner.querySelectorAll('div.plain-line');
-                if(_rhPls.length>0){
-                  var _rhLast=_rhPls[_rhPls.length-1];
-                  var _rhLastTxt=(_rhLast.textContent||''). trim();
-                  var _rhPfx=_rhFi.split(':')[0].trim().toLowerCase();
-                  if(_rhLastTxt.toLowerCase().startsWith(_rhPfx+':')){
-                    _rhLast.style.fontWeight='700';
+                var _rhFiLower=_rhFi.toLowerCase();
+                _rhPls.forEach(function(d){
+                  var t=(d.textContent||'').trim().toLowerCase();
+                  if(t===_rhFiLower || t.startsWith(_rhFiLower.split(':')[0]+':')){
+                    d.style.fontWeight='700';
                   }
+                });
+                // Also append income if not present at all in any div
+                var _rhAllTxt=Array.from(_rhPls).map(function(d){return(d.textContent||'').trim().toLowerCase();}).join('
+');
+                if(_rhFiLower&&!_rhAllTxt.includes(_rhFiLower.split(':')[0])){
+                  var _newDiv=document.createElement('div');
+                  _newDiv.className='plain-line';
+                  _newDiv.style.cssText='display:block;font-weight:700;';
+                  _newDiv.textContent=_rhFi;
+                  inner.appendChild(_newDiv);
                 }
               }
             } else if(sv.bullets==='1'&&[2,3,8].indexOf(tabIdx)===-1){
@@ -5549,11 +5562,73 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
 async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
-  // EDM tabs (2,3) use the raster renderer — their layout is fully dynamic
-  // (bodycopy autosize, income injection, agent repacking) and cannot be correctly
-  // reconstructed from savedStates when the EDM tab is not the active tab.
-  // The raster renderer clones the live DOM which is always pixel-perfect.
+  // EDM tabs (2,3): snapshot the live rendered DOM elements so the native renderer
+  // uses the exact text/positions that globalSync, edmBodycopyAutoSize and
+  // repackEDMAgents produced — income injected, agents packed, bodycopy sized.
+  // This gives live/selectable PDF text while matching the screen exactly.
   if(tabIdx === 2 || tabIdx === 3){
+    const _liveArt = document.getElementById('artwork');
+    if(_liveArt && currentTab === tabIdx){
+      // Build a synthetic state from the live DOM elements
+      const _liveSvs = [];
+      _liveArt.querySelectorAll('.el').forEach(function(el){
+        if(el.dataset.field === 'income' || el.dataset.incomeEl === '1') return;
+        const inner = el.querySelector('.el-inner');
+        const _ist = inner ? inner.getAttribute('style') || '' : '';
+        // Capture the actual rendered text content from the inner element.
+        // Strategy: extract one text line per child div (each div = one line in the
+        // renderer). Set richHtml so bold/weight is preserved. Set content so the
+        // renderer's lines array has the right number of entries to drive iteration.
+        let _content = '';
+        let _richHtml = '';
+        if(el.dataset.type === 'text' && inner){
+          // Each child div represents one line (plain-line, bt-wrap, or inline div).
+          const _childDivs = Array.from(inner.querySelectorAll(':scope > div'));
+          if(_childDivs.length > 0){
+            _richHtml = inner.innerHTML;
+            // Build content with one entry per child div so lines.length matches
+            _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('
+');
+          } else {
+            // No child divs — simple single-line text
+            _content = inner.textContent || '';
+            if(inner.innerHTML !== inner.textContent) _richHtml = inner.innerHTML;
+          }
+        }
+        _liveSvs.push({
+          eid: el.dataset.eid||'',
+          type: el.dataset.type||'',
+          x: el.style.left,
+          y: el.style.top,
+          w: el.style.width,
+          h: el.style.height,
+          z: el.style.zIndex||'2',
+          innerStyle: _ist,
+          content: _content,
+          richHtml: _richHtml,
+          assetKey: el.dataset.assetKey||'',
+          svgKey: el.dataset.svgKey||'',
+          field: '',  // cleared — content is already resolved
+          bullets: el.dataset.bullets||'0',
+          bulletParaSpacing: el.dataset.bulletParaSpacing||'',
+          banner: el.dataset.banner||'0',
+          bannerPad: el.dataset.bannerPad||'',
+          locked: el.dataset.locked||'',
+          cropX: el.dataset.cropX||'', cropY: el.dataset.cropY||'',
+          cropW: el.dataset.cropW||'', cropH: el.dataset.cropH||'',
+          imgSrc: (function(){ var img=el.querySelector('img'); return img?img.src:''; })(),
+        });
+      });
+      if(_liveSvs.length){
+        // Temporarily override state for this render
+        const _savedStateBackup = savedStates[tabIdx];
+        savedStates[tabIdx] = _liveSvs;
+        const _result = await renderTabToPdf_native(pdf, tabIdx, pageW, pageH, false, bleedOpts);
+        savedStates[tabIdx] = _savedStateBackup;
+        return _result;
+      }
+    }
+    // Fallback: raster (EDM not active tab or no live DOM)
     return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
   }
   // All other tabs use the native renderer for live/selectable vector text.
