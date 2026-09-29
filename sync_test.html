@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBRE Sync Test</title>
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #111314;
+  --surface:  #1a1d1f;
+  --border:   #272b2e;
+  --border2:  #313639;
+  --text:     #e8eaeb;
+  --muted:    #6b7175;
+  --green:    #17e88f;
+  --green-dk: #003f2d;
+  --green-md: #00593f;
+  --amber:    #f0a030;
+  --red:      #e05555;
+  --blue:     #4ab0f5;
+  --radius:   4px;
+  --font:     'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+/* ── NAME GATE ── */
+#name-gate {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.gate-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 36px 40px; width: 340px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.gate-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 700; color: var(--green); letter-spacing: .06em;
+}
+.gate-logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.gate-title { font-size: 18px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.gate-sub { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.gate-field { display: flex; flex-direction: column; gap: 6px; }
+.gate-field label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.gate-field input {
+  padding: 10px 12px; border: 1px solid var(--border2); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font);
+  outline: none; transition: border-color .15s;
+}
+.gate-field input:focus { border-color: var(--green); }
+.gate-btn {
+  padding: 11px; background: var(--green-md); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 13px; font-weight: 700;
+  cursor: pointer; letter-spacing: .03em; transition: background .15s;
+}
+.gate-btn:hover { background: var(--green); color: #000; }
+
+/* ── MASTHEAD ── */
+.mast {
+  height: 48px; background: #0a0c0d; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0;
+}
+.mast-brand {
+  font-size: 11px; font-weight: 700; color: var(--green); letter-spacing: .1em;
+  text-transform: uppercase; padding-right: 16px; border-right: 1px solid var(--border2);
+}
+.mast-title { font-size: 12px; color: var(--muted); flex: 1; }
+.mast-title strong { color: var(--text); font-weight: 600; }
+
+/* ── CONNECTION STATUS ── */
+.conn-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2);
+  font-size: 10px; font-weight: 600; letter-spacing: .04em; color: var(--muted);
+  transition: all .3s;
+}
+.conn-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+  transition: background .3s;
+}
+.conn-pill.connected { border-color: rgba(23,232,143,.3); color: var(--green); }
+.conn-pill.connected .conn-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.conn-pill.connecting { border-color: rgba(240,160,48,.3); color: var(--amber); }
+.conn-pill.connecting .conn-dot { background: var(--amber); animation: pulse .8s infinite; }
+.conn-pill.error { border-color: rgba(224,85,85,.3); color: var(--red); }
+.conn-pill.error .conn-dot { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── PRESENCE BAR ── */
+.presence-bar {
+  height: 40px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 10px; flex-shrink: 0;
+  font-size: 11px; color: var(--muted);
+}
+.presence-label { margin-right: 4px; }
+.presence-avatars { display: flex; gap: 6px; flex: 1; }
+.avatar {
+  display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 4px;
+  border-radius: 20px; border: 1px solid; font-size: 10px; font-weight: 700;
+  transition: all .3s;
+}
+.avatar-dot { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #000; flex-shrink: 0; }
+.avatar-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar-field { font-size: 9px; opacity: .7; font-weight: 400; }
+
+/* ── SAVE STATUS ── */
+.save-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--muted); margin-left: auto;
+}
+.save-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.save-status.saving { color: var(--amber); }
+.save-status.saving .save-dot { background: var(--amber); animation: pulse .6s infinite; }
+.save-status.saved { color: var(--green); }
+.save-status.saved .save-dot { background: var(--green); }
+.save-status.error { color: var(--red); }
+.save-status.error .save-dot { background: var(--red); }
+
+/* ── MAIN LAYOUT ── */
+.app { display: flex; flex: 1; overflow: hidden; min-height: 0; flex-direction: column; height: calc(100vh - 88px); }
+.workspace { display: flex; flex: 1; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 280px; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.sidebar-head {
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
+}
+.sidebar-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ── FIELD GROUP ── */
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  letter-spacing: .04em; display: flex; align-items: center; gap: 6px;
+}
+.field-editing-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.field-editing-badge.visible { opacity: 1; }
+
+.field-input {
+  width: 100%; padding: 9px 11px; border: 1.5px solid var(--border2);
+  border-radius: var(--radius); background: var(--bg); color: var(--text);
+  font-size: 13px; font-family: var(--font); outline: none;
+  transition: border-color .15s, box-shadow .15s; resize: vertical;
+}
+.field-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(23,232,143,.1); }
+.field-input.remote-active { border-color: var(--amber) !important; box-shadow: 0 0 0 3px rgba(240,160,48,.1) !important; }
+textarea.field-input { min-height: 90px; line-height: 1.6; }
+
+/* ── IMAGE UPLOAD ── */
+.img-drop {
+  border: 1.5px dashed var(--border2); border-radius: var(--radius);
+  padding: 20px; text-align: center; cursor: pointer;
+  background: var(--bg); transition: all .2s; position: relative; overflow: hidden;
+}
+.img-drop:hover, .img-drop.drag-over {
+  border-color: var(--green); background: rgba(23,232,143,.04);
+}
+.img-drop input { display: none; }
+.img-drop-label { font-size: 12px; color: var(--muted); line-height: 1.8; pointer-events: none; }
+.img-drop-label span { color: var(--green); font-weight: 600; }
+.img-preview {
+  width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 3px;
+  display: none; border: 1px solid var(--border2);
+}
+.img-clear {
+  margin-top: 6px; width: 100%; padding: 6px; font-size: 11px; font-weight: 700;
+  background: #2a1515; color: var(--red); border: 1px solid #5a2222;
+  border-radius: var(--radius); cursor: pointer; display: none;
+}
+.img-clear:hover { background: #3a1818; }
+.img-uploading {
+  position: absolute; inset: 0; background: rgba(17,19,20,.85);
+  display: none; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--green); font-weight: 700; gap: 8px;
+}
+.img-uploading.active { display: flex; }
+.spinner { width: 14px; height: 14px; border: 2px solid rgba(23,232,143,.3); border-top-color: var(--green); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── CANVAS PREVIEW ── */
+.canvas-area {
+  flex: 1; overflow: auto; padding: 32px; background: #161819;
+  display: flex; align-items: flex-start; justify-content: center;
+}
+.canvas-wrap {
+  position: relative; flex-shrink: 0;
+}
+.canvas-card {
+  width: 600px; background: #fff; border-radius: 4px;
+  box-shadow: 0 8px 48px rgba(0,0,0,.5); overflow: visible; flex-shrink: 0;
+  position: relative;
+}
+.canvas-brand-bar { height: 5px; background: var(--green-dk); border-radius: 4px 4px 0 0; }
+
+/* ── CANVAS ELEMENTS (draggable) ── */
+.cv-el {
+  position: absolute; cursor: move; user-select: none;
+}
+.cv-el:hover .cv-el-outline { opacity: 1; }
+.cv-el.selected .cv-el-outline { opacity: 1; border-color: #17e88f; }
+.cv-el.editing { cursor: default; }
+.cv-el-outline {
+  position: absolute; inset: -3px; border: 1.5px dashed rgba(23,232,143,.5);
+  border-radius: 2px; pointer-events: none; opacity: 0; transition: opacity .15s;
+}
+.cv-el.selected .cv-el-outline { border-style: solid; }
+
+/* drag handles — corners */
+.cv-rh {
+  display: none; position: absolute; width: 8px; height: 8px;
+  background: #111; border: 2px solid #17e88f; border-radius: 1px; z-index: 10;
+}
+.cv-el.selected .cv-rh { display: block; }
+.cv-rh-nw { top:-5px; left:-5px; cursor:nw-resize; }
+.cv-rh-ne { top:-5px; right:-5px; cursor:ne-resize; }
+.cv-rh-sw { bottom:-5px; left:-5px; cursor:sw-resize; }
+.cv-rh-se { bottom:-5px; right:-5px; cursor:se-resize; }
+
+/* click-hint tooltip */
+.cv-el-hint {
+  display: none; position: absolute; top: -22px; left: 0;
+  background: #0d2b21; color: #17e88f; font-size: 9px; font-weight: 700;
+  padding: 2px 7px; border-radius: 2px; white-space: nowrap; pointer-events: none;
+  letter-spacing: .05em;
+}
+.cv-el.selected:not(.editing) .cv-el-hint { display: block; }
+
+/* Image element */
+.cv-img-inner {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  background: #e0e4e0; border-radius: 1px;
+}
+.cv-img-ph {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #aaa; letter-spacing: .04em; pointer-events: none;
+}
+
+/* Text element */
+.cv-text-inner {
+  width: 100%; height: 100%; outline: none; overflow: hidden;
+  word-break: break-word;
+}
+.cv-text-inner[contenteditable="true"] {
+  cursor: text; overflow: auto;
+  box-shadow: inset 0 0 0 1px rgba(23,232,143,.4);
+}
+/* deselect bg click target */
+.canvas-card { cursor: default; }
+
+/* ── EVENT LOG ── */
+.log-panel {
+  width: 260px; background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.log-head {
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .06em;
+  text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;
+}
+.log-clear { font-size: 9px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px; background: none; }
+.log-clear:hover { color: var(--text); border-color: var(--border2); }
+.log-body { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.log-entry {
+  font-size: 10px; line-height: 1.5; padding: 5px 8px; border-radius: 3px;
+  border-left: 2px solid var(--border2); color: var(--muted);
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.log-entry.local { border-left-color: var(--green); color: var(--text); }
+.log-entry.remote { border-left-color: var(--amber); }
+.log-entry.system { border-left-color: var(--blue); color: var(--blue); }
+.log-entry.error-log { border-left-color: var(--red); color: var(--red); }
+.log-time { font-size: 9px; color: var(--muted); margin-right: 4px; }
+
+/* ── SCROLLBARS ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2d30; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── NAME GATE ── -->
+<div id="name-gate">
+  <div class="gate-card">
+    <div class="gate-logo">
+      <div class="gate-logo-dot"></div>
+      CBRE Marketing Studio
+    </div>
+    <div>
+      <div class="gate-title">Sync Test</div>
+      <div class="gate-sub" style="margin-top:6px;">Enter your name to join the session. Open this page in multiple tabs or browsers to test real-time sync.</div>
+    </div>
+    <div class="gate-field">
+      <label>Your name</label>
+      <input type="text" id="gate-name" placeholder="e.g. Jane Smith" autocomplete="off" maxlength="40">
+    </div>
+    <button class="gate-btn" onclick="joinSession()">Join Session</button>
+  </div>
+</div>
+
+<!-- ── MASTHEAD ── -->
+<div class="mast">
+  <div class="mast-brand">CBRE</div>
+  <div class="mast-title">Sync Test &mdash; <strong>Test Property / Test Portfolio</strong></div>
+  <div class="conn-pill connecting" id="conn-pill">
+    <div class="conn-dot"></div>
+    <span id="conn-label">Connecting…</span>
+  </div>
+</div>
+
+<!-- ── PRESENCE BAR ── -->
+<div class="presence-bar">
+  <span class="presence-label">In this session:</span>
+  <div class="presence-avatars" id="presence-avatars">
+    <span style="color:var(--muted);font-size:10px;">Waiting for connection…</span>
+  </div>
+  <div class="save-status" id="save-status">
+    <div class="save-dot"></div>
+    <span id="save-label">—</span>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div class="app">
+  <div class="workspace">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-head">Content Fields</div>
+      <div class="sidebar-body">
+
+        <div class="field-group">
+          <div class="field-label">
+            Heading
+            <div class="field-editing-badge" id="badge-heading" style="color:#000;"></div>
+          </div>
+          <input
+            type="text"
+            class="field-input"
+            id="field-heading"
+            placeholder="Enter a heading…"
+            autocomplete="off"
+            oninput="onFieldInput('heading', this.value)"
+            onfocus="onFieldFocus('heading')"
+            onblur="onFieldBlur('heading')"
+          >
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">
+            Body Copy
+            <div class="field-editing-badge" id="badge-bodycopy" style="color:#000;"></div>
+          </div>
+          <textarea
+            class="field-input"
+            id="field-bodycopy"
+            placeholder="Enter body copy…"
+            rows="5"
+            oninput="onFieldInput('bodycopy', this.value)"
+            onfocus="onFieldFocus('bodycopy')"
+            onblur="onFieldBlur('bodycopy')"
+          ></textarea>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Hero Image</div>
+          <label class="img-drop" id="img-drop" ondragover="imgDragOver(event)" ondragleave="imgDragLeave()" ondrop="imgDrop(event)">
+            <input type="file" id="img-file" accept="image/*" onchange="imgFileSelected(this)">
+            <div class="img-drop-label" id="img-drop-label">
+              <span>Click to upload</span> or drag an image here<br>
+              <span style="font-size:10px;color:var(--muted);">JPG, PNG, WebP — uploads to Supabase</span>
+            </div>
+            <img id="img-preview" class="img-preview" alt="">
+            <div class="img-uploading" id="img-uploading">
+              <div class="spinner"></div> Uploading…
+            </div>
+          </label>
+          <button class="img-clear" id="img-clear" onclick="imgClear()">✕ Remove image</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CANVAS PREVIEW -->
+    <div class="canvas-area" id="canvas-area">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <div class="canvas-card" id="canvas-card" onmousedown="canvasBgClick(event)">
+          <div class="canvas-brand-bar"></div>
+          <!-- Elements are injected here by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENT LOG -->
+    <div class="log-panel">
+      <div class="log-head">
+        Sync Log
+        <button class="log-clear" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CONFIG — uses existing CBRE Supabase project
+// ════════════════════════════════════════════════════════
+const SUPA_URL = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
+
+// Test project identifiers — won't touch real project data
+const PORTFOLIO_ID = 'sync_test';
+const PROPERTY_ID  = 'sync_test_001';
+const CHANNEL_NAME = `project:${PORTFOLIO_ID}:${PROPERTY_ID}`;
+const LS_KEY       = `cbre_synctest_${PORTFOLIO_ID}_${PROPERTY_ID}`;
+
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+let userName   = '';
+let userId     = '';
+let wsSocket   = null;
+let connected  = false;
+let presence   = {};
+let saveTimer  = null;
+let _isSaving  = false;
+
+// Canvas elements — each: { id, type, x, y, w, h, content/imageUrl }
+// These are the source of truth. DOM is always derived from this.
+let elements = [];
+let _selectedId = null;
+let _nextId = 1;
+
+// Sidebar fields still mirror the two "main" elements for sync testing
+let fields = { heading: '', bodycopy: '', imageUrl: '' };
+
+const USER_COLORS = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8'];
+let _colorIdx = 0;
+
+// ════════════════════════════════════════════════════════
+// NAME GATE
+// ════════════════════════════════════════════════════════
+document.getElementById('gate-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinSession();
+});
+
+function joinSession() {
+  const n = document.getElementById('gate-name').value.trim();
+  if (!n) { document.getElementById('gate-name').focus(); return; }
+  userName = n;
+  userId   = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+  document.getElementById('name-gate').style.display = 'none';
+  log(`Joined as "${userName}"`, 'system');
+  init();
+}
+
+// ════════════════════════════════════════════════════════
+// INIT — load saved state, then open realtime connection
+// ════════════════════════════════════════════════════════
+async function init() {
+  // 1. Set up default elements so canvas renders immediately
+  elements = defaultElements();
+  renderCanvas();
+  // 2. Try loading from Supabase (will overlay defaults if saved state exists)
+  await loadFromSupabase();
+  // 3. Open Realtime WebSocket
+  openRealtime();
+}
+
+// ════════════════════════════════════════════════════════
+// SUPABASE REST — load / save
+// ════════════════════════════════════════════════════════
+async function loadFromSupabase() {
+  log('Loading saved state…', 'system');
+  try {
+    const url = `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${PORTFOLIO_ID}&property_id=eq.${PROPERTY_ID}&select=state_json,updated_at`;
+    const res  = await fetch(url, { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      applyFields(saved, 'load');
+      log(`Loaded from cloud (${timeAgo(rows[0].updated_at)})`, 'system');
+    } else {
+      log('No cloud state found — starting fresh', 'system');
+    }
+  } catch(e) {
+    log('Cloud load failed: ' + e.message, 'error-log');
+  }
+}
+
+async function saveToSupabase() {
+  if (_isSaving) return;
+  _isSaving = true;
+  setSaveStatus('saving', 'Saving…');
+  try {
+    const body = {
+      portfolio_id: PORTFOLIO_ID,
+      property_id:  PROPERTY_ID,
+      state_json:   JSON.stringify(collectState()),
+      updated_at:   new Date().toISOString()
+    };
+    // Check if row exists
+    const check = await fetch(
+      `${SUPA_URL}/rest/v1/projects?portfolio_id=eq.${PORTFOLIO_ID}&property_id=eq.${PROPERTY_ID}&select=id`,
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
+    );
+    const rows = await check.json();
+    const method = (rows && rows.length) ? 'PATCH' : 'POST';
+    const saveUrl = (rows && rows.length)
+      ? `${SUPA_URL}/rest/v1/projects?id=eq.${rows[0].id}`
+      : `${SUPA_URL}/rest/v1/projects`;
+    await fetch(saveUrl, {
+      method,
+      headers: {
+        'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    });
+    setSaveStatus('saved', 'Saved');
+    log('Saved to cloud', 'local');
+  } catch(e) {
+    setSaveStatus('error', 'Save failed');
+    log('Save failed: ' + e.message, 'error-log');
+  } finally {
+    _isSaving = false;
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  setSaveStatus('saving', 'Saving in…');
+  // Save 1.2s after the LAST change — no timer reset on incoming remote changes
+  saveTimer = setTimeout(saveToSupabase, 1200);
+}
+
+// ════════════════════════════════════════════════════════
+// SUPABASE REALTIME — WebSocket via REST Realtime API
+// ════════════════════════════════════════════════════════
+// We use Supabase's raw Realtime WebSocket protocol directly
+// (no npm client needed). This is exactly what the JS SDK does under the hood.
+// Protocol: wss://<project>.supabase.co/realtime/v1/websocket?apikey=...
+// Messages are JSON with topic, event, payload, ref fields.
+
+let _heartbeatInterval = null;
+let _reconnectTimer    = null;
+let _ref               = 1;  // incrementing message ref
+const _TOPIC           = 'realtime:' + CHANNEL_NAME;
+
+function openRealtime() {
+  setConnStatus('connecting', 'Connecting…');
+  const wsUrl = `wss://pgsgjafgetdvuctmpibf.supabase.co/realtime/v1/websocket?apikey=${SUPA_KEY}&vsn=1.0.0`;
+  try {
+    wsSocket = new WebSocket(wsUrl);
+  } catch(e) {
+    log('WebSocket creation failed: ' + e.message, 'error-log');
+    scheduleReconnect();
+    return;
+  }
+
+  wsSocket.onopen = () => {
+    log('WebSocket open — joining channel…', 'system');
+    // Join the channel
+    send({ topic: _TOPIC, event: 'phx_join', payload: {
+      config: {
+        presence: { key: userId },
+        broadcast: { self: false, ack: false }
+      }
+    }, ref: nextRef() });
+    // Heartbeat every 25s
+    clearInterval(_heartbeatInterval);
+    _heartbeatInterval = setInterval(() => {
+      send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() });
+    }, 25000);
+  };
+
+  wsSocket.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    handleMessage(msg);
+  };
+
+  wsSocket.onclose = (e) => {
+    clearInterval(_heartbeatInterval);
+    connected = false;
+    setConnStatus('connecting', 'Reconnecting…');
+    log('WebSocket closed — reconnecting…', 'system');
+    scheduleReconnect();
+  };
+
+  wsSocket.onerror = () => {
+    log('WebSocket error', 'error-log');
+  };
+}
+
+function handleMessage(msg) {
+  const { topic, event, payload } = msg;
+
+  if (event === 'phx_reply' && payload && payload.status === 'ok') {
+    // Channel join confirmed
+    if (!connected) {
+      connected = true;
+      setConnStatus('connected', 'Live');
+      log('Realtime channel joined ✓', 'system');
+      // Announce our presence
+      broadcastPresence(null);
+    }
+    return;
+  }
+
+  if (event === 'phx_error') {
+    log('Channel error: ' + JSON.stringify(payload), 'error-log');
+    return;
+  }
+
+  // ── BROADCAST: field operation ──
+  if (event === 'broadcast' && payload && payload.type === 'field_op') {
+    handleRemoteFieldOp(payload);
+    return;
+  }
+  if (event === 'broadcast' && payload && payload.type === 'el_move') {
+    applyRemoteElMove(payload); return;
+  }
+  if (event === 'broadcast' && payload && payload.type === 'el_resize') {
+    applyRemoteElResize(payload); return;
+  }
+
+  // ── BROADCAST: presence update ──
+  if (event === 'broadcast' && payload && payload.type === 'presence') {
+    handleRemotePresence(payload);
+    return;
+  }
+
+  // ── BROADCAST: presence leave ──
+  if (event === 'broadcast' && payload && payload.type === 'presence_leave') {
+    handlePresenceLeave(payload.userId);
+    return;
+  }
+}
+
+function send(msg) {
+  if (wsSocket && wsSocket.readyState === WebSocket.OPEN) {
+    wsSocket.send(JSON.stringify(msg));
+  }
+}
+
+function broadcast(payload) {
+  send({
+    topic:   _TOPIC,
+    event:   'broadcast',
+    payload: { type: payload.type, ...payload },
+    ref:     nextRef()
+  });
+}
+
+function nextRef() { return String(_ref++); }
+
+function scheduleReconnect() {
+  clearTimeout(_reconnectTimer);
+  _reconnectTimer = setTimeout(() => {
+    log('Attempting reconnect…', 'system');
+    openRealtime();
+  }, 3000);
+}
+
+// ════════════════════════════════════════════════════════
+// FIELD OPERATIONS
+// The key idea: we broadcast individual field changes (operations),
+// not full state snapshots. Each op is: { field, value, userId, userName }.
+// Receivers apply ONLY that field — nothing else is touched.
+// ════════════════════════════════════════════════════════
+function onFieldInput(field, value) {
+  // 1. Update local state
+  fields[field] = value;
+  // 2. Update canvas immediately
+  renderCanvas();
+  // 3. Broadcast the operation to other users
+  if (connected) {
+    broadcast({
+      type:     'field_op',
+      field:    field,
+      value:    value,
+      userId:   userId,
+      userName: userName
+    });
+  }
+  // 4. Schedule cloud save
+  scheduleSave();
+}
+
+function handleRemoteFieldOp(payload) {
+  const { field, value, userId: remoteId, userName: remoteName } = payload;
+  if (remoteId === userId) return;
+
+  log(`${remoteName} updated "${field}"`, 'remote');
+  fields[field] = value;
+
+  if (field === 'imageUrl') {
+    // Update image element state + DOM directly
+    const elState = elements.find(e => e.type === 'img');
+    if (elState) elState.imageUrl = value;
+    const wrap = elState ? document.querySelector(`.cv-el[data-id="${elState.id}"]`) : null;
+    if (wrap) {
+      const img = wrap.querySelector('img');
+      const ph  = wrap.querySelector('.cv-img-ph');
+      if (img) { img.src = value || ''; img.style.display = value ? 'block' : 'none'; }
+      if (ph)  { ph.style.display = value ? 'none' : ''; }
+    }
+    updateImageUI(value);
+    return;
+  }
+
+  // Text field — update element state + canvas DOM directly (no full re-render)
+  const elState = elements.find(e => e.field === field);
+  if (elState) elState.content = value;
+  const wrap = elState ? document.querySelector(`.cv-el[data-id="${elState.id}"]`) : null;
+  if (wrap) {
+    const inner = wrap.querySelector('.cv-text-inner');
+    // Only patch if user isn't actively editing that exact element
+    if (inner && !wrap.classList.contains('editing')) {
+      inner.textContent = value;
+      inner.dataset.placeholder = value ? '' : (field === 'heading' ? 'Heading…' : 'Body copy…');
+    } else if (inner) {
+      // They're editing the same element — highlight border warning, don't interrupt
+      inner.style.boxShadow = 'inset 0 0 0 2px rgba(240,160,48,.6)';
+      setTimeout(() => { inner.style.boxShadow = ''; }, 1500);
+    }
+  }
+
+  // Update sidebar only if user isn't typing in it
+  const input = document.getElementById('field-' + field);
+  if (input && document.activeElement !== input) {
+    input.value = value;
+  } else if (input) {
+    input.classList.add('remote-active');
+    setTimeout(() => input.classList.remove('remote-active'), 1500);
+  }
+}
+
+// Image field is special — value is a URL string
+function handleRemoteImageOp(payload) {
+  const { value, userId: remoteId, userName: remoteName } = payload;
+  if (remoteId === userId) return;
+  log(`${remoteName} updated image`, 'remote');
+  fields.imageUrl = value;
+  renderCanvas();
+  updateImageUI(value);
+}
+
+// ════════════════════════════════════════════════════════
+// PRESENCE
+// ════════════════════════════════════════════════════════
+function broadcastPresence(activeField) {
+  if (!connected) return;
+  broadcast({
+    type:        'presence',
+    userId:      userId,
+    userName:    userName,
+    activeField: activeField
+  });
+}
+
+function handleRemotePresence(payload) {
+  const { userId: remoteId, userName: remoteName, activeField } = payload;
+  if (remoteId === userId) return;
+
+  const isNew = !presence[remoteId];
+  if (isNew) {
+    // Assign a colour
+    const color = USER_COLORS[_colorIdx % USER_COLORS.length];
+    _colorIdx++;
+    presence[remoteId] = { name: remoteName, color, activeField };
+    log(`${remoteName} joined the session`, 'system');
+    // Announce ourselves back so they see us
+    broadcastPresence(null);
+  } else {
+    presence[remoteId].activeField = activeField;
+  }
+  renderPresence();
+  renderFieldBadges();
+}
+
+function handlePresenceLeave(remoteId) {
+  if (presence[remoteId]) {
+    log(`${presence[remoteId].name} left`, 'system');
+    delete presence[remoteId];
+    renderPresence();
+    renderFieldBadges();
+  }
+}
+
+function onFieldFocus(field) {
+  broadcastPresence(field);
+}
+
+function onFieldBlur(field) {
+  broadcastPresence(null);
+  // On blur: notify others we left this field, clear our badge
+  broadcast({ type: 'presence', userId, userName, activeField: null });
+}
+
+function renderPresence() {
+  const bar = document.getElementById('presence-avatars');
+  // Always show self
+  const meColor = '#17e88f';
+  let html = `<div class="avatar" style="color:${meColor};border-color:${meColor}22;background:${meColor}11;">
+    <div class="avatar-dot" style="background:${meColor};">${initials(userName)}</div>
+    <span class="avatar-name">${esc(userName)}</span>
+    <span class="avatar-field">(you)</span>
+  </div>`;
+
+  Object.entries(presence).forEach(([id, p]) => {
+    const fieldLabel = p.activeField ? ` · editing ${p.activeField}` : '';
+    html += `<div class="avatar" style="color:${p.color};border-color:${p.color}22;background:${p.color}11;">
+      <div class="avatar-dot" style="background:${p.color};">${initials(p.name)}</div>
+      <span class="avatar-name">${esc(p.name)}</span>
+      <span class="avatar-field">${esc(fieldLabel)}</span>
+    </div>`;
+  });
+
+  bar.innerHTML = html;
+}
+
+function renderFieldBadges() {
+  // Show which remote user is editing each field
+  ['heading','bodycopy'].forEach(field => {
+    const badge = document.getElementById('badge-' + field);
+    if (!badge) return;
+    // Find any remote user editing this field
+    const editor = Object.values(presence).find(p => p.activeField === field);
+    if (editor) {
+      badge.textContent = `${editor.name} is editing`;
+      badge.style.background = editor.color;
+      badge.style.color = '#000';
+      badge.classList.add('visible');
+      // Also highlight the input border
+      const input = document.getElementById('field-' + field);
+      if (input) { input.style.borderColor = editor.color; input.style.boxShadow = `0 0 0 3px ${editor.color}22`; }
+    } else {
+      badge.classList.remove('visible');
+      const input = document.getElementById('field-' + field);
+      if (input && document.activeElement !== input) { input.style.borderColor = ''; input.style.boxShadow = ''; }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// IMAGE UPLOAD
+// ════════════════════════════════════════════════════════
+function imgDragOver(e) { e.preventDefault(); document.getElementById('img-drop').classList.add('drag-over'); }
+function imgDragLeave()  { document.getElementById('img-drop').classList.remove('drag-over'); }
+function imgDrop(e) {
+  e.preventDefault();
+  document.getElementById('img-drop').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) uploadImage(file);
+}
+function imgFileSelected(input) {
+  const file = input.files[0];
+  if (file) uploadImage(file);
+  input.value = '';
+}
+
+async function uploadImage(file) {
+  document.getElementById('img-uploading').classList.add('active');
+  log('Uploading image…', 'local');
+  try {
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = `${PORTFOLIO_ID}/${PROPERTY_ID}/hero_${Date.now()}.${ext}`;
+    const res  = await fetch(`${SUPA_URL}/storage/v1/object/assets/${path}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': file.type },
+      body: file
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const url = `${SUPA_URL}/storage/v1/object/public/assets/${path}`;
+    fields.imageUrl = url;
+    // Update element state + DOM
+    const imgEl = elements.find(e => e.type === 'img');
+    if (imgEl) imgEl.imageUrl = url;
+    const imgWrap = imgEl ? document.querySelector(`.cv-el[data-id="${imgEl.id}"]`) : null;
+    if (imgWrap) {
+      const imgTag = imgWrap.querySelector('img');
+      const ph = imgWrap.querySelector('.cv-img-ph');
+      if (imgTag) { imgTag.src = url; imgTag.style.display = 'block'; }
+      if (ph) ph.style.display = 'none';
+    }
+    updateImageUI(url);
+    if (connected) {
+      broadcast({ type: 'field_op', field: 'imageUrl', value: url, userId, userName });
+    }
+    scheduleSave();
+    log('Image uploaded ✓', 'local');
+  } catch(e) {
+    log('Image upload failed: ' + e.message, 'error-log');
+  } finally {
+    document.getElementById('img-uploading').classList.remove('active');
+  }
+}
+
+function imgClear() {
+  fields.imageUrl = '';
+  const imgEl = elements.find(e => e.type === 'img');
+  if (imgEl) imgEl.imageUrl = '';
+  const imgWrap = imgEl ? document.querySelector(`.cv-el[data-id="${imgEl.id}"]`) : null;
+  if (imgWrap) {
+    const imgTag = imgWrap.querySelector('img');
+    const ph = imgWrap.querySelector('.cv-img-ph');
+    if (imgTag) { imgTag.src = ''; imgTag.style.display = 'none'; }
+    if (ph) ph.style.display = '';
+  }
+  updateImageUI('');
+  if (connected) broadcast({ type: 'field_op', field: 'imageUrl', value: '', userId, userName });
+  scheduleSave();
+}
+
+function updateImageUI(url) {
+  const preview  = document.getElementById('img-preview');
+  const dropLbl  = document.getElementById('img-drop-label');
+  const clearBtn = document.getElementById('img-clear');
+  if (url) {
+    preview.src = url;
+    preview.style.display = 'block';
+    dropLbl.style.display = 'none';
+    clearBtn.style.display = 'block';
+  } else {
+    preview.src = '';
+    preview.style.display = 'none';
+    dropLbl.style.display = '';
+    clearBtn.style.display = 'none';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// CANVAS RENDER
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// ELEMENT SYSTEM
+// ════════════════════════════════════════════════════════
+
+// Default layout — heading text box, body text box, image box
+function defaultElements() {
+  return [
+    { id: 'img1',     type: 'img',  x: 0,   y: 5,   w: 600, h: 300, imageUrl: '' },
+    { id: 'heading1', type: 'text', x: 32,  y: 325, w: 536, h: 52,
+      content: '', fontSize: 26, fontWeight: 700, color: '#111111',
+      field: 'heading' },
+    { id: 'body1',    type: 'text', x: 32,  y: 385, w: 536, h: 100,
+      content: '', fontSize: 14, fontWeight: 400, color: '#444444',
+      field: 'bodycopy' },
+  ];
+}
+
+function applyFields(saved, source) {
+  // saved may be old format (flat fields) or new format ({ elements, fields })
+  if (saved && saved.elements) {
+    elements = saved.elements;
+    fields   = saved.fields || {};
+    _nextId  = (Math.max(0, ...elements.map(e => parseInt(e.id) || 0)) + 1);
+  } else if (saved) {
+    // Legacy flat format — map into elements
+    fields = { heading: saved.heading||'', bodycopy: saved.bodycopy||'', imageUrl: saved.imageUrl||'' };
+    elements = defaultElements();
+    elements.find(e=>e.field==='heading') && (elements.find(e=>e.field==='heading').content = fields.heading);
+    elements.find(e=>e.field==='bodycopy') && (elements.find(e=>e.field==='bodycopy').content = fields.bodycopy);
+    const imgEl = elements.find(e=>e.type==='img');
+    if (imgEl) imgEl.imageUrl = fields.imageUrl || '';
+  } else {
+    elements = defaultElements();
+    fields   = {};
+  }
+  // Sync sidebar inputs
+  const hEl = elements.find(e=>e.field==='heading');
+  const bEl = elements.find(e=>e.field==='bodycopy');
+  const iEl = elements.find(e=>e.type==='img');
+  if (hEl) document.getElementById('field-heading').value  = hEl.content || '';
+  if (bEl) document.getElementById('field-bodycopy').value = bEl.content || '';
+  if (iEl) updateImageUI(iEl.imageUrl || '');
+  renderCanvas();
+}
+
+function collectState() {
+  return { elements, fields };
+}
+
+// ── Full re-render of canvas from elements[] ──
+function renderCanvas() {
+  const card = document.getElementById('canvas-card');
+  // Remove all existing .cv-el nodes
+  card.querySelectorAll('.cv-el').forEach(n => n.remove());
+  // Set card height to fit all elements
+  const maxBottom = elements.reduce((m, e) => Math.max(m, e.y + e.h), 400);
+  card.style.height = (maxBottom + 32) + 'px';
+  card.style.width  = '600px';
+  // Create DOM for each element
+  elements.forEach(el => createElDOM(el));
+}
+
+function createElDOM(cfg) {
+  const card = document.getElementById('canvas-card');
+  const wrap = document.createElement('div');
+  wrap.className  = 'cv-el';
+  wrap.dataset.id = cfg.id;
+  wrap.style.cssText = `left:${cfg.x}px;top:${cfg.y}px;width:${cfg.w}px;height:${cfg.h}px;`;
+
+  // Outline + hint
+  const outline = document.createElement('div'); outline.className = 'cv-el-outline'; wrap.appendChild(outline);
+  const hint    = document.createElement('div'); hint.className = 'cv-el-hint'; hint.textContent = 'Double-click to edit'; wrap.appendChild(hint);
+
+  // Resize handles
+  ['nw','ne','sw','se'].forEach(dir => {
+    const rh = document.createElement('div');
+    rh.className = `cv-rh cv-rh-${dir}`;
+    rh.dataset.dir = dir;
+    rh.addEventListener('mousedown', e => { e.stopPropagation(); startResize(e, wrap, dir); });
+    wrap.appendChild(rh);
+  });
+
+  if (cfg.type === 'img') {
+    wrap.style.overflow = 'hidden';
+    const img = document.createElement('img');
+    img.className = 'cv-img-inner';
+    img.style.display = cfg.imageUrl ? 'block' : 'none';
+    if (cfg.imageUrl) img.src = cfg.imageUrl;
+    const ph = document.createElement('div');
+    ph.className = 'cv-img-ph';
+    ph.textContent = 'Hero image';
+    ph.style.display = cfg.imageUrl ? 'none' : '';
+    wrap.appendChild(img);
+    wrap.appendChild(ph);
+    hint.textContent = 'Click image in sidebar to change';
+  } else {
+    // text
+    const inner = document.createElement('div');
+    inner.className = 'cv-text-inner';
+    inner.contentEditable = 'false';
+    inner.style.cssText = `font-size:${cfg.fontSize||14}px;font-weight:${cfg.fontWeight||400};color:${cfg.color||'#111'};line-height:1.5;padding:4px;`;
+    inner.textContent = cfg.content || '';
+    if (!cfg.content) {
+      inner.dataset.placeholder = cfg.field === 'heading' ? 'Heading…' : 'Body copy…';
+    }
+    wrap.appendChild(inner);
+
+    // Double-click → enter edit mode
+    wrap.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      enterEditMode(wrap, inner, cfg.id);
+    });
+
+    // Sync placeholder visibility
+    inner.addEventListener('input', () => {
+      const val = inner.textContent || '';
+      inner.dataset.placeholder = val ? '' : (cfg.field === 'heading' ? 'Heading…' : 'Body copy…');
+      // Update element state + sidebar
+      const elState = elements.find(el => el.id === cfg.id);
+      if (elState) elState.content = val;
+      if (cfg.field) {
+        const sid = cfg.field === 'heading' ? 'field-heading' : 'field-bodycopy';
+        const sEl = document.getElementById(sid);
+        if (sEl && document.activeElement !== sEl) sEl.value = val;
+        fields[cfg.field] = val;
+        // Broadcast
+        if (connected) broadcast({ type:'field_op', field: cfg.field, value: val, userId, userName });
+        scheduleSave();
+      }
+    });
+  }
+
+  // Drag to move
+  wrap.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('cv-rh')) return;
+    selectEl(cfg.id);
+    if (wrap.classList.contains('editing')) return;
+    startDrag(e, wrap, cfg.id);
+  });
+
+  card.appendChild(wrap);
+  // Apply selection state
+  if (_selectedId === cfg.id) wrap.classList.add('selected');
+  return wrap;
+}
+
+function selectEl(id) {
+  _selectedId = id;
+  document.querySelectorAll('.cv-el').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === String(id));
+  });
+}
+
+function canvasBgClick(e) {
+  if (e.target === document.getElementById('canvas-card') || e.target.classList.contains('canvas-brand-bar')) {
+    deselectAll();
+  }
+}
+
+function deselectAll() {
+  _selectedId = null;
+  document.querySelectorAll('.cv-el').forEach(el => {
+    el.classList.remove('selected');
+    exitEditMode(el);
+  });
+}
+
+function enterEditMode(wrap, inner, id) {
+  selectEl(id);
+  wrap.classList.add('editing');
+  const hint = wrap.querySelector('.cv-el-hint');
+  if (hint) hint.style.display = 'none';
+  inner.contentEditable = 'true';
+  inner.focus();
+  // Place cursor at end
+  const range = document.createRange();
+  range.selectNodeContents(inner);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  // Blur exits edit mode
+  inner.onblur = () => exitEditMode(wrap);
+  // Broadcast focus
+  const elState = elements.find(el => el.id === id);
+  if (elState && elState.field) {
+    broadcastPresence(elState.field);
+    onFieldFocus(elState.field);
+  }
+}
+
+function exitEditMode(wrap) {
+  if (!wrap) return;
+  wrap.classList.remove('editing');
+  const inner = wrap.querySelector('.cv-text-inner');
+  if (inner) { inner.contentEditable = 'false'; inner.onblur = null; }
+  broadcastPresence(null);
+}
+
+// ── DRAG ──
+function startDrag(e, wrap, id) {
+  e.preventDefault();
+  const elState = elements.find(el => el.id === id);
+  if (!elState) return;
+  const startX = e.clientX - elState.x;
+  const startY = e.clientY - elState.y;
+
+  function onMove(ev) {
+    const nx = Math.max(0, Math.round(ev.clientX - startX));
+    const ny = Math.max(5, Math.round(ev.clientY - startY));
+    elState.x = nx; elState.y = ny;
+    wrap.style.left = nx + 'px';
+    wrap.style.top  = ny + 'px';
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    // Broadcast position change
+    if (connected) broadcast({ type:'el_move', id, x: elState.x, y: elState.y, userId, userName });
+    scheduleSave();
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ── RESIZE ──
+function startResize(e, wrap, dir) {
+  e.preventDefault();
+  const id = wrap.dataset.id;
+  const elState = elements.find(el => el.id === id);
+  if (!elState) return;
+  const startX = e.clientX, startY = e.clientY;
+  const origX = elState.x, origY = elState.y, origW = elState.w, origH = elState.h;
+
+  function onMove(ev) {
+    const dx = ev.clientX - startX, dy = ev.clientY - startY;
+    let nx = origX, ny = origY, nw = origW, nh = origH;
+    if (dir.includes('e')) nw = Math.max(60, origW + dx);
+    if (dir.includes('s')) nh = Math.max(30, origH + dy);
+    if (dir.includes('w')) { nx = origX + dx; nw = Math.max(60, origW - dx); }
+    if (dir.includes('n')) { ny = origY + dy; nh = Math.max(30, origH - dy); }
+    elState.x=nx; elState.y=ny; elState.w=nw; elState.h=nh;
+    wrap.style.cssText = `left:${nx}px;top:${ny}px;width:${nw}px;height:${nh}px;`;
+    if (elState.type==='img') wrap.style.overflow='hidden';
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (connected) broadcast({ type:'el_resize', id, x:elState.x, y:elState.y, w:elState.w, h:elState.h, userId, userName });
+    scheduleSave();
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ── Apply a remote element move/resize without re-rendering whole canvas ──
+function applyRemoteElMove(payload) {
+  const { id, x, y } = payload;
+  const elState = elements.find(el => el.id === id);
+  if (elState) { elState.x = x; elState.y = y; }
+  const wrap = document.querySelector(`.cv-el[data-id="${id}"]`);
+  if (wrap) { wrap.style.left = x+'px'; wrap.style.top = y+'px'; }
+}
+function applyRemoteElResize(payload) {
+  const { id, x, y, w, h } = payload;
+  const elState = elements.find(el => el.id === id);
+  if (elState) { elState.x=x; elState.y=y; elState.w=w; elState.h=h; }
+  const wrap = document.querySelector(`.cv-el[data-id="${id}"]`);
+  if (wrap) { wrap.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px;`; if(elState&&elState.type==='img') wrap.style.overflow='hidden'; }
+}
+
+// ── Placeholder styling via CSS ──
+const _phStyle = document.createElement('style');
+_phStyle.textContent = `.cv-text-inner:empty[data-placeholder]:before { content: attr(data-placeholder); color: #ccc; pointer-events: none; }`;
+document.head.appendChild(_phStyle);
+
+function renderCanvas() {
+  const card = document.getElementById('canvas-card');
+  if (!card) return;
+  card.querySelectorAll('.cv-el').forEach(n => n.remove());
+  const maxBottom = elements.reduce((m, e) => Math.max(m, e.y + e.h), 400);
+  card.style.height = (maxBottom + 32) + 'px';
+  card.style.width  = '600px';
+  elements.forEach(el => createElDOM(el));
+}
+
+// ════════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════════
+function setConnStatus(state, label) {
+  const pill = document.getElementById('conn-pill');
+  pill.className = 'conn-pill ' + state;
+  document.getElementById('conn-label').textContent = label;
+  if (state === 'connected') renderPresence();
+}
+
+function setSaveStatus(state, label) {
+  const el = document.getElementById('save-status');
+  el.className = 'save-status ' + state;
+  document.getElementById('save-label').textContent = label;
+  if (state === 'saved') {
+    setTimeout(() => {
+      if (document.getElementById('save-label').textContent === 'Saved') {
+        el.className = 'save-status';
+        document.getElementById('save-label').textContent = '—';
+      }
+    }, 3000);
+  }
+}
+
+function log(msg, type = 'system') {
+  const body = document.getElementById('log-body');
+  const now  = new Date();
+  const time = now.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  entry.innerHTML = `<span class="log-time">${time}</span>${esc(msg)}`;
+  body.prepend(entry);
+  // Cap at 80 entries
+  while (body.children.length > 80) body.removeChild(body.lastChild);
+}
+
+function clearLog() {
+  document.getElementById('log-body').innerHTML = '';
+}
+
+function initials(name) {
+  return name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function timeAgo(iso) {
+  if (!iso) return 'unknown';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  return Math.floor(diff/3600000) + 'h ago';
+}
+
+// Announce leave when tab closes
+window.addEventListener('beforeunload', () => {
+  if (connected) {
+    broadcast({ type: 'presence_leave', userId, userName });
+  }
+});
+</script>
+</body>
+</html>
