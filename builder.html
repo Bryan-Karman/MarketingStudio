@@ -5583,12 +5583,14 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         if(el.dataset.type === 'text' && inner){
           // Each child div represents one line (plain-line, bt-wrap, or inline div).
           const _childDivs = Array.from(inner.querySelectorAll(':scope > div'));
+          let _hasChildDivs = false;
           if(_childDivs.length > 0){
             _richHtml = inner.innerHTML;
             // Build content with one entry per child div so lines.length matches
             _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
+            _hasChildDivs = true;
           } else {
-            // No child divs — simple single-line text
+            // No child divs — plain text, renderer will handle wrapping
             _content = inner.textContent || '';
             if(inner.innerHTML !== inner.textContent) _richHtml = inner.innerHTML;
           }
@@ -5615,8 +5617,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           cropX: el.dataset.cropX||'', cropY: el.dataset.cropY||'',
           cropW: el.dataset.cropW||'', cropH: el.dataset.cropH||'',
           imgSrc: (function(){ var img=el.querySelector('img'); return img?img.src:''; })(),
-          // noWrap: lines already browser-wrapped — don't re-split in native renderer
-          noWrap: _content ? '1' : '0',
+          // noWrap: only skip re-wrapping when content came from child divs (already browser-wrapped)
+          noWrap: _hasChildDivs ? '1' : '0',
         });
       });
       if(_liveSvs.length){
@@ -7584,7 +7586,7 @@ function toggleTabApproval(){
   _svList.forEach(function(sv){
     if(sv.incomeAnchor === '1'){
       sv.wasIncomeAnchor = '1';
-      // Belt-and-suspenders: if income was still stripped, re-append it now
+      // Ensure income is in sv.content
       if(_fi_approve && sv.content){
         var _pfx = _fi_approve.split(':')[0].trim().toLowerCase();
         var _lines = sv.content.split('\n');
@@ -7593,6 +7595,33 @@ function toggleTabApproval(){
         if(!_hasIncome){
           sv.content = sv.content.trimEnd() + '\n' + _fi_approve;
         }
+      }
+      // Fix sv.richHtml: ensure the income plain-line div has font-weight:700.
+      // serializeTab() captured richHtml before globalSync set the bold — fix it now.
+      if(_fi_approve && sv.richHtml){
+        var _rhTmp = document.createElement('div');
+        _rhTmp.innerHTML = sv.richHtml;
+        var _rhPfx = _fi_approve.split(':')[0].trim().toLowerCase();
+        var _rhPls = _rhTmp.querySelectorAll('div.plain-line');
+        var _rhFound = false;
+        _rhPls.forEach(function(d){
+          var t = (d.textContent||'').trim().toLowerCase();
+          if(t === _fi_approve.toLowerCase() || t.startsWith(_rhPfx+':')){
+            d.style.fontWeight = '700';
+            _rhFound = true;
+          }
+        });
+        if(!_rhFound && _fi_approve){
+          // Income not in richHtml — append it as a bold plain-line div
+          var _bps = parseFloat(sv.bulletParaSpacing||'0');
+          var _mb = _bps > 0 ? 'margin-bottom:'+_bps+'px;' : '';
+          var _nd = document.createElement('div');
+          _nd.className = 'plain-line';
+          _nd.setAttribute('style','display:block;'+_mb+'font-weight:700;');
+          _nd.textContent = _fi_approve;
+          _rhTmp.appendChild(_nd);
+        }
+        sv.richHtml = _rhTmp.innerHTML;
       }
     }
     sv.field         = '';
