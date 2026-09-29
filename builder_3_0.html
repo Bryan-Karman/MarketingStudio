@@ -7604,23 +7604,36 @@ function _rtHandleMsg(msg){
     _rtConn = true;
     _rtSetConn('connected','Live');
     console.log('[RT] connected | user:', _rtUserName, '| channel:', _rtTopic());
-    _rtBroadcastPresence(null); // announce to others already in channel
+    _rtBroadcastPresence(null);
     return;
   }
 
   if(event==='phx_error'){ console.warn('[RT] channel error', payload); return; }
+
+  // Log every incoming broadcast so we can see the exact structure
+  if(event==='broadcast'){
+    console.log('[RT] ← broadcast raw:', JSON.stringify(msg).slice(0,200));
+  }
+
   if(event!=='broadcast'||!payload) return;
 
-  if(payload.type==='field_op')   { _rtApplyOp(payload);       return; }
-  if(payload.type==='presence')   { _rtApplyPresence(payload); return; }
-  if(payload.type==='pres_leave') { _rtApplyLeave(payload.uid); return; }
+  // Supabase Realtime wraps the broadcast data under payload.payload in some versions.
+  // Support both structures: flat (payload.type) and nested (payload.payload.type)
+  const data = (payload.payload && payload.payload.type) ? payload.payload : payload;
+
+  if(data.type==='field_op')   { _rtApplyOp(data);       return; }
+  if(data.type==='presence')   { _rtApplyPresence(data); return; }
+  if(data.type==='pres_leave') { _rtApplyLeave(data.uid); return; }
+
+  console.log('[RT] unhandled broadcast type:', data.type, data);
 }
 
 // ── Broadcast a local field change ──────────────────────────────
 // Called from every sidebar input's oninput handler.
 function rtBroadcastField(field, value){
-  if(!_rtConn) return;
-  if(_tabApprovals && _tabApprovals[currentTab]) return; // approved — isolated
+  if(!_rtConn){ console.log('[RT] not connected, skipping broadcast for', field); return; }
+  if(_tabApprovals && _tabApprovals[currentTab]) return;
+  console.log('[RT] → sending field_op', field, value.slice(0,30));
   _rtBroadcast({ type:'field_op', field, value, tabIdx:currentTab, uid:_rtUserId, uname:_rtUserName });
 }
 
