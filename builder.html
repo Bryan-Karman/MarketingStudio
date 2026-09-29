@@ -5189,16 +5189,16 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
     const prevNextId = nextId;
     const prevTab    = currentTab;
     nextId    = 1;
-    currentTab = tabIdx;
+    // NOTE: do NOT set currentTab = tabIdx here. The condition below uses prevTab
+    // (the tab actually on screen) to decide whether to clone the live DOM.
+    // Setting currentTab = tabIdx made the condition always true, causing every
+    // non-active tab to clone the live DOM (the brochure) instead of rebuilding
+    // from its own savedStates.
     try {
-      // ── EDM TABS: clone live artwork directly — it is already correct ──
-      // ── ACTIVE TAB: clone live artwork directly — always pixel-perfect ──
-      // For non-active tabs, rebuild from savedStates.
-      // The live DOM already has income bold, user bold, etc exactly as on screen.
-      if(tabIdx === currentTab){
+      // Clone live DOM only if this tab is actually the one on screen.
+      // For all other tabs, rebuild from savedStates.
+      if(tabIdx === prevTab){
         // Active tab: clone live DOM directly — it is already correctly rendered.
-        // This is the most reliable path for all tabs: what you see is what you get.
-        // EDM is the active tab — live artwork is ready, just clone it
         const realArt = document.getElementById('artwork');
         offscreen.style.width  = realArt.style.width;
         offscreen.style.height = realArt.style.height;
@@ -5420,7 +5420,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
     finally {
       if(offscreen&&offscreen.parentNode) document.body.removeChild(offscreen);
       document.querySelectorAll('div[style*="z-index:-99999"]').forEach(el=>el.remove());
-      nextId=prevNextId; currentTab=prevTab;
+      nextId=prevNextId; // currentTab is never mutated — no restore needed
     }
   });
 }
@@ -5549,17 +5549,9 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
 async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
-  // EDM tabs are too complex for native renderer — use raster (html2canvas)
-  if(tabIdx === 2 || tabIdx === 3){
-    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
-  }
-  // Brochure tabs (0,1): use raster renderer for pixel-perfect bold/formatting accuracy.
-  // The native renderer reconstructs HTML from savedStates which loses font-weight:700
-  // set on plain-line divs by globalSync (income line bold). The raster renderer rebuilds
-  // the DOM correctly so bold always matches exactly what's on screen.
-  if(tabIdx === 0 || tabIdx === 1){
-    return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
-  }
+  // All tabs use the native jsPDF renderer so text exports as live/selectable vector text,
+  // not a rasterised bitmap. The native renderer handles bold (incl. income line),
+  // bullets, agents, bodycopy, and all EDM fields correctly.
 
   let fonts = [];
   try { fonts = await loadPdfFonts(); } catch(e){ console.warn('Font load error',e); }
@@ -7558,11 +7550,24 @@ async function downloadAllSelectedPDF(){
   deselectAll();savedStates[currentTab]=serializeTab();
   const indices=getSelectedTabIndices();if(!indices.length){btn.disabled=false;btn.textContent='⬇ All PDFs';return;}
   const PX_PER_MM=3.7795;
-  function getMM(idx){ const [w,h]=getTabSize(idx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
+  // Compute page size + bleedOpts per tab — same as individual export
+  function getTabMmAndBleed(idx){
+    const [pxW,pxH]=getTabSize(idx);
+    const _bl=getBleed(idx); const bleedMm=_bl.mm||0;
+    const artWmm=Math.round(pxW/PX_PER_MM*10)/10;
+    const artHmm=Math.round(pxH/PX_PER_MM*10)/10;
+    const pageW=artWmm+bleedMm*2; const pageH=artHmm+bleedMm*2;
+    return {pageW,pageH,bleedOpts:{bleedMm,cropMarks:_bl.cropMarks,artWmm,artHmm}};
+  }
   try{
-    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
-    const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    const{jsPDF}=window.jspdf;
+    const first=getTabMmAndBleed(indices[0]);
+    const pdf=new jsPDF({orientation:first.pageW>first.pageH?'landscape':'portrait',unit:'mm',format:[first.pageW,first.pageH]});
+    for(let i=0;i<indices.length;i++){
+      const tabIdx=indices[i];
+      const {pageW,pageH,bleedOpts}=getTabMmAndBleed(tabIdx);
+      await renderTabToPdf(pdf,tabIdx,pageW,pageH,i>0,bleedOpts);
+    }
     const _propSlug=(_propertyName||gv('fa1')||'CBRE').replace(/[^a-zA-Z0-9\s]/g,'').trim();
     pdf.save(`${_propSlug}_All_Selected.pdf`);
   }catch(err){alert('PDF error: '+err.message);}
@@ -7575,11 +7580,23 @@ showAllArtworks=async function(){
   const indices=getSelectedTabIndices();if(!indices.length){alert('No marketing items selected.');return;}
   const btn=document.getElementById('view-all-tb-btn');if(btn){btn.disabled=true;btn.textContent='Building…';}
   const PX_PER_MM=3.7795;
-  function getMM(idx){ const [w,h]=getTabSize(idx); return [Math.round(w/PX_PER_MM*10)/10, Math.round(h/PX_PER_MM*10)/10]; }
+  function getTabMmAndBleed(idx){
+    const [pxW,pxH]=getTabSize(idx);
+    const _bl=getBleed(idx); const bleedMm=_bl.mm||0;
+    const artWmm=Math.round(pxW/PX_PER_MM*10)/10;
+    const artHmm=Math.round(pxH/PX_PER_MM*10)/10;
+    const pageW=artWmm+bleedMm*2; const pageH=artHmm+bleedMm*2;
+    return {pageW,pageH,bleedOpts:{bleedMm,cropMarks:_bl.cropMarks,artWmm,artHmm}};
+  }
   try{
-    const{jsPDF}=window.jspdf;const mm0=getMM(indices[0]);
-    const pdf=new jsPDF({orientation:mm0[0]>mm0[1]?'landscape':'portrait',unit:'mm',format:[mm0[0],mm0[1]]});
-    for(let i=0;i<indices.length;i++){const tabIdx=indices[i];const mm=getMM(tabIdx);await renderTabToPdf(pdf,tabIdx,mm[0],mm[1],i>0);}
+    const{jsPDF}=window.jspdf;
+    const first=getTabMmAndBleed(indices[0]);
+    const pdf=new jsPDF({orientation:first.pageW>first.pageH?'landscape':'portrait',unit:'mm',format:[first.pageW,first.pageH]});
+    for(let i=0;i<indices.length;i++){
+      const tabIdx=indices[i];
+      const {pageW,pageH,bleedOpts}=getTabMmAndBleed(tabIdx);
+      await renderTabToPdf(pdf,tabIdx,pageW,pageH,i>0,bleedOpts);
+    }
     const blob=pdf.output('blob');const url=URL.createObjectURL(blob);window.open(url,'_blank');
   }catch(err){alert('Error: '+err.message);}
   if(btn){btn.disabled=false;btn.textContent='⊞ View All';}
