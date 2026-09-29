@@ -1136,7 +1136,7 @@ function createElement(cfg){
         }
         // Track richHtml for ALL fields (including managed bodycopy/bullets) with bold/italic
         {
-          var _richRx2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+          var _richRx2 = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
           var _hasRich2 = _richRx2.test(inner.innerHTML);
           if(_el2 && _hasRich2){
             _el2.dataset.richHtml = inner.innerHTML;
@@ -1440,7 +1440,7 @@ function createElement(cfg){
               }
               // Check if the element has real formatting (bold/italic/underline/sup).
               // Bullet/plain-line divs and span.bt structure is NOT rich formatting — just layout.
-              var _richRxBlur = /<(b|i|u|sup|strong|em)[\s>]/i;
+              var _richRxBlur = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
               var _blurHasFormatting = _richRxBlur.test(inner.innerHTML);
               if(_blurHasFormatting){
                 // Bold/italic present: set richHtml on element AND persist in savedStates.
@@ -2529,7 +2529,7 @@ function setParaSpacing(v){
   } else {
     applyPlainParaSpacing(inner, val);
     // After spacing update, sync richHtml only if actual formatting tags exist
-    var _richRxSp = /<(b|i|u|sup|strong|em)[\s>]/i;
+    var _richRxSp = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
     var _plainFormatted = _richRxSp.test(inner.innerHTML);
     var _isMgdSp = (selectedEl.dataset.field==='bodycopy'||selectedEl.dataset.field==='bullets');
     if(_plainFormatted && !_isMgdSp){
@@ -3011,6 +3011,7 @@ function serializeTab(){
           }).join('\n');
           // Save richHtml for bullet elements that have inline formatting (bold/italic/underline)
           // Check if any .bt span contains HTML elements (not just plain text)
+          var _richRxSer = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
           var _bullHasFormatting = false;
           if(textSpans.length > 0){
             _bullHasFormatting = Array.from(textSpans).some(function(s){ return s.innerHTML !== s.textContent; });
@@ -3019,9 +3020,10 @@ function serializeTab(){
           if(!_bullHasFormatting && el.dataset.richHtml && el.dataset.richHtml !== inner.textContent){
             _bullHasFormatting = true;
           }
-          // Save richHtml for ALL bullet fields including managed ones (bodycopy/bullets).
-          // globalSync skips elements with el.dataset.richHtml set, so bold/italic persists.
-          var _richRxSer = /<(b|i|u|sup|strong|em)[\s>]/i;
+          // Also detect font-weight:700 in plain-line divs (income bold stored as inline style)
+          if(!_bullHasFormatting && _richRxSer.test(inner.innerHTML)){
+            _bullHasFormatting = true;
+          }
           var _realBullFmt = _bullHasFormatting && _richRxSer.test(inner.innerHTML);
           if(_realBullFmt){
             obj.richHtml = el.dataset.richHtml || inner.innerHTML;
@@ -3057,7 +3059,7 @@ function serializeTab(){
           if(_richCheck && _plainLineEls.length > 0){
             _richCheck = Array.from(_plainLineEls).some(function(d){ return d.innerHTML !== d.textContent; });
           }
-          var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]/i;
+          var _richRxSer2 = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
           // Allow richHtml for ALL fields — globalSync guards against overwriting bold.
           var _realRichCheck = _richCheck && _richRxSer2.test(_candidateRich);
           if(_realRichCheck){
@@ -3178,7 +3180,7 @@ function restoreTab(idx){
         el.dataset.bullets = '0';
         var _bpsRestore = parseFloat(sv.bulletParaSpacing || '6') || 6;
         // If richHtml was saved, only restore if it has real formatting tags AND field is not managed
-        var _richRxRst = /<(b|i|u|sup|strong|em)[\s>]/i;
+        var _richRxRst = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
         // Restore richHtml for ALL fields — bold/italic is user intent and must persist.
         if(sv.richHtml && _richRxRst.test(sv.richHtml)){
           inner.innerHTML = sv.richHtml;
@@ -3208,7 +3210,7 @@ function restoreTab(idx){
         // Restore richHtml for ALL fields including managed ones (bodycopy/bullets).
         // Bold/italic is user intent and must survive refresh. globalSync skips elements
         // with el.dataset.richHtml set so it won't overwrite the formatting.
-        var _richRxBRst = /<(b|i|u|sup|strong|em)[\s>]/i;
+        var _richRxBRst = /<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
         if(sv.richHtml && _richRxBRst.test(sv.richHtml)){
           // Element has bold/italic formatting: restore from richHtml directly
           inner.innerHTML = sv.richHtml;
@@ -3279,24 +3281,25 @@ function restoreTab(idx){
             inner.appendChild(_incDiv);
           }
         }
-        // Bold the last line if it looks like an income line
-        if(_fi_restore){
-          var _plainDivs = inner.querySelectorAll('div.plain-line');
-          if(_plainDivs.length){
-            var _lastDiv = _plainDivs[_plainDivs.length-1];
-            var _lastTxt = (_lastDiv.textContent||'').trim();
-            var _fiPfxR = _fi_restore.split(':')[0].trim().toLowerCase();
-            if(_lastTxt.toLowerCase().startsWith(_fiPfxR+':')){
-              _lastDiv.style.fontWeight = '700';
-            }
-          }
-        }
         } else {
           // richHtml was restored — just re-tag the spacing data so paragraph spacing
           // controls still work correctly; don't rebuild the DOM.
           el.dataset.bulletParaSpacing = sv.bulletParaSpacing;
           inner.dataset.bulletSpacing = sv.bulletParaSpacing;
           inner.style.setProperty('--bullet-spacing', sv.bulletParaSpacing);
+        }
+        // ── Always bold the income line after restore (runs for BOTH richHtml and plain paths) ──
+        // This ensures the live DOM always has font-weight:700 on the income div,
+        // so the PDF renderer can read it correctly from the DOM.
+        if(_fi_restore && sv.wasIncomeAnchor === '1'){
+          var _allPls = inner.querySelectorAll('div.plain-line');
+          var _fiPfxR2 = _fi_restore.split(':')[0].trim().toLowerCase();
+          _allPls.forEach(function(d){
+            var t = (d.textContent||'').trim().toLowerCase();
+            if(t === _fi_restore.trim().toLowerCase() || t.startsWith(_fiPfxR2+':')){
+              d.style.fontWeight = '700';
+            }
+          });
         }
       }
     }
@@ -3969,7 +3972,7 @@ function globalSync(){
         inner.innerHTML = _plines.map(function(l, i){
           var isBold = _fi3 && i === _plines.length - 1;
           if(!l.trim()) return '<div class="plain-line" style="min-height:0.5em;margin-bottom:'+_mb3+'"></div>';
-          return '<div class="plain-line" style="display:block;margin-bottom:'+_mb3+';'+(isBold?'font-weight:700;':'')+'">'+_pesc(l)+'</div>';
+          return '<div class="plain-line" style="display:block;margin-bottom:'+_mb3+';'+(isBold?'font-weight:700;':'')+'">'+(isBold?'<b>'+_pesc(l)+'</b>':_pesc(l))+'</div>';
         }).join('');
         inner.style.whiteSpace = 'normal';
         } // end else (no svRich3)
@@ -5701,6 +5704,36 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
   }
 
+  // For brochure tabs: when the tab is active, re-read text content from the live DOM.
+  // This ensures:
+  //   1. Income bold (font-weight:700) is always correct — restoreTab just fixed it
+  //   2. Line breaks match the screen — use _extractRenderedLines for plain text
+  if((tabIdx === 0 || tabIdx === 1) && currentTab === tabIdx){
+    const _liveEls = document.querySelectorAll('#artwork .el');
+    state = state.map(function(sv){
+      if(sv.type !== 'text') return sv;
+      var _liveEl = null;
+      _liveEls.forEach(function(el){ if(el.dataset.eid === sv.eid) _liveEl = el; });
+      if(!_liveEl) return sv;
+      var _inner = _liveEl.querySelector('.el-inner');
+      if(!_inner) return sv;
+      var _sv2 = Object.assign({}, sv);
+      // Always read richHtml from live DOM — captures correct bold state
+      _sv2.richHtml = _inner.innerHTML;
+      // For plain text elements (no child divs), extract browser-rendered line breaks
+      var _childDivs = _inner.querySelectorAll(':scope > div');
+      if(_childDivs.length === 0){
+        var _txt = _inner.textContent || '';
+        var _renderedLines = _extractRenderedLines(_inner, _txt);
+        if(_renderedLines && _renderedLines.length > 1){
+          _sv2.content = _renderedLines.join('\n');
+          _sv2.noWrap = '1';
+        }
+      }
+      return _sv2;
+    });
+  }
+
   const fieldMap={heading:'fh',subheading:'fs',address1:'fa1',address2:'fa2',banner:'fb',
     income:'fi',salemethod:'fm',saledate:'fd',bullets:'fbull',bodycopy:'fbc',
     agent1name:'fn1',agent2name:'fn2',agent3name:'fn3',agent4name:'fn4',
@@ -5796,7 +5829,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
   for(const sv of sorted){
     if(sv.field==='income' || sv.incomeEl==='1') continue; // skip income placeholder always
     const ex=parseFloat(sv.x)*scaleX + _bleedMm, ey=parseFloat(sv.y)*scaleY + _bleedMm;
-    const ew=parseFloat(sv.w)*scaleX, eh=parseFloat(sv.h)*scaleY;
+    let ew=parseFloat(sv.w)*scaleX; const eh=parseFloat(sv.h)*scaleY;
     if(ew<=0||eh<=0) continue;
 
     if(sv.type==='rect'){
@@ -5809,10 +5842,13 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','NONE'); }catch(e){ console.warn('addImage fail',e); } }
 
     } else if(sv.type==='text'){
+      // Brochure tabs: widen available width by 2% so splitTextToSize matches
+      // browser line breaks (jsPDF Calibre metrics render ~2% wider than browser).
+      if(tabIdx === 0 || tabIdx === 1) ew = ew * 1.02;
       const ist=parseStyle(sv.innerStyle||'');
       const fsPx=parseFloat(ist.fontSize)||12;
-      const fsMm=fsPx*scaleX;
-      const fsPt=fsMm*2.835;
+      let fsMm=fsPx*scaleX;
+      let fsPt=fsMm*2.835;
       const [cr,cg,cb]=parseRgbStr(ist.color||'#000');
       const ta=ist.textAlign||'left';
       const lh=parseFloat(ist.lineHeight)||1.35;
@@ -5844,12 +5880,71 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       pdf.setFontSize(fsPt);
 
       const rawText=resolveText(sv);
-      const lines=rawText.split('\n');
-      const maxW=ew*1.01;
+      let lines=rawText.split('\n');
+      let maxW=ew*1.01;
+
+      // ── Auto-squeeze: if text would overflow element height, reduce font size ──
+      // Expand each noWrap line into its jsPDF-wrapped sub-lines to get true line count,
+      // then shrink fsPt/fsMm/lineH until all lines fit within eh.
+      // Cap squeeze at 92% of original size (keeps text legible, fixes minor overflows).
+      // For brochure tabs: widen the available text width by 2% to compensate for
+      // jsPDF rendering Calibre slightly wider than the browser. This prevents
+      // lines wrapping one word early without touching the lines array at all.
+      (function(){
+        if(eh <= 0) return;
+        const MIN_SCALE = 0.92;
+        // Count rendered lines (accounting for wrapping of non-noWrap lines)
+        function countLines(fsPtTest, fsMmTest){
+          var lhTest = fsMmTest * lh;
+          var mwTest = ew * 1.01;
+          setFont(pdf, ist.fontFamily, ist.fontWeight, hasFonts);
+          pdf.setFontSize(fsPtTest);
+          var count = 0;
+          lines.forEach(function(line){
+            if(sv.noWrap === '1'){
+              count += 1; // already browser-wrapped, one line each
+            } else {
+              var wrapped = pdf.splitTextToSize(line.trim() ? line : ' ', mwTest);
+              count += wrapped.length || 1;
+            }
+            if(bsp > 0) count += bsp / lhTest; // paragraph spacing as fractional lines
+          });
+          return count;
+        }
+        var totalH = countLines(fsPt, fsMm) * (fsMm * lh);
+        if(totalH <= eh * 1.02) return; // fits fine, no squeeze needed
+        // Binary search for the largest font size that fits
+        var lo = fsPt * MIN_SCALE, hi = fsPt, best = fsPt * MIN_SCALE;
+        for(var _i = 0; _i < 8; _i++){
+          var mid = (lo + hi) / 2;
+          var midMm = mid / 2.835;
+          var h = countLines(mid, midMm) * (midMm * lh);
+          if(h <= eh * 1.02){ best = mid; lo = mid; } else { hi = mid; }
+        }
+        if(best < fsPt){
+          fsPt = best;
+          fsMm = best / 2.835;
+          // Re-split non-noWrap lines at new size
+          if(sv.noWrap !== '1'){
+            var newLines = [];
+            lines.forEach(function(line){
+              setFont(pdf, ist.fontFamily, ist.fontWeight, hasFonts);
+              pdf.setFontSize(fsPt);
+              var wrapped = pdf.splitTextToSize(line.trim() ? line : ' ', ew * 1.01);
+              wrapped.forEach(function(wl){ newLines.push(wl); });
+            });
+            lines = newLines;
+          }
+          setFont(pdf, ist.fontFamily, ist.fontWeight, hasFonts);
+          pdf.setFontSize(fsPt);
+          maxW = ew * 1.01;
+        }
+      })();
+
       // Detect flex vertical centering (used by EDM buttons)
       const _isFlex=ist.display==='flex'||(sv.innerStyle&&sv.innerStyle.includes('display:flex'));
       const _isVCenter=_isFlex&&(ist.alignItems==='center'||(sv.innerStyle&&sv.innerStyle.includes('align-items:center')));
-      const _totalTextH=lines.length*lineH;
+      const _totalTextH=lines.length*(fsMm*lh);
       let curY=ey+fsMm*0.85;
       let textX, jsPdfAlign;
       if(sv.banner==='1'){
@@ -7580,57 +7675,26 @@ function toggleTabApproval(){
   // We do NOT touch sv.content at all — serializeTab captures it correctly
   // for every element type. Income re-append is handled in restoreTab.
 
-  // Step 1: make sure income is visible in the DOM before serialising.
-  // richHtml on an incomeAnchor element blocks globalSync from rebuilding the
-  // plain-line divs with income embedded. We need to:
-  //   a) temporarily clear el.dataset.richHtml so globalSync runs
-  //   b) BUT preserve sv.richHtml in savedStates — it contains the user's bold formatting
-  //   c) After globalSync, restore richHtml with income bold merged in
-  var _savedAnchorRichHtml = {};
+  // Step 1: Freeze the income anchor elements exactly as they appear on screen.
+  // Read the live DOM innerHTML, bold the income line, store as richHtml.
+  // This runs BEFORE serializeTab so the snapshot captures the correct bold state.
+  var _fi_s1 = ((document.getElementById('fi')||{}).value||'').trim();
+  var _fi_s1_pfx = _fi_s1 ? _fi_s1.split(':')[0].trim().toLowerCase() : '';
   document.querySelectorAll('#artwork .el[data-income-anchor="1"]').forEach(function(el){
-    // Save the richHtml before clearing (preserves user bold like "Office" bold)
-    if(el.dataset.richHtml) _savedAnchorRichHtml[el.dataset.eid] = el.dataset.richHtml;
-    delete el.dataset.richHtml;
-    // Do NOT delete sv.richHtml — we'll restore it after globalSync
-  });
-  globalSync(); // embeds income as bold last plain-line div
-  // Restore richHtml with income merged: take the globalSync output (which has income bold)
-  // and re-apply any user bold (<b> tags) that existed before.
-  // Strategy: globalSync built clean plain-line divs with income bold on the last div.
-  // The user's bold was on specific words — preserve it by merging back.
-  document.querySelectorAll('#artwork .el[data-income-anchor="1"]').forEach(function(el){
-    var _eid = el.dataset.eid;
-    var _oldRich = _savedAnchorRichHtml[_eid];
     var inner = el.querySelector('.el-inner');
     if(!inner) return;
-    if(_oldRich){
-      // The old richHtml had user bold. The current inner.innerHTML has income bold (font-weight:700 on last div).
-      // Merge: keep current structure (correct line count/income) but re-apply <b> tags from old.
-      // Parse old richHtml to find which lines had <b> tags and where.
-      var _oldTmp = document.createElement('div');
-      _oldTmp.innerHTML = _oldRich;
-      var _oldPls = _oldTmp.querySelectorAll('div.plain-line');
-      var _newPls = inner.querySelectorAll('div.plain-line');
-      if(_oldPls.length > 0 && _newPls.length > 0){
-        // Re-apply bold from old divs to new divs by index
-        // (new has one extra div for income, old may not)
-        _oldPls.forEach(function(oldDiv, i){
-          if(i < _newPls.length && oldDiv.innerHTML !== oldDiv.textContent){
-            // This old div had formatting — apply its innerHTML to the new div
-            // but preserve the new div's inline styles (margin, font-weight for income)
-            var newDiv = _newPls[i];
-            var keepStyle = newDiv.getAttribute('style') || '';
-            newDiv.innerHTML = oldDiv.innerHTML;
-            newDiv.setAttribute('style', keepStyle);
-          }
-        });
-      }
-      // Now set richHtml to the merged result
-      el.dataset.richHtml = inner.innerHTML;
-      // Also update sv.richHtml
-      var _svArr = savedStates[currentTab];
-      if(_svArr){ _svArr.forEach(function(s){ if(s.eid===_eid) s.richHtml = inner.innerHTML; }); }
+    // Ensure the income plain-line div has font-weight:700 in the live DOM
+    if(_fi_s1_pfx){
+      inner.querySelectorAll('div.plain-line').forEach(function(d){
+        var t = (d.textContent||'').trim().toLowerCase();
+        if(t === _fi_s1.toLowerCase() || t.startsWith(_fi_s1_pfx+':')){
+          d.style.fontWeight = '700';
+        }
+      });
     }
+    // Freeze: store the live innerHTML (with bold) as richHtml on the element
+    // so serializeTab captures it correctly
+    el.dataset.richHtml = inner.innerHTML;
   });
 
   // Step 2: snapshot canvas → savedStates.
@@ -7693,12 +7757,34 @@ function toggleTabApproval(){
   });
 
   // Step 4: mirror field-link removal on live DOM elements (for immediate display)
+  var _fi_step4 = ((document.getElementById('fi')||{}).value||'').trim();
+  var _fi_step4_pfx = _fi_step4 ? _fi_step4.split(':')[0].trim().toLowerCase() : '';
+  // Collect which eids were incomeAnchor BEFORE clearing (wasIncomeAnchor not yet on DOM)
+  var _incomeAnchorEids = new Set();
+  document.querySelectorAll('#artwork .el[data-income-anchor="1"]').forEach(function(el){
+    _incomeAnchorEids.add(el.dataset.eid);
+  });
   document.querySelectorAll('#artwork .el').forEach(function(el){
     el.dataset.field         = '';
     el.dataset.incomeAnchor  = '0';
     el.dataset.combinedAgent = '0';
     if(el.dataset.incomeEl === '1') el.style.display = 'none';
   });
+  // Now bold income in live DOM for all elements that were incomeAnchor
+  if(_fi_step4_pfx){
+    _incomeAnchorEids.forEach(function(eid){
+      var _el4 = document.querySelector('#artwork .el[data-eid="'+eid+'"]');
+      if(!_el4) return;
+      var _inner4 = _el4.querySelector('.el-inner');
+      if(!_inner4) return;
+      _inner4.querySelectorAll('div.plain-line').forEach(function(d){
+        var t = (d.textContent||'').trim().toLowerCase();
+        if(t === _fi_step4.toLowerCase() || t.startsWith(_fi_step4_pfx+':')){
+          d.style.fontWeight = '700';
+        }
+      });
+    });
+  }
 
   // Step 5: freeze images — detach from shared asset store
   document.querySelectorAll('#artwork .el[data-type="img"]').forEach(function(el){
@@ -7715,6 +7801,37 @@ function toggleTabApproval(){
 
   // Step 6: save (tab was already marked approved in step 2)
   _updateTabApprovalUI();
+
+  // Final: re-apply income bold to the live DOM AFTER all steps.
+  // This ensures the screen shows bold regardless of any intermediate resets.
+  // Also update el.dataset.richHtml and sv.richHtml so the bold is persisted.
+  (function(){
+    var _fi_final = ((document.getElementById('fi')||{}).value||'').trim();
+    var _fi_final_pfx = _fi_final ? _fi_final.split(':')[0].trim().toLowerCase() : '';
+    if(!_fi_final_pfx) return;
+    document.querySelectorAll('#artwork .el').forEach(function(el){
+      if(el.dataset.wasIncomeAnchor !== '1') return;
+      var inner = el.querySelector('.el-inner');
+      if(!inner) return;
+      var _changed = false;
+      inner.querySelectorAll('div.plain-line').forEach(function(d){
+        var t = (d.textContent||'').trim().toLowerCase();
+        if(t === _fi_final.toLowerCase() || t.startsWith(_fi_final_pfx+':')){
+          d.style.fontWeight = '700';
+          _changed = true;
+        }
+      });
+      if(_changed){
+        // Update richHtml on element and in savedStates
+        el.dataset.richHtml = inner.innerHTML;
+        var _sv_final = savedStates[currentTab];
+        if(_sv_final) _sv_final.forEach(function(sv){
+          if(sv.eid === el.dataset.eid) sv.richHtml = inner.innerHTML;
+        });
+      }
+    });
+  })();
+
   debouncedPersist();
 }
 
@@ -8255,7 +8372,7 @@ function rtCmd(cmd){
     const inner=selectedEl.querySelector('.el-inner');
     if(inner){
       const _rtHtml=inner.innerHTML;
-      const _richRxRt=/<(b|i|u|sup|strong|em)[\s>]/i;
+      const _richRxRt=/<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
       // Allow richHtml for ALL fields including managed ones (bodycopy/bullets).
       // globalSync already skips elements that have el.dataset.richHtml set,
       // so bold/italic on managed fields is safe — globalSync won't wipe it.
