@@ -5615,6 +5615,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           cropX: el.dataset.cropX||'', cropY: el.dataset.cropY||'',
           cropW: el.dataset.cropW||'', cropH: el.dataset.cropH||'',
           imgSrc: (function(){ var img=el.querySelector('img'); return img?img.src:''; })(),
+          // noWrap: lines already browser-wrapped — don't re-split in native renderer
+          noWrap: _content ? '1' : '0',
         });
       });
       if(_liveSvs.length){
@@ -5739,10 +5741,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
   const imgMap={};
   imgResults.forEach(r=>{ if(r) imgMap[r.eid]=r.dataUrl; });
 
-  // Draw background
-  const bgSv=sorted.find(sv=>sv.type==='rect'&&parseFloat(sv.x)===0&&parseFloat(sv.y)===0&&parseFloat(sv.w)>=pxW*0.9);
-  if(bgSv){ const ist=parseStyle(bgSv.innerStyle||''); const [r,g,b]=parseRgbStr(ist.background||'#fff'); pdf.setFillColor(r,g,b); }
-  else { pdf.setFillColor(255,255,255); }
+  // Draw background — always white for EDM (dark header rect must not fill whole page)
+  pdf.setFillColor(255,255,255);
   pdf.rect(0,0,pageW,pageH,'F');
 
   // Render each element (offset by bleedMm so artwork sits within the bleed margins)
@@ -5799,6 +5799,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       const rawText=resolveText(sv);
       const lines=rawText.split('\n');
       const maxW=ew*1.01;
+      // Detect flex vertical centering (used by EDM buttons)
+      const _isFlex=ist.display==='flex'||(sv.innerStyle&&sv.innerStyle.includes('display:flex'));
+      const _isVCenter=_isFlex&&(ist.alignItems==='center'||(sv.innerStyle&&sv.innerStyle.includes('align-items:center')));
+      const _totalTextH=lines.length*lineH;
       let curY=ey+fsMm*0.85;
       let textX, jsPdfAlign;
       if(sv.banner==='1'){
@@ -5806,6 +5810,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       } else {
         textX=ta==='right'?ex+ew:ta==='center'?ex+ew/2:ex;
         jsPdfAlign=ta==='right'?'right':ta==='center'?'center':'left';
+        // Vertically centre text when element uses flex align-items:center
+        if(_isVCenter) curY=ey+(eh/2)-(_totalTextH/2)+fsMm*0.85;
       }
 
       // ── Rich-text segment parser ──────────────────────────────────────────────
@@ -5903,8 +5909,14 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       // Force last line bold if it matches the income value (brochure tabs 0,1).
       // This works regardless of whether income came from richHtml or sv.content,
       // and regardless of whether the element was approved or not.
-      const _incomeLineIdx = (_isBulletOrAnchor && [0,1].indexOf(tabIdx)>-1 && _fi_val)
-        ? lines.findIndex(function(l){ return l.trim() === _fi_val.trim(); })
+      // Match income line by prefix (text before first ':') for robustness —
+      // handles minor whitespace/encoding differences between sv.content and sidebar value.
+      const _fi_prefix = _fi_val ? _fi_val.split(':')[0].trim().toLowerCase() : '';
+      const _incomeLineIdx = (_isBulletOrAnchor && [0,1].indexOf(tabIdx)>-1 && _fi_val && _fi_prefix)
+        ? lines.findIndex(function(l){
+            var lt=l.trim().toLowerCase();
+            return lt===_fi_val.trim().toLowerCase() || (lt.startsWith(_fi_prefix+':') && lt.length>_fi_prefix.length+1);
+          })
         : -1;
 
       lines.forEach((line,li)=>{
@@ -5925,11 +5937,11 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           const textMaxW=ew-dashW;
           pdf.text(dash,ex,curY,{align:'left',baseline:'alphabetic'});
           if(_segs&&_segs.length>0){
-            // Rich segments: render with word-wrapping from indentX
             curY=_renderSegs(_segs, indentX, curY, textMaxW);
           } else {
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
-            const wrappedText=pdf.splitTextToSize(rawLine,textMaxW);
+            // noWrap: browser already wrapped — render line as-is, no re-split
+            const wrappedText=sv.noWrap==='1'?[rawLine]:pdf.splitTextToSize(rawLine,textMaxW);
             wrappedText.forEach(function(wl){ if(curY>ey+eh+2) return; pdf.text(wl,indentX,curY,{align:'left',baseline:'alphabetic'}); curY+=lineH; });
             setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt);
           }
@@ -5939,7 +5951,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
             curY=_renderSegs(_segs, textX, curY, maxW);
           } else {
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
-            const wrapped=pdf.splitTextToSize(line,maxW);
+            // noWrap: browser already wrapped — render line as-is, no re-split
+            const wrapped=sv.noWrap==='1'?[line]:pdf.splitTextToSize(line,maxW);
             wrapped.forEach(function(wl){ if(curY>ey+eh+2) return; pdf.text(wl,textX,curY,{align:jsPdfAlign,baseline:'alphabetic'}); curY+=lineH; });
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
           }
