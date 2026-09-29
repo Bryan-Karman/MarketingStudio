@@ -5558,80 +5558,125 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
   });
 }
 
+// Extract the actual browser-rendered lines from a text element using Range.
+// Walks each character, building lines by comparing Y position of character rects.
+// Returns an array of line strings matching what the browser renders on screen.
+function _extractRenderedLines(el, text){
+  if(!text || !el || !el.firstChild) return null;
+  try{
+    var lines = [], curLine = '', lastY = null;
+    var range = document.createRange();
+    var textNode = el.firstChild;
+    // Find first text node
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+    var fullText = '';
+    var nodes = [];
+    var node;
+    while((node = walker.nextNode())){ nodes.push({node:node, start:fullText.length}); fullText += node.textContent; }
+    if(!nodes.length) return null;
+    // Walk character by character
+    var ni = 0;
+    for(var ci = 0; ci < fullText.length; ci++){
+      // Find which node this char is in
+      while(ni < nodes.length-1 && ci >= nodes[ni].start + nodes[ni].node.textContent.length) ni++;
+      var charOffset = ci - nodes[ni].start;
+      range.setStart(nodes[ni].node, charOffset);
+      range.setEnd(nodes[ni].node, charOffset+1);
+      var rects = range.getClientRects();
+      if(!rects.length) continue;
+      var y = Math.round(rects[0].top);
+      if(lastY === null) lastY = y;
+      if(y > lastY + 2){ // new line
+        if(curLine.trim()) lines.push(curLine.trimEnd());
+        curLine = fullText[ci];
+        lastY = y;
+      } else {
+        curLine += fullText[ci];
+      }
+    }
+    if(curLine.trim()) lines.push(curLine.trimEnd());
+    return lines.length > 0 ? lines : null;
+  } catch(e){ return null; }
+}
+
 async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts, _skipEdmSnapshot){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
-  // EDM tabs (2,3): snapshot the live rendered DOM elements so the native renderer
-  // uses the exact text/positions that globalSync, edmBodycopyAutoSize and
-  // repackEDMAgents produced — income injected, agents packed, bodycopy sized.
-  // This gives live/selectable PDF text while matching the screen exactly.
+  // EDM tabs (2,3): snapshot the live rendered DOM for pixel-perfect native text output.
+  // Crops read from img.dataset (not el.dataset). Line breaks extracted from the
+  // browser's actual rendered layout using Range+getClientRects so jsPDF metrics
+  // never cause re-wrapping differences.
   if((tabIdx === 2 || tabIdx === 3) && !_skipEdmSnapshot){
     const _liveArt = document.getElementById('artwork');
     if(_liveArt && currentTab === tabIdx){
-      // Build a synthetic state from the live DOM elements
       const _liveSvs = [];
       _liveArt.querySelectorAll('.el').forEach(function(el){
         if(el.dataset.field === 'income' || el.dataset.incomeEl === '1') return;
         const inner = el.querySelector('.el-inner');
         const _ist = inner ? inner.getAttribute('style') || '' : '';
-        // Capture the actual rendered text content from the inner element.
-        // Strategy: extract one text line per child div (each div = one line in the
-        // renderer). Set richHtml so bold/weight is preserved. Set content so the
-        // renderer's lines array has the right number of entries to drive iteration.
-        let _content = '';
-        let _richHtml = '';
-        let _hasChildDivs = false;
+        let _content = '', _richHtml = '', _hasChildDivs = false;
+        let _cropX='', _cropY='', _cropW='', _cropH='', _imgSrc='';
+
+        if(el.dataset.type === 'img'){
+          // Crop is on the inner img element, not el
+          const _img = el.querySelector('img');
+          if(_img){
+            _imgSrc = _img.src || '';
+            if(_img.dataset.cropW){
+              _cropX = _img.dataset.cropX||'';
+              _cropY = _img.dataset.cropY||'';
+              _cropW = _img.dataset.cropW||'';
+              _cropH = _img.dataset.cropH||'';
+            }
+          }
+        }
+
         if(el.dataset.type === 'text' && inner){
-          // Each child div represents one line (plain-line, bt-wrap, or inline div).
+          // For elements with child divs (bullets/bodycopy): one div = one rendered line
           const _childDivs = Array.from(inner.querySelectorAll(':scope > div'));
           if(_childDivs.length > 0){
             _richHtml = inner.innerHTML;
-            // Build content with one entry per child div so lines.length matches
             _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
             _hasChildDivs = true;
           } else {
-            // No child divs — plain text, renderer will handle wrapping
-            _content = inner.textContent || '';
+            // Plain text element — extract actual browser-rendered lines using Range
+            // so line breaks match the screen exactly, independent of jsPDF metrics.
+            const _txt = inner.textContent || '';
+            const _lines = _extractRenderedLines(inner, _txt);
+            if(_lines && _lines.length > 1){
+              _content = _lines.join('\n');
+              _hasChildDivs = true; // treat as pre-wrapped — skip splitTextToSize
+            } else {
+              _content = _txt;
+            }
             if(inner.innerHTML !== inner.textContent) _richHtml = inner.innerHTML;
           }
         }
+
         _liveSvs.push({
-          eid: el.dataset.eid||'',
-          type: el.dataset.type||'',
-          x: el.style.left,
-          y: el.style.top,
-          w: el.style.width,
-          h: el.style.height,
-          z: el.style.zIndex||'2',
-          innerStyle: _ist,
-          content: _content,
-          richHtml: _richHtml,
-          assetKey: el.dataset.assetKey||'',
-          svgKey: el.dataset.svgKey||'',
-          field: '',  // cleared — content is already resolved
-          bullets: el.dataset.bullets||'0',
+          eid: el.dataset.eid||'', type: el.dataset.type||'',
+          x: el.style.left, y: el.style.top, w: el.style.width, h: el.style.height,
+          z: el.style.zIndex||'2', innerStyle: _ist,
+          content: _content, richHtml: _richHtml,
+          assetKey: el.dataset.assetKey||'', svgKey: el.dataset.svgKey||'',
+          field: '', bullets: el.dataset.bullets||'0',
           bulletParaSpacing: el.dataset.bulletParaSpacing||'',
-          banner: el.dataset.banner||'0',
-          bannerPad: el.dataset.bannerPad||'',
+          banner: el.dataset.banner||'0', bannerPad: el.dataset.bannerPad||'',
           locked: el.dataset.locked||'',
-          cropX: el.dataset.cropX||'', cropY: el.dataset.cropY||'',
-          cropW: el.dataset.cropW||'', cropH: el.dataset.cropH||'',
-          imgSrc: (function(){ var img=el.querySelector('img'); return img?img.src:''; })(),
-          // noWrap: only skip re-wrapping when content came from child divs (already browser-wrapped)
+          cropX: _cropX, cropY: _cropY, cropW: _cropW, cropH: _cropH,
+          imgSrc: _imgSrc,
           noWrap: _hasChildDivs ? '1' : '0',
         });
       });
       if(_liveSvs.length){
-        // Render using the snapshot — call the inner logic directly by temporarily
-        // substituting state, but skip the EDM block this time using a flag.
-        const _savedStateBackup = savedStates[tabIdx];
+        const _bak = savedStates[tabIdx];
         savedStates[tabIdx] = _liveSvs;
-        const _result = await renderTabToPdf_native(pdf, tabIdx, pageW, pageH, false, bleedOpts, true);
-        savedStates[tabIdx] = _savedStateBackup;
-        return _result;
+        const _r = await renderTabToPdf_native(pdf, tabIdx, pageW, pageH, false, bleedOpts, true);
+        savedStates[tabIdx] = _bak;
+        return _r;
       }
     }
-    // Fallback: raster (EDM not active tab or no live DOM)
+    // Fallback: raster
     return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
   }
   // All other tabs use the native renderer for live/selectable vector text.
@@ -5918,12 +5963,25 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       // Match income line by prefix (text before first ':') for robustness —
       // handles minor whitespace/encoding differences between sv.content and sidebar value.
       const _fi_prefix = _fi_val ? _fi_val.split(':')[0].trim().toLowerCase() : '';
-      const _incomeLineIdx = (_isBulletOrAnchor && [0,1].indexOf(tabIdx)>-1 && _fi_val && _fi_prefix)
-        ? lines.findIndex(function(l){
-            var lt=l.trim().toLowerCase();
-            return lt===_fi_val.trim().toLowerCase() || (lt.startsWith(_fi_prefix+':') && lt.length>_fi_prefix.length+1);
-          })
-        : -1;
+      let _incomeLineIdx = -1;
+      if(_isBulletOrAnchor && [0,1].indexOf(tabIdx)>-1 && _fi_val && _fi_prefix){
+        // Primary: find line whose text matches income value by prefix
+        _incomeLineIdx = lines.findIndex(function(l){
+          var lt=l.trim().toLowerCase();
+          return lt===_fi_val.trim().toLowerCase() || (lt.startsWith(_fi_prefix+':') && lt.length>_fi_prefix.length+1);
+        });
+        // Fallback: if no match, use the last non-empty line.
+        // Approved brochures always have income as the final content line.
+        if(_incomeLineIdx < 0){
+          for(var _li=lines.length-1; _li>=0; _li--){
+            if(lines[_li].trim()){
+              // Only use as fallback if it contains a colon (looks like income)
+              if(lines[_li].indexOf(':') > -1) _incomeLineIdx = _li;
+              break;
+            }
+          }
+        }
+      }
 
       lines.forEach((line,li)=>{
         if(curY>ey+eh+2) return;
