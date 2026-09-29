@@ -5842,9 +5842,9 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','NONE'); }catch(e){ console.warn('addImage fail',e); } }
 
     } else if(sv.type==='text'){
-      // Brochure tabs: widen available width by 2% so splitTextToSize matches
-      // browser line breaks (jsPDF Calibre metrics render ~2% wider than browser).
-      if(tabIdx === 0 || tabIdx === 1) ew = ew * 1.02;
+      // Widen available width by 2% so splitTextToSize matches browser line breaks.
+      // jsPDF Calibre metrics render ~2% wider than the browser across all tab types.
+      ew = ew * 1.02;
       const ist=parseStyle(sv.innerStyle||'');
       const fsPx=parseFloat(ist.fontSize)||12;
       let fsMm=fsPx*scaleX;
