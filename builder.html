@@ -5254,8 +5254,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
                   }
                 });
                 // Also append income if not present at all in any div
-                var _rhAllTxt=Array.from(_rhPls).map(function(d){return(d.textContent||'').trim().toLowerCase();}).join('
-');
+                var _rhAllTxt=Array.from(_rhPls).map(function(d){return(d.textContent||'').trim().toLowerCase();}).join('\n');
                 if(_rhFiLower&&!_rhAllTxt.includes(_rhFiLower.split(':')[0])){
                   var _newDiv=document.createElement('div');
                   _newDiv.className='plain-line';
@@ -5559,14 +5558,14 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
   });
 }
 
-async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts){
+async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOpts, _skipEdmSnapshot){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
 
   // EDM tabs (2,3): snapshot the live rendered DOM elements so the native renderer
   // uses the exact text/positions that globalSync, edmBodycopyAutoSize and
   // repackEDMAgents produced — income injected, agents packed, bodycopy sized.
   // This gives live/selectable PDF text while matching the screen exactly.
-  if(tabIdx === 2 || tabIdx === 3){
+  if((tabIdx === 2 || tabIdx === 3) && !_skipEdmSnapshot){
     const _liveArt = document.getElementById('artwork');
     if(_liveArt && currentTab === tabIdx){
       // Build a synthetic state from the live DOM elements
@@ -5587,8 +5586,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           if(_childDivs.length > 0){
             _richHtml = inner.innerHTML;
             // Build content with one entry per child div so lines.length matches
-            _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('
-');
+            _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
           } else {
             // No child divs — simple single-line text
             _content = inner.textContent || '';
@@ -5620,10 +5618,11 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         });
       });
       if(_liveSvs.length){
-        // Temporarily override state for this render
+        // Render using the snapshot — call the inner logic directly by temporarily
+        // substituting state, but skip the EDM block this time using a flag.
         const _savedStateBackup = savedStates[tabIdx];
         savedStates[tabIdx] = _liveSvs;
-        const _result = await renderTabToPdf_native(pdf, tabIdx, pageW, pageH, false, bleedOpts);
+        const _result = await renderTabToPdf_native(pdf, tabIdx, pageW, pageH, false, bleedOpts, true);
         savedStates[tabIdx] = _savedStateBackup;
         return _result;
       }
