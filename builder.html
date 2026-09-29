@@ -5580,10 +5580,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         // renderer's lines array has the right number of entries to drive iteration.
         let _content = '';
         let _richHtml = '';
+        let _hasChildDivs = false;
         if(el.dataset.type === 'text' && inner){
           // Each child div represents one line (plain-line, bt-wrap, or inline div).
           const _childDivs = Array.from(inner.querySelectorAll(':scope > div'));
-          let _hasChildDivs = false;
           if(_childDivs.length > 0){
             _richHtml = inner.innerHTML;
             // Build content with one entry per child div so lines.length matches
@@ -5903,7 +5903,11 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         return cy;
       }
 
-      const _lineSegs = sv.richHtml ? _parseRichSegs(sv.richHtml) : null;
+      // For approved brochure income anchor elements (wasIncomeAnchor='1' on tabs 0,1),
+      // skip richHtml parsing entirely. Content is frozen in sv.content with income
+      // appended. Using richHtml risks line-array misalignment that defeats income bold.
+      const _skipRichForIncome = (sv.wasIncomeAnchor==='1') && (tabIdx===0||tabIdx===1);
+      const _lineSegs = (sv.richHtml && !_skipRichForIncome) ? _parseRichSegs(sv.richHtml) : null;
 
       // ── Income bold detection ────────────────────────────────────────────────
       const _isBulletOrAnchor=(sv.field==='bullets'||sv.wasIncomeAnchor==='1');
