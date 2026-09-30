@@ -7486,32 +7486,20 @@ const _origApplyState=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState(data,skipZoom);if(data&&data.charLimits){charLimits={...data.charLimits};clInitAll();}return result;};
 
 // ═══════════════════════════════════════════════════════════════════
-// REALTIME SYNC LAYER v4 — Postgres Changes (reliable, no broadcast config needed)
-//
-// How it works:
-//   • Each user saves their changes to Supabase after a 500ms debounce.
-//   • Other users subscribe to Postgres Changes on the projects table.
-//   • When a save lands, Supabase pushes a change notification via WebSocket.
-//   • The receiving client fetches only the state_json diff and applies
-//     each changed field surgically — no full re-render, no data loss.
-//   • Presence uses the same WebSocket channel (Postgres Changes supports it).
-//   • Approved tabs (Option A): changes to approved tabs are ignored on receive.
-//   • _rtRemoteApplying flag prevents debouncedPersist firing on remote changes.
+// REALTIME SYNC LAYER v5 — Supabase JS SDK (handles all protocol internals)
+// Uses the official SDK loaded via CDN so subscription works correctly.
 // ═══════════════════════════════════════════════════════════════════
 
-let _rtSocket     = null;
-let _rtConn       = false;
-let _rtRefNum     = 1;
-let _rtHbTimer    = null;
-let _rtRcnTimer   = null;
-let _rtPresence   = {};
-let _rtToastTimer = null;
-let _rtApplyTimer = null; // debounce for applying remote changes
-let _rtUserId     = (()=>{ try{ return crypto.randomUUID(); }catch(e){ return Math.random().toString(36).slice(2)+Date.now().toString(36); } })();
-let _rtUserName   = 'Agent';
-let _rtLastApplied = null; // updated_at of last state we applied — skip our own saves
-const _RT_COLORS  = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8'];
-let _rtColorIdx   = 0;
+let _rtConn           = false;
+let _rtPresence       = {};
+let _rtToastTimer     = null;
+let _rtApplyTimer     = null;
+let _rtSbClient       = null;  // Supabase JS client
+let _rtChannel        = null;  // Supabase realtime channel
+let _rtUserName       = 'Agent';
+let _rtUserId         = (()=>{ try{ return crypto.randomUUID(); }catch(e){ return Math.random().toString(36).slice(2)+Date.now().toString(36); } })();
+const _RT_COLORS      = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8'];
+let _rtColorIdx       = 0;
 
 const _RT_FIELD_MAP = {
   heading:'fh', subheading:'fs', address1:'fa1', address2:'fa2',
@@ -7519,10 +7507,7 @@ const _RT_FIELD_MAP = {
   method:'fm', date:'fd'
 };
 
-function _rtTopic(){ return 'realtime:project-changes:'+_portfolioId+':'+_propertyId; }
-function _rtNextRef(){ return String(_rtRefNum++); }
-
-// ── Open WebSocket ───────────────────────────────────────────────
+// ── Load Supabase SDK then start ─────────────────────────────────
 function startLiveSync(){
   try{
     const mn = document.getElementById('mast-usr-name');
@@ -7532,130 +7517,139 @@ function startLiveSync(){
       if(s && s.name) _rtUserName = s.name;
     }
   }catch(e){}
-  _rtOpen();
+
+  // Load Supabase JS SDK from CDN if not already present
+  if(window.supabase && window.supabase.createClient){
+    _rtInit();
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  script.onload = ()=>{ rtLog('SDK loaded', '#4ab0f5'); _rtInit(); };
+  script.onerror = ()=>{ rtLog('SDK load FAILED', '#e05555'); };
+  document.head.appendChild(script);
 }
 
 function stopLiveSync(){
-  clearInterval(_rtHbTimer); clearTimeout(_rtRcnTimer);
-  if(_rtSocket){ try{ _rtSocket.close(); }catch(e){} _rtSocket=null; }
+  if(_rtChannel && _rtSbClient){
+    _rtSbClient.removeChannel(_rtChannel);
+    _rtChannel = null;
+  }
   _rtConn = false;
+  _rtSetConn('connecting','Disconnected');
 }
 
-function _rtOpen(){
-  _rtSetConn('connecting','Connecting…');
-  const url = 'wss://pgsgjafgetdvuctmpibf.supabase.co/realtime/v1/websocket?apikey='+SUPA_KEY+'&vsn=1.0.0';
-  try{ _rtSocket = new WebSocket(url); }
-  catch(e){ rtLog('WS FAILED: '+e, '#e05555'); _rtScheduleRecon(); return; }
-
-  _rtSocket.onopen = ()=>{
-    // Subscribe to Postgres Changes on the projects table for this project
-    _rtSend({
-      topic: _rtTopic(),
-      event: 'phx_join',
-      payload: {
-        config: {
-          postgres_changes: [{
-            event:  '*',
-            schema: 'public',
-            table:  'projects',
-            filter: 'portfolio_id=eq.'+_portfolioId+' AND property_id=eq.'+_propertyId
-          }],
-          broadcast: { self: false, ack: false },
-          presence: { key: _rtUserId }
-        }
-      },
-      ref: _rtNextRef()
+function _rtInit(){
+  try{
+    _rtSbClient = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
+      realtime: { params: { eventsPerSecond: 10 } }
     });
-    clearInterval(_rtHbTimer);
-    _rtHbTimer = setInterval(()=>{
-      _rtSend({ topic:'phoenix', event:'heartbeat', payload:{}, ref:_rtNextRef() });
-    }, 25000);
-    rtLog('WS open, joining...', '#4ab0f5');
-  };
-
-  _rtSocket.onmessage = (e)=>{
-    let m; try{ m=JSON.parse(e.data); }catch{ return; }
-    _rtHandleMsg(m);
-  };
-
-  _rtSocket.onclose = ()=>{
-    clearInterval(_rtHbTimer);
-    _rtConn = false;
-    _rtSetConn('connecting','Reconnecting…');
-    _rtScheduleRecon();
-  };
-
-  _rtSocket.onerror = ()=>{};
-}
-
-function _rtScheduleRecon(){ clearTimeout(_rtRcnTimer); _rtRcnTimer=setTimeout(_rtOpen,3500); }
-
-function _rtSend(msg){
-  if(_rtSocket && _rtSocket.readyState===WebSocket.OPEN){
-    _rtSocket.send(JSON.stringify(msg));
+    rtLog('Supabase client created', '#4ab0f5');
+    _rtSubscribe();
+  }catch(e){
+    rtLog('createClient failed: '+e, '#e05555');
   }
 }
 
-// ── Message router ───────────────────────────────────────────────
-function _rtHandleMsg(msg){
-  const { event, payload } = msg;
+function _rtSubscribe(){
+  const channelName = 'project-'+_portfolioId+'-'+_propertyId;
+  rtLog('subscribing to: '+channelName, '#4ab0f5');
 
-  // Channel join confirmed
-  if(event==='phx_reply' && payload && payload.status==='ok' && !_rtConn){
-    _rtConn = true;
-    _rtSetConn('connected','Live');
-    rtLog('CONNECTED | '+_rtUserName+' | '+_rtTopic(), '#17e88f');
-    return;
-  }
+  _rtChannel = _rtSbClient
+    .channel(channelName)
+    .on('postgres_changes', {
+        event:  'UPDATE',
+        schema: 'public',
+        table:  'projects',
+        filter: 'portfolio_id=eq.'+_portfolioId
+      },
+      (payload) => {
+        rtLog('← postgres UPDATE received!', '#f0a030');
+        _rtHandleDbChange(payload);
+      }
+    )
+    .on('broadcast', { event: 'field_op' }, (payload) => {
+        rtLog('← broadcast field_op: '+payload.field, '#f0a030');
+        _rtApplyOp(payload);
+      }
+    )
+    .subscribe((status, err) => {
+      rtLog('channel status: '+status, status==='SUBSCRIBED'?'#17e88f':'#f0a030');
+      if(status === 'SUBSCRIBED'){
+        _rtConn = true;
+        _rtSetConn('connected','Live');
+        rtLog('SUBSCRIBED | user: '+_rtUserName, '#17e88f');
+      } else if(status === 'CHANNEL_ERROR'){
+        rtLog('CHANNEL_ERROR: '+(err||''), '#e05555');
+        _rtConn = false;
+        _rtSetConn('error','Error');
+      } else if(status === 'CLOSED'){
+        _rtConn = false;
+        _rtSetConn('connecting','Reconnecting…');
+        setTimeout(_rtSubscribe, 3000);
+      }
+    });
+}
 
-  if(event==='phx_error'){ rtLog('channel error: '+JSON.stringify(payload).slice(0,80), '#e05555'); return; }
+// ── Broadcast a local field change via Supabase broadcast ────────
+// Called from _rtFieldChange on every sidebar input.
+function rtBroadcastField(field, value){
+  if(!_rtConn || !_rtChannel) return;
+  if(_tabApprovals && _tabApprovals[currentTab]) return;
+  rtLog('→ broadcast field_op: '+field+'='+String(value).slice(0,20), '#5bd4c8');
+  _rtChannel.send({
+    type:    'broadcast',
+    event:   'field_op',
+    payload: { field, value, tabIdx: currentTab, uid: _rtUserId, uname: _rtUserName }
+  });
+}
 
-  // Postgres Changes notification — another user saved
-  if(event==='postgres_changes' && payload && payload.data){
-    rtLog('← POSTGRES CHANGE RECEIVED', '#f0a030');
-    _rtHandleDbChange(payload.data);
-    return;
-  }
+// ── Apply an incoming broadcast field op ─────────────────────────
+function _rtApplyOp(payload){
+  const { field, value, tabIdx, uid, uname } = payload;
+  if(uid === _rtUserId){ rtLog('skip own echo: '+field, '#555'); return; }
+  if(_tabApprovals && _tabApprovals[tabIdx]) return;
 
-  // Also handle the system event name Supabase uses
-  if(event==='INSERT' || event==='UPDATE'){
-    rtLog('← DB change event: '+event, '#f0a030');
-    _rtHandleDbChange(payload);
-    return;
+  _rtRemoteApplying = true;
+  try{
+    const domId     = _RT_FIELD_MAP[field];
+    const sidebarEl = domId ? document.getElementById(domId) : null;
+    const editing   = sidebarEl && document.activeElement === sidebarEl;
+
+    if(sidebarEl && !editing){
+      sidebarEl.value = value;
+      if(tabIdx === currentTab && !_isCanvasEditing()) _rtPatchCanvas(field, value);
+      _rtPatchSavedState(tabIdx, field, value);
+      _rtShowToast('↻ '+uname+' • '+field);
+      setCdtStatus('saved','Synced ✓');
+      rtLog('APPLIED: '+field+'='+String(value).slice(0,20), '#17e88f');
+    } else if(sidebarEl && editing){
+      sidebarEl.style.outline='2px solid #f0a030';
+      setTimeout(()=>{ sidebarEl.style.outline=''; },1500);
+    }
+  } finally {
+    _rtRemoteApplying = false;
   }
 }
 
-// ── Handle a database change notification ────────────────────────
-function _rtHandleDbChange(data){
-  // data.record contains the new row, data.old_record the previous
-  const record = data.record || data.new || data;
-  if(!record) return;
+// ── Handle Postgres change (full state sync as fallback) ─────────
+function _rtHandleDbChange(payload){
+  const record = payload.new || payload.record;
+  if(!record){ rtLog('no record in payload', '#e05555'); return; }
 
   const updatedAt = record.updated_at;
   const stateJson = record.state_json;
 
-  // Skip if this is our own save coming back
-  if(updatedAt && updatedAt === _lastKnownUpdatedAt){
-    rtLog('skipping own save echo', '#666');
+  if(updatedAt === _lastKnownUpdatedAt){
+    rtLog('skip own save echo (db)', '#555');
     return;
   }
 
-  // Skip if we have no state to apply
-  if(!stateJson){ rtLog('no state_json in change!', '#e05555'); return; }
-
-  rtLog('applying remote state... '+updatedAt, '#f0a030');
-  _rtLastApplied = updatedAt;
-
-  // Debounce slightly in case multiple changes arrive rapidly
+  rtLog('applying db state... '+updatedAt, '#f0a030');
   clearTimeout(_rtApplyTimer);
-  _rtApplyTimer = setTimeout(()=>{
-    _rtApplyRemoteState(stateJson, updatedAt);
-  }, 100);
+  _rtApplyTimer = setTimeout(()=> _rtApplyRemoteState(stateJson, updatedAt), 100);
 }
 
-// ── Apply remote state surgically ───────────────────────────────
-// Reads the full state_json but only patches fields that differ,
-// never triggering a full re-render.
 function _rtApplyRemoteState(stateJson, updatedAt){
   let remoteState;
   try{ remoteState = JSON.parse(stateJson); }
@@ -7663,14 +7657,12 @@ function _rtApplyRemoteState(stateJson, updatedAt){
 
   if(!remoteState || !remoteState.v) return;
 
-  // State uses tabLayouts (= savedStates) and fields keys
-  const remoteTabs   = remoteState.tabLayouts || {};
   const remoteFields = remoteState.fields || {};
+  const remoteTabs   = remoteState.tabLayouts || {};
 
   _rtRemoteApplying = true;
   try{
-    // ── Apply top-level sidebar fields (heading, address etc) ──
-    // These are stored in remoteState.fields
+    // Apply top-level sidebar fields
     const fieldMap = {
       fh:'heading', fs:'subheading', fa1:'address1', fa2:'address2',
       fb:'banner', fi:'income', fbc:'bodycopy', fbull:'bullets',
@@ -7679,35 +7671,22 @@ function _rtApplyRemoteState(stateJson, updatedAt){
     Object.entries(fieldMap).forEach(([domId, rtField])=>{
       if(!(domId in remoteFields)) return;
       const value = remoteFields[domId];
-      const sidebarEl = document.getElementById(domId);
-      const userEditing = sidebarEl && document.activeElement === sidebarEl;
-      if(sidebarEl && !userEditing){
-        sidebarEl.value = value;
-        // Also patch canvas for current tab
+      const el = document.getElementById(domId);
+      const editing = el && document.activeElement === el;
+      if(el && !editing){
+        el.value = value;
         if(!_isCanvasEditing()) _rtPatchCanvas(rtField, value);
-      } else if(sidebarEl && userEditing){
-        sidebarEl.style.outline='2px solid #f0a030';
-        setTimeout(()=>{ sidebarEl.style.outline=''; },1500);
       }
     });
 
-    // ── Apply per-tab canvas element positions/content ──
+    // Merge tab states
     Object.keys(remoteTabs).forEach(tabIdxStr => {
       const tabIdx = parseInt(tabIdxStr);
-      const remoteTabState = remoteTabs[tabIdx];
-      if(!Array.isArray(remoteTabState)) return;
-      if(_tabApprovals && _tabApprovals[tabIdx]) return; // Option A
-
-      // Merge into savedStates so tab switches pick it up
-      if(!savedStates[tabIdx]) savedStates[tabIdx] = remoteTabState;
-      else {
-        remoteTabState.forEach(remoteEl => {
+      if(_tabApprovals && _tabApprovals[tabIdx]) return;
+      if(Array.isArray(remoteTabs[tabIdx]) && savedStates[tabIdx]){
+        remoteTabs[tabIdx].forEach(remoteEl => {
           const existing = savedStates[tabIdx].find(sv => sv.eid === remoteEl.eid);
-          if(existing){
-            // Only update content fields, not position (position changes are
-            // handled separately and rarely conflict)
-            if(remoteEl.content !== undefined) existing.content = remoteEl.content;
-          }
+          if(existing && remoteEl.content !== undefined) existing.content = remoteEl.content;
         });
       }
     });
@@ -7715,55 +7694,45 @@ function _rtApplyRemoteState(stateJson, updatedAt){
     if(updatedAt) _lastKnownUpdatedAt = updatedAt;
     _rtShowToast('↻ Synced');
     setCdtStatus('saved','Synced ✓');
-    rtLog('APPLIED OK', '#17e88f');
+    rtLog('db state APPLIED OK', '#17e88f');
   } finally {
     _rtRemoteApplying = false;
   }
 }
 
-// Surgically update canvas elements for a single field
+// Surgical canvas patch
 function _rtPatchCanvas(field, value){
   try{
     document.querySelectorAll('.el[data-field="'+field+'"]').forEach(el=>{
       const inner = el.querySelector('.el-inner');
-      if(!inner || inner.contentEditable==='true') return;
-      if(el.dataset.richHtml) return;
+      if(!inner || inner.contentEditable==='true' || el.dataset.richHtml) return;
       inner.textContent = value;
     });
   }catch(e){}
 }
 
-// ── Presence ────────────────────────────────────────────────────
-function _rtBroadcastPresence(activeField){ /* presence via db change channel */ }
-function _rtFieldFocus(field){ /* presence not needed for v4 */ }
-function _rtFieldBlur(){ /* presence not needed for v4 */ }
-
-function _rtRenderPresence(){
-  const bar = document.getElementById('rt-avatars');
-  if(!bar) return;
-  bar.innerHTML = '<span style="font-size:9px;color:rgba(255,255,255,.25);">Live sync active</span>';
+function _rtPatchSavedState(tabIdx, field, value){
+  if(!savedStates[tabIdx]) return;
+  savedStates[tabIdx].forEach(sv=>{ if(sv.field===field) sv.content=value; });
 }
 
-function _rtRenderBadges(){ /* simplified for v4 */ }
+// Presence (simplified — field badges via broadcast)
+function _rtBroadcastPresence(activeField){}
+function _rtFieldFocus(field){}
+function _rtFieldBlur(){}
+function _rtRenderPresence(){
+  const bar = document.getElementById('rt-avatars');
+  if(bar) bar.innerHTML='<span style="font-size:9px;color:rgba(255,255,255,.25);">Live sync active</span>';
+}
+function _rtRenderBadges(){}
 
-// ── UI helpers ───────────────────────────────────────────────────
+// UI
 function _rtSetConn(state, label){
-  const pill = document.getElementById('rt-conn-pill');
-  const lbl  = document.getElementById('rt-conn-label');
+  const pill=document.getElementById('rt-conn-pill');
+  const lbl=document.getElementById('rt-conn-label');
   if(pill) pill.className='rt-pill rt-'+state;
   if(lbl)  lbl.textContent=label;
 }
-
-function rtLog(msg, color){
-  const log = document.getElementById('rt-debug-log');
-  if(!log) return;
-  const line = document.createElement('div');
-  line.style.cssText = 'padding:2px 0;border-bottom:1px solid #1a1a1a;color:'+(color||'#aaa')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-  line.textContent = new Date().toLocaleTimeString('en',{hour12:false})+' '+msg;
-  log.prepend(line);
-  while(log.children.length > 60) log.removeChild(log.lastChild);
-}
-
 function _rtShowToast(msg){
   const t=document.getElementById('live-sync-toast');
   if(!t) return;
@@ -7771,15 +7740,14 @@ function _rtShowToast(msg){
   clearTimeout(_rtToastTimer);
   _rtToastTimer=setTimeout(()=>t.classList.remove('show'),2500);
 }
-
 function _rtEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// Announce leave on tab close
-window.addEventListener('beforeunload',()=>{ /* nothing needed for v4 */ });
-// Pause on hidden, resume on visible
+window.addEventListener('beforeunload',()=>{
+  if(_rtChannel && _rtSbClient) _rtSbClient.removeChannel(_rtChannel);
+});
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) stopLiveSync();
-  else if(!_rtConn) _rtOpen();
+  else if(!_rtConn) _rtSubscribe&&_rtSubscribe();
 });
 
 // ── Canvas paste guard ───────────────────────────────────────────────
