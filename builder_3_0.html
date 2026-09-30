@@ -7587,8 +7587,10 @@ function _rtSubscribe(){
         _rtHandleDbChange(payload);
       }
     )
-    .on('broadcast', { event: 'field_op' }, (payload) => {
-        rtLog('← broadcast field_op: '+payload.field, '#f0a030');
+    .on('broadcast', { event: 'field_op' }, (msg) => {
+        // Supabase SDK wraps broadcast payload under msg.payload
+        const payload = (msg && msg.payload) ? msg.payload : msg;
+        rtLog('← broadcast field_op: '+payload.field+'='+String(payload.value||'').slice(0,15), '#f0a030');
         _rtApplyOp(payload);
       }
     )
@@ -7626,6 +7628,7 @@ function rtBroadcastField(field, value){
 // ── Apply an incoming broadcast field op ─────────────────────────
 function _rtApplyOp(payload){
   const { field, value, tabIdx, uid, uname } = payload;
+  rtLog('_rtApplyOp: field='+field+' uid='+uid+' me='+_rtUserId, '#888');
   if(uid === _rtUserId){ rtLog('skip own echo: '+field, '#555'); return; }
   if(_tabApprovals && _tabApprovals[tabIdx]) return;
 
