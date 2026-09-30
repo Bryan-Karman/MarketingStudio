@@ -502,34 +502,34 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <div class="sb-scroll">
       <div style="font-size:10px;color:#555;line-height:1.5;padding:6px 4px;">Click element to select. Drag to move. Drag handles to resize. Double-click text to edit inline. Properties panel on right.</div>
       <div class="sec">Content</div>
-      <div class="fl"><label>Heading</label><input id="fh" value="Heading xx" oninput="clEnforce('fh');globalSync();rtBroadcastField('heading',this.value)" onfocus="_rtFieldFocus('heading')" onblur="_rtFieldBlur()">
+      <div class="fl"><label>Heading</label><input id="fh" value="Heading xx" oninput="_rtFieldChange(event,'heading','fh','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fh"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fh" placeholder="∞" oninput="clSetLimit('fh',this.value)" title="Max characters (leave blank for no limit)"></span></div></div>
-      <div class="fl"><label>Sub Heading</label><input id="fs" value="Sub Heading xx" oninput="clEnforce('fs');globalSync();rtBroadcastField('subheading',this.value)" onfocus="_rtFieldFocus('subheading')" onblur="_rtFieldBlur()">
+      <div class="fl"><label>Sub Heading</label><input id="fs" value="Sub Heading xx" oninput="_rtFieldChange(event,'subheading','fs','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fs"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fs" placeholder="∞" oninput="clSetLimit('fs',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Address (Suburb State)</label><input id="fa1" value="Suburb State" oninput="clEnforce('fa1');globalSync();rtBroadcastField('address1',this.value)" onfocus="_rtFieldFocus('address1')" onblur="_rtFieldBlur()">
+      <div class="fl"><label>Address (Suburb State)</label><input id="fa1" value="Suburb State" oninput="_rtFieldChange(event,'address1','fa1','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fa1"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fa1" placeholder="∞" oninput="clSetLimit('fa1',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Address (Street Address)</label><input id="fa2" value="Address" oninput="clEnforce('fa2');globalSync();rtBroadcastField('address2',this.value)" onfocus="_rtFieldFocus('address2')" onblur="_rtFieldBlur()">
+      <div class="fl"><label>Address (Street Address)</label><input id="fa2" value="Address" oninput="_rtFieldChange(event,'address2','fa2','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fa2"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fa2" placeholder="∞" oninput="clSetLimit('fa2',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Banner Point</label><input id="fb" value="Banner Point" oninput="clEnforce('fb');globalSync();rtBroadcastField('banner',this.value)" onfocus="_rtFieldFocus('banner')" onblur="_rtFieldBlur()">
+      <div class="fl"><label>Banner Point</label><input id="fb" value="Banner Point" oninput="_rtFieldChange(event,'banner','fb','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fb"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fb" placeholder="∞" oninput="clSetLimit('fb',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Highlight Points (one per line)</label><textarea id="fbull" rows="4" oninput="clEnforce('fbull');onBulletFieldChange();rtBroadcastField('bullets',this.value)" onfocus="_rtFieldFocus('bullets')" onblur="_rtFieldBlur()">Point one
+      <div class="fl"><label>Highlight Points (one per line)</label><textarea id="fbull" rows="4" oninput="_rtFieldChange(event,'bullets','fbull','bullet')">Point one
 Point two
 Point three
 Point four</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fbull"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fbull" placeholder="∞" oninput="clSetLimit('fbull',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Net Income</label><input id="fi" value="Net Income: $xxx pa* + GST" oninput="clEnforce('fi');onBulletFieldChange();rtBroadcastField('income',this.value)" onfocus="_rtFieldFocus('income')" onblur="_rtFieldBlur()">
+      <div class="fl"><label>Net Income</label><input id="fi" value="Net Income: $xxx pa* + GST" oninput="_rtFieldChange(event,'income','fi','bullet')">
         <div class="cl-row"><span class="cl-count" id="cl-fi"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fi" placeholder="∞" oninput="clSetLimit('fi',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Body Copy (one per line)</label><textarea id="fbc" rows="4" oninput="clEnforce('fbc');onBulletFieldChange();rtBroadcastField('bodycopy',this.value)" onfocus="_rtFieldFocus('bodycopy')" onblur="_rtFieldBlur()">Text line one
+      <div class="fl"><label>Body Copy (one per line)</label><textarea id="fbc" rows="4" oninput="_rtFieldChange(event,'bodycopy','fbc','bullet')">Text line one
 Line two
 Line three
 Line four
 Line five</textarea>
         <div class="cl-row"><span class="cl-count" id="cl-fbc"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fbc" placeholder="∞" oninput="clSetLimit('fbc',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Sale</div>
-      <div class="fl"><label>Sale Method</label><textarea id="fm" rows="2" style="min-height:40px;" oninput="clEnforce('fm');globalSync();rtBroadcastField('method',this.value)" onfocus="_rtFieldFocus('method')" onblur="_rtFieldBlur()">For Sale</textarea>
+      <div class="fl"><label>Sale Method</label><textarea id="fm" rows="2" style="min-height:40px;" oninput="_rtFieldChange(event,'method','fm','global')">For Sale</textarea>
         <div style="font-size:9px;color:#666;margin-top:2px;">Use Enter for line breaks on Brochure only — other templates show on one line.</div>
         <div class="cl-row"><span class="cl-count" id="cl-fm"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fm" placeholder="∞" oninput="clSetLimit('fm',this.value)" title="Max characters"></span></div></div>
-      <div class="fl"><label>Sale Date &amp; Details</label><textarea id="fd" rows="2" style="min-height:40px;" oninput="clEnforce('fd');globalSync();rtBroadcastField('date',this.value)" onfocus="_rtFieldFocus('date')" onblur="_rtFieldBlur()">Day Date Month Year</textarea>
+      <div class="fl"><label>Sale Date &amp; Details</label><textarea id="fd" rows="2" style="min-height:40px;" oninput="_rtFieldChange(event,'date','fd','global')">Day Date Month Year</textarea>
         <div style="font-size:9px;color:#666;margin-top:2px;">Use Enter for line breaks on Brochure only — other templates show on one line.</div>
         <div class="cl-row"><span class="cl-count" id="cl-fd"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fd" placeholder="∞" oninput="clSetLimit('fd',this.value)" title="Max characters"></span></div></div>
       <div class="sec">Agents</div>
@@ -7630,6 +7630,21 @@ function _rtHandleMsg(msg){
 
 // ── Broadcast a local field change ──────────────────────────────
 // Called from every sidebar input's oninput handler.
+// Single entry point for all sidebar field changes.
+// Guarantees rtBroadcastField fires even if globalSync/onBulletFieldChange throws.
+function _rtFieldChange(event, field, domId, syncType){
+  const value = event.target.value;
+  try{ clEnforce(domId); }catch(e){}
+  try{
+    if(syncType==='bullet') onBulletFieldChange();
+    else globalSync();
+  }catch(e){ console.warn('[RT] sync error in',field,e); }
+  // Broadcast always fires — guaranteed
+  rtBroadcastField(field, value);
+  // Presence: mark this field as active
+  _rtFieldFocus(field);
+}
+
 function rtBroadcastField(field, value){
   if(!_rtConn){ console.log('[RT] not connected, skipping broadcast for', field); return; }
   if(_tabApprovals && _tabApprovals[currentTab]) return;
