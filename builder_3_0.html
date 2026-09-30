@@ -7600,22 +7600,32 @@ function _rtHandleMsg(msg){
 
   if(event==='phx_error'){ console.warn('[RT] channel error', payload); return; }
 
-  // Log every incoming broadcast so we can see the exact structure
-  if(event==='broadcast'){
-    console.log('[RT] ← broadcast raw:', JSON.stringify(msg).slice(0,200));
-  }
-
   if(event!=='broadcast'||!payload) return;
 
-  // Supabase Realtime wraps the broadcast data under payload.payload in some versions.
-  // Support both structures: flat (payload.type) and nested (payload.payload.type)
-  const data = (payload.payload && payload.payload.type) ? payload.payload : payload;
+  // Log the full structure so we can see exactly what Supabase sends back
+  console.log('[RT] ← full msg:', JSON.stringify(msg).slice(0,300));
+
+  // Supabase Realtime broadcast: our payload is at msg.payload
+  // but the actual data fields may be directly on payload OR nested under payload.payload
+  // Try all possible locations
+  let data = null;
+  if(payload && payload.type){
+    data = payload; // flat: {type, field, value, ...}
+  } else if(payload && payload.payload && payload.payload.type){
+    data = payload.payload; // nested: {payload: {type, field, value, ...}}
+  } else if(payload && payload.event && payload.payload){
+    data = payload.payload; // alternate nesting
+  }
+
+  if(!data){ console.log('[RT] could not extract data from payload:', JSON.stringify(payload).slice(0,200)); return; }
+
+  console.log('[RT] extracted data.type:', data.type, '| field:', data.field);
 
   if(data.type==='field_op')   { _rtApplyOp(data);       return; }
   if(data.type==='presence')   { _rtApplyPresence(data); return; }
   if(data.type==='pres_leave') { _rtApplyLeave(data.uid); return; }
 
-  console.log('[RT] unhandled broadcast type:', data.type, data);
+  console.log('[RT] unhandled type:', data.type);
 }
 
 // ── Broadcast a local field change ──────────────────────────────
@@ -7646,6 +7656,7 @@ function rtBroadcastField(field, value){
 // ── Apply an incoming field op ───────────────────────────────────
 function _rtApplyOp(payload){
   const { field, value, tabIdx, uid, uname } = payload;
+  console.log('[RT] _rtApplyOp called | field:', field, '| uid:', uid, '| me:', _rtUserId, '| same?', uid===_rtUserId);
   if(uid === _rtUserId) return; // own echo
 
   // Option A: approved tab is fully isolated — ignore ops targeting it
