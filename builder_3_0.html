@@ -7615,6 +7615,19 @@ function _rtSubscribe(){
 
 // ── Broadcast a local field change via Supabase broadcast ────────
 // Called from _rtFieldChange on every sidebar input.
+// Single safe entry point called from every sidebar oninput.
+// Runs clEnforce + globalSync/onBulletFieldChange in try/catch so
+// broadcast always fires even if the canvas sync throws.
+function _rtFieldChange(event, field, domId, syncType){
+  const value = event.target.value;
+  try{ clEnforce(domId); }catch(e){}
+  try{
+    if(syncType==='bullet') onBulletFieldChange();
+    else globalSync();
+  }catch(e){}
+  rtBroadcastField(field, value);
+}
+
 function rtBroadcastField(field, value){
   if(!_rtConn || !_rtChannel) return;
   if(_tabApprovals && _tabApprovals[currentTab]) return;
