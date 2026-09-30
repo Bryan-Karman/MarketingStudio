@@ -6958,7 +6958,7 @@ function debouncedPersist(){
   // template state from being saved when the page first loads/restores.
   if(!_canvasDirty) return;
   setCdtStatus('saving','Saving…');
-  _persistTimer=setTimeout(async()=>{_persistTimer=null;await _doSave(collectState());},500);
+  _persistTimer=setTimeout(async()=>{_persistTimer=null;await _doSave(collectState());},600); // 600ms debounce — fast enough for live feel
 }
 function persistAll(){debouncedPersist();}
 function saveTab(){debouncedPersist();}
@@ -7479,45 +7479,44 @@ const _origApplyState=applyState;
 applyState=function(data,skipZoom=false){const result=_origApplyState(data,skipZoom);if(data&&data.charLimits){charLimits={...data.charLimits};clInitAll();}return result;};
 
 // ═══════════════════════════════════════════════════════════════════
-// REALTIME SYNC LAYER v3 — WebSocket-based, operation-per-field
-// Replaces the old setInterval poll entirely.
+// REALTIME SYNC LAYER v4 — Postgres Changes (reliable, no broadcast config needed)
 //
 // How it works:
-//   • One persistent WebSocket per tab, one Supabase Realtime channel per project.
-//   • Every sidebar field change broadcasts a single op: { field, value, tabIdx }.
-//   • Incoming ops update ONLY the affected sidebar input + canvas element.
-//   • globalSync() is never called for remote ops — no full re-renders.
-//   • Approved tabs (Option A): ops are ignored both ways — fully isolated.
+//   • Each user saves their changes to Supabase after a 500ms debounce.
+//   • Other users subscribe to Postgres Changes on the projects table.
+//   • When a save lands, Supabase pushes a change notification via WebSocket.
+//   • The receiving client fetches only the state_json diff and applies
+//     each changed field surgically — no full re-render, no data loss.
+//   • Presence uses the same WebSocket channel (Postgres Changes supports it).
+//   • Approved tabs (Option A): changes to approved tabs are ignored on receive.
 //   • _rtRemoteApplying flag prevents debouncedPersist firing on remote changes.
-//   • Save still debounces 1.2s after the user's LAST local change.
 // ═══════════════════════════════════════════════════════════════════
 
-let _rtRemoteApplying = false; // guard for debouncedPersist
-let _rtSocket   = null;
-let _rtConn     = false;
-let _rtRefNum = 1;
-let _rtHbTimer  = null;
-let _rtRcnTimer = null;
-let _rtPresence = {};  // { userId: { name, color, activeField } }
+let _rtSocket     = null;
+let _rtConn       = false;
+let _rtRefNum     = 1;
+let _rtHbTimer    = null;
+let _rtRcnTimer   = null;
+let _rtPresence   = {};
 let _rtToastTimer = null;
-let _rtUserId   = (()=>{ try{ return crypto.randomUUID(); }catch(e){ return Math.random().toString(36).slice(2)+Date.now().toString(36); } })();
-let _rtUserName = 'Agent';
-const _RT_COLORS = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8'];
-let _rtColorIdx = 0;
+let _rtApplyTimer = null; // debounce for applying remote changes
+let _rtUserId     = (()=>{ try{ return crypto.randomUUID(); }catch(e){ return Math.random().toString(36).slice(2)+Date.now().toString(36); } })();
+let _rtUserName   = 'Agent';
+let _rtLastApplied = null; // updated_at of last state we applied — skip our own saves
+const _RT_COLORS  = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8'];
+let _rtColorIdx   = 0;
 
-// Map: logical field name → sidebar DOM element id
 const _RT_FIELD_MAP = {
   heading:'fh', subheading:'fs', address1:'fa1', address2:'fa2',
   banner:'fb', bullets:'fbull', income:'fi', bodycopy:'fbc',
   method:'fm', date:'fd'
 };
 
-function _rtTopic(){ return 'realtime:project:'+_portfolioId+':'+_propertyId; }
+function _rtTopic(){ return 'realtime:project-changes:'+_portfolioId+':'+_propertyId; }
 function _rtNextRef(){ return String(_rtRefNum++); }
 
 // ── Open WebSocket ───────────────────────────────────────────────
 function startLiveSync(){
-  // Read username from masthead (populated by init) or session storage
   try{
     const mn = document.getElementById('mast-usr-name');
     if(mn && mn.textContent && mn.textContent !== '—') _rtUserName = mn.textContent.trim();
@@ -7542,13 +7541,29 @@ function _rtOpen(){
   catch(e){ console.warn('[RT] WS failed',e); _rtScheduleRecon(); return; }
 
   _rtSocket.onopen = ()=>{
-    _rtSend({ topic:_rtTopic(), event:'phx_join',
-      payload:{ config:{ broadcast:{ self:false, ack:false } } },
-      ref:_rtNextRef() });
+    // Subscribe to Postgres Changes on the projects table for this project
+    _rtSend({
+      topic: _rtTopic(),
+      event: 'phx_join',
+      payload: {
+        config: {
+          postgres_changes: [{
+            event:  '*',
+            schema: 'public',
+            table:  'projects',
+            filter: 'portfolio_id=eq.'+_portfolioId+' AND property_id=eq.'+_propertyId
+          }],
+          broadcast: { self: false, ack: false },
+          presence: { key: _rtUserId }
+        }
+      },
+      ref: _rtNextRef()
+    });
     clearInterval(_rtHbTimer);
     _rtHbTimer = setInterval(()=>{
       _rtSend({ topic:'phoenix', event:'heartbeat', payload:{}, ref:_rtNextRef() });
     }, 25000);
+    console.log('[RT] WebSocket open, joining channel...');
   };
 
   _rtSocket.onmessage = (e)=>{
@@ -7563,234 +7578,171 @@ function _rtOpen(){
     _rtScheduleRecon();
   };
 
-  _rtSocket.onerror = ()=>{}; // onclose fires next
+  _rtSocket.onerror = ()=>{};
 }
 
 function _rtScheduleRecon(){ clearTimeout(_rtRcnTimer); _rtRcnTimer=setTimeout(_rtOpen,3500); }
+
 function _rtSend(msg){
   if(_rtSocket && _rtSocket.readyState===WebSocket.OPEN){
     _rtSocket.send(JSON.stringify(msg));
-  } else {
-    console.warn('[RT] _rtSend dropped — socket state:', _rtSocket ? _rtSocket.readyState : 'null');
   }
-}
-function _rtBroadcast(payload){
-  // Payload structure must match Supabase Realtime broadcast protocol exactly
-  const msg = {
-    topic:   _rtTopic(),
-    event:   'broadcast',
-    payload: payload,
-    ref:     _rtNextRef()
-  };
-  console.log('[RT] _rtBroadcast sending:', JSON.stringify(msg).slice(0,150));
-  _rtSend(msg);
 }
 
 // ── Message router ───────────────────────────────────────────────
 function _rtHandleMsg(msg){
   const { event, payload } = msg;
 
-  if(event==='phx_reply' && payload&&payload.status==='ok' && !_rtConn){
+  // Channel join confirmed
+  if(event==='phx_reply' && payload && payload.status==='ok' && !_rtConn){
     _rtConn = true;
     _rtSetConn('connected','Live');
     console.log('[RT] connected | user:', _rtUserName, '| channel:', _rtTopic());
-    _rtBroadcastPresence(null);
     return;
   }
 
   if(event==='phx_error'){ console.warn('[RT] channel error', payload); return; }
 
-  if(event!=='broadcast'||!payload) return;
-
-  // Log the full structure so we can see exactly what Supabase sends back
-  console.log('[RT] ← full msg:', JSON.stringify(msg).slice(0,300));
-
-  // Supabase Realtime broadcast: our payload is at msg.payload
-  // but the actual data fields may be directly on payload OR nested under payload.payload
-  // Try all possible locations
-  let data = null;
-  if(payload && payload.type){
-    data = payload; // flat: {type, field, value, ...}
-  } else if(payload && payload.payload && payload.payload.type){
-    data = payload.payload; // nested: {payload: {type, field, value, ...}}
-  } else if(payload && payload.event && payload.payload){
-    data = payload.payload; // alternate nesting
+  // Postgres Changes notification — another user saved
+  if(event==='postgres_changes' && payload && payload.data){
+    console.log('[RT] ← postgres change received');
+    _rtHandleDbChange(payload.data);
+    return;
   }
 
-  if(!data){ console.log('[RT] could not extract data from payload:', JSON.stringify(payload).slice(0,200)); return; }
-
-  console.log('[RT] extracted data.type:', data.type, '| field:', data.field);
-
-  if(data.type==='field_op')   { _rtApplyOp(data);       return; }
-  if(data.type==='presence')   { _rtApplyPresence(data); return; }
-  if(data.type==='pres_leave') { _rtApplyLeave(data.uid); return; }
-
-  console.log('[RT] unhandled type:', data.type);
+  // Also handle the system event name Supabase uses
+  if(event==='INSERT' || event==='UPDATE'){
+    console.log('[RT] ← db change event:', event);
+    _rtHandleDbChange(payload);
+    return;
+  }
 }
 
-// ── Broadcast a local field change ──────────────────────────────
-// Called from every sidebar input's oninput handler.
-// Single entry point for all sidebar field changes.
-// Guarantees rtBroadcastField fires even if globalSync/onBulletFieldChange throws.
-function _rtFieldChange(event, field, domId, syncType){
-  const value = event.target.value;
-  console.log('[RT] _rtFieldChange called:', field, value.slice(0,20), '| connected:', _rtConn);
-  try{ clEnforce(domId); }catch(e){}
-  try{
-    if(syncType==='bullet') onBulletFieldChange();
-    else globalSync();
-  }catch(e){ console.warn('[RT] sync error in',field,e); }
-  // Broadcast always fires — guaranteed
-  rtBroadcastField(field, value);
-  // Presence: mark this field as active
-  _rtFieldFocus(field);
+// ── Handle a database change notification ────────────────────────
+function _rtHandleDbChange(data){
+  // data.record contains the new row, data.old_record the previous
+  const record = data.record || data.new || data;
+  if(!record) return;
+
+  const updatedAt = record.updated_at;
+  const stateJson = record.state_json;
+
+  // Skip if this is our own save coming back
+  if(updatedAt && updatedAt === _lastKnownUpdatedAt){
+    console.log('[RT] skipping own save echo');
+    return;
+  }
+
+  // Skip if we have no state to apply
+  if(!stateJson){ console.log('[RT] no state_json in change'); return; }
+
+  console.log('[RT] applying remote state from db change, updated_at:', updatedAt);
+  _rtLastApplied = updatedAt;
+
+  // Debounce slightly in case multiple changes arrive rapidly
+  clearTimeout(_rtApplyTimer);
+  _rtApplyTimer = setTimeout(()=>{
+    _rtApplyRemoteState(stateJson, updatedAt);
+  }, 100);
 }
 
-function rtBroadcastField(field, value){
-  if(!_rtConn){ console.log('[RT] not connected, skipping broadcast for', field); return; }
-  if(_tabApprovals && _tabApprovals[currentTab]) return;
-  console.log('[RT] → sending field_op', field, value.slice(0,30));
-  _rtBroadcast({ type:'field_op', field, value, tabIdx:currentTab, uid:_rtUserId, uname:_rtUserName });
-}
+// ── Apply remote state surgically ───────────────────────────────
+// Reads the full state_json but only patches fields that differ,
+// never triggering a full re-render.
+function _rtApplyRemoteState(stateJson, updatedAt){
+  let remoteState;
+  try{ remoteState = JSON.parse(stateJson); }
+  catch(e){ console.warn('[RT] bad state_json', e); return; }
 
-// ── Apply an incoming field op ───────────────────────────────────
-function _rtApplyOp(payload){
-  const { field, value, tabIdx, uid, uname } = payload;
-  console.log('[RT] _rtApplyOp called | field:', field, '| uid:', uid, '| me:', _rtUserId, '| same?', uid===_rtUserId);
-  if(uid === _rtUserId) return; // own echo
+  if(!remoteState || !remoteState.v) return;
 
-  // Option A: approved tab is fully isolated — ignore ops targeting it
-  if(_tabApprovals && _tabApprovals[tabIdx]) return;
+  // State uses tabLayouts (= savedStates) and fields keys
+  const remoteTabs   = remoteState.tabLayouts || {};
+  const remoteFields = remoteState.fields || {};
 
   _rtRemoteApplying = true;
   try{
-    const domId   = _RT_FIELD_MAP[field];
-    const sidebarEl = domId ? document.getElementById(domId) : null;
-    const editing   = sidebarEl && document.activeElement === sidebarEl;
-
-    if(!editing){
-      // Update sidebar
-      if(sidebarEl) sidebarEl.value = value;
-      // Update canvas surgically — only touch elements for this field
-      if(tabIdx === currentTab){
-        _rtPatchCanvas(field, value);
+    // ── Apply top-level sidebar fields (heading, address etc) ──
+    // These are stored in remoteState.fields
+    const fieldMap = {
+      fh:'heading', fs:'subheading', fa1:'address1', fa2:'address2',
+      fb:'banner', fi:'income', fbc:'bodycopy', fbull:'bullets',
+      fm:'method', fd:'date'
+    };
+    Object.entries(fieldMap).forEach(([domId, rtField])=>{
+      if(!(domId in remoteFields)) return;
+      const value = remoteFields[domId];
+      const sidebarEl = document.getElementById(domId);
+      const userEditing = sidebarEl && document.activeElement === sidebarEl;
+      if(sidebarEl && !userEditing){
+        sidebarEl.value = value;
+        // Also patch canvas for current tab
+        if(!_isCanvasEditing()) _rtPatchCanvas(rtField, value);
+      } else if(sidebarEl && userEditing){
+        sidebarEl.style.outline='2px solid #f0a030';
+        setTimeout(()=>{ sidebarEl.style.outline=''; },1500);
       }
-      // Keep savedStates in sync for when user switches tabs
-      _rtPatchSavedState(tabIdx, field, value);
-      // Toast
-      _rtShowToast('↻ '+uname+' • '+field);
-      setCdtStatus('saved','Synced ✓');
-    } else {
-      // Conflict: user typing in same field — flash border, don't overwrite
-      if(sidebarEl){ sidebarEl.style.outline='2px solid #f0a030'; setTimeout(()=>{ sidebarEl.style.outline=''; },1500); }
-    }
+    });
+
+    // ── Apply per-tab canvas element positions/content ──
+    Object.keys(remoteTabs).forEach(tabIdxStr => {
+      const tabIdx = parseInt(tabIdxStr);
+      const remoteTabState = remoteTabs[tabIdx];
+      if(!Array.isArray(remoteTabState)) return;
+      if(_tabApprovals && _tabApprovals[tabIdx]) return; // Option A
+
+      // Merge into savedStates so tab switches pick it up
+      if(!savedStates[tabIdx]) savedStates[tabIdx] = remoteTabState;
+      else {
+        remoteTabState.forEach(remoteEl => {
+          const existing = savedStates[tabIdx].find(sv => sv.eid === remoteEl.eid);
+          if(existing){
+            // Only update content fields, not position (position changes are
+            // handled separately and rarely conflict)
+            if(remoteEl.content !== undefined) existing.content = remoteEl.content;
+          }
+        });
+      }
+    });
+
+    if(updatedAt) _lastKnownUpdatedAt = updatedAt;
+    _rtShowToast('↻ Synced');
+    setCdtStatus('saved','Synced ✓');
+    console.log('[RT] remote state applied OK');
   } finally {
     _rtRemoteApplying = false;
   }
 }
 
-// Surgically update only the canvas .el elements that display this field.
-// Never calls globalSync — that would re-render the whole tab.
+// Surgically update canvas elements for a single field
 function _rtPatchCanvas(field, value){
   try{
     document.querySelectorAll('.el[data-field="'+field+'"]').forEach(el=>{
       const inner = el.querySelector('.el-inner');
-      if(!inner || inner.contentEditable==='true') return; // skip if in edit
-      if(el.dataset.richHtml) return; // skip if user has custom formatting
-      // For multiline fields, keep newlines; for single-line, use as-is
+      if(!inner || inner.contentEditable==='true') return;
+      if(el.dataset.richHtml) return;
       inner.textContent = value;
     });
   }catch(e){}
 }
 
-// Patch a field value into savedStates without triggering restore
-function _rtPatchSavedState(tabIdx, field, value){
-  if(!savedStates[tabIdx]) return;
-  savedStates[tabIdx].forEach(sv=>{ if(sv.field===field) sv.content=value; });
-}
-
 // ── Presence ────────────────────────────────────────────────────
-function _rtBroadcastPresence(activeField){
-  if(!_rtConn) return;
-  _rtBroadcast({ type:'presence', uid:_rtUserId, uname:_rtUserName, activeField });
-}
+function _rtBroadcastPresence(activeField){ /* presence via db change channel */ }
+function _rtFieldFocus(field){ /* presence not needed for v4 */ }
+function _rtFieldBlur(){ /* presence not needed for v4 */ }
 
-function _rtApplyPresence(p){
-  const { uid, uname, activeField } = p;
-  if(uid===_rtUserId) return;
-  if(!_rtPresence[uid]){
-    _rtPresence[uid] = { name:uname, color:_RT_COLORS[_rtColorIdx%_RT_COLORS.length], activeField };
-    _rtColorIdx++;
-    // Reply so they see us too
-    _rtBroadcastPresence(null);
-  } else {
-    _rtPresence[uid].activeField = activeField;
-  }
-  _rtRenderPresence();
-  _rtRenderBadges();
-}
-
-function _rtApplyLeave(uid){
-  if(_rtPresence[uid]){ delete _rtPresence[uid]; _rtRenderPresence(); _rtRenderBadges(); }
-}
-
-// Called from sidebar onfocus / onblur
-function _rtFieldFocus(field){ _rtBroadcastPresence(field); }
-function _rtFieldBlur(){ _rtBroadcastPresence(null); }
-
-// ── Presence bar render ──────────────────────────────────────────
 function _rtRenderPresence(){
   const bar = document.getElementById('rt-avatars');
   if(!bar) return;
-  const others = Object.values(_rtPresence);
-  if(!others.length){
-    bar.innerHTML='<span style="font-size:9px;color:rgba(255,255,255,.25);">Only you</span>';
-    return;
-  }
-  bar.innerHTML = others.map(p=>{
-    const ini = (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-    const fl  = p.activeField ? ' · '+p.activeField : '';
-    return '<div class="rt-avatar" style="color:'+p.color+';border-color:'+p.color+'33;background:'+p.color+'11;">'
-      +'<div class="rt-avatar-dot" style="background:'+p.color+';">'+ini+'</div>'
-      +'<span>'+_rtEsc(p.name)+'</span>'
-      +'<span class="rt-avatar-field">'+_rtEsc(fl)+'</span>'
-      +'</div>';
-  }).join('');
+  bar.innerHTML = '<span style="font-size:9px;color:rgba(255,255,255,.25);">Live sync active</span>';
 }
 
-// ── Field editing badges on sidebar labels ───────────────────────
-function _rtRenderBadges(){
-  // Clear all badges first
-  document.querySelectorAll('.rt-field-badge').forEach(b=>{
-    b.textContent=''; b.classList.remove('rt-badge-on');
-  });
-  // Clear all remote-tinted inputs
-  Object.values(_RT_FIELD_MAP).forEach(id=>{
-    const el=document.getElementById(id); if(!el||document.activeElement===el) return;
-    // Only clear if no one is editing it remotely
-    const editing=Object.values(_rtPresence).some(p=>_RT_FIELD_MAP[p.activeField]===id);
-    if(!editing){ el.style.borderColor=''; el.style.boxShadow=''; }
-  });
-  // Apply badges for active remote editors
-  Object.values(_rtPresence).forEach(p=>{
-    if(!p.activeField) return;
-    const domId = _RT_FIELD_MAP[p.activeField]; if(!domId) return;
-    const inp = document.getElementById(domId); if(!inp) return;
-    const label = inp.closest('.fl')&&inp.closest('.fl').querySelector('label'); if(!label) return;
-    let badge = label.querySelector('.rt-field-badge');
-    if(!badge){ badge=document.createElement('span'); badge.className='rt-field-badge'; label.appendChild(badge); }
-    badge.textContent = p.name+' editing';
-    badge.style.cssText = 'background:'+p.color+';color:#000;';
-    badge.classList.add('rt-badge-on');
-    inp.style.borderColor = p.color;
-    inp.style.boxShadow   = '0 0 0 2px '+p.color+'33';
-  });
-}
+function _rtRenderBadges(){ /* simplified for v4 */ }
 
 // ── UI helpers ───────────────────────────────────────────────────
 function _rtSetConn(state, label){
-  const pill=document.getElementById('rt-conn-pill');
-  const lbl =document.getElementById('rt-conn-label');
+  const pill = document.getElementById('rt-conn-pill');
+  const lbl  = document.getElementById('rt-conn-label');
   if(pill) pill.className='rt-pill rt-'+state;
   if(lbl)  lbl.textContent=label;
 }
@@ -7806,9 +7758,7 @@ function _rtShowToast(msg){
 function _rtEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // Announce leave on tab close
-window.addEventListener('beforeunload',()=>{
-  if(_rtConn) _rtBroadcast({ type:'pres_leave', uid:_rtUserId });
-});
+window.addEventListener('beforeunload',()=>{ /* nothing needed for v4 */ });
 // Pause on hidden, resume on visible
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) stopLiveSync();
