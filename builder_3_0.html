@@ -6559,32 +6559,9 @@ async function supabaseSave(state){
     let savedRow;
     if(rows&&rows.length){
       const serverTs=rows[0].updated_at;
-      // If server is newer than our last known timestamp, another user saved recently.
-      // Only block if we have a known timestamp (not first save) and server is clearly newer.
-      if(_lastKnownUpdatedAt && serverTs && serverTs > _lastKnownUpdatedAt){
-        // Check if the difference is meaningful (>2s) to avoid clock-skew false positives
-        const serverTime=new Date(serverTs).getTime();
-        const knownTime=new Date(_lastKnownUpdatedAt).getTime();
-        if(serverTime - knownTime > 2000){
-          console.warn('[CBRE] Concurrency conflict: server is newer than our last save. Skipping overwrite.');
-          setCdtStatus('error','Conflict — another user saved. Refreshing…');
-          // Load their version so this session gets in sync, then show toast
-          setTimeout(async function(){
-            const fresh=await supabaseLoad();
-            if(fresh){
-              const prevTab=currentTab;
-              applyState(fresh.state,true);
-              currentTab=prevTab;
-              document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===prevTab));
-              if(savedStates[prevTab])restoreTab(prevTab);else buildTemplate(prevTab);
-              _lastKnownUpdatedAt=fresh.updatedAt||serverTs;
-              setCdtStatus('saved','Synced ✓');
-              showSyncToast('⚠ Another user saved — your view has been updated');
-            }
-          }, 500);
-          return null; // signal save was blocked
-        }
-      }
+      // WebSocket layer handles real-time field sync between users.
+      // No conflict check needed — each save just persists the current state.
+      if(serverTs) _lastKnownUpdatedAt = serverTs;
       const r=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${rows[0].id}`,{method:'PATCH',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
       const data=await r.json(); savedRow=Array.isArray(data)?data[0]:data;
     } else {
@@ -6753,7 +6730,7 @@ async function restoreFromHistory(histId, label){
     _canvasDirty = true;
     await _doSave(collectState());
     closeHistoryPanel();
-    showSyncToast('↩ Restored to version from ' + label);
+    _rtShowToast('↩ Restored to version from ' + label);
   }catch(e){
     alert('Restore failed: ' + e.message);
   }
