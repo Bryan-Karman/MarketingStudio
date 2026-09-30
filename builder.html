@@ -5810,10 +5810,18 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
   const sorted=[...state].sort((a,b)=>(parseInt(a.z)||0)-(parseInt(b.z)||0));
 
-  // Pre-rasterise images in parallel
-  const imgJobs=sorted.filter(sv=>sv.type==='img').map(async sv=>{
+  // Pre-rasterise images in parallel.
+  // KEY FIX: imgMap is keyed by array index (_idx), NOT by sv.eid.
+  // sv.eid values are assigned from nextId which resets to 1 for every tab build,
+  // so elements across different tabs share the same eid values (e.g. logo on Tab 0
+  // and a property photo on Tab 2 can both have eid "3"). Using eid as the map key
+  // caused the last-written entry to win, making logos overwrite property images in
+  // the exported PDF. Using the positional index within imgSorted is always unique
+  // within a single render call and avoids all cross-element collisions.
+  const imgSorted=sorted.filter(sv=>sv.type==='img');
+  const imgJobs=imgSorted.map(async (sv,_idx)=>{
     const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
-    if(!src) return {eid:sv.eid,dataUrl:null};
+    if(!src) return {_idx,dataUrl:null};
     const isLogo=['logo','logo2','logo3','logo4'].includes(sv.assetKey||'');
     const isSvg=sv.svgKey||src.startsWith('data:image/svg');
     const fw2=parseFloat(sv.w)||0, fh2=parseFloat(sv.h)||0;
@@ -5834,16 +5842,16 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         ctx.save(); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
         try{ ctx.drawImage(img,dx,dy,dw,dh); }catch(e){}
         ctx.restore();
-        resolve({eid:sv.eid, dataUrl:c.toDataURL('image/png')});
+        resolve({_idx, dataUrl:c.toDataURL('image/png')});
       };
-      img.onerror=()=>resolve({eid:sv.eid,dataUrl:null});
-      setTimeout(()=>resolve({eid:sv.eid,dataUrl:null}),10000);
+      img.onerror=()=>resolve({_idx,dataUrl:null});
+      setTimeout(()=>resolve({_idx,dataUrl:null}),10000);
       img.src=src;
     });
   });
   const imgResults=await Promise.all(imgJobs);
   const imgMap={};
-  imgResults.forEach(r=>{ if(r) imgMap[r.eid]=r.dataUrl; });
+  imgResults.forEach(r=>{ if(r) imgMap[r._idx]=r.dataUrl; });
 
   // Draw background — always white for EDM (dark header rect must not fill whole page)
   pdf.setFillColor(255,255,255);
@@ -5862,7 +5870,8 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       pdf.setFillColor(r,g,b); pdf.rect(ex,ey,ew,eh,'F');
 
     } else if(sv.type==='img'){
-      const du=imgMap[sv.eid];
+      const _svIdx=imgSorted.indexOf(sv);
+      const du=(_svIdx>=0)?imgMap[_svIdx]:undefined;
       if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','NONE'); }catch(e){ console.warn('addImage fail',e); } }
 
     } else if(sv.type==='text'){
