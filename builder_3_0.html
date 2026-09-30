@@ -6953,6 +6953,7 @@ let _persistTimer=null;
 // Activity tracking simplified — no longer needed for sync decisions
 function _markUserActivity(){} // no-op: replaced by WebSocket layer
 function _markCanvasEdit(){_canvasDirty=true;_edmPositionsLocked=false;}
+function _isCanvasEditing(){ return !!document.querySelector('.el-inner[contenteditable="true"]'); }
 function _markInlineEdit(){} // stub — WebSocket layer handles sync timing
 let _pendingSaveState=null,_saveRetryTimer=null; // kept for _doSave compat
 let _lastSaveAttemptTime=0; // kept for _doSave compat
