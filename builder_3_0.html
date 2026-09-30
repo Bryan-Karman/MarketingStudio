@@ -7567,10 +7567,23 @@ function _rtOpen(){
 }
 
 function _rtScheduleRecon(){ clearTimeout(_rtRcnTimer); _rtRcnTimer=setTimeout(_rtOpen,3500); }
-function _rtSend(msg){ if(_rtSocket&&_rtSocket.readyState===WebSocket.OPEN) _rtSocket.send(JSON.stringify(msg)); }
+function _rtSend(msg){
+  if(_rtSocket && _rtSocket.readyState===WebSocket.OPEN){
+    _rtSocket.send(JSON.stringify(msg));
+  } else {
+    console.warn('[RT] _rtSend dropped — socket state:', _rtSocket ? _rtSocket.readyState : 'null');
+  }
+}
 function _rtBroadcast(payload){
-  _rtSend({ topic:_rtTopic(), event:'broadcast',
-    payload:{ type:payload.type, ...payload }, ref:_rtNextRef() });
+  // Payload structure must match Supabase Realtime broadcast protocol exactly
+  const msg = {
+    topic:   _rtTopic(),
+    event:   'broadcast',
+    payload: payload,
+    ref:     _rtNextRef()
+  };
+  console.log('[RT] _rtBroadcast sending:', JSON.stringify(msg).slice(0,150));
+  _rtSend(msg);
 }
 
 // ── Message router ───────────────────────────────────────────────
@@ -7611,6 +7624,7 @@ function _rtHandleMsg(msg){
 // Guarantees rtBroadcastField fires even if globalSync/onBulletFieldChange throws.
 function _rtFieldChange(event, field, domId, syncType){
   const value = event.target.value;
+  console.log('[RT] _rtFieldChange called:', field, value.slice(0,20), '| connected:', _rtConn);
   try{ clEnforce(domId); }catch(e){}
   try{
     if(syncType==='bullet') onBulletFieldChange();
