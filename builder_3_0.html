@@ -411,7 +411,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
   <div style="padding:4px 8px;background:#003f2d;color:#17e88f;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:6px;">
     RT DEBUG v5
     <span style="display:flex;gap:4px;">
-      <button onclick="if(window._rtChannel){_rtChannel.send({type:'broadcast',event:'field_op',payload:{field:'heading',value:'PING TEST',tabIdx:0,uid:_rtUserId,uname:_rtUserName}});rtLog('sent PING','#5bd4c8');}else{rtLog('no channel!','#e05555');}" style="font-size:9px;background:#003f2d;border:1px solid #17e88f;color:#17e88f;cursor:pointer;padding:1px 6px;">PING</button>
+      <button onclick="try{_rtChannel.send({type:'broadcast',event:'field_op',payload:{field:'heading',value:'PING TEST',tabIdx:0,uid:'ping-test',uname:'PING'}});rtLog('PING sent','#5bd4c8');}catch(e){rtLog('PING err: '+e,'#e05555');}" style="font-size:9px;background:#003f2d;border:1px solid #17e88f;color:#17e88f;cursor:pointer;padding:1px 6px;">PING</button>
       <button onclick="document.getElementById('rt-debug-log').innerHTML=''" style="font-size:9px;background:none;border:1px solid #17e88f;color:#17e88f;cursor:pointer;padding:1px 5px;">Clear</button>
     </span>
   </div>
