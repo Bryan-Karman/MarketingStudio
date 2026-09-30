@@ -5704,11 +5704,12 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     return renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, false);
   }
 
-  // For brochure tabs: when the tab is active, re-read text content from the live DOM.
+  // For brochure + AFR tabs: when the tab is active, re-read text content from the live DOM.
   // This ensures:
   //   1. Income bold (font-weight:700) is always correct — restoreTab just fixed it
   //   2. Line breaks match the screen — use _extractRenderedLines for plain text
-  if((tabIdx === 0 || tabIdx === 1) && currentTab === tabIdx){
+  //   3. AFR bullet/bodycopy line breaks render as simple line breaks, not paragraph breaks
+  if([0, 1, 5, 6].indexOf(tabIdx) > -1 && currentTab === tabIdx){
     const _liveEls = document.querySelectorAll('#artwork .el');
     state = state.map(function(sv){
       if(sv.type !== 'text') return sv;
@@ -5718,7 +5719,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       var _inner = _liveEl.querySelector('.el-inner');
       if(!_inner) return sv;
       var _sv2 = Object.assign({}, sv);
-      // Always read richHtml from live DOM — captures correct bold state
+      // Always read richHtml from live DOM — captures correct bold/bullet state
       _sv2.richHtml = _inner.innerHTML;
       // For plain text elements (no child divs), extract browser-rendered line breaks
       var _childDivs = _inner.querySelectorAll(':scope > div');
@@ -5729,6 +5730,23 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           _sv2.content = _renderedLines.join('\n');
           _sv2.noWrap = '1';
         }
+      } else {
+        // AFR/Brochure elements with child divs (bullets, bodycopy):
+        // Read the actual rendered lines from DOM so PDF matches screen exactly.
+        // Each child div = one bullet/line; use textContent to strip dash spans.
+        // This prevents paragraph spacing (bsp) being applied as extra blank lines.
+        var _btSpans = _inner.querySelectorAll('div > span.bt');
+        var _plainDivs = _inner.querySelectorAll('div.plain-line');
+        if(_btSpans.length > 0){
+          // Bullet mode: read text from span.bt elements (excludes the dash span)
+          _sv2.content = Array.from(_btSpans).map(function(s){ return s.textContent; }).join('\n');
+          _sv2.noWrap = '0'; // let jsPDF wrap naturally
+        } else if(_plainDivs.length > 0){
+          // Plain-line mode (brochure highlight points): read from div.plain-line
+          _sv2.content = Array.from(_plainDivs).map(function(d){ return d.textContent; }).join('\n');
+          _sv2.noWrap = '0';
+        }
+        // richHtml is already set above — it carries bold/italic formatting
       }
       return _sv2;
     });
@@ -5750,6 +5768,12 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         const phone = (document.getElementById(phoneMap[field])||{}).value||'';
         text = phone ? val+' '+phone : val;
       } else { text = val; }
+    }
+    // Collapse saledate/salemethod multi-line values into a single line for all
+    // non-brochure tabs (matches raster PDF path at lines 5323-5326).
+    // Brochure tabs (0,1) preserve line breaks so the date can span multiple lines.
+    if((field==='saledate' || field==='salemethod') && tabIdx !== 0 && tabIdx !== 1){
+      text = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).join(' ');
     }
     const fi = ((document.getElementById('fi')||{}).value||'').trim();
     if((field==='bullets' || sv.wasIncomeAnchor==='1') && fi){
@@ -6116,7 +6140,11 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
           }
         }
-        if(bsp>0) curY+=bsp;
+        // Only apply paragraph spacing for bullet elements and brochure plain-line
+        // (highlight points). Applying bsp to every line on non-bullet AFR text elements
+        // (heading, address, sale details, etc.) causes lines to render as paragraph
+        // breaks with extra space in the exported PDF.
+        if(bsp>0 && (isBullets || _isBrochureBulletsField)) curY+=bsp;
       });
     }
   }
