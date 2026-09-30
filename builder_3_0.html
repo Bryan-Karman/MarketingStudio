@@ -406,6 +406,12 @@ body.admin-mode .cl-limit-wrap{display:flex;}
   <div id="rt-avatars"><span style="font-size:9px;color:rgba(255,255,255,.2);">Connecting…</span></div>
   <div id="rt-conn-pill" class="rt-pill rt-connecting"><span id="rt-conn-label">Connecting…</span></div>
 </div>
+<!-- DEBUG PANEL — remove before production -->
+<div id="rt-debug-panel" style="position:fixed;bottom:0;right:0;width:400px;max-height:200px;background:rgba(0,0,0,.93);border-top:2px solid #17e88f;border-left:2px solid #17e88f;z-index:99999;font-family:monospace;font-size:10px;display:flex;flex-direction:column;">
+  <div style="padding:4px 8px;background:#003f2d;color:#17e88f;font-weight:700;display:flex;justify-content:space-between;align-items:center;">RT DEBUG LOG<button onclick="document.getElementById('rt-debug-log').innerHTML=''" style="font-size:9px;background:none;border:1px solid #17e88f;color:#17e88f;cursor:pointer;padding:1px 5px;">Clear</button></div>
+  <div id="rt-debug-log" style="flex:1;overflow-y:auto;padding:5px 8px;display:flex;flex-direction:column;gap:2px;"></div>
+</div>
+
 <!-- LIVE SYNC TOAST -->
 <div id="live-sync-toast">↻ Updated by another user</div>
 
@@ -6934,6 +6940,7 @@ function loadAsset(e,key){
 // Tracks whether the user has made any real edits since the last load/restore.
 // Prevents a freshly-built blank template from overwriting good saved data.
 let _canvasDirty = false;
+let _rtRemoteApplying = false; // prevents debouncedPersist firing on remote changes
 function _markCanvasDirty(){ _canvasDirty = true; _edmPositionsLocked = false; }
 
 let _persistTimer=null;
@@ -7538,7 +7545,7 @@ function _rtOpen(){
   _rtSetConn('connecting','Connecting…');
   const url = 'wss://pgsgjafgetdvuctmpibf.supabase.co/realtime/v1/websocket?apikey='+SUPA_KEY+'&vsn=1.0.0';
   try{ _rtSocket = new WebSocket(url); }
-  catch(e){ console.warn('[RT] WS failed',e); _rtScheduleRecon(); return; }
+  catch(e){ rtLog('WS FAILED: '+e, '#e05555'); _rtScheduleRecon(); return; }
 
   _rtSocket.onopen = ()=>{
     // Subscribe to Postgres Changes on the projects table for this project
@@ -7563,7 +7570,7 @@ function _rtOpen(){
     _rtHbTimer = setInterval(()=>{
       _rtSend({ topic:'phoenix', event:'heartbeat', payload:{}, ref:_rtNextRef() });
     }, 25000);
-    console.log('[RT] WebSocket open, joining channel...');
+    rtLog('WS open, joining...', '#4ab0f5');
   };
 
   _rtSocket.onmessage = (e)=>{
@@ -7597,22 +7604,22 @@ function _rtHandleMsg(msg){
   if(event==='phx_reply' && payload && payload.status==='ok' && !_rtConn){
     _rtConn = true;
     _rtSetConn('connected','Live');
-    console.log('[RT] connected | user:', _rtUserName, '| channel:', _rtTopic());
+    rtLog('CONNECTED | '+_rtUserName+' | '+_rtTopic(), '#17e88f');
     return;
   }
 
-  if(event==='phx_error'){ console.warn('[RT] channel error', payload); return; }
+  if(event==='phx_error'){ rtLog('channel error: '+JSON.stringify(payload).slice(0,80), '#e05555'); return; }
 
   // Postgres Changes notification — another user saved
   if(event==='postgres_changes' && payload && payload.data){
-    console.log('[RT] ← postgres change received');
+    rtLog('← POSTGRES CHANGE RECEIVED', '#f0a030');
     _rtHandleDbChange(payload.data);
     return;
   }
 
   // Also handle the system event name Supabase uses
   if(event==='INSERT' || event==='UPDATE'){
-    console.log('[RT] ← db change event:', event);
+    rtLog('← DB change event: '+event, '#f0a030');
     _rtHandleDbChange(payload);
     return;
   }
@@ -7629,14 +7636,14 @@ function _rtHandleDbChange(data){
 
   // Skip if this is our own save coming back
   if(updatedAt && updatedAt === _lastKnownUpdatedAt){
-    console.log('[RT] skipping own save echo');
+    rtLog('skipping own save echo', '#666');
     return;
   }
 
   // Skip if we have no state to apply
-  if(!stateJson){ console.log('[RT] no state_json in change'); return; }
+  if(!stateJson){ rtLog('no state_json in change!', '#e05555'); return; }
 
-  console.log('[RT] applying remote state from db change, updated_at:', updatedAt);
+  rtLog('applying remote state... '+updatedAt, '#f0a030');
   _rtLastApplied = updatedAt;
 
   // Debounce slightly in case multiple changes arrive rapidly
@@ -7652,7 +7659,7 @@ function _rtHandleDbChange(data){
 function _rtApplyRemoteState(stateJson, updatedAt){
   let remoteState;
   try{ remoteState = JSON.parse(stateJson); }
-  catch(e){ console.warn('[RT] bad state_json', e); return; }
+  catch(e){ rtLog('bad state_json: '+e, '#e05555'); return; }
 
   if(!remoteState || !remoteState.v) return;
 
@@ -7708,7 +7715,7 @@ function _rtApplyRemoteState(stateJson, updatedAt){
     if(updatedAt) _lastKnownUpdatedAt = updatedAt;
     _rtShowToast('↻ Synced');
     setCdtStatus('saved','Synced ✓');
-    console.log('[RT] remote state applied OK');
+    rtLog('APPLIED OK', '#17e88f');
   } finally {
     _rtRemoteApplying = false;
   }
@@ -7745,6 +7752,16 @@ function _rtSetConn(state, label){
   const lbl  = document.getElementById('rt-conn-label');
   if(pill) pill.className='rt-pill rt-'+state;
   if(lbl)  lbl.textContent=label;
+}
+
+function rtLog(msg, color){
+  const log = document.getElementById('rt-debug-log');
+  if(!log) return;
+  const line = document.createElement('div');
+  line.style.cssText = 'padding:2px 0;border-bottom:1px solid #1a1a1a;color:'+(color||'#aaa')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+  line.textContent = new Date().toLocaleTimeString('en',{hour12:false})+' '+msg;
+  log.prepend(line);
+  while(log.children.length > 60) log.removeChild(log.lastChild);
 }
 
 function _rtShowToast(msg){
