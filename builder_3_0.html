@@ -514,7 +514,7 @@ body.admin-mode .cl-limit-wrap{display:flex;}
     <div class="sb-scroll">
       <div style="font-size:10px;color:#555;line-height:1.5;padding:6px 4px;">Click element to select. Drag to move. Drag handles to resize. Double-click text to edit inline. Properties panel on right.</div>
       <div class="sec">Content</div>
-      <div class="fl"><label>Heading</label><input id="fh" value="Heading xx" oninput="try{clEnforce('fh');globalSync();}catch(e){} try{if(_rtChannel){_rtChannel.send({type:'broadcast',event:'field_op',payload:{field:'heading',value:this.value,tabIdx:currentTab,uid:_rtUserId,uname:_rtUserName}});rtLog('→ sent heading='+this.value.slice(0,15),'#5bd4c8');}else{rtLog('no channel on input!','#e05555');}}catch(e){rtLog('send err:'+e,'#e05555');}">
+      <div class="fl"><label>Heading</label><input id="fh" value="Heading xx" oninput="_rtFieldChange(event,'heading','fh','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fh"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fh" placeholder="∞" oninput="clSetLimit('fh',this.value)" title="Max characters (leave blank for no limit)"></span></div></div>
       <div class="fl"><label>Sub Heading</label><input id="fs" value="Sub Heading xx" oninput="_rtFieldChange(event,'subheading','fs','global')">
         <div class="cl-row"><span class="cl-count" id="cl-fs"></span><span class="cl-limit-wrap"><span class="cl-limit-lbl">Limit:</span><input class="cl-limit-inp" type="number" min="0" id="lim-fs" placeholder="∞" oninput="clSetLimit('fs',this.value)" title="Max characters"></span></div></div>
@@ -7620,11 +7620,12 @@ function _rtSubscribe(){
 // broadcast always fires even if the canvas sync throws.
 function _rtFieldChange(event, field, domId, syncType){
   const value = event.target.value;
-  try{ clEnforce(domId); }catch(e){}
+  rtLog('_rtFieldChange: '+field+' conn='+_rtConn+' ch='+(!!_rtChannel), '#888');
+  try{ clEnforce(domId); }catch(e){ rtLog('clEnforce err: '+e,'#e05555'); }
   try{
     if(syncType==='bullet') onBulletFieldChange();
     else globalSync();
-  }catch(e){}
+  }catch(e){ rtLog('sync err: '+e,'#e05555'); }
   rtBroadcastField(field, value);
 }
 
