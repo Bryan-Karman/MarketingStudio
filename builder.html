@@ -5819,7 +5819,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     const fw2=parseFloat(sv.w)||0, fh2=parseFloat(sv.h)||0;
     const fit=(isLogo||isSvg)?'contain':'cover';
     return new Promise(resolve=>{
-      const SCALE=2, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
+      const SCALE=4, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
       const img=new Image(); img.crossOrigin='anonymous';
       img.onload=function(){
         const c=document.createElement('canvas'); c.width=cw; c.height=ch;
