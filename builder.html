@@ -5427,9 +5427,10 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         loader.src=img.src;
       })));
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const _renderScale=(tabIdx===2||tabIdx===3)?1:[5,6,10,11,12,13].includes(tabIdx)?3:2;
+      const _renderScale=(tabIdx===2||tabIdx===3)?1:[5,6,10,11,12,13].includes(tabIdx)?3.125:2;
       const canvas=await html2canvas(offscreen,{scale:_renderScale,useCORS:true,allowTaint:true,backgroundColor:tabIdx===4?DK:'#ffffff',logging:false,width:canvasW,height:canvasH,windowWidth:canvasW,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
-      const imgData=canvas.toDataURL('image/jpeg',0.75);
+      const _jpegQ=[5,6,10,11,12,13].includes(tabIdx)?0.92:0.75;
+      const imgData=canvas.toDataURL('image/jpeg',_jpegQ);
       pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'FAST');
       resolve();
     } catch(err){ reject(err); }
