@@ -5377,11 +5377,13 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         }
       });
       // Pre-convert SVG images to PNG canvas so html2canvas can render them
+      const _renderScale=(tabIdx===2||tabIdx===3)?1:[5,6,10,11,12,13].includes(tabIdx)?4:2;
+      const _imgScale=_renderScale;
       await Promise.all([...offscreen.querySelectorAll('.el[data-type="img"] img')].map(img=>new Promise(resolve=>{
         if(!img.src||!img.src.startsWith('data:image/svg')){resolve();return;}
         const el=img.closest('.el');
         const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
-        const SCALE=2,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const SCALE=_imgScale,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
         const svgImg=new Image();
         svgImg.onload=function(){
           const c=document.createElement('canvas');c.width=cw;c.height=ch;
@@ -5406,7 +5408,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         const el=inner.closest('.el');
         const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
         const fit=img.style.objectFit||'cover';
-        const SCALE=2,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const SCALE=_imgScale,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
         const loader=new Image(cw,ch); loader.crossOrigin='anonymous';
         loader.onload=function(){
           const c=document.createElement('canvas'); c.width=cw; c.height=ch;
@@ -5427,7 +5429,6 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         loader.src=img.src;
       })));
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const _renderScale=(tabIdx===2||tabIdx===3)?1:[5,6,10,11,12,13].includes(tabIdx)?3.125:2;
       const canvas=await html2canvas(offscreen,{scale:_renderScale,useCORS:true,allowTaint:true,backgroundColor:tabIdx===4?DK:'#ffffff',logging:false,width:canvasW,height:canvasH,windowWidth:canvasW,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
       const _jpegQ=[5,6,10,11,12,13].includes(tabIdx)?0.92:0.75;
       const imgData=canvas.toDataURL('image/jpeg',_jpegQ);
