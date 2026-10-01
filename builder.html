@@ -5381,7 +5381,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         if(!img.src||!img.src.startsWith('data:image/svg')){resolve();return;}
         const el=img.closest('.el');
         const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
-        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const SCALE=2,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
         const svgImg=new Image();
         svgImg.onload=function(){
           const c=document.createElement('canvas');c.width=cw;c.height=ch;
@@ -5406,7 +5406,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         const el=inner.closest('.el');
         const fw=parseFloat(el.style.width)||100,fh=parseFloat(el.style.height)||60;
         const fit=img.style.objectFit||'cover';
-        const SCALE=3,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
+        const SCALE=2,cw=Math.round(fw*SCALE),ch=Math.round(fh*SCALE);
         const loader=new Image(cw,ch); loader.crossOrigin='anonymous';
         loader.onload=function(){
           const c=document.createElement('canvas'); c.width=cw; c.height=ch;
@@ -5427,9 +5427,10 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         loader.src=img.src;
       })));
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      const canvas=await html2canvas(offscreen,{scale:4,useCORS:true,allowTaint:true,backgroundColor:tabIdx===4?DK:'#ffffff',logging:false,width:canvasW,height:canvasH,windowWidth:canvasW,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
-      const imgData=canvas.toDataURL('image/jpeg',0.97);
-      pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'NONE');
+      const _renderScale=(tabIdx===2||tabIdx===3)?1:2;
+      const canvas=await html2canvas(offscreen,{scale:_renderScale,useCORS:true,allowTaint:true,backgroundColor:tabIdx===4?DK:'#ffffff',logging:false,width:canvasW,height:canvasH,windowWidth:canvasW,windowHeight:canvasH,x:0,y:0,scrollX:0,scrollY:0,imageTimeout:15000});
+      const imgData=canvas.toDataURL('image/jpeg',0.75);
+      pdf.addImage(imgData,'JPEG',0,0,pageW,pageH,undefined,'FAST');
       resolve();
     } catch(err){ reject(err); }
     finally {
@@ -5534,7 +5535,7 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = function(){
-      const SCALE = 4;
+      const SCALE = 2;
       const cw = Math.round(fw * SCALE), ch = Math.round(fh * SCALE);
       const canvas = document.createElement('canvas');
       canvas.width = cw; canvas.height = ch;
@@ -5553,7 +5554,7 @@ async function imgToDataUrl(src, fw, fh, cropX, cropY, cropW, cropH, objectFit){
       ctx.save(); ctx.beginPath(); ctx.rect(0,0,cw,ch); ctx.clip();
       try { ctx.drawImage(img,dx,dy,dw,dh); } catch(e){}
       ctx.restore();
-      resolve(canvas.toDataURL('image/jpeg',0.97));
+      resolve(canvas.toDataURL('image/jpeg',0.75));
     };
     img.onerror = () => resolve(null);
     setTimeout(() => resolve(null), 10000);
@@ -5827,7 +5828,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     const fw2=parseFloat(sv.w)||0, fh2=parseFloat(sv.h)||0;
     const fit=(isLogo||isSvg)?'contain':'cover';
     return new Promise(resolve=>{
-      const SCALE=4, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
+      const SCALE=2, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
       const img=new Image(); img.crossOrigin='anonymous';
       img.onload=function(){
         const c=document.createElement('canvas'); c.width=cw; c.height=ch;
@@ -5872,7 +5873,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     } else if(sv.type==='img'){
       const _svIdx=imgSorted.indexOf(sv);
       const du=(_svIdx>=0)?imgMap[_svIdx]:undefined;
-      if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','NONE'); }catch(e){ console.warn('addImage fail',e); } }
+      if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','FAST'); }catch(e){ console.warn('addImage fail',e); } }
 
     } else if(sv.type==='text'){
       // Widen available width by 2% so splitTextToSize matches browser line breaks.
@@ -8098,7 +8099,7 @@ async function exportEDMSections(){
     const isAsian = (currentTab===3);
     const [CANVAS_W, CANVAS_H] = getTabSize(currentTab); // use actual artboard size (respects custom sizes)
     const EMAIL_W = 600;
-    const RENDER_SCALE = 3;
+    const RENDER_SCALE = 1;
 
     // ── Build offscreen clone using same pipeline as PDF renderer ──
     if(btn) btn.textContent='⏳ Building canvas…';
@@ -8265,7 +8266,7 @@ async function exportEDMSections(){
       secCanvas.height = sh;
       secCanvas.getContext('2d').drawImage(fullCanvas, 0,ys, fullCanvas.width,sh, 0,0, fullCanvas.width,sh);
 
-      const blob = await new Promise(res=>secCanvas.toBlob(res,'image/jpeg',0.92));
+      const blob = await new Promise(res=>secCanvas.toBlob(res,'image/jpeg',0.75));
       const path = `assets/${_portfolioId}/${_propertyId}/edm_${sec.name}_${ts}.jpg`;
       const upRes = await fetch(`${SUPA_URL}/storage/v1/object/${path}`,{
         method:'POST',
