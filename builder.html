@@ -5822,6 +5822,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
   // the exported PDF. Using the positional index within imgSorted is always unique
   // within a single render call and avoids all cross-element collisions.
   const imgSorted=sorted.filter(sv=>sv.type==='img');
+  const _nativeImgScale=[5,6,10,11,12,13].includes(tabIdx)?4:2;
   const imgJobs=imgSorted.map(async (sv,_idx)=>{
     const src=(sv.assetKey&&assets[sv.assetKey])?assets[sv.assetKey]:(!sv.assetKey?(sv.imgSrc||''):'');
     if(!src) return {_idx,dataUrl:null};
@@ -5830,7 +5831,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     const fw2=parseFloat(sv.w)||0, fh2=parseFloat(sv.h)||0;
     const fit=(isLogo||isSvg)?'contain':'cover';
     return new Promise(resolve=>{
-      const SCALE=2, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
+      const SCALE=_nativeImgScale, cw=Math.round(fw2*SCALE), ch=Math.round(fh2*SCALE);
       const img=new Image(); img.crossOrigin='anonymous';
       img.onload=function(){
         const c=document.createElement('canvas'); c.width=cw; c.height=ch;
@@ -5875,7 +5876,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     } else if(sv.type==='img'){
       const _svIdx=imgSorted.indexOf(sv);
       const du=(_svIdx>=0)?imgMap[_svIdx]:undefined;
-      if(du){ try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'','FAST'); }catch(e){ console.warn('addImage fail',e); } }
+      if(du){ const _imgComp=[5,6,10,11,12,13].includes(tabIdx)?'NONE':'FAST'; try{ pdf.addImage(du,'PNG',ex,ey,ew,eh,'',_imgComp); }catch(e){ console.warn('addImage fail',e); } }
 
     } else if(sv.type==='text'){
       // Widen available width by 2% so splitTextToSize matches browser line breaks.
