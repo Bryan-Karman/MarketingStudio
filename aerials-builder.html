@@ -1428,6 +1428,7 @@ const FILL_COLOURS = [
   {r:163, g:136, b:191, label:'Lavender'},
   {r:136, g:81,  b:116, label:'Plum'},
   {r:64,  g:125, b:166, label:'Blue'},
+  {r:255, g:255, b:255, label:'White'},
 ];
 const FILL_ALPHA   = 0.5;
 const FILL_FEATHER = 22;
@@ -1580,10 +1581,11 @@ function _showFillProps(zone){
   const badge = '<span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0/15</span>';
   const swatches = FILL_COLOURS.map(function(c,i){
     const sel = i === (zone.colourIdx||0);
+    const isWhite = (c.r===255&&c.g===255&&c.b===255);
     return '<div data-zid="'+zid+'" data-ci="'+i+'" onclick="_fillSwatchClick(this)" style="'
       +'width:30px;height:30px;border-radius:50%;cursor:pointer;flex-shrink:0;'
       +'background:rgb('+c.r+','+c.g+','+c.b+');'
-      +'border:3px solid '+(sel?'#fff':'rgba(0,0,0,0)')+';'
+      +'border:3px solid '+(sel?'#5bbf7a':(isWhite?'#888':'rgba(0,0,0,0)'))+';'
       +'box-shadow:'+(sel?'0 0 0 2px #5bbf7a':'none')+';'
       +'transition:all .15s;"></div>';
   }).join('');
