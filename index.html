@@ -919,7 +919,18 @@ async function loadDemoData(){
   // Load portfolios — marketing only
   try {
     const pfs = await SB.get('portfolios', '?product=eq.marketing&order=created_at.asc');
-    if(Array.isArray(pfs)) portfolios = pfs.map(p => ({id: p.id, name: p.name, createdAt: p.created_at}));
+    if(Array.isArray(pfs)){
+      // Load stored template overrides from localStorage (in case Supabase column doesn't exist yet)
+      let _tplStore = {};
+      try { _tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}'); } catch(e){}
+      portfolios = pfs.map(p => ({
+        id:        p.id,
+        name:      p.name,
+        createdAt: p.created_at,
+        // Use Supabase template field if present, fall back to localStorage store
+        template:  p.template || _tplStore[p.id] || 'classic'
+      }));
+    }
   } catch(e) {
     console.warn('Portfolios load failed — using localStorage:', e);
     try { const lsPfs = JSON.parse(localStorage.getItem('cbre_hub_portfolios')||'null'); if(lsPfs) portfolios=lsPfs; } catch(e2){}
@@ -1336,9 +1347,26 @@ async function createPortfolio(){
   if(!name || !_selectedTemplate) return;
   const id = 'p' + Date.now();
   const template = _selectedTemplate;
+
+  // Always persist template to localStorage immediately — this is the reliable store.
+  // It's read back during loadDemoData even if the Supabase column doesn't exist.
+  try {
+    const tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}');
+    tplStore[id] = template;
+    localStorage.setItem('cbre_portfolio_templates', JSON.stringify(tplStore));
+  } catch(e){}
+
+  // Try saving to Supabase with template field. If the column doesn't exist yet,
+  // retry without it so the portfolio row still saves correctly.
   try {
     await SB.post('portfolios', {id, name, product: 'marketing', template, created_at: new Date().toISOString()});
-  } catch(e) { console.warn('Supabase portfolio save failed:', e); }
+  } catch(e) {
+    console.warn('Supabase save with template failed, retrying without:', e.message);
+    try {
+      await SB.post('portfolios', {id, name, product: 'marketing', created_at: new Date().toISOString()});
+    } catch(e2) { console.warn('Supabase portfolio save failed entirely:', e2); }
+  }
+
   portfolios.unshift({id, name, template, createdAt: new Date().toISOString()});
   saveDemoData();
   closeModal('modal-portfolio');
@@ -1357,6 +1385,12 @@ async function deletePortfolio(e, id){
   } catch(e2) { console.warn('Supabase delete failed:', e2); }
   portfolios = portfolios.filter(p => p.id !== id);
   delete properties[id];
+  // Clean up template store
+  try {
+    const tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}');
+    delete tplStore[id];
+    localStorage.setItem('cbre_portfolio_templates', JSON.stringify(tplStore));
+  } catch(e){}
   saveDemoData();
   renderPortfolios();
 }
