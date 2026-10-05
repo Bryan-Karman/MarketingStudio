@@ -445,9 +445,6 @@ function _buildBuilderUrl(portfolioId, propertyId){
     userRole:      currentUser ? currentUser.role : 'user',
     userName:      currentUser ? currentUser.name : '',
   });
-  // Route to the correct builder based on portfolio template.
-  // Existing portfolios with no template field default to builder.html — no breakage.
-  const port = portfolios.find(p => p.id === portfolioId);
   const builderFile = (port && port.template === 'builder4') ? 'builder_4.html' : 'builder.html';
   return builderFile + '?' + params.toString();
 }
@@ -693,16 +690,12 @@ function runGlobalSearch(query){
     <div id="modal-pf-step1">
       <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Choose which builder this portfolio will use. This cannot be changed later.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;">
-
-        <!-- Classic Builder -->
         <div id="tpl-classic" onclick="selectTemplate('classic')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
           <div style="font-size:20px;margin-bottom:8px;">🏢</div>
           <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Classic Builder</div>
           <div style="font-size:11px;color:var(--muted);line-height:1.5;">Multi-tab marketing materials — brochures, press ads, EDMs, signboards.</div>
           <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">builder.html</div>
         </div>
-
-        <!-- Builder 4 -->
         <div id="tpl-builder4" onclick="selectTemplate('builder4')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
           <div style="font-size:20px;margin-bottom:8px;">📄</div>
           <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Builder 4 <span style="font-size:9px;background:#003f2d;color:#17e88f;padding:2px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;">NEW</span></div>
@@ -728,10 +721,8 @@ function runGlobalSearch(query){
         <button class="modal-confirm" onclick="createPortfolio()">Create Portfolio</button>
       </div>
     </div>
-
   </div>
 </div>
-
 <style>
 #tpl-classic:hover,#tpl-builder4:hover{border-color:var(--g);}
 #tpl-classic.selected,#tpl-builder4.selected{border-color:var(--g);background:#f0faf5;}
@@ -1305,19 +1296,15 @@ function openPortfolio(id){
   showPage('properties');
 }
 
-// ── Template selection state ──────────────────────────────────────
-let _selectedTemplate = ''; // 'classic' or 'builder4'
+let _selectedTemplate = '';
 
 function openNewPortfolioModal(){
   _selectedTemplate = '';
   document.getElementById('new-portfolio-name').value = '';
-  // Reset template cards
   document.getElementById('tpl-classic').classList.remove('selected');
   document.getElementById('tpl-builder4').classList.remove('selected');
-  document.getElementById('btn-tpl-next').disabled = true;
-  document.getElementById('btn-tpl-next').style.opacity = '.4';
-  document.getElementById('btn-tpl-next').style.cursor = 'not-allowed';
-  // Show step 1
+  const btn = document.getElementById('btn-tpl-next');
+  btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed';
   showPortfolioTemplateStep();
   document.getElementById('modal-portfolio').classList.add('open');
 }
@@ -1348,7 +1335,7 @@ async function createPortfolio(){
   const name = document.getElementById('new-portfolio-name').value.trim();
   if(!name || !_selectedTemplate) return;
   const id = 'p' + Date.now();
-  const template = _selectedTemplate; // 'classic' or 'builder4'
+  const template = _selectedTemplate;
   try {
     await SB.post('portfolios', {id, name, product: 'marketing', template, created_at: new Date().toISOString()});
   } catch(e) { console.warn('Supabase portfolio save failed:', e); }
@@ -1737,7 +1724,8 @@ function openBuilder(portfolioId, propertyId){
     userRole: currentUser?.role || 'user',
     userName: currentUser?.name || '',
   });
-  window.location.href = `builder.html?${params.toString()}`;
+  const builderFile = (portfolio && portfolio.template === 'builder4') ? 'builder_4.html' : 'builder.html';
+  window.location.href = builderFile + '?' + params.toString();
 }
 
 
