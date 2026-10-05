@@ -328,6 +328,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <div class="conn-pill connecting" id="conn-pill"><div class="conn-dot"></div><span id="conn-label">Connecting…</span></div>
 </div>
 
+<!-- FLOATING AGENT DROPDOWN -->
+<div id="agent-dropdown" style="display:none;position:fixed;z-index:5000;background:#1a1d1f;border:1px solid #313639;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:220px;overflow:hidden;">
+  <div style="padding:8px 12px;font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;border-bottom:1px solid #272b2e;">SELECT AGENT</div>
+  <div id="agent-dropdown-list" style="max-height:280px;overflow-y:auto;padding:4px;"></div>
+</div>
+<style>
+.agent-dd-item{padding:8px 10px;border-radius:3px;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:background .1s;}
+.agent-dd-item:hover{background:#003f2d;}
+.agent-dd-name{font-size:12px;font-weight:600;color:#e8eaeb;}
+.agent-dd-phone{font-size:10px;color:#6b7175;}
+/* Agent box marker — amber dashed border */
+.cv-el[data-agent-box="1"] .cv-text-inner { outline: 1.5px dashed #f0a030 !important; }
+</style>
+
 <!-- TOOLBAR (top) -->
 <div class="toolbar">
   <button class="tb-btn" id="btn-undo"   onclick="undo()"         title="Undo (⌘Z)">↩ Undo</button>
@@ -469,6 +483,7 @@ const AW = 794, AH = 1123;
 // STATE
 // ════════════════════════════════════════════════════════
 let userName = '', userId = '', connected = false;
+let agentList = []; // populated on init from Supabase agents table
 let wsSocket = null, _hbInterval = null, _rcnTimer = null, _ref = 1;
 let presence = {}, _colorIdx = 0;
 let saveTimer = null, _isSaving = false;
@@ -545,6 +560,14 @@ function joinSession() {
 // INIT
 // ════════════════════════════════════════════════════════
 async function init() {
+  // Fetch agents first so dropdown is ready when properties panel opens
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/agents?select=id,name,phone,email&order=name.asc',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const data = await res.json();
+    if (Array.isArray(data)) { agentList = data; console.log('[B4] Agents loaded:', agentList.length); }
+  } catch(e) { console.warn('[B4] Agent load failed:', e); }
+
   renderCanvas();
   await loadFromSupabase();
   openRealtime();
@@ -1079,6 +1102,7 @@ function createElDOM(el) {
     applyTextStyle(inner, el.style || {});
     // Apply bullet CSS if bulletMode is set on element
     if (el.bulletMode) applyBulletCSS(inner, el.id, true);
+    if (el.isAgentBox) wrap.dataset.agentBox = '1';
     wrap.appendChild(inner);
 
     wrap.addEventListener('dblclick', e => { e.stopPropagation(); enterEditMode(wrap, inner, el.id); });
@@ -1285,6 +1309,9 @@ function showProps(id) {
       + '<div class="prop-row"><span class="prop-label">Align</span><div class="align-btns">' + alignBtns + '</div></div>'
       + '<div class="prop-section" style="margin-top:8px;">List</div>'
       + '<div class="prop-row"><button class="align-btn' + (el.bulletMode?' active':'') + '" id="btn-bullet-' + id + '" ' + dis + ' onclick="toggleBullets(' + id + ')" style="width:100%;padding:6px 10px;font-size:11px;font-weight:700;justify-content:center;">– Dash Bullets</button></div>'
+      + '<div class="prop-section" style="margin-top:8px;">Agent Box</div>'
+      + '<div class="prop-row"><button class="align-btn' + (el.isAgentBox ? ' active' : '') + '" onclick="toggleAgentBox(' + id + ')" style="width:100%;padding:6px 10px;font-size:11px;font-weight:700;justify-content:center;">'
+      + (el.isAgentBox ? '★ Agent Box (click to remove)' : '☆ Make Agent Box') + '</button></div>'
       + '<div class="prop-section">Spacing</div>'
       + '<div class="prop-row"><span class="prop-label">Line</span><input class="prop-input" type="number" min="0.5" max="5" step="0.05" value="' + parseFloat(s.lineHeight||1.4) + '" ' + dis + ' onchange="setProp(' + id + ',\'lineHeight\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">×</span></div>'
       + '<div class="prop-row"><span class="prop-label">Letter</span><input class="prop-input" type="number" min="-5" max="20" step="0.5" value="' + parseFloat(s.letterSpacing||0) + '" ' + dis + ' onchange="setProp(' + id + ',\'letterSpacing\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
@@ -1499,6 +1526,99 @@ function saveFormattedContent(id) {
 // bulletMode is stored as a flag on the element — NOT embedded in content.
 // On screen we apply CSS to prefix each line with "– "; in PDF we prefix in extractPDFLines.
 // This avoids the problem of bullets getting stored as content then double-applied.
+
+// ════════════════════════════════════════════════════════
+// AGENT BOX — floating dropdown on canvas click
+// ════════════════════════════════════════════════════════
+let _agentDropdownForId = null;
+
+function toggleAgentBox(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  _pushUndo();
+  el.isAgentBox = !el.isAgentBox;
+  if (connected) broadcast({ type: 'el_style', id, key: 'isAgentBox', value: el.isAgentBox, userId, userName });
+  scheduleSave();
+  showProps(id);
+  // Update the visual marker on the element
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (wrap) wrap.dataset.agentBox = el.isAgentBox ? '1' : '';
+}
+
+function showAgentDropdown(id) {
+  if (!agentList.length) return;
+  _agentDropdownForId = id;
+  const dropdown = document.getElementById('agent-dropdown');
+  const list     = document.getElementById('agent-dropdown-list');
+
+  // Build list items
+  list.innerHTML = agentList.map(a =>
+    '<div class="agent-dd-item" onclick="insertAgent(' + id + ',\'' + a.id + '\')">'
+    + '<span class="agent-dd-name">' + esc(a.name) + '</span>'
+    + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
+    + '</div>'
+  ).join('');
+
+  // Position dropdown below the element on the canvas
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (wrap) {
+    const rect = wrap.getBoundingClientRect();
+    dropdown.style.display = 'block';
+    // Position below element, aligned to left edge
+    let top  = rect.bottom + 6;
+    let left = rect.left;
+    // Keep within viewport
+    const ddW = 220;
+    if (left + ddW > window.innerWidth - 10) left = window.innerWidth - ddW - 10;
+    if (top + 300 > window.innerHeight - 10) top = rect.top - Math.min(300, top) - 6;
+    dropdown.style.top  = top + 'px';
+    dropdown.style.left = left + 'px';
+  }
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('mousedown', _closeAgentDropdown, { once: true });
+  }, 50);
+}
+
+function _closeAgentDropdown(e) {
+  const dd = document.getElementById('agent-dropdown');
+  if (dd && !dd.contains(e && e.target)) {
+    dd.style.display = 'none';
+    _agentDropdownForId = null;
+  }
+}
+
+function hideAgentDropdown() {
+  const dd = document.getElementById('agent-dropdown');
+  if (dd) dd.style.display = 'none';
+  _agentDropdownForId = null;
+}
+
+// ── Agent insertion ────────────────────────────────────────────────
+function insertAgent(id, agentId) {
+  hideAgentDropdown();
+  if (!agentId) return;
+  const agent = agentList.find(a => String(a.id) === String(agentId));
+  if (!agent) return;
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'text') return;
+
+  _pushUndo();
+
+  // Format: Name PhoneNumber — replaces the entire box content
+  const line = agent.name + (agent.phone ? ' ' + agent.phone : '');
+  const newContent = '<div>' + esc(line) + '</div>';
+
+  el.content = newContent;
+
+  const wrap  = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const inner = wrap && wrap.querySelector('.cv-text-inner');
+  if (inner) inner.innerHTML = newContent;
+
+  if (connected) broadcast({ type: 'el_content', id, content: newContent, userId, userName });
+  scheduleSave();
+}
 
 function toggleBullets(id) {
   const el = elements.find(e => e.id === id);
@@ -1731,6 +1851,16 @@ function selectEl(id, addToSelection) {
   }
 
   _updateMultiSelectUI();
+
+  // If this is an agent box, show the floating agent picker
+  if (!addToSelection && agentList.length > 0) {
+    const el = elements.find(e => e.id === id);
+    if (el && el.isAgentBox && !el.locked) {
+      setTimeout(() => showAgentDropdown(id), 80);
+    } else {
+      hideAgentDropdown();
+    }
+  }
 }
 
 function _updateMultiSelectUI() {
@@ -1761,6 +1891,7 @@ function _updateMultiSelectUI() {
 }
 
 function deselectAll() {
+  hideAgentDropdown();
   exitCropMode();
   _selectedIds.clear();
   _selectedId = null;
@@ -2547,10 +2678,13 @@ async function exportPDF() {
             const ih = el.imgH * PX_TO_MM;
             doc.addImage(dataUrl, fmt, ix, iy, iw, ih, undefined, 'FAST');
           } else if ((el.objectFit || 'cover') === 'contain') {
-            // Contain — scale to fit, centred
+            // Contain — scale to fit, centred using NATURAL image dimensions
             const info  = await getImageDimensions(dataUrl);
-            const scale = Math.min(wMM / info.w, hMM / info.h);
-            const dw    = info.w * scale, dh = info.h * scale;
+            // For SVG-converted images, info dimensions are the canvas render size.
+            // Always work in the aspect ratio of the source, fit within box.
+            const scaleContain = Math.min(wMM / (info.w * PX_TO_MM), hMM / (info.h * PX_TO_MM));
+            const dw = info.w * PX_TO_MM * scaleContain;
+            const dh = info.h * PX_TO_MM * scaleContain;
             doc.addImage(dataUrl, fmt, xMM + (wMM-dw)/2, yMM + (hMM-dh)/2, dw, dh, undefined, 'FAST');
           } else {
             // Cover/fill — fill the box
@@ -2598,8 +2732,9 @@ async function exportPDF() {
         // Using 0.8 * fontSizePt to get ascender height (baseline above cap-height)
         const ascMM = fontSizePt * 0.8 * (25.4 / 72);
         let curY    = yMM + ascMM;
-        let isFirst       = true;
-        let lastWasBullet = false;
+        let isFirst        = true;
+        let lastWasBullet  = false;
+        let prevWasBlank   = false; // track if previous line was blank (triggers para gap)
 
         // Bullet indent: dash width + space (~1.1em)
         // "– " width: en-dash (~0.5em) + space (~0.25em) = ~0.75em in mm
@@ -2608,13 +2743,16 @@ async function exportPDF() {
 
         for (const { text, bold: lineBold, isBlankLine, isSoftReturn, bullet } of textLines) {
           if (isBlankLine) {
-            if (!isSoftReturn) curY += paraSpMM; // soft blank = just a line skip, no para gap
+            // Blank line acts as paragraph separator — record it and move down
+            prevWasBlank = true;
             curY += lineHMM;
             isFirst = false;
             continue;
           }
-          // Only add para spacing for hard returns (new div), not soft returns (br inside div)
-          if (!isFirst && !isSoftReturn && paraSpMM > 0) curY += paraSpMM;
+          // Add para gap only when the PREVIOUS line was blank (explicit paragraph break)
+          // This matches the CSS behaviour: margin-top on > div only creates gap after blank divs
+          if (!isFirst && !isSoftReturn && prevWasBlank && paraSpMM > 0) curY += paraSpMM;
+          prevWasBlank = false;
 
           const lineFont = lineBold
             ? pdfFontFor(el.style && el.style.fontFamily, '700')
