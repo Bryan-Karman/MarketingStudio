@@ -1282,10 +1282,13 @@ function renderPortfolios(){
   grid.innerHTML = portfolios.map(p => {
     const propCount = (properties[p.id]||[]).length;
     const isAdmin = currentUser && currentUser.role === 'admin';
+    const tplLabel = p.template === 'builder4'
+      ? '<span style="font-size:9px;font-weight:700;background:#003f2d;color:#17e88f;border-radius:2px;padding:2px 6px;margin-left:6px;vertical-align:middle;">BUILDER 4</span>'
+      : '<span style="font-size:9px;font-weight:700;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border-radius:2px;padding:2px 6px;margin-left:6px;vertical-align:middle;">CLASSIC</span>';
     return `
     <div class="portfolio-card">
       <div class="portfolio-card-head">
-        <div class="portfolio-card-name">${escHtml(p.name)}</div>
+        <div class="portfolio-card-name">${escHtml(p.name)}${tplLabel}</div>
         <div class="portfolio-card-badge">${propCount} propert${propCount===1?'y':'ies'}</div>
       </div>
       <div class="portfolio-card-body">
@@ -1750,6 +1753,18 @@ function openBuilder(portfolioId, propertyId){
   const portfolio = portfolios.find(p=>p.id===portfolioId);
   const props = properties[portfolioId]||[];
   const property = props.find(p=>p.id===propertyId);
+
+  // Read template from portfolio object AND directly from localStorage store as backup
+  let template = portfolio ? portfolio.template : null;
+  if(!template){
+    try {
+      const tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}');
+      template = tplStore[portfolioId];
+    } catch(e){}
+  }
+  console.log('[CBRE] openBuilder:', portfolioId, '| portfolio found:', !!portfolio, '| template:', template, '| full portfolio obj:', portfolio);
+
+  const builderFile = (template === 'builder4') ? 'builder_4.html' : 'builder.html';
   const params = new URLSearchParams({
     portfolioId,
     propertyId,
@@ -1758,7 +1773,7 @@ function openBuilder(portfolioId, propertyId){
     userRole: currentUser?.role || 'user',
     userName: currentUser?.name || '',
   });
-  const builderFile = (portfolio && portfolio.template === 'builder4') ? 'builder_4.html' : 'builder.html';
+  console.log('[CBRE] Routing to:', builderFile);
   window.location.href = builderFile + '?' + params.toString();
 }
 
