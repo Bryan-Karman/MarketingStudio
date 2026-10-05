@@ -330,8 +330,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 <!-- FLOATING AGENT DROPDOWN -->
 <div id="agent-dropdown" style="display:none;position:fixed;z-index:5000;background:#1a1d1f;border:1px solid #313639;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:220px;overflow:hidden;">
-  <div style="padding:8px 12px;font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;border-bottom:1px solid #272b2e;">SELECT AGENT</div>
-  <div id="agent-dropdown-list" style="max-height:280px;overflow-y:auto;padding:4px;"></div>
+  <div style="padding:8px 10px;border-bottom:1px solid #272b2e;">
+    <input id="agent-search" type="text" placeholder="Search agents…" autocomplete="off"
+      style="width:100%;padding:6px 8px;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;"
+      oninput="filterAgentList(this.value)">
+  </div>
+  <div id="agent-dropdown-list" style="max-height:260px;overflow-y:auto;padding:4px;"></div>
 </div>
 <style>
 .agent-dd-item{padding:8px 10px;border-radius:3px;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:background .1s;}
@@ -609,10 +613,24 @@ async function loadFromSupabase() {
         renderCanvas();
       }
     } else {
-      // New property — try loading the "default" template as starting point
-      await applyTemplateById('default', false);
+      // New property — load the template named "Default" as starting point
+      await applyDefaultTemplate();
     }
   } catch(e) { console.warn('Load failed:', e); }
+}
+
+// Load the template whose name is exactly "Default" (case-insensitive)
+async function applyDefaultTemplate() {
+  try {
+    const templates = await fetchTemplates();
+    const def = templates.find(t => t.name.trim().toLowerCase() === 'default');
+    if (def) {
+      await applyTemplateById(def.slug, false);
+      console.log('[B4] Default template applied:', def.name);
+    } else {
+      console.log('[B4] No Default template found — starting blank');
+    }
+  } catch(e) { console.warn('[B4] Default template load failed:', e); }
 }
 
 // Fetch all saved templates from Supabase
@@ -1551,17 +1569,10 @@ function showAgentDropdown(id) {
   const dropdown = document.getElementById('agent-dropdown');
   const list     = document.getElementById('agent-dropdown-list');
 
-  // Build list items — blank/clear option first, then all agents
-  list.innerHTML =
-    '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
-    + '<span class="agent-dd-name" style="color:#6b7175;">— No agent (leave blank)</span>'
-    + '</div>'
-    + agentList.map(a =>
-        '<div class="agent-dd-item" onclick="insertAgent(' + id + ',\'' + a.id + '\')">'
-        + '<span class="agent-dd-name">' + esc(a.name) + '</span>'
-        + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
-        + '</div>'
-      ).join('');
+  // Clear search and build full list
+  const searchEl = document.getElementById('agent-search');
+  if (searchEl) { searchEl.value = ''; }
+  renderAgentItems(id, agentList);
 
   // Position dropdown below the element on the canvas
   const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
@@ -1579,10 +1590,45 @@ function showAgentDropdown(id) {
     dropdown.style.left = left + 'px';
   }
 
+  // Focus search input
+  setTimeout(() => {
+    const s = document.getElementById('agent-search');
+    if (s) s.focus();
+  }, 60);
+
   // Close on outside click
   setTimeout(() => {
     document.addEventListener('mousedown', _closeAgentDropdown, { once: true });
-  }, 50);
+  }, 80);
+}
+
+function renderAgentItems(id, filtered) {
+  const list = document.getElementById('agent-dropdown-list');
+  if (!list) return;
+  list.innerHTML =
+    '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
+    + '<span class="agent-dd-name" style="color:#6b7175;">— No agent (leave blank)</span>'
+    + '</div>'
+    + (filtered.length
+        ? filtered.map(a =>
+            '<div class="agent-dd-item" onclick="insertAgent(' + id + ',\'' + a.id + '\')">'
+            + '<span class="agent-dd-name">' + esc(a.name) + '</span>'
+            + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
+            + '</div>'
+          ).join('')
+        : '<div style="padding:10px 8px;font-size:11px;color:#6b7175;">No agents match</div>'
+      );
+}
+
+function filterAgentList(query) {
+  const id = _agentDropdownForId;
+  if (!id) return;
+  const q = query.trim().toLowerCase();
+  const filtered = q ? agentList.filter(a =>
+    a.name.toLowerCase().includes(q) ||
+    (a.phone && a.phone.toLowerCase().includes(q))
+  ) : agentList;
+  renderAgentItems(id, filtered);
 }
 
 function _closeAgentDropdown(e) {
@@ -1979,13 +2025,53 @@ function enterEditMode(wrap, inner, id) {
   const sel = window.getSelection();
   sel.removeAllRanges(); sel.addRange(range);
   inner.onblur = () => exitEditMode(wrap);
+
+  // Paste handler — strip all incoming formatting, preserve plain text only
+  inner._pasteHandler = function(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (!text) return;
+    // Insert plain text at cursor position, preserving existing element styles
+    const sel2 = window.getSelection();
+    if (!sel2.rangeCount) return;
+    sel2.deleteFromDocument();
+    // Split pasted text on newlines — each line becomes a separate div
+    const lines = text.split(/\r?\n/);
+    const r = sel2.getRangeAt(0);
+    lines.forEach((line, i) => {
+      if (i > 0) {
+        // Insert a new block div for each newline
+        const div = document.createElement('div');
+        div.textContent = line || '\u200B';
+        r.insertNode(div);
+        r.setStartAfter(div);
+        r.collapse(true);
+      } else {
+        const tn = document.createTextNode(line);
+        r.insertNode(tn);
+        r.setStartAfter(tn);
+        r.collapse(true);
+      }
+    });
+    sel2.removeAllRanges(); sel2.addRange(r);
+    // Trigger content save
+    inner.dispatchEvent(new Event('input'));
+  };
+  inner.addEventListener('paste', inner._pasteHandler);
 }
 
 function exitEditMode(wrap) {
   if (!wrap) return;
   wrap.classList.remove('editing');
   const inner = wrap.querySelector('.cv-text-inner');
-  if (inner) { inner.contentEditable = 'false'; inner.onblur = null; }
+  if (inner) {
+    inner.contentEditable = 'false';
+    inner.onblur = null;
+    if (inner._pasteHandler) {
+      inner.removeEventListener('paste', inner._pasteHandler);
+      inner._pasteHandler = null;
+    }
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -2087,14 +2173,22 @@ function enterCropMode(id) {
   const img  = clip && clip.querySelector('img');
   if (!el || !wrap || !img) return;
 
-  // Initialise crop state — use the natural image size if available, else box size
-  if (!el.imgW) el.imgW = img.naturalWidth  || el.w;
-  if (!el.imgH) el.imgH = img.naturalHeight || el.h;
-  // Scale down to at least fill the box while maintaining aspect ratio
-  if (el.imgW < el.w || el.imgH < el.h) {
-    const scale = Math.max(el.w / el.imgW, el.h / el.imgH);
-    el.imgW = Math.round(el.imgW * scale);
-    el.imgH = Math.round(el.imgH * scale);
+  // Initialise crop state — always start at box size with correct aspect ratio.
+  // Never use naturalWidth/Height directly as 4K photos would expand to thousands of px.
+  const natW = img.naturalWidth  || el.w;
+  const natH = img.naturalHeight || el.h;
+  const aspect = natW / natH;
+  // Start image sized to COVER the box (same as objectFit:cover) so nothing looks wrong
+  if (!el.imgW || !el.imgH) {
+    if (el.w / el.h > aspect) {
+      // Box wider than image aspect — match width, image is taller than box
+      el.imgW = el.w;
+      el.imgH = Math.round(el.w / aspect);
+    } else {
+      // Box taller — match height, image is wider than box
+      el.imgH = el.h;
+      el.imgW = Math.round(el.h * aspect);
+    }
   }
   if (el.imgX === undefined) el.imgX = 0;
   if (el.imgY === undefined) el.imgY = 0;
