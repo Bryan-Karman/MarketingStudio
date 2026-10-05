@@ -338,7 +338,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <button class="tb-btn" onclick="zoomBy(+0.1)" title="Zoom in">＋</button>
   <button class="tb-btn" onclick="zoomReset()" style="font-size:10px;padding:4px 7px;">Fit</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" onclick="saveAsTemplate()" title="Save current layout as the default template for all new properties" style="color:var(--amber);border-color:#7a4a00;">⭐ Save as Template</button>
+  <button class="tb-btn" id="btn-templates" onclick="openTemplatesModal()" title="Templates" style="color:var(--amber);border-color:#7a4a00;">⭐ Templates</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-export" onclick="exportPDF()" title="Export PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export PDF</button>
   <div class="tb-save" id="save-wrap">
@@ -392,6 +392,61 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 </div>
 
+<!-- TEMPLATES MODAL -->
+<div id="tpl-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;display:none;align-items:center;justify-content:center;">
+  <div style="background:#1a1d1f;border:1px solid #313639;border-radius:8px;width:520px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+    <!-- Header -->
+    <div style="padding:16px 20px;border-bottom:1px solid #272b2e;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:15px;font-weight:700;color:#e8eaeb;">⭐ Templates</div>
+      <button onclick="closeTemplatesModal()" style="background:none;border:none;color:#6b7175;font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:1px solid #272b2e;flex-shrink:0;">
+      <button id="tpl-tab-apply"  onclick="tplTab('apply')"  style="flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:#202325;color:#17e88f;border-bottom:2px solid #17e88f;letter-spacing:.04em;">APPLY TEMPLATE</button>
+      <button id="tpl-tab-manage" onclick="tplTab('manage')" style="flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:#6b7175;border-bottom:2px solid transparent;letter-spacing:.04em;" id="tpl-tab-manage">MANAGE (ADMIN)</button>
+    </div>
+    <!-- Apply tab -->
+    <div id="tpl-pane-apply" style="flex:1;overflow-y:auto;padding:16px;">
+      <p style="font-size:11px;color:#6b7175;margin-bottom:14px;line-height:1.6;">Choose a template to load onto the current canvas. Your existing work will be replaced.</p>
+      <div id="tpl-list" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">Loading templates…</div>
+      </div>
+    </div>
+    <!-- Manage tab (admin only) -->
+    <div id="tpl-pane-manage" style="flex:1;overflow-y:auto;padding:16px;display:none;">
+      <div id="tpl-admin-warning" style="display:none;font-size:11px;color:#f0a030;background:#2a1800;border:1px solid #7a4a00;border-radius:3px;padding:8px 10px;margin-bottom:14px;">Only admins can manage templates.</div>
+      <!-- Save current as template -->
+      <div style="background:#202325;border:1px solid #313639;border-radius:4px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#e8eaeb;margin-bottom:8px;">Save current layout as new template</div>
+        <div style="display:flex;gap:8px;">
+          <input id="tpl-new-name" type="text" placeholder="Template name e.g. Retail A4" maxlength="60"
+            style="flex:1;padding:8px 10px;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;font-family:inherit;outline:none;">
+          <button onclick="saveTemplate()" style="padding:8px 14px;background:#003f2d;border:1px solid #17e88f;border-radius:3px;color:#17e88f;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Save</button>
+        </div>
+        <div id="tpl-save-status" style="font-size:10px;color:#6b7175;margin-top:6px;min-height:14px;"></div>
+      </div>
+      <!-- Existing templates list -->
+      <div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;margin-bottom:8px;">SAVED TEMPLATES</div>
+      <div id="tpl-manage-list" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#tpl-modal-bg { display:none; }
+#tpl-modal-bg.open { display:flex; }
+.tpl-card { background:#202325; border:1px solid #313639; border-radius:4px; padding:12px 14px; display:flex; align-items:center; gap:12px; transition:border-color .15s; }
+.tpl-card:hover { border-color:#17e88f; }
+.tpl-card-name { flex:1; font-size:13px; font-weight:600; color:#e8eaeb; }
+.tpl-card-meta { font-size:10px; color:#6b7175; margin-top:2px; }
+.tpl-apply-btn { padding:5px 12px; background:#003f2d; border:1px solid #17e88f; border-radius:3px; color:#17e88f; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.tpl-apply-btn:hover { background:#17e88f; color:#000; }
+.tpl-del-btn { padding:5px 10px; background:transparent; border:1px solid #5a2222; border-radius:3px; color:#e05555; font-size:11px; cursor:pointer; }
+.tpl-del-btn:hover { background:#3a1515; }
+</style>
+
 <script>
 // ════════════════════════════════════════════════════════
 // CONFIG
@@ -402,6 +457,7 @@ const SUPA_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const _urlP        = new URLSearchParams(window.location.search);
 const PORTFOLIO_ID = _urlP.get('portfolioId') || 'builder4';
 const PROPERTY_ID  = _urlP.get('propertyId')  || 'builder4_001';
+const USER_ROLE    = _urlP.get('userRole')     || 'user'; // 'admin' or 'user'
 const CHANNEL_NAME = 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID;
 const LS_KEY       = 'cbre_' + PORTFOLIO_ID + '_' + PROPERTY_ID;
 
@@ -497,8 +553,10 @@ async function init() {
 // ════════════════════════════════════════════════════════
 // SUPABASE LOAD / SAVE
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// TEMPLATE SYSTEM
+// ════════════════════════════════════════════════════════
 const TEMPLATE_PORTFOLIO = '_b4_template';
-const TEMPLATE_PROPERTY  = 'default';
 
 async function loadFromSupabase() {
   try {
@@ -506,7 +564,6 @@ async function loadFromSupabase() {
     const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
     const rows = await res.json();
     if (rows && rows.length && rows[0].state_json) {
-      // Existing property — load its saved state
       const saved = JSON.parse(rows[0].state_json);
       if (saved.elements && saved.elements.length) {
         elements = saved.elements;
@@ -514,63 +571,166 @@ async function loadFromSupabase() {
         renderCanvas();
       }
     } else {
-      // New property — try loading the template as starting point
-      await loadTemplate();
+      // New property — try loading the "default" template as starting point
+      await applyTemplateById('default', false);
     }
   } catch(e) { console.warn('Load failed:', e); }
 }
 
-async function loadTemplate() {
+// Fetch all saved templates from Supabase
+async function fetchTemplates() {
+  const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&select=id,property_id,state_json,updated_at&order=updated_at.desc';
+  const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+  const rows = await res.json();
+  return (rows || []).map(r => {
+    let name = r.property_id, createdAt = r.updated_at;
+    try { const s = JSON.parse(r.state_json); if (s.name) name = s.name; } catch(e){}
+    return { id: r.id, slug: r.property_id, name, updatedAt: r.updated_at };
+  });
+}
+
+// Apply a template by its slug to the current canvas
+async function applyTemplateById(slug, confirm_prompt) {
+  if (confirm_prompt) {
+    if (!confirm('Load template onto this canvas?\n\nYour current work will be replaced. This cannot be undone.')) return;
+  }
   try {
-    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&property_id=eq.' + TEMPLATE_PROPERTY + '&select=state_json';
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&property_id=eq.' + slug + '&select=state_json';
     const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
     const rows = await res.json();
     if (rows && rows.length && rows[0].state_json) {
       const saved = JSON.parse(rows[0].state_json);
       if (saved.elements && saved.elements.length) {
-        // Deep copy so edits don't affect the template
+        _pushUndo();
         elements = JSON.parse(JSON.stringify(saved.elements));
-        // Reset all IDs to avoid conflicts
-        let maxId = Math.max(...elements.map(e => e.id));
-        _nextId = maxId + 1;
-        renderCanvas();
-        setSave('saving', 'Template loaded');
-        // Auto-save this as the property's own state so it's persisted
+        _nextId  = Math.max(...elements.map(e => e.id)) + 1;
+        renderCanvas(); deselectAll();
         scheduleSave();
+        closeTemplatesModal();
+        setSave('saved', 'Template applied');
       }
     }
-  } catch(e) { console.warn('Template load failed:', e); }
+  } catch(e) { console.warn('Template apply failed:', e); }
 }
 
-async function saveAsTemplate() {
-  if (!confirm('Save the current layout as the default template for all NEW properties?\n\nExisting properties are not affected.')) return;
-  setSave('saving', 'Saving template…');
+// Save current layout as a named template
+async function saveTemplate() {
+  if (USER_ROLE !== 'admin') return;
+  const nameEl = document.getElementById('tpl-new-name');
+  const name   = (nameEl && nameEl.value.trim()) || '';
+  if (!name) { nameEl && nameEl.focus(); return; }
+  const slug    = 'tpl_' + Date.now();
+  const statusEl = document.getElementById('tpl-save-status');
+  if (statusEl) statusEl.textContent = 'Saving…';
   try {
     const body = {
       portfolio_id: TEMPLATE_PORTFOLIO,
-      property_id:  TEMPLATE_PROPERTY,
-      state_json:   JSON.stringify({ elements }),
+      property_id:  slug,
+      state_json:   JSON.stringify({ name, elements }),
       updated_at:   new Date().toISOString()
     };
-    // Check if template row exists
-    const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&property_id=eq.' + TEMPLATE_PROPERTY + '&select=id',
-      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
-    const rows = await check.json();
-    const method  = (rows && rows.length) ? 'PATCH' : 'POST';
-    const saveUrl = (rows && rows.length)
-      ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
-      : SUPA_URL + '/rest/v1/projects';
-    await fetch(saveUrl, {
-      method,
+    await fetch(SUPA_URL + '/rest/v1/projects', {
+      method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify(body)
     });
-    setSave('saved', 'Template saved ✓');
-    // Flash the button
-    const btn = document.querySelector('[onclick="saveAsTemplate()"]');
-    if (btn) { const orig = btn.textContent; btn.textContent = '✓ Template saved!'; setTimeout(() => btn.textContent = orig, 2500); }
-  } catch(e) { setSave('error', 'Template save failed'); console.error(e); }
+    if (statusEl) statusEl.textContent = '✓ Saved!';
+    if (nameEl) nameEl.value = '';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2500);
+    await renderManageList(); // refresh list
+  } catch(e) { if (statusEl) statusEl.textContent = 'Save failed'; }
 }
+
+// Delete a template by its DB id
+async function deleteTemplate(id) {
+  if (USER_ROLE !== 'admin') return;
+  if (!confirm('Delete this template? This cannot be undone.')) return;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/projects?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }
+    });
+    await renderManageList();
+    await renderApplyList();
+  } catch(e) { alert('Delete failed'); }
+}
+
+// ── Modal UI ─────────────────────────────────────────────────────
+let _tplCurrentTab = 'apply';
+
+async function openTemplatesModal() {
+  document.getElementById('tpl-modal-bg').classList.add('open');
+  tplTab('apply');
+}
+function closeTemplatesModal() {
+  document.getElementById('tpl-modal-bg').classList.remove('open');
+}
+
+async function tplTab(tab) {
+  _tplCurrentTab = tab;
+  // Update tab styles
+  const applyTab  = document.getElementById('tpl-tab-apply');
+  const manageTab = document.getElementById('tpl-tab-manage');
+  const active  = 'flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:#202325;color:#17e88f;border-bottom:2px solid #17e88f;letter-spacing:.04em;';
+  const inactive= 'flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:#6b7175;border-bottom:2px solid transparent;letter-spacing:.04em;';
+  applyTab.style.cssText  = tab === 'apply'  ? active : inactive;
+  manageTab.style.cssText = tab === 'manage' ? active : inactive;
+  document.getElementById('tpl-pane-apply').style.display  = tab === 'apply'  ? '' : 'none';
+  document.getElementById('tpl-pane-manage').style.display = tab === 'manage' ? '' : 'none';
+  // Show admin warning if not admin
+  const warn = document.getElementById('tpl-admin-warning');
+  if (warn) warn.style.display = (tab === 'manage' && USER_ROLE !== 'admin') ? '' : 'none';
+  if (tab === 'apply')  await renderApplyList();
+  if (tab === 'manage') await renderManageList();
+}
+
+async function renderApplyList() {
+  const el = document.getElementById('tpl-list');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">Loading…</div>';
+  try {
+    const templates = await fetchTemplates();
+    if (!templates.length) { el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">No templates saved yet.</div>'; return; }
+    el.innerHTML = templates.map(t => {
+      const d = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
+      return '<div class="tpl-card">'
+        + '<div><div class="tpl-card-name">' + esc(t.name) + '</div><div class="tpl-card-meta">Saved ' + d + '</div></div>'
+        + '<button class="tpl-apply-btn" onclick="applyTemplateById(\'' + t.slug + '\', true)">Apply →</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="color:#e05555;font-size:12px;padding:12px;">Failed to load templates.</div>'; }
+}
+
+async function renderManageList() {
+  const el = document.getElementById('tpl-manage-list');
+  if (!el) return;
+  // Disable controls if not admin
+  const saveBtn = document.querySelector('[onclick="saveTemplate()"]');
+  const nameInput = document.getElementById('tpl-new-name');
+  if (USER_ROLE !== 'admin') {
+    if (saveBtn)   { saveBtn.disabled = true; saveBtn.style.opacity = '.4'; }
+    if (nameInput) { nameInput.disabled = true; nameInput.placeholder = 'Admin only'; }
+    el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Admin access required to manage templates.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>';
+  try {
+    const templates = await fetchTemplates();
+    if (!templates.length) { el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">No templates yet — save one above.</div>'; return; }
+    el.innerHTML = templates.map(t => {
+      const d = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
+      return '<div class="tpl-card">'
+        + '<div style="flex:1;"><div class="tpl-card-name">' + esc(t.name) + '</div><div class="tpl-card-meta">Saved ' + d + ' · slug: ' + esc(t.slug) + '</div></div>'
+        + '<button class="tpl-del-btn" onclick="deleteTemplate(\'' + t.id + '\')">✕ Delete</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="color:#e05555;font-size:12px;padding:12px;">Failed to load.</div>'; }
+}
+
+// Close modal on background click
+document.getElementById('tpl-modal-bg').addEventListener('mousedown', function(e) {
+  if (e.target === this) closeTemplatesModal();
+});
 
 async function saveToSupabase() {
   if (_isSaving) return;
