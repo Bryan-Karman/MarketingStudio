@@ -5642,12 +5642,30 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           const _childDivs = Array.from(inner.querySelectorAll(':scope > div'));
           if(_childDivs.length > 0){
             _richHtml = inner.innerHTML;
-            _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
-            // Plain-line divs (EDM highlight points, bullets:'0') are paragraphs, not
-            // pre-wrapped lines — let jsPDF re-wrap them to match the PDF column width.
-            // Dash-bullet elements (bullets:'1') ARE pre-wrapped so keep noWrap='1'.
-            const _isPlainLine = (el.dataset.bullets !== '1') && inner.querySelector('div.plain-line');
-            _hasChildDivs = !_isPlainLine;
+            // Plain-line divs (EDM highlight points, bullets:'0') are paragraphs that
+            // may themselves wrap across multiple lines in the browser. Extract the
+            // browser-rendered sub-lines from each div so jsPDF reproduces exact breaks.
+            const _plainDivs = inner.querySelectorAll('div.plain-line');
+            if(_plainDivs.length > 0 && el.dataset.bullets !== '1'){
+              // Extract browser-rendered wrapped lines per paragraph div.
+              // Use '\x00' as a paragraph-end sentinel so the PDF renderer knows
+              // to insert bsp only at paragraph boundaries, not between sub-lines.
+              const _paraTexts = [];
+              _plainDivs.forEach(function(pd){
+                const _pdTxt = pd.textContent || '';
+                const _rendered = _extractRenderedLines(pd, _pdTxt);
+                if(_rendered && _rendered.length > 0){
+                  _paraTexts.push(_rendered.join('\n') + '\x00');
+                } else {
+                  _paraTexts.push((_pdTxt.trim() || '') + '\x00');
+                }
+              });
+              _content = _paraTexts.join('\n');
+              _hasChildDivs = true; // noWrap='1': jsPDF uses exact browser lines
+            } else {
+              _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
+              _hasChildDivs = true;
+            }
           } else {
             // Plain text element — extract actual browser-rendered lines using Range
             // so line breaks match the screen exactly, independent of jsPDF metrics.
@@ -5942,13 +5960,17 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           pdf.setFontSize(fsPtTest);
           var count = 0;
           lines.forEach(function(line){
+            // Strip paragraph sentinel before measuring
+            var _isParaBnd = line.endsWith('\x00');
+            var _l = _isParaBnd ? line.slice(0,-1) : line;
             if(sv.noWrap === '1'){
               count += 1; // already browser-wrapped, one line each
             } else {
-              var wrapped = pdf.splitTextToSize(line.trim() ? line : ' ', mwTest);
+              var wrapped = pdf.splitTextToSize(_l.trim() ? _l : ' ', mwTest);
               count += wrapped.length || 1;
             }
-            if(bsp > 0) count += bsp / lhTest; // paragraph spacing as fractional lines
+            // bsp only at paragraph boundaries (sentinel) or for bullets/brochure highlights
+            if(bsp > 0 && (isBullets || _isBrochureBulletsField || _isParaBnd)) count += bsp / lhTest;
           });
           return count;
         }
@@ -6121,6 +6143,10 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
 
       lines.forEach((line,li)=>{
         if(curY>ey+eh+2) return;
+        // '\x00' suffix = paragraph boundary (EDM plain-line highlight points).
+        // bsp fires only on these sentinel lines, not on wrapped sub-lines within a paragraph.
+        const _isParaBoundary = line.endsWith('\x00');
+        const _line = _isParaBoundary ? line.slice(0,-1) : line;
         const isIncomeLine = _incomeLineIdx >= 0 && li === _incomeLineIdx;
         // Rich segments for this line (if user applied bold).
         // If this line IS the income line, skip richHtml segments so the
@@ -6128,7 +6154,7 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
         const _segs=(_lineSegs&&li<_lineSegs.length&&!isIncomeLine)?_lineSegs[li]:null;
 
         if(isBullets){
-          const rawLine=line.startsWith('\u2013 ')?line.slice(2):line.replace(/^[\u2013\-] ?/,'');
+          const rawLine=_line.startsWith('\u2013 ')?_line.slice(2):_line.replace(/^[\u2013\-] ?/,'');
           if(!rawLine.trim()){ curY+=lineH*0.5; return; }
           const dash='\u2013';
           setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt);
@@ -6152,17 +6178,14 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           } else {
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,'700',hasFonts); pdf.setFontSize(fsPt); }
             // noWrap: browser already wrapped — render line as-is, no re-split
-            const wrapped=sv.noWrap==='1'?[line]:pdf.splitTextToSize(line,maxW);
+            const wrapped=sv.noWrap==='1'?[_line]:pdf.splitTextToSize(_line,maxW);
             wrapped.forEach(function(wl){ if(curY>ey+eh+2) return; pdf.text(wl,textX,curY,{align:jsPdfAlign,baseline:'alphabetic'}); curY+=lineH; });
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
           }
         }
-        // Only apply paragraph spacing for bullet elements, brochure plain-line
-        // (highlight points), and EDM plain-line highlight points (bullets:'0' with bsp).
-        // Applying bsp to every non-bullet text element (heading, address, etc.) would
-        // add unwanted extra gaps in the exported PDF.
-        const _isPlainLineEl = (!isBullets && !_isBrochureBulletsField && sv.noWrap !== '1' && bsp > 0);
-        if(bsp>0 && (isBullets || _isBrochureBulletsField || _isPlainLineEl)) curY+=bsp;
+        // Apply bsp at paragraph boundaries (\x00 sentinel) for EDM plain-line elements,
+        // or after every line for dash-bullet and brochure highlight point elements.
+        if(bsp>0 && (isBullets || _isBrochureBulletsField || _isParaBoundary)) curY+=bsp;
       });
     }
   }
