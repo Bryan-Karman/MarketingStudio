@@ -5643,7 +5643,11 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           if(_childDivs.length > 0){
             _richHtml = inner.innerHTML;
             _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
-            _hasChildDivs = true;
+            // Plain-line divs (EDM highlight points, bullets:'0') are paragraphs, not
+            // pre-wrapped lines — let jsPDF re-wrap them to match the PDF column width.
+            // Dash-bullet elements (bullets:'1') ARE pre-wrapped so keep noWrap='1'.
+            const _isPlainLine = (el.dataset.bullets !== '1') && inner.querySelector('div.plain-line');
+            _hasChildDivs = !_isPlainLine;
           } else {
             // Plain text element — extract actual browser-rendered lines using Range
             // so line breaks match the screen exactly, independent of jsPDF metrics.
@@ -6153,11 +6157,12 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
             if(isIncomeLine){ setFont(pdf,ist.fontFamily,ist.fontWeight,hasFonts); pdf.setFontSize(fsPt); }
           }
         }
-        // Only apply paragraph spacing for bullet elements and brochure plain-line
-        // (highlight points). Applying bsp to every line on non-bullet AFR text elements
-        // (heading, address, sale details, etc.) causes lines to render as paragraph
-        // breaks with extra space in the exported PDF.
-        if(bsp>0 && (isBullets || _isBrochureBulletsField)) curY+=bsp;
+        // Only apply paragraph spacing for bullet elements, brochure plain-line
+        // (highlight points), and EDM plain-line highlight points (bullets:'0' with bsp).
+        // Applying bsp to every non-bullet text element (heading, address, etc.) would
+        // add unwanted extra gaps in the exported PDF.
+        const _isPlainLineEl = (!isBullets && !_isBrochureBulletsField && sv.noWrap !== '1' && bsp > 0);
+        if(bsp>0 && (isBullets || _isBrochureBulletsField || _isPlainLineEl)) curY+=bsp;
       });
     }
   }
