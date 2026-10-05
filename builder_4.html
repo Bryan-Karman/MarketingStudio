@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CBRE Builder 4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype');font-weight:300;font-style:normal;font-display:swap;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap;}
@@ -567,7 +568,21 @@ async function loadFromSupabase() {
       const saved = JSON.parse(rows[0].state_json);
       if (saved.elements && saved.elements.length) {
         elements = saved.elements;
-        _nextId  = Math.max(...elements.map(e => e.id)) + 1;
+        // Migration: strip embedded "– " from content if bulletMode is true
+        // (old system stored dashes in content; new system uses CSS ::before)
+        elements.forEach(el => {
+          if (el.type === 'text' && el.bulletMode && el.content) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = el.content;
+            tmp.querySelectorAll('div').forEach(d => {
+              if (d.textContent.trimStart().startsWith('\u2013')) {
+                d.textContent = d.textContent.replace(/^\s*\u2013\s?/, '');
+              }
+            });
+            el.content = tmp.innerHTML;
+          }
+        });
+        _nextId = Math.max(...elements.map(e => e.id)) + 1;
         renderCanvas();
       }
     } else {
@@ -934,6 +949,7 @@ function handleRemoteCrop(payload) {
   if (!el) return;
   el.imgX = payload.imgX; el.imgY = payload.imgY;
   el.imgW = payload.imgW; el.imgH = payload.imgH;
+  el.hasCrop = payload.hasCrop || true;
   const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
   const img  = wrap && wrap.querySelector('.cv-img-crop');
   if (img) {
@@ -1015,13 +1031,27 @@ function createElDOM(el) {
 
     const img = document.createElement('img');
     img.className = 'cv-img-crop';
-    img.style.width    = (el.imgW || el.w) + 'px';
-    img.style.height   = (el.imgH || el.h) + 'px';
-    img.style.left     = (el.imgX || 0) + 'px';
-    img.style.top      = (el.imgY || 0) + 'px';
-    img.style.display  = el.imageUrl ? 'block' : 'none';
-    img.draggable      = false;
+    img.draggable = false;
+    img.style.display = el.imageUrl ? 'block' : 'none';
     if (el.imageUrl) img.src = el.imageUrl;
+
+    // Only use absolute crop positioning if the user has actively used crop mode.
+    // Otherwise use normal object-fit so contain/cover/fill work correctly.
+    const hasCropData = el.hasCrop && el.imgW;
+    if (hasCropData) {
+      img.style.position = 'absolute';
+      img.style.width    = el.imgW + 'px';
+      img.style.height   = el.imgH + 'px';
+      img.style.left     = (el.imgX || 0) + 'px';
+      img.style.top      = (el.imgY || 0) + 'px';
+    } else {
+      // Normal fit — fill the clip frame using objectFit
+      img.style.position   = 'relative';
+      img.style.width      = '100%';
+      img.style.height     = '100%';
+      img.style.objectFit  = el.objectFit || 'cover';
+      img.style.objectPosition = 'center';
+    }
 
     const ph = document.createElement('div');
     ph.className = 'cv-img-ph';
@@ -1047,6 +1077,8 @@ function createElDOM(el) {
     inner.dataset.eid = String(el.id);
     inner.innerHTML = el.content || '';
     applyTextStyle(inner, el.style || {});
+    // Apply bullet CSS if bulletMode is set on element
+    if (el.bulletMode) applyBulletCSS(inner, el.id, true);
     wrap.appendChild(inner);
 
     wrap.addEventListener('dblclick', e => { e.stopPropagation(); enterEditMode(wrap, inner, el.id); });
@@ -1463,78 +1495,53 @@ function saveFormattedContent(id) {
 // ── Bullet toggle ─────────────────────────────────────────────────
 // Prefixes every non-empty line with "– " (en-dash + space).
 // Toggle off removes the prefix. Uses DOM parsing for reliable detection.
+// ── Bullet mode ───────────────────────────────────────────────────
+// bulletMode is stored as a flag on the element — NOT embedded in content.
+// On screen we apply CSS to prefix each line with "– "; in PDF we prefix in extractPDFLines.
+// This avoids the problem of bullets getting stored as content then double-applied.
+
 function toggleBullets(id) {
   const el = elements.find(e => e.id === id);
   if (!el || el.type !== 'text') return;
 
-  const wrap  = document.querySelector('.cv-el[data-id="' + id + '"]');
+  el.bulletMode = !el.bulletMode;
+
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
   const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
-  if (!inner) return;
 
-  const DASH = '\u2013 '; // en-dash + space
-
-  // Get clean HTML and split into lines by <br>
-  const currentHTML = sanitiseHTML(inner.innerHTML);
-  const htmlLines   = currentHTML.split('<br>');
-
-  // Determine text of each line by stripping inline tags
-  function lineText(html) {
-    const d = document.createElement('div');
-    d.innerHTML = html;
-    return d.textContent || '';
-  }
-
-  // Check if ALL non-empty lines already start with en-dash
-  const nonEmpty = htmlLines.filter(l => lineText(l).trim().length > 0);
-  const allHasBullets = nonEmpty.length > 0
-    && nonEmpty.every(l => lineText(l).trimStart().startsWith('\u2013'));
-
-  // Toggle: use el.bulletMode as the authoritative state (not content detection)
-  // so clicking always does the opposite of the current state
-  const turningOn = !el.bulletMode;
-
-  const newLines = htmlLines.map(line => {
-    const txt = lineText(line).trim();
-    if (!txt) return line; // leave blank lines alone
-    if (turningOn) {
-      // Add dash if not already there
-      return txt.startsWith('\u2013') ? line : DASH + line;
-    } else {
-      // Remove leading dash — handle both plain text and inline-formatted starts
-      // The dash might be a bare text node at the start of the line
-      const d = document.createElement('div');
-      d.innerHTML = line;
-      // Walk first text node and strip the dash
-      function stripDash(node) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          if (node.textContent.startsWith('\u2013')) {
-            node.textContent = node.textContent.replace(/^\u2013\s?/, '');
-            return true;
-          }
-          return false;
-        }
-        for (const child of node.childNodes) {
-          if (stripDash(child)) return true;
-        }
-        return false;
-      }
-      stripDash(d);
-      return d.innerHTML;
-    }
-  });
-
-  const newHTML      = newLines.join('<br>');
-  el.content         = newHTML;
-  el.bulletMode      = turningOn;
-  inner.innerHTML    = newHTML;
+  // Apply/remove bullet CSS via the per-element style tag
+  applyBulletCSS(inner, el.id, el.bulletMode);
 
   // Update button active state
   const btn = document.getElementById('btn-bullet-' + id);
   if (btn) btn.classList.toggle('active', el.bulletMode);
 
-  if (connected) broadcast({ type: 'el_content', id, content: newHTML, userId, userName });
-  if (connected) broadcast({ type: 'el_style',   id, key: 'bulletMode', value: el.bulletMode, userId, userName });
+  if (connected) broadcast({ type: 'el_style', id, key: 'bulletMode', value: el.bulletMode, userId, userName });
   scheduleSave();
+}
+
+// Inject CSS that uses ::before on each <div> child to prepend "– "
+// This keeps bullet content out of the stored HTML entirely.
+function applyBulletCSS(inner, eid, on) {
+  if (!eid) return;
+  let tag = document.getElementById('bullet-style-' + eid);
+  if (!tag) {
+    tag = document.createElement('style');
+    tag.id = 'bullet-style-' + eid;
+    document.head.appendChild(tag);
+  }
+  if (on) {
+    tag.textContent =
+      // Hanging indent: the ::before dash sits at left, text wraps aligned under itself
+      `.cv-text-inner[data-eid="${eid}"] > div { padding-left: 1.3ch; text-indent: -1.3ch; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div::before { content: "\\2013\\00A0"; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:empty { padding-left: 0; text-indent: 0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:empty::before { content: ""; }`;
+  } else {
+    tag.textContent =
+      `.cv-text-inner[data-eid="${eid}"] > div { padding-left: 0; text-indent: 0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div::before { content: ""; }`;
+  }
 }
 
 function setPosSize(id, key, value) {
@@ -1580,6 +1587,9 @@ function handleRemoteStyle(payload) {
         applyParaSpacing(inner, payload.value);
       } else if (payload.key === 'bulletMode') {
         el.bulletMode = payload.value;
+        const remoteWrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+        const remoteInner = remoteWrap && remoteWrap.querySelector('.cv-text-inner');
+        if (remoteInner) applyBulletCSS(remoteInner, payload.id, payload.value);
         const btn = document.getElementById('btn-bullet-' + payload.id);
         if (btn) btn.classList.toggle('active', payload.value);
       } else {
@@ -1674,11 +1684,23 @@ function applyImageToEl(id, url) {
   if (!wrap) return;
   const img = wrap.querySelector('.cv-img-crop');
   const ph  = wrap.querySelector('.cv-img-ph');
-  if (img) { img.src = url || ''; img.style.display = url ? 'block' : 'none'; }
-  if (ph)  ph.style.display = url ? 'none' : '';
-  // Reset crop position when new image uploaded
-  const el = elements.find(e => e.id === id);
-  if (el && url) { el.imgX = 0; el.imgY = 0; el.imgW = el.w; el.imgH = el.h; }
+  if (ph) ph.style.display = url ? 'none' : '';
+  if (img) {
+    img.src = url || '';
+    img.style.display = url ? 'block' : 'none';
+    if (url) {
+      // Clear all crop data — revert to normal objectFit rendering
+      const el = elements.find(e => e.id === id);
+      if (el) { delete el.imgX; delete el.imgY; delete el.imgW; delete el.imgH; }
+      img.style.position      = 'relative';
+      img.style.width         = '100%';
+      img.style.height        = '100%';
+      img.style.left          = '';
+      img.style.top           = '';
+      img.style.objectFit     = (elements.find(e=>e.id===id)||{}).objectFit || 'cover';
+      img.style.objectPosition= 'center';
+    }
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -1924,11 +1946,26 @@ function enterCropMode(id) {
   const img  = clip && clip.querySelector('img');
   if (!el || !wrap || !img) return;
 
-  // Initialise crop state on element if not set
-  if (!el.imgW || el.imgW < el.w) el.imgW = el.w;
-  if (!el.imgH || el.imgH < el.h) el.imgH = el.h;
+  // Initialise crop state — use the natural image size if available, else box size
+  if (!el.imgW) el.imgW = img.naturalWidth  || el.w;
+  if (!el.imgH) el.imgH = img.naturalHeight || el.h;
+  // Scale down to at least fill the box while maintaining aspect ratio
+  if (el.imgW < el.w || el.imgH < el.h) {
+    const scale = Math.max(el.w / el.imgW, el.h / el.imgH);
+    el.imgW = Math.round(el.imgW * scale);
+    el.imgH = Math.round(el.imgH * scale);
+  }
   if (el.imgX === undefined) el.imgX = 0;
   if (el.imgY === undefined) el.imgY = 0;
+
+  // Switch from objectFit to absolute crop positioning
+  img.style.position      = 'absolute';
+  img.style.objectFit     = '';
+  img.style.objectPosition= '';
+  img.style.width         = el.imgW + 'px';
+  img.style.height        = el.imgH + 'px';
+  img.style.left          = el.imgX + 'px';
+  img.style.top           = el.imgY + 'px';
 
   wrap.classList.add('crop-mode');
 
@@ -1984,7 +2021,9 @@ function exitCropMode() {
   }
   const el = elements.find(e => e.id === _cropId);
   if (el) {
-    if (connected) broadcast({ type: 'el_crop', id: _cropId, imgX: el.imgX, imgY: el.imgY, imgW: el.imgW, imgH: el.imgH, userId, userName });
+    // Mark that real crop data exists so createElDOM uses absolute positioning
+    el.hasCrop = true;
+    if (connected) broadcast({ type: 'el_crop', id: _cropId, imgX: el.imgX, imgY: el.imgY, imgW: el.imgW, imgH: el.imgH, hasCrop: true, userId, userName });
     scheduleSave();
   }
   _cropId = null;
@@ -2339,140 +2378,287 @@ window.addEventListener('beforeunload', () => {
 });
 
 // ════════════════════════════════════════════════════════
-// PDF EXPORT — real vector text + 300dpi images via jsPDF
+// PDF EXPORT — true vector: embedded fonts + real images
 // ════════════════════════════════════════════════════════
+
+// Font cache — loaded once per session
+// Font loading — Calibre + FinancierDisplay from Supabase storage
+let _pdfFontCache = null;
+
+async function loadPDFFonts(doc) {
+  if (!_pdfFontCache) {
+    const BASE  = SUPA_URL + '/storage/v1/object/public/fonts/';
+    const fonts = [
+      { file:'Calibre-Light.ttf',            name:'Calibre',          style:'normal', weight:'300' },
+      { file:'Calibre-Regular.ttf',          name:'Calibre',          style:'normal', weight:'400' },
+      { file:'Calibre-Medium.ttf',           name:'Calibre',          style:'normal', weight:'500' },
+      { file:'Calibre-Semibold.ttf',         name:'Calibre',          style:'normal', weight:'600' },
+      { file:'Calibre-Bold.ttf',             name:'Calibre',          style:'normal', weight:'700' },
+      { file:'FinancierDisplay-Regular.ttf', name:'FinancierDisplay', style:'normal', weight:'400' },
+      { file:'FinancierDisplay-Medium.ttf',  name:'FinancierDisplay', style:'normal', weight:'500' },
+      { file:'FinancierDisplay-Semibold.ttf',name:'FinancierDisplay', style:'normal', weight:'600' },
+    ];
+    const results = await Promise.all(fonts.map(async f => {
+      try {
+        const res   = await fetch(BASE + f.file);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const buf   = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let b64 = '';
+        const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          b64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        return { ...f, b64: btoa(b64) };
+      } catch(e) {
+        console.warn('[PDF] Font load failed:', f.file, e.message);
+        return null;
+      }
+    }));
+    _pdfFontCache = results.filter(Boolean);
+  }
+  _pdfFontCache.forEach(f => {
+    try {
+      doc.addFileToVFS(f.file, f.b64);
+      doc.addFont(f.file, f.name + '_' + f.weight, 'normal');
+    } catch(e) { console.warn('[PDF] Font register failed:', f.name, e); }
+  });
+}
+
+// Map fontFamily + weight → jsPDF built-in font (helvetica/times/courier)
+// All three are embedded in every jsPDF document with no external files needed.
+function pdfFontFor(fontFamily, fontWeight) {
+  const ff      = (fontFamily || '');
+  const fw      = String(fontWeight || '400').replace('px','').trim();
+  const fwN     = parseInt(fw) || 400;
+  const bold    = fwN >= 600;
+  const style   = bold ? 'bold' : 'normal';
+  const hasFonts = _pdfFontCache && _pdfFontCache.length > 0;
+
+  if (hasFonts) {
+    const isF  = ff.includes('Financier') || ff.includes('financier');
+    const base = isF ? 'FinancierDisplay' : 'Calibre';
+    const wm   = isF
+      ? {'400':'400','500':'500','600':'600','700':'600','300':'400','900':'600'}
+      : {'300':'300','400':'400','500':'500','600':'600','700':'700','900':'700'};
+    return { family: base + '_' + (wm[fw] || '400'), style: 'normal' };
+  }
+  // Fallback built-in
+  const ffl = ff.toLowerCase();
+  if (ffl.includes('financier') || ffl.includes('georgia') ||
+      (ffl.includes('serif') && !ffl.includes('sans'))) return { family: 'times',     style };
+  if (ffl.includes('courier') || ffl.includes('mono'))   return { family: 'courier',   style };
+  return { family: 'helvetica', style };
+}
+
 async function exportPDF() {
   const btn = document.getElementById('btn-export');
-  btn.textContent = '⏳ Generating…';
+  btn.textContent = '⏳ Loading fonts…';
   btn.disabled = true;
 
   try {
-    // jsPDF uses points (1pt = 1/72 inch). A4 = 595.28 × 841.89 pt
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const doc = new jsPDF({ unit: 'mm', format: [210, 297], orientation: 'portrait' });
 
-    // Page dimensions in mm
+    btn.textContent = (_pdfFontCache && _pdfFontCache.length) ? '⏳ Building PDF…' : '⏳ Loading fonts…';
+    await loadPDFFonts(doc);
+
+    const PX_TO_MM = 25.4 / 96;
     const PAGE_W = 210, PAGE_H = 297;
 
-    // Screen artboard px → mm conversion factor (at 96dpi: 1px = 0.264583 mm)
-    const PX_TO_MM = 25.4 / 96;
+    btn.textContent = '⏳ Building PDF…';
 
-    // Sort elements: images first, text on top (painter's order)
-    const sorted = [...elements].sort((a, b) => {
-      if (a.type === 'img' && b.type !== 'img') return -1;
-      if (b.type === 'img' && a.type !== 'img') return 1;
-      return 0;
-    });
-
-    for (const el of sorted) {
+    for (const el of elements) {
       const xMM = el.x * PX_TO_MM;
       const yMM = el.y * PX_TO_MM;
       const wMM = el.w * PX_TO_MM;
       const hMM = el.h * PX_TO_MM;
 
+      // ── Colour rect ────────────────────────────────────────────
+      if (el.type === 'rect') {
+        const op = el.fillOpacity !== undefined ? el.fillOpacity : 1;
+        if (el.fillColor && el.fillColor !== 'transparent') {
+          const rgb = hexToRgb(el.fillColor);
+          // Simulate opacity by blending with white — avoids GState which causes Acrobat errors
+          const blended = {
+            r: Math.round(rgb.r * op + 255 * (1 - op)),
+            g: Math.round(rgb.g * op + 255 * (1 - op)),
+            b: Math.round(rgb.b * op + 255 * (1 - op)),
+          };
+          doc.setFillColor(blended.r, blended.g, blended.b);
+          doc.setDrawColor(blended.r, blended.g, blended.b);
+          doc.setLineWidth(0);
+          const r = (el.borderRadius || 0) * PX_TO_MM;
+          if (r > 0.5) doc.roundedRect(xMM, yMM, wMM, hMM, r, r, 'F');
+          else         doc.rect(xMM, yMM, wMM, hMM, 'F');
+        }
+        if ((el.strokeWidth || 0) > 0 && el.strokeColor) {
+          const srgb = hexToRgb(el.strokeColor);
+          doc.setDrawColor(srgb.r, srgb.g, srgb.b);
+          doc.setLineWidth((el.strokeWidth || 1) * PX_TO_MM);
+          const r = (el.borderRadius || 0) * PX_TO_MM;
+          if (r > 0.5) doc.roundedRect(xMM, yMM, wMM, hMM, r, r, 'S');
+          else         doc.rect(xMM, yMM, wMM, hMM, 'S');
+          doc.setLineWidth(0.1);
+        }
+        continue;
+      }
+
+      // ── Image ──────────────────────────────────────────────────
+      // Draw placeholder for empty image boxes
+      if (el.type === 'img' && !el.imageUrl) {
+        doc.setFillColor(224, 228, 224);
+        doc.setDrawColor(200, 208, 200);
+        doc.setLineWidth(0.1);
+        doc.rect(xMM, yMM, wMM, hMM, 'FD');
+        continue;
+      }
       if (el.type === 'img' && el.imageUrl) {
         try {
-          // Fetch image and convert to data URL
           const resp = await fetch(el.imageUrl);
-          if (!resp.ok) throw new Error('fetch failed');
-          const blob = await resp.blob();
-          const dataUrl = await blobToDataUrl(blob);
+          if (!resp.ok) throw new Error('fetch ' + resp.status);
+          const blob    = await resp.blob();
 
-          // Get natural image dimensions for 300dpi quality calculation
-          const imgInfo = await getImageDimensions(dataUrl);
-
-          // Determine format for jsPDF
-          const fmt = blob.type.includes('png') ? 'PNG' : 'JPEG';
-          const objectFit = el.objectFit || 'cover';
-
-          if (objectFit === 'contain') {
-            // Contain: centre within box
-            const scaleX = wMM / (imgInfo.w * PX_TO_MM);
-            const scaleY = hMM / (imgInfo.h * PX_TO_MM);
-            const scale  = Math.min(scaleX, scaleY);
-            const dw = imgInfo.w * PX_TO_MM * scale;
-            const dh = imgInfo.h * PX_TO_MM * scale;
-            const dx = xMM + (wMM - dw) / 2;
-            const dy = yMM + (hMM - dh) / 2;
-            doc.addImage(dataUrl, fmt, dx, dy, dw, dh, '', 'FAST');
+          // SVG cannot be embedded directly in jsPDF — convert to PNG via canvas
+          let dataUrl, fmt;
+          if (blob.type.includes('svg') || el.imageUrl.toLowerCase().includes('.svg')) {
+            // Render SVG to a canvas then export as PNG
+            dataUrl = await svgToPng(el.imageUrl, el.w * 3, el.h * 3);
+            fmt = 'PNG';
           } else {
-            // Cover/fill: clip to box
-            // jsPDF clip rectangle
-            doc.saveGraphicsState();
-            doc.rect(xMM, yMM, wMM, hMM, null); // path only
-            // Use addImage with compression for cover — let jsPDF handle it
-            doc.addImage(dataUrl, fmt, xMM, yMM, wMM, hMM, '', 'FAST');
-            doc.restoreGraphicsState();
+            dataUrl = await blobToDataUrl(blob);
+            fmt = blob.type.includes('png') ? 'PNG' : 'JPEG';
           }
-        } catch(e) {
-          console.warn('Image export failed for el', el.id, e);
-          // Draw placeholder rect
-          doc.setFillColor(220, 228, 220);
+
+          // If SVG conversion failed, draw placeholder and skip
+          if (!dataUrl) {
+            doc.setFillColor(220, 224, 220);
+            doc.rect(xMM, yMM, wMM, hMM, 'F');
+            continue;
+          }
+
+          // Determine if real crop data exists (user has used crop tool)
+          const realCrop = el.hasCrop && el.imgW && (el.imgW !== el.w || el.imgH !== el.h || el.imgX || el.imgY);
+          if (realCrop) {
+            // Cropped — position at crop offset within box bounds
+            const ix = xMM + (el.imgX || 0) * PX_TO_MM;
+            const iy = yMM + (el.imgY || 0) * PX_TO_MM;
+            const iw = el.imgW * PX_TO_MM;
+            const ih = el.imgH * PX_TO_MM;
+            doc.addImage(dataUrl, fmt, ix, iy, iw, ih, undefined, 'FAST');
+          } else if ((el.objectFit || 'cover') === 'contain') {
+            // Contain — scale to fit, centred
+            const info  = await getImageDimensions(dataUrl);
+            const scale = Math.min(wMM / info.w, hMM / info.h);
+            const dw    = info.w * scale, dh = info.h * scale;
+            doc.addImage(dataUrl, fmt, xMM + (wMM-dw)/2, yMM + (hMM-dh)/2, dw, dh, undefined, 'FAST');
+          } else {
+            // Cover/fill — fill the box
+            doc.addImage(dataUrl, fmt, xMM, yMM, wMM, hMM, undefined, 'FAST');
+          }
+        } catch(imgErr) {
+          console.warn('Image skipped:', el.id, imgErr.message);
+          doc.setFillColor(220, 224, 220);
           doc.rect(xMM, yMM, wMM, hMM, 'F');
         }
+        continue;
+      }
 
-      } else if (el.type === 'text' && el.content) {
-        const s = el.style || {};
-
-        // Font size px → pt
-        const fontSizePt = parseFloat(s.fontSize || '16') * 0.75;
-
-        // Font family mapping
-        const ff = (s.fontFamily || 'Arial').toLowerCase();
-        let pdfFont = 'helvetica';
-        if (ff.includes('georgia') || ff.includes('times') || ff.includes('serif')) pdfFont = 'times';
-        if (ff.includes('courier') || ff.includes('mono')) pdfFont = 'courier';
-
-        // Font style
-        const fw   = String(s.fontWeight || '400');
-        const bold = parseInt(fw) >= 600 || fw === 'bold';
-        doc.setFont(pdfFont, bold ? 'bold' : 'normal');
-        doc.setFontSize(fontSizePt);
-
-        // Colour
-        const rgb = hexToRgb(s.color || '#111111');
-        doc.setTextColor(rgb.r, rgb.g, rgb.b);
-
-        // Letter spacing
-        const lsMM = parseFloat(s.letterSpacing || '0') * PX_TO_MM;
-        if (lsMM !== 0) doc.setCharSpace(lsMM * 2.835);
-
-        // Spacing
-        const lh             = parseFloat(s.lineHeight || '1.4');
-        const lineHeightMM   = fontSizePt * lh * (25.4 / 72);     // pt → mm
-        const paraSpacingMM  = parseFloat(s.paragraphSpacing || '0') * PX_TO_MM;
-        const paddingMM      = 4 * PX_TO_MM;
-
-        // Alignment
+      // ── Text ───────────────────────────────────────────────────
+      if (el.type === 'text' && el.content && el.content.trim()) {
+        const s          = el.style || {};
+        // Font size: use same scale approach as old builder
+        // scaleX = artboardWidthMM / artboardWidthPx = 210 / 794 = 0.2645
+        // fontSizeMM = fontSizePx * scaleX; fontSizePt = fontSizeMM * 2.835
+        const fontSizePx = parseFloat(s.fontSize || '16');
+        const scaleX     = 210 / AW; // AW = 794px artboard width
+        const fontSizePt = Math.max(1, fontSizePx * scaleX * 2.835);
+        const baseFont   = pdfFontFor(s.fontFamily, s.fontWeight);
+        const rgb        = hexToRgb(s.color || '#111111');
+        const lh         = parseFloat(s.lineHeight || '1.4');
+        const lineHMM    = fontSizePt * lh * (25.4 / 72);
+        const paraSpMM   = parseFloat(s.paragraphSpacing || '0') * PX_TO_MM;
+        // Match the 4px screen padding so word-wrap matches what you see
+        const padMM      = 4 * PX_TO_MM;
+        // 2% tighter wrap — Calibre renders slightly wider in jsPDF than browser (old builder fix)
+        const maxW       = Math.max((wMM - padMM) * 0.98, 3);
         const align      = s.textAlign || 'left';
-        const jsPDFAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : align === 'justify' ? 'justify' : 'left';
-        const textX      = align === 'center' ? xMM + wMM / 2 : align === 'right' ? xMM + wMM - paddingMM : xMM + paddingMM;
-        const maxW       = wMM - paddingMM * 2;
+        const lsMM       = parseFloat(s.letterSpacing || '0') * PX_TO_MM;
+        const textX      = align === 'center' ? xMM + wMM / 2
+                         : align === 'right'  ? xMM + wMM - padMM
+                         : xMM + padMM;
+        const pdfAlign   = (align === 'center' || align === 'right') ? align : 'left';
 
-        // Parse HTML into paragraphs → lines
-        // htmlToLines returns [ [line, line, ...], [line, ...], ... ]
-        const paragraphs = htmlToLines(el.content);
-        let curY = yMM + paddingMM + fontSizePt * (25.4 / 72);
+        doc.setFontSize(fontSizePt);
+        doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        doc.setCharSpace(lsMM !== 0 ? lsMM * 2.835 : 0);
 
-        for (let pi = 0; pi < paragraphs.length; pi++) {
-          const para = paragraphs[pi];
-          // Add paragraph spacing before all paragraphs after the first
-          if (pi > 0) curY += paraSpacingMM;
+        const textLines = extractPDFLines(el.content, el.bulletMode);
+        // curY: top of box + font ascender (≈80% of font size)
+        // Using 0.8 * fontSizePt to get ascender height (baseline above cap-height)
+        const ascMM = fontSizePt * 0.8 * (25.4 / 72);
+        let curY    = yMM + ascMM;
+        let isFirst       = true;
+        let lastWasBullet = false;
 
-          for (const rawLine of para) {
-            if (!rawLine && para.length === 1) { curY += lineHeightMM; continue; } // blank line
-            const wrapped = doc.splitTextToSize(rawLine || ' ', maxW);
-            for (const wline of wrapped) {
-              if (curY > yMM + hMM + paddingMM) break;
-              doc.text(wline, textX, curY, { align: jsPDFAlign, maxWidth: maxW });
-              curY += lineHeightMM;
+        // Bullet indent: dash width + space (~1.1em)
+        // "– " width: en-dash (~0.5em) + space (~0.25em) = ~0.75em in mm
+        const dashW    = fontSizePt * 0.75 * (25.4 / 72);
+        const indentMM = dashW;
+
+        for (const { text, bold: lineBold, isBlankLine, isSoftReturn, bullet } of textLines) {
+          if (isBlankLine) {
+            if (!isSoftReturn) curY += paraSpMM; // soft blank = just a line skip, no para gap
+            curY += lineHMM;
+            isFirst = false;
+            continue;
+          }
+          // Only add para spacing for hard returns (new div), not soft returns (br inside div)
+          if (!isFirst && !isSoftReturn && paraSpMM > 0) curY += paraSpMM;
+
+          const lineFont = lineBold
+            ? pdfFontFor(el.style && el.style.fontFamily, '700')
+            : baseFont;
+          try { doc.setFont(lineFont.family, lineFont.style); }
+          catch(e) { doc.setFont('helvetica', lineBold ? 'bold' : 'normal'); }
+
+          if (bullet && !isSoftReturn) {
+            // Render dash then text with hanging indent for wrapped lines
+            const bulletX  = textX;
+            const contentX = textX + indentMM;
+            const contentW = Math.max(maxW - indentMM, 5);
+            const wrapped  = doc.splitTextToSize(text || ' ', contentW);
+            doc.text('\u2013 ', bulletX, curY);
+            if (wrapped[0]) doc.text(wrapped[0], contentX, curY);
+            curY += lineHMM;
+            for (let wi = 1; wi < wrapped.length; wi++) {
+              doc.text(wrapped[wi], contentX, curY);
+              curY += lineHMM;
+            }
+          } else if (isSoftReturn) {
+            // Soft return — indent to bullet content position if previous line was a bullet
+            const softX = lastWasBullet ? textX + indentMM : textX;
+            const softW = lastWasBullet ? Math.max(maxW - indentMM, 5) : maxW;
+            const wrapped = doc.splitTextToSize(text || ' ', softW);
+            for (const wl of wrapped) {
+              doc.text(wl, softX, curY, { align: pdfAlign });
+              curY += lineHMM;
+            }
+          } else {
+            const wrapped = doc.splitTextToSize(text || ' ', maxW);
+            for (const wl of wrapped) {
+              doc.text(wl, textX, curY, { align: pdfAlign });
+              curY += lineHMM;
             }
           }
+          isFirst = false;
+          if (!isSoftReturn) lastWasBullet = !!bullet;
         }
-
-        if (lsMM !== 0) doc.setCharSpace(0);
+        doc.setCharSpace(0);
+        doc.setTextColor(0, 0, 0);
+        try { doc.setFont(baseFont.family, baseFont.style); } catch(e) {}
       }
-    }
+    } // end for(const el of elements)
 
     doc.save('CBRE_Builder4.pdf');
     btn.textContent = '✓ Downloaded';
@@ -2485,7 +2671,184 @@ async function exportPDF() {
   }
 }
 
+// Simple reliable plain-text line extractor for PDF rendering.
+// Returns [{text: string, isParaBreak: bool}]
+// Handles <div>line</div> format (new) and <br>-separated (legacy).
+function extractPDFLines(html, bulletMode) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const result = [];
+
+  // Check if ALL text content in a node is wrapped in bold
+  function isAllBold(node) {
+    // If this node is a bold tag, yes
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'b' || tag === 'strong') return true;
+    }
+    // If this node has only one child and that child is bold, yes
+    const kids = Array.from(node.childNodes).filter(n =>
+      n.nodeType === Node.ELEMENT_NODE || (n.nodeType === Node.TEXT_NODE && n.textContent.trim())
+    );
+    if (kids.length === 1) return isAllBold(kids[0]);
+    return false;
+  }
+
+  const children = Array.from(tmp.childNodes);
+  const hasDivs  = children.some(c => c.nodeType === Node.ELEMENT_NODE
+    && c.tagName && c.tagName.toLowerCase() === 'div');
+
+  if (hasDivs) {
+    children.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const t = child.textContent;
+        if (t.trim()) result.push({ text: t, bold: false, isBlankLine: false });
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'div') {
+          // Check for soft returns (Shift+Enter = <br> inside the div)
+          const hasBr = child.querySelector('br');
+          if (hasBr) {
+            // Split on <br> — first sub-line is a normal line, rest are soft returns
+            // Soft returns get no paragraph spacing and no bullet prefix
+            let cur = '';
+            let curBold = false;
+            let isFirst = true;
+            function walkDiv(node) {
+              if (node.nodeType === Node.TEXT_NODE) {
+                cur += node.textContent;
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const t2 = node.tagName.toLowerCase();
+                if (t2 === 'br') {
+                  result.push({ text: cur, bold: curBold, isBlankLine: cur.trim() === '', isSoftReturn: !isFirst });
+                  cur = ''; curBold = false; isFirst = false;
+                } else {
+                  if (t2 === 'b' || t2 === 'strong') curBold = true;
+                  node.childNodes.forEach(walkDiv);
+                }
+              }
+            }
+            child.childNodes.forEach(walkDiv);
+            if (cur !== undefined) {
+              result.push({ text: cur, bold: curBold, isBlankLine: cur.trim() === '', isSoftReturn: !isFirst });
+            }
+          } else {
+            const text = child.textContent || '';
+            const isBlankLine = text.trim() === '';
+            result.push({ text, bold: isAllBold(child), isBlankLine });
+          }
+        }
+      }
+    });
+  } else {
+    // Legacy <br>-separated format
+    let current = '';
+    let currentBold = false;
+    function walk(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        current += node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        if (tag === 'br') {
+          const isBlank = current.trim() === '';
+          result.push({ text: current, bold: currentBold, isBlankLine: isBlank });
+          current = ''; currentBold = false;
+        } else if (tag === 'b' || tag === 'strong') {
+          // Only set bold if this tag wraps the entire remaining content
+          const prev = current;
+          node.childNodes.forEach(walk);
+          if (current !== prev) currentBold = true;
+        } else {
+          node.childNodes.forEach(walk);
+        }
+      }
+    }
+    tmp.childNodes.forEach(walk);
+    if (current) result.push({ text: current, bold: currentBold, isBlankLine: current.trim() === '' });
+  }
+
+  const out = result.length ? result : [{ text: tmp.textContent || '', bold: false, isBlankLine: false }];
+  // If bulletMode, mark non-blank lines for bullet rendering in the PDF
+  // The renderer will handle the hanging indent
+  if (bulletMode) {
+    return out.map(line => (line.isBlankLine || line.isSoftReturn) ? line : { ...line, bullet: true });
+  }
+  return out;
+}
+
+// Parse div-based HTML content into lines of runs [{text, bold, italic}]
+// Returns: [{isParaBreak:bool, runs:[{text,bold,italic}]}]
+function pdfParseHTML(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const result = [];
+
+  function extractRuns(node, bold, italic) {
+    const runs = [];
+    node.childNodes.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        if (child.textContent) runs.push({ text: child.textContent, bold, italic });
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'b' || tag === 'strong') runs.push(...extractRuns(child, true,  italic));
+        else if (tag === 'i' || tag === 'em') runs.push(...extractRuns(child, bold, true));
+        else if (tag === 'u')                 runs.push(...extractRuns(child, bold, italic));
+        else if (tag === 'br')                runs.push({ text: '', bold, italic, br: true });
+        else                                  runs.push(...extractRuns(child, bold, italic));
+      }
+    });
+    return runs;
+  }
+
+  const children = Array.from(tmp.childNodes);
+  const hasDivs  = children.some(c => c.nodeType === Node.ELEMENT_NODE && c.tagName.toLowerCase() === 'div');
+
+  if (hasDivs) {
+    children.forEach((child, i) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        result.push({ isParaBreak: false, runs: [{ text: child.textContent, bold: false, italic: false }] });
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'div') {
+          const runs = extractRuns(child, false, false);
+          if (runs.length === 0) result.push({ isParaBreak: false, runs: [{ text: '', bold: false, italic: false }] });
+          else result.push({ isParaBreak: false, runs });
+        }
+      }
+    });
+  } else {
+    // Legacy <br>-based
+    const runs = extractRuns(tmp, false, false);
+    let current = [];
+    for (const run of runs) {
+      if (run.br) { result.push({ isParaBreak: false, runs: current }); current = []; }
+      else current.push(run);
+    }
+    if (current.length) result.push({ isParaBreak: false, runs: current });
+  }
+  return result;
+}
+
 // ── PDF helpers ───────────────────────────────────────────────────
+
+// Convert SVG URL to PNG dataURL via canvas (jsPDF can't embed SVG directly)
+function svgToPng(url, w, h) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.max(w, 100);
+      canvas.height = Math.max(h, 100);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null); // skip if can't load
+    img.src = url;
+  });
+}
+
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
