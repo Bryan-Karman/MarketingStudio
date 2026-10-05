@@ -445,7 +445,11 @@ function _buildBuilderUrl(portfolioId, propertyId){
     userRole:      currentUser ? currentUser.role : 'user',
     userName:      currentUser ? currentUser.name : '',
   });
-  return 'builder.html?' + params.toString();
+  // Route to the correct builder based on portfolio template.
+  // Existing portfolios with no template field default to builder.html — no breakage.
+  const port = portfolios.find(p => p.id === portfolioId);
+  const builderFile = (port && port.template === 'builder4') ? 'builder_4.html' : 'builder.html';
+  return builderFile + '?' + params.toString();
 }
 
 function runGlobalSearch(query){
@@ -682,15 +686,57 @@ function runGlobalSearch(query){
      MODAL: NEW PORTFOLIO
 ════════════════════════════════════════ -->
 <div class="modal-bg" id="modal-portfolio">
-  <div class="modal">
+  <div class="modal" style="width:480px;">
     <div class="modal-title">New Portfolio</div>
-    <div class="modal-field"><label>Portfolio Name</label><input type="text" id="new-portfolio-name" placeholder="e.g. Portfolio 187"></div>
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeModal('modal-portfolio')">Cancel</button>
-      <button class="modal-confirm" onclick="createPortfolio()">Create Portfolio</button>
+
+    <!-- Step 1: Choose template -->
+    <div id="modal-pf-step1">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Choose which builder this portfolio will use. This cannot be changed later.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;">
+
+        <!-- Classic Builder -->
+        <div id="tpl-classic" onclick="selectTemplate('classic')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
+          <div style="font-size:20px;margin-bottom:8px;">🏢</div>
+          <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Classic Builder</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5;">Multi-tab marketing materials — brochures, press ads, EDMs, signboards.</div>
+          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">builder.html</div>
+        </div>
+
+        <!-- Builder 4 -->
+        <div id="tpl-builder4" onclick="selectTemplate('builder4')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
+          <div style="font-size:20px;margin-bottom:8px;">📄</div>
+          <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Builder 4 <span style="font-size:9px;background:#003f2d;color:#17e88f;padding:2px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;">NEW</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5;">Free-form A4 canvas — add text and image boxes, live multi-user editing with cursors.</div>
+          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">builder_4.html</div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="modal-cancel" onclick="closeModal('modal-portfolio')">Cancel</button>
+        <button class="modal-confirm" id="btn-tpl-next" onclick="showPortfolioNameStep()" disabled style="opacity:.4;cursor:not-allowed;">Next →</button>
+      </div>
     </div>
+
+    <!-- Step 2: Name -->
+    <div id="modal-pf-step2" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <button onclick="showPortfolioTemplateStep()" style="background:none;border:none;color:var(--g);font-size:12px;font-weight:700;cursor:pointer;padding:0;">← Back</button>
+        <span style="font-size:11px;color:var(--muted);">Template: <strong id="tpl-chosen-label" style="color:var(--dk);"></strong></span>
+      </div>
+      <div class="modal-field"><label>Portfolio Name</label><input type="text" id="new-portfolio-name" placeholder="e.g. Portfolio 188" onkeydown="if(event.key==='Enter')createPortfolio()"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeModal('modal-portfolio')">Cancel</button>
+        <button class="modal-confirm" onclick="createPortfolio()">Create Portfolio</button>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<style>
+#tpl-classic:hover,#tpl-builder4:hover{border-color:var(--g);}
+#tpl-classic.selected,#tpl-builder4.selected{border-color:var(--g);background:#f0faf5;}
+#tpl-classic.selected::after,#tpl-builder4.selected::after{content:'✓';position:absolute;top:8px;right:10px;font-size:14px;color:var(--g);font-weight:700;}
+</style>
 
 <!-- ═══════════════════════════════════════
      MODAL: NEW PROPERTY
@@ -1259,20 +1305,54 @@ function openPortfolio(id){
   showPage('properties');
 }
 
+// ── Template selection state ──────────────────────────────────────
+let _selectedTemplate = ''; // 'classic' or 'builder4'
+
 function openNewPortfolioModal(){
+  _selectedTemplate = '';
   document.getElementById('new-portfolio-name').value = '';
+  // Reset template cards
+  document.getElementById('tpl-classic').classList.remove('selected');
+  document.getElementById('tpl-builder4').classList.remove('selected');
+  document.getElementById('btn-tpl-next').disabled = true;
+  document.getElementById('btn-tpl-next').style.opacity = '.4';
+  document.getElementById('btn-tpl-next').style.cursor = 'not-allowed';
+  // Show step 1
+  showPortfolioTemplateStep();
   document.getElementById('modal-portfolio').classList.add('open');
-  setTimeout(()=> document.getElementById('new-portfolio-name').focus(), 50);
+}
+
+function selectTemplate(tpl){
+  _selectedTemplate = tpl;
+  document.getElementById('tpl-classic').classList.toggle('selected',  tpl === 'classic');
+  document.getElementById('tpl-builder4').classList.toggle('selected', tpl === 'builder4');
+  const btn = document.getElementById('btn-tpl-next');
+  btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+}
+
+function showPortfolioTemplateStep(){
+  document.getElementById('modal-pf-step1').style.display = '';
+  document.getElementById('modal-pf-step2').style.display = 'none';
+}
+
+function showPortfolioNameStep(){
+  if(!_selectedTemplate) return;
+  document.getElementById('tpl-chosen-label').textContent =
+    _selectedTemplate === 'builder4' ? 'Builder 4 (A4)' : 'Classic Builder';
+  document.getElementById('modal-pf-step1').style.display = 'none';
+  document.getElementById('modal-pf-step2').style.display = '';
+  setTimeout(() => document.getElementById('new-portfolio-name').focus(), 50);
 }
 
 async function createPortfolio(){
   const name = document.getElementById('new-portfolio-name').value.trim();
-  if(!name) return;
+  if(!name || !_selectedTemplate) return;
   const id = 'p' + Date.now();
+  const template = _selectedTemplate; // 'classic' or 'builder4'
   try {
-    await SB.post('portfolios', {id, name, product: 'marketing', created_at: new Date().toISOString()});
+    await SB.post('portfolios', {id, name, product: 'marketing', template, created_at: new Date().toISOString()});
   } catch(e) { console.warn('Supabase portfolio save failed:', e); }
-  portfolios.unshift({id, name, createdAt: new Date().toISOString()});
+  portfolios.unshift({id, name, template, createdAt: new Date().toISOString()});
   saveDemoData();
   closeModal('modal-portfolio');
   renderPortfolios();
