@@ -2688,13 +2688,18 @@ async function exportPDF() {
             const ih = el.imgH * PX_TO_MM;
             doc.addImage(dataUrl, fmt, ix, iy, iw, ih, undefined, 'FAST');
           } else if ((el.objectFit || 'cover') === 'contain') {
-            // Contain — scale to fit, centred using NATURAL image dimensions
-            const info  = await getImageDimensions(dataUrl);
-            // For SVG-converted images, info dimensions are the canvas render size.
-            // Always work in the aspect ratio of the source, fit within box.
-            const scaleContain = Math.min(wMM / (info.w * PX_TO_MM), hMM / (info.h * PX_TO_MM));
-            const dw = info.w * PX_TO_MM * scaleContain;
-            const dh = info.h * PX_TO_MM * scaleContain;
+            // Contain — get natural aspect ratio then fit within box dimensions
+            const info   = await getImageDimensions(dataUrl);
+            const aspect = info.w / info.h;
+            // Fit within the box using the aspect ratio only (not the canvas pixel size)
+            let dw, dh;
+            if (wMM / hMM > aspect) {
+              // Box is wider than image — constrained by height
+              dh = hMM; dw = hMM * aspect;
+            } else {
+              // Box is taller than image — constrained by width
+              dw = wMM; dh = wMM / aspect;
+            }
             doc.addImage(dataUrl, fmt, xMM + (wMM-dw)/2, yMM + (hMM-dh)/2, dw, dh, undefined, 'FAST');
           } else {
             // Cover/fill — fill the box
@@ -2759,9 +2764,9 @@ async function exportPDF() {
             isFirst = false;
             continue;
           }
-          // Add para gap only when the PREVIOUS line was blank (explicit paragraph break)
-          // This matches the CSS behaviour: margin-top on > div only creates gap after blank divs
-          if (!isFirst && !isSoftReturn && prevWasBlank && paraSpMM > 0) curY += paraSpMM;
+          // Para spacing: CSS applies margin-top to every > div after the first.
+          // Match that exactly — add paraSpMM before every non-blank, non-soft-return line after the first.
+          if (!isFirst && !isSoftReturn && paraSpMM > 0) curY += paraSpMM;
           prevWasBlank = false;
 
           const lineFont = lineBold
@@ -2985,14 +2990,19 @@ function svgToPng(url, w, h) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      // Use natural dimensions if available, otherwise fall back to element size
+      const natW = img.naturalWidth  || w;
+      const natH = img.naturalHeight || h;
+      // Render at 3× for sharpness
+      const scale = 3;
       const canvas = document.createElement('canvas');
-      canvas.width  = Math.max(w, 100);
-      canvas.height = Math.max(h, 100);
+      canvas.width  = Math.max(natW * scale, 100);
+      canvas.height = Math.max(natH * scale, 100);
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/png'));
     };
-    img.onerror = () => resolve(null); // skip if can't load
+    img.onerror = () => resolve(null);
     img.src = url;
   });
 }
