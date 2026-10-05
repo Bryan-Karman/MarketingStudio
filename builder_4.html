@@ -146,7 +146,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   background:#fff;
   box-shadow:0 8px 48px rgba(0,0,0,.6);
   position:relative;
-  overflow:hidden;
+  overflow:visible; /* allow resize handles outside artboard to remain accessible */
   flex-shrink:0;
 }
 /* Artboard labels — on .canvas-wrap so overflow:hidden on canvas-card doesn't clip them */
@@ -1223,32 +1223,32 @@ function setRectProp(id, key, value) {
 // Inject a per-element <style> rule for paragraph spacing.
 // contentEditable produces <div> for new lines (Chrome/Edge) and <br> (Firefox/Safari).
 // We target both: div + div and br spacing via a wrapper class.
-function applyParaSpacing(inner, value) {
-  const px  = parseFloat(value) || 0;
-  const eid = inner.dataset.eid;
-  if (!eid) return;
-  inner.dataset.paraSpacing = String(px);
-
-  // Inject a <style> tag that covers Chrome's div-wrapping AND sets a
-  // reliable padding on a ::after pseudo inserted after each <br>.
-  // The key insight: we use padding-top on all direct children (divs in Chrome)
-  // AND we set line-height tall enough on <br> to create visible spacing.
-  let tag = document.getElementById('para-style-' + eid);
-  if (!tag) {
-    tag = document.createElement('style');
-    tag.id = 'para-style-' + eid;
-    document.head.appendChild(tag);
-  }
-
-  if (px > 0) {
-    // Content is stored as <div> per line — margin-top works reliably in all browsers
+function _applyElStyle(eid, px, bulletOn) {
+  let tag = document.getElementById('el-style-' + eid);
+  if (!tag) { tag = document.createElement('style'); tag.id = 'el-style-' + eid; document.head.appendChild(tag); }
+  if (bulletOn) {
     tag.textContent =
-      `.cv-text-inner[data-eid="${eid}"] > div { margin-top: ${px}px; }` +
-      `.cv-text-inner[data-eid="${eid}"] > div:first-child { margin-top: 0; }`;
+      `.cv-text-inner[data-eid="${eid}"] > div { padding-left:1.3ch; text-indent:-1.3ch; margin-top:${px}px; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:first-child { margin-top:0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div::before { content:"\\2013\\00A0"; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:empty { padding-left:0; text-indent:0; margin-top:0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:empty::before { content:""; }`;
   } else {
     tag.textContent =
-      `.cv-text-inner[data-eid="${eid}"] > div { margin-top: 0; }`;
+      `.cv-text-inner[data-eid="${eid}"] > div { padding-left:0; text-indent:0; margin-top:${px}px; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:first-child { margin-top:0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div::before { content:""; }`;
   }
+}
+
+function applyParaSpacing(inner, value) {
+  const eid = inner && inner.dataset && inner.dataset.eid;
+  if (!eid) return;
+  const px = parseFloat(value) || 0;
+  inner.dataset.paraSpacing = String(px);
+  const existingTag = document.getElementById('el-style-' + eid);
+  const bulletOn = existingTag ? existingTag.textContent.includes('\\2013') : false;
+  _applyElStyle(eid, px, bulletOn);
 }
 
 // ════════════════════════════════════════════════════════
@@ -1696,28 +1696,11 @@ function toggleBullets(id) {
   scheduleSave();
 }
 
-// Inject CSS that uses ::before on each <div> child to prepend "– "
-// This keeps bullet content out of the stored HTML entirely.
+// Apply bullet CSS — uses combined _applyElStyle so para spacing is preserved
 function applyBulletCSS(inner, eid, on) {
   if (!eid) return;
-  let tag = document.getElementById('bullet-style-' + eid);
-  if (!tag) {
-    tag = document.createElement('style');
-    tag.id = 'bullet-style-' + eid;
-    document.head.appendChild(tag);
-  }
-  if (on) {
-    tag.textContent =
-      // Hanging indent: the ::before dash sits at left, text wraps aligned under itself
-      `.cv-text-inner[data-eid="${eid}"] > div { padding-left: 1.3ch; text-indent: -1.3ch; }` +
-      `.cv-text-inner[data-eid="${eid}"] > div::before { content: "\\2013\\00A0"; }` +
-      `.cv-text-inner[data-eid="${eid}"] > div:empty { padding-left: 0; text-indent: 0; }` +
-      `.cv-text-inner[data-eid="${eid}"] > div:empty::before { content: ""; }`;
-  } else {
-    tag.textContent =
-      `.cv-text-inner[data-eid="${eid}"] > div { padding-left: 0; text-indent: 0; }` +
-      `.cv-text-inner[data-eid="${eid}"] > div::before { content: ""; }`;
-  }
+  const px = inner ? (parseFloat(inner.dataset.paraSpacing) || 0) : 0;
+  _applyElStyle(eid, px, on);
 }
 
 function setPosSize(id, key, value) {
