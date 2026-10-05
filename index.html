@@ -445,7 +445,8 @@ function _buildBuilderUrl(portfolioId, propertyId){
     userRole:      currentUser ? currentUser.role : 'user',
     userName:      currentUser ? currentUser.name : '',
   });
-  const builderFile = (port && port.template === 'builder4') ? 'builder_4.html' : 'builder.html';
+  const tpl = (port && port.template) || (port && port.product === 'marketing_b4' ? 'builder4' : 'classic');
+  const builderFile = tpl === 'builder4' ? 'builder_4.html' : 'builder.html';
   return builderFile + '?' + params.toString();
 }
 
@@ -916,20 +917,34 @@ const SB = {
 };
 
 async function loadDemoData(){
-  // Load portfolios — marketing only
+  // Load portfolios — fetch both classic (marketing) and builder4 (marketing_b4)
+  // Template is encoded in the product field to avoid needing a new Supabase column.
   try {
-    const pfs = await SB.get('portfolios', '?product=eq.marketing&order=created_at.asc');
+    const pfs = await SB.get('portfolios', '?product=in.(marketing,marketing_b4)&order=created_at.asc');
     if(Array.isArray(pfs)){
-      // Load stored template overrides from localStorage (in case Supabase column doesn't exist yet)
+      // Also read localStorage store as a signal for portfolios created before this fix
       let _tplStore = {};
       try { _tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}'); } catch(e){}
-      portfolios = pfs.map(p => ({
-        id:        p.id,
-        name:      p.name,
-        createdAt: p.created_at,
-        // Use Supabase template field if present, fall back to localStorage store
-        template:  p.template || _tplStore[p.id] || 'classic'
-      }));
+
+      portfolios = pfs.map(p => {
+        // Primary source: product field in Supabase
+        let template = p.product === 'marketing_b4' ? 'builder4' : 'classic';
+        // Secondary: localStorage override (catches portfolios created before product-field fix)
+        if(_tplStore[p.id]) template = _tplStore[p.id];
+        return { id: p.id, name: p.name, createdAt: p.created_at, product: p.product, template };
+      });
+
+      // Auto-patch any portfolio whose template comes from localStorage but product is wrong in Supabase
+      portfolios.forEach(async p => {
+        const expectedProduct = p.template === 'builder4' ? 'marketing_b4' : 'marketing';
+        if(p.product !== expectedProduct){
+          try {
+            await SB.patch('portfolios', '?id=eq.'+p.id, {product: expectedProduct});
+            p.product = expectedProduct;
+            console.log('[CBRE] Patched portfolio product field:', p.id, '→', expectedProduct);
+          } catch(e){ console.warn('Auto-patch failed for', p.id, e); }
+        }
+      });
     }
   } catch(e) {
     console.warn('Portfolios load failed — using localStorage:', e);
@@ -1351,26 +1366,18 @@ async function createPortfolio(){
   const id = 'p' + Date.now();
   const template = _selectedTemplate;
 
-  // Always persist template to localStorage immediately — this is the reliable store.
-  // It's read back during loadDemoData even if the Supabase column doesn't exist.
-  try {
-    const tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}');
-    tplStore[id] = template;
-    localStorage.setItem('cbre_portfolio_templates', JSON.stringify(tplStore));
-  } catch(e){}
+  // Encode the template choice in the product field — no new Supabase column needed.
+  // 'marketing'    = Classic builder.html
+  // 'marketing_b4' = Builder 4 builder_4.html
+  const product = template === 'builder4' ? 'marketing_b4' : 'marketing';
 
-  // Try saving to Supabase with template field. If the column doesn't exist yet,
-  // retry without it so the portfolio row still saves correctly.
   try {
-    await SB.post('portfolios', {id, name, product: 'marketing', template, created_at: new Date().toISOString()});
+    await SB.post('portfolios', {id, name, product, created_at: new Date().toISOString()});
   } catch(e) {
-    console.warn('Supabase save with template failed, retrying without:', e.message);
-    try {
-      await SB.post('portfolios', {id, name, product: 'marketing', created_at: new Date().toISOString()});
-    } catch(e2) { console.warn('Supabase portfolio save failed entirely:', e2); }
+    console.warn('Supabase portfolio save failed:', e);
   }
 
-  portfolios.unshift({id, name, template, createdAt: new Date().toISOString()});
+  portfolios.unshift({id, name, product, template, createdAt: new Date().toISOString()});
   saveDemoData();
   closeModal('modal-portfolio');
   renderPortfolios();
@@ -1754,17 +1761,11 @@ function openBuilder(portfolioId, propertyId){
   const props = properties[portfolioId]||[];
   const property = props.find(p=>p.id===propertyId);
 
-  // Read template from portfolio object AND directly from localStorage store as backup
-  let template = portfolio ? portfolio.template : null;
-  if(!template){
-    try {
-      const tplStore = JSON.parse(localStorage.getItem('cbre_portfolio_templates')||'{}');
-      template = tplStore[portfolioId];
-    } catch(e){}
-  }
-  console.log('[CBRE] openBuilder:', portfolioId, '| portfolio found:', !!portfolio, '| template:', template, '| full portfolio obj:', portfolio);
-
-  const builderFile = (template === 'builder4') ? 'builder_4.html' : 'builder.html';
+  // Derive template from portfolio — check template field first, then product field as fallback
+  const template = (portfolio && portfolio.template)
+    || (portfolio && portfolio.product === 'marketing_b4' ? 'builder4' : 'classic');
+  console.log('[CBRE] openBuilder:', portfolioId, '| template:', template, '| product:', portfolio?.product);
+  const builderFile = template === 'builder4' ? 'builder_4.html' : 'builder.html';
   const params = new URLSearchParams({
     portfolioId,
     propertyId,
