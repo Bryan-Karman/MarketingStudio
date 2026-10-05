@@ -1551,13 +1551,17 @@ function showAgentDropdown(id) {
   const dropdown = document.getElementById('agent-dropdown');
   const list     = document.getElementById('agent-dropdown-list');
 
-  // Build list items
-  list.innerHTML = agentList.map(a =>
-    '<div class="agent-dd-item" onclick="insertAgent(' + id + ',\'' + a.id + '\')">'
-    + '<span class="agent-dd-name">' + esc(a.name) + '</span>'
-    + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
+  // Build list items — blank/clear option first, then all agents
+  list.innerHTML =
+    '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
+    + '<span class="agent-dd-name" style="color:#6b7175;">— No agent (leave blank)</span>'
     + '</div>'
-  ).join('');
+    + agentList.map(a =>
+        '<div class="agent-dd-item" onclick="insertAgent(' + id + ',\'' + a.id + '\')">'
+        + '<span class="agent-dd-name">' + esc(a.name) + '</span>'
+        + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
+        + '</div>'
+      ).join('');
 
   // Position dropdown below the element on the canvas
   const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
@@ -1599,16 +1603,22 @@ function hideAgentDropdown() {
 function insertAgent(id, agentId) {
   hideAgentDropdown();
   if (!agentId) return;
-  const agent = agentList.find(a => String(a.id) === String(agentId));
-  if (!agent) return;
   const el = elements.find(e => e.id === id);
   if (!el || el.type !== 'text') return;
 
   _pushUndo();
 
-  // Format: Name PhoneNumber — replaces the entire box content
-  const line = agent.name + (agent.phone ? ' ' + agent.phone : '');
-  const newContent = '<div>' + esc(line) + '</div>';
+  let newContent;
+  if (agentId === '__blank__') {
+    // Clear the box
+    newContent = '<div></div>';
+  } else {
+    const agent = agentList.find(a => String(a.id) === String(agentId));
+    if (!agent) return;
+    // Format: Name PhoneNumber — replaces the entire box content
+    const line = agent.name + (agent.phone ? ' ' + agent.phone : '');
+    newContent = '<div>' + esc(line) + '</div>';
+  }
 
   el.content = newContent;
 
@@ -1855,7 +1865,7 @@ function selectEl(id, addToSelection) {
   // If this is an agent box, show the floating agent picker
   if (!addToSelection && agentList.length > 0) {
     const el = elements.find(e => e.id === id);
-    if (el && el.isAgentBox && !el.locked) {
+    if (el && el.isAgentBox) {
       setTimeout(() => showAgentDropdown(id), 80);
     } else {
       hideAgentDropdown();
