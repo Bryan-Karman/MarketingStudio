@@ -5647,21 +5647,16 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
             // browser-rendered sub-lines from each div so jsPDF reproduces exact breaks.
             const _plainDivs = inner.querySelectorAll('div.plain-line');
             if(_plainDivs.length > 0 && el.dataset.bullets !== '1'){
-              // Extract browser-rendered wrapped lines per paragraph div.
-              // Use '\x00' as a paragraph-end sentinel so the PDF renderer knows
-              // to insert bsp only at paragraph boundaries, not between sub-lines.
+              // Plain-line divs are paragraphs. Append '\x00' sentinel to each so the
+              // PDF renderer applies bsp only at paragraph boundaries, not sub-lines.
+              // noWrap stays false — jsPDF wraps each paragraph using splitTextToSize
+              // with the existing 2% width expansion to match browser line breaks.
               const _paraTexts = [];
               _plainDivs.forEach(function(pd){
-                const _pdTxt = pd.textContent || '';
-                const _rendered = _extractRenderedLines(pd, _pdTxt);
-                if(_rendered && _rendered.length > 0){
-                  _paraTexts.push(_rendered.join('\n') + '\x00');
-                } else {
-                  _paraTexts.push((_pdTxt.trim() || '') + '\x00');
-                }
+                _paraTexts.push((pd.textContent || '').trim() + '\x00');
               });
               _content = _paraTexts.join('\n');
-              _hasChildDivs = true; // noWrap='1': jsPDF uses exact browser lines
+              _hasChildDivs = false; // noWrap='0': let jsPDF wrap each paragraph
             } else {
               _content = _childDivs.map(function(d){ return (d.textContent||'').trim(); }).join('\n');
               _hasChildDivs = true;
@@ -5993,8 +5988,13 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
             lines.forEach(function(line){
               setFont(pdf, ist.fontFamily, ist.fontWeight, hasFonts);
               pdf.setFontSize(fsPt);
-              var wrapped = pdf.splitTextToSize(line.trim() ? line : ' ', ew * 1.01);
-              wrapped.forEach(function(wl){ newLines.push(wl); });
+              var _isSentinel = line.endsWith('\x00');
+              var _l = _isSentinel ? line.slice(0,-1) : line;
+              var wrapped = pdf.splitTextToSize(_l.trim() ? _l : ' ', ew * 1.01);
+              wrapped.forEach(function(wl, wi){
+                // Re-attach sentinel to last sub-line so bsp fires at paragraph end
+                newLines.push((wi === wrapped.length-1 && _isSentinel) ? wl+'\x00' : wl);
+              });
             });
             lines = newLines;
           }
