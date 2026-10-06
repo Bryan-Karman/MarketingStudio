@@ -2758,12 +2758,25 @@ async function exportPDF() {
           // Determine if real crop data exists (user has used crop tool)
           const realCrop = el.hasCrop && el.imgW && (el.imgW !== el.w || el.imgH !== el.h || el.imgX || el.imgY);
           if (realCrop) {
-            // Cropped — position at crop offset within box bounds
-            const ix = xMM + (el.imgX || 0) * PX_TO_MM;
-            const iy = yMM + (el.imgY || 0) * PX_TO_MM;
-            const iw = el.imgW * PX_TO_MM;
-            const ih = el.imgH * PX_TO_MM;
-            doc.addImage(dataUrl, fmt, ix, iy, iw, ih, undefined, 'FAST');
+            // Pre-crop on canvas so the image is clipped correctly in PDF
+            // (jsPDF 2.5.1 has no native clip path without GState)
+            const SCALE = 3; // render at 3x for quality
+            const canvas = document.createElement('canvas');
+            canvas.width  = el.w * SCALE;
+            canvas.height = el.h * SCALE;
+            const ctx = canvas.getContext('2d');
+            // Draw only the visible portion: source rect maps from the img coords
+            const img2 = new Image();
+            img2.crossOrigin = 'anonymous';
+            await new Promise(resolve => { img2.onload = resolve; img2.onerror = resolve; img2.src = el.imageUrl; });
+            // imgX/imgY are the offset of the image inside the box (usually negative = panned)
+            const sx = -(el.imgX || 0) / el.imgW * img2.naturalWidth;
+            const sy = -(el.imgY || 0) / el.imgH * img2.naturalHeight;
+            const sw = el.w / el.imgW * img2.naturalWidth;
+            const sh = el.h / el.imgH * img2.naturalHeight;
+            ctx.drawImage(img2, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+            const croppedUrl = canvas.toDataURL('image/jpeg', 0.92);
+            doc.addImage(croppedUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'FAST');
           } else if ((el.objectFit || 'cover') === 'contain') {
             // Contain — get natural aspect ratio then fit within box dimensions
             const info   = await getImageDimensions(dataUrl);
@@ -2819,9 +2832,10 @@ async function exportPDF() {
         doc.setTextColor(rgb.r, rgb.g, rgb.b);
         doc.setCharSpace(lsMM !== 0 ? lsMM * 2.835 : 0);
 
-        const textLines = extractPDFLines(el.content, el.bulletMode);
-        // curY: top of box + font ascender (≈80% of font size)
-        // Using 0.8 * fontSizePt to get ascender height (baseline above cap-height)
+        // Use DOM-rendered lines for exact browser line breaks
+        // This avoids jsPDF metric differences causing extra/missing line wraps
+        const domLines = extractDOMLines(el.id, el.content, el.bulletMode);
+        const textLines = domLines.length > 0 ? domLines : extractPDFLines(el.content, el.bulletMode);
         const ascMM = fontSizePt * 0.8 * (25.4 / 72);
         let curY    = yMM + ascMM;
         let isFirst        = true;
@@ -2853,30 +2867,30 @@ async function exportPDF() {
           catch(e) { doc.setFont('helvetica', lineBold ? 'bold' : 'normal'); }
 
           if (bullet && !isSoftReturn) {
-            // Render dash then text with hanging indent for wrapped lines
             const bulletX  = textX;
             const contentX = textX + indentMM;
             const contentW = Math.max(maxW - indentMM, 5);
-            const wrapped  = doc.splitTextToSize(text || ' ', contentW);
+            // DOM lines are already pre-broken — use directly; fallback to split
+            const lines = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', contentW);
+            const lineArr = Array.isArray(lines) ? lines : [lines];
             doc.text('\u2013 ', bulletX, curY);
-            if (wrapped[0]) doc.text(wrapped[0], contentX, curY);
+            if (lineArr[0]) doc.text(lineArr[0], contentX, curY);
             curY += lineHMM;
-            for (let wi = 1; wi < wrapped.length; wi++) {
-              doc.text(wrapped[wi], contentX, curY);
+            for (let wi = 1; wi < lineArr.length; wi++) {
+              doc.text(lineArr[wi], contentX, curY);
               curY += lineHMM;
             }
           } else if (isSoftReturn) {
-            // Soft return — indent to bullet content position if previous line was a bullet
             const softX = lastWasBullet ? textX + indentMM : textX;
             const softW = lastWasBullet ? Math.max(maxW - indentMM, 5) : maxW;
-            const wrapped = doc.splitTextToSize(text || ' ', softW);
-            for (const wl of wrapped) {
+            const lineArr = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', softW);
+            for (const wl of lineArr) {
               doc.text(wl, softX, curY, { align: pdfAlign });
               curY += lineHMM;
             }
           } else {
-            const wrapped = doc.splitTextToSize(text || ' ', maxW);
-            for (const wl of wrapped) {
+            const lineArr = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', maxW);
+            for (const wl of lineArr) {
               doc.text(wl, textX, curY, { align: pdfAlign });
               curY += lineHMM;
             }
@@ -2899,6 +2913,108 @@ async function exportPDF() {
     btn.textContent = '⬇ Export PDF';
     btn.disabled = false;
   }
+}
+
+// Extract exact rendered lines from the DOM using the Range API.
+// This captures the browser's actual line wrapping — font metrics, width constraints —
+// so the PDF matches the screen exactly with no jsPDF metric differences.
+function extractDOMLines(elId, content, bulletMode) {
+  const wrap  = document.querySelector('.cv-el[data-id="' + elId + '"]');
+  const inner = wrap && wrap.querySelector('.cv-text-inner');
+  if (!inner) return [];
+
+  const result = [];
+  // Walk each direct child div (each paragraph line)
+  const children = Array.from(inner.children);
+  if (!children.length) {
+    // Plain text — treat as single block
+    const text = inner.textContent;
+    if (text.trim()) result.push({ text, bold: false, isBlankLine: false, bullet: !!bulletMode });
+    return result;
+  }
+
+  children.forEach((div, i) => {
+    const rawText = div.textContent || '';
+    const isBlank = rawText.trim() === '';
+    if (isBlank) {
+      result.push({ text: '', bold: false, isBlankLine: true, isSoftReturn: false, bullet: false });
+      return;
+    }
+
+    // Check if this div contains inline BR (soft return)
+    const brs = div.querySelectorAll('br');
+    if (brs.length) {
+      // Split on BR — each segment is a soft return line
+      let seg = '';
+      let isFirstSeg = true;
+      div.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) seg += node.textContent;
+        else if (node.nodeType === Node.ELEMENT_NODE) {
+          if (node.tagName.toLowerCase() === 'br') {
+            result.push({ text: seg, bold: false, isBlankLine: false, isSoftReturn: !isFirstSeg, bullet: bulletMode && isFirstSeg });
+            seg = ''; isFirstSeg = false;
+          } else seg += node.textContent;
+        }
+      });
+      if (seg) result.push({ text: seg, bold: false, isBlankLine: false, isSoftReturn: !isFirstSeg, bullet: bulletMode && isFirstSeg });
+      return;
+    }
+
+    // Use Range API to get actual rendered visual lines within this div
+    try {
+      const range = document.createRange();
+      const textNodes = [];
+      const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) textNodes.push(n);
+
+      if (!textNodes.length) {
+        result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+        return;
+      }
+
+      // Get all client rects for the div to find visual line breaks
+      const divRect = div.getBoundingClientRect();
+      const visualLines = [];
+      let currentLine = '';
+      let currentY = null;
+
+      textNodes.forEach(tn => {
+        const str = tn.textContent;
+        for (let ci = 0; ci < str.length; ci++) {
+          range.setStart(tn, ci);
+          range.setEnd(tn, ci + 1);
+          const rects = range.getClientRects();
+          if (!rects.length) continue;
+          const charY = Math.round(rects[0].top);
+          if (currentY === null) currentY = charY;
+          if (charY > currentY + 2) {
+            // New visual line
+            visualLines.push(currentLine.trimEnd());
+            currentLine = str[ci];
+            currentY = charY;
+          } else {
+            currentLine += str[ci];
+          }
+        }
+      });
+      if (currentLine.trim()) visualLines.push(currentLine.trimEnd());
+
+      if (!visualLines.length) {
+        result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+        return;
+      }
+
+      const hasBold = div.querySelector('b,strong') !== null;
+      visualLines.forEach((vl, vi) => {
+        result.push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: bulletMode && vi === 0 });
+      });
+    } catch(e) {
+      // Fallback if Range API fails
+      result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+    }
+  });
+  return result;
 }
 
 // Simple reliable plain-text line extractor for PDF rendering.
