@@ -94,8 +94,44 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .avatar-name{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .avatar-field{font-size:9px;opacity:.65;font-weight:400;}
 
+/* ── TAB BAR ── */
+.tab-bar{height:36px;background:#111314;border-bottom:1px solid var(--border);display:flex;align-items:stretch;padding:0 8px;gap:2px;flex-shrink:0;overflow-x:auto;overflow-y:hidden;}
+.tab-bar::-webkit-scrollbar{height:3px;}
+.tab-bar::-webkit-scrollbar-track{background:transparent;}
+.tab-bar::-webkit-scrollbar-thumb{background:var(--border2);}
+.tab-item{display:flex;align-items:center;gap:6px;padding:0 12px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;user-select:none;transition:all .15s;flex-shrink:0;}
+.tab-item:hover{color:var(--text);}
+.tab-item.active{color:var(--green);border-bottom-color:var(--green);}
+.tab-item .tab-size{font-size:9px;color:var(--muted);font-weight:400;}
+
+/* ── TAB RIGHT-CLICK CONTEXT MENU ── */
+.tab-ctx{position:fixed;z-index:9000;background:#1a1d1f;border:1px solid var(--border2);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:160px;padding:4px;display:none;}
+.tab-ctx.open{display:block;}
+.tab-ctx-item{padding:7px 12px;font-size:11px;font-weight:600;color:var(--text);cursor:pointer;border-radius:3px;display:flex;align-items:center;gap:8px;}
+.tab-ctx-item:hover{background:var(--surface2);}
+.tab-ctx-item.danger{color:var(--red);}
+.tab-ctx-sep{height:1px;background:var(--border);margin:4px 0;}
+
+/* ── MARKETING ITEMS DROPDOWN ── */
+.mkt-dropdown{position:fixed;z-index:9000;background:#1a1d1f;border:1px solid var(--border2);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);width:260px;max-height:400px;display:none;flex-direction:column;}
+.mkt-dropdown.open{display:flex;}
+.mkt-dropdown-head{padding:10px 14px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0;}
+.mkt-dropdown-list{overflow-y:auto;padding:6px;}
+.mkt-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:3px;cursor:pointer;transition:background .1s;}
+.mkt-item:hover{background:var(--surface2);}
+.mkt-item-check{width:14px;height:14px;border:1.5px solid var(--border2);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.mkt-item-check.checked{background:var(--green);border-color:var(--green);}
+.mkt-item-check.checked::after{content:'✓';font-size:9px;color:#000;font-weight:800;}
+.mkt-item-info{flex:1;}
+.mkt-item-name{font-size:12px;font-weight:600;color:var(--text);}
+.mkt-item-size{font-size:10px;color:var(--muted);}
+
+/* ── CANVAS SIZE MODAL ── */
+#canvas-size-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8500;display:none;align-items:center;justify-content:center;}
+#canvas-size-modal.open{display:flex;}
+
 /* ── LAYOUT ── */
-.app{display:flex;flex:1;overflow:hidden;height:calc(100vh - 118px);}
+.app{display:flex;flex:1;overflow:hidden;height:calc(100vh - 154px);} /* mast+toolbar+presence+tabbar */
 
 /* ── SIDEBAR ADD BUTTONS (bottom of properties panel) ── */
 .sb-add-footer{
@@ -382,7 +418,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-templates" onclick="openTemplatesModal()" title="Templates" style="color:var(--amber);border-color:#7a4a00;">⭐ Templates</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-export" onclick="exportPDF()" title="Export PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export PDF</button>
+  <button class="tb-btn" onclick="toggleMarketingItems(this)" title="Show/hide page types" style="color:var(--amber);border-color:#7a4a00;">☰ Pages</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-export" onclick="exportPDF(false)" title="Export current tab as PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export Tab</button>
+  <button class="tb-btn" id="btn-export-all" onclick="exportPDF(true)" title="Export all active tabs as one PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export All</button>
   <div class="tb-save" id="save-wrap">
     <div class="save-dot"></div>
     <span class="save-lbl" id="save-lbl">—</span>
@@ -393,6 +432,46 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <div class="presence-bar">
   <span class="presence-label">In session:</span>
   <div class="presence-avatars" id="presence-avatars"><span style="color:var(--muted);font-size:10px;">Waiting…</span></div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar" id="tab-bar"></div>
+
+<!-- TAB RIGHT-CLICK CONTEXT MENU -->
+<div class="tab-ctx" id="tab-ctx">
+  <div class="tab-ctx-item" onclick="ctxRenameTab()">✏️ Rename</div>
+  <div class="tab-ctx-item" onclick="ctxDuplicateTab()">⊕ Duplicate</div>
+  <div class="tab-ctx-item" onclick="ctxEditSize()" id="ctx-edit-size">⚙ Edit Canvas Size</div>
+  <div class="tab-ctx-sep"></div>
+  <div class="tab-ctx-item danger" onclick="ctxDeleteTab()">✕ Delete Tab</div>
+</div>
+
+<!-- MARKETING ITEMS DROPDOWN -->
+<div class="mkt-dropdown" id="mkt-dropdown">
+  <div class="mkt-dropdown-head">PAGE TYPES</div>
+  <div class="mkt-dropdown-list" id="mkt-list"></div>
+</div>
+
+<!-- CANVAS SIZE MODAL (admin only) -->
+<div id="canvas-size-modal">
+  <div style="background:#1a1d1f;border:1px solid var(--border2);border-radius:8px;padding:24px;width:320px;">
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;">Edit Canvas Size</div>
+    <div style="display:flex;gap:12px;margin-bottom:12px;">
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">WIDTH (mm)</div>
+        <input id="csz-w" type="number" min="50" max="2000" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">HEIGHT (mm)</div>
+        <input id="csz-h" type="number" min="50" max="2000" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:16px;">Common: A4=210×297  A3=297×420  Square=200×200</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="applyCanvasSize()" style="flex:1;padding:8px;background:var(--green-dk);border:1px solid var(--green);border-radius:3px;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;">Apply</button>
+      <button onclick="document.getElementById('canvas-size-modal').classList.remove('open')" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -417,7 +496,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <div class="canvas-wrap" id="canvas-wrap">
       <!-- Artboard size labels (DOM elements so overflow:hidden doesn't clip them) -->
       <div class="ab-label-top">
-        <span>A4 Portrait &nbsp;·&nbsp; 210 × 297 mm &nbsp;·&nbsp; PDF: 300 dpi</span>
+        <span id="ab-label-top-text">Brochure &nbsp;·&nbsp; 210 × 297 mm &nbsp;·&nbsp; PDF: 300 dpi</span>
         <span id="ab-zoom-label" style="opacity:.6;"></span>
       </div>
       <div class="ab-label-bottom">← 210 mm →</div>
@@ -500,17 +579,121 @@ const _urlP        = new URLSearchParams(window.location.search);
 const PORTFOLIO_ID = _urlP.get('portfolioId') || 'builder4';
 const PROPERTY_ID  = _urlP.get('propertyId')  || 'builder4_001';
 const USER_ROLE    = _urlP.get('userRole')     || 'user'; // 'admin' or 'user'
-const CHANNEL_NAME = 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID;
-const LS_KEY       = 'cbre_' + PORTFOLIO_ID + '_' + PROPERTY_ID;
+const CURRENT_TAB_SLUG = _urlP.get('tab')     || 'brochure'; // which tab this page instance is
+// Channel name is per-tab — updated when switching tabs
+let CHANNEL_NAME = 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID + ':brochure';
+const LS_KEY     = 'cbre_' + PORTFOLIO_ID + '_' + PROPERTY_ID;
 
-// A4 portrait at 96 dpi: 210mm × 297mm
-const AW = 794, AH = 1123;
+function tabChannelName(slug) {
+  return 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID + ':' + slug;
+}
+
+// ════════════════════════════════════════════════════════
+// TAB / PAGE SYSTEM
+// ════════════════════════════════════════════════════════
+
+// Master list of all available page types.
+// slug: used as the Supabase property_id suffix (property_id = PROPERTY_ID + '_' + slug)
+//       EXCEPT the brochure tab which uses the bare PROPERTY_ID (backward compatible)
+// w/h: canvas dimensions in px at 96dpi (convert mm: px = mm * 96/25.4)
+// mmW/mmH: physical dimensions in mm (for PDF)
+// active: whether the tab is currently shown in the builder (user-controlled via Marketing Items)
+// Default tab definitions — overwritten by Supabase on load
+let TAB_DEFINITIONS = [
+  { slug:'brochure',      name:'Brochure',             mmW:210, mmH:297,  active:true,  builtIn:true },
+  { slug:'brochure2',     name:'Brochure 2 Page',      mmW:210, mmH:297,  active:true  },
+  { slug:'edm',           name:'EDM',                  mmW:158, mmH:800,  active:true  },
+  { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
+  { slug:'pressad',       name:'Press Ad',             mmW:210, mmH:148,  active:true  },
+];
+// Supabase storage for tab definitions: portfolio_id='_b4_tabdefs', property_id=PROPERTY_ID
+const TABDEFS_PORTFOLIO = '_b4_tabdefs';
+
+// ── Tab definition persistence ─────────────────────────────────────
+
+async function loadTabDefs() {
+  try {
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TABDEFS_PORTFOLIO + '&property_id=eq.' + encodeURIComponent(PROPERTY_ID) + '&select=state_json';
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      if (saved.tabs && Array.isArray(saved.tabs) && saved.tabs.length) {
+        // Merge saved tabs into defaults — preserve builtIn flag, add any custom tabs
+        const defaults = TAB_DEFINITIONS.slice();
+        saved.tabs.forEach(savedTab => {
+          const existing = defaults.find(d => d.slug === savedTab.slug);
+          if (existing) {
+            // Update mutable properties from saved state
+            existing.name   = savedTab.name;
+            existing.active = savedTab.active;
+            existing.mmW    = savedTab.mmW || existing.mmW;
+            existing.mmH    = savedTab.mmH || existing.mmH;
+          } else {
+            // Custom tab (e.g. duplicate) — add it
+            defaults.push(savedTab);
+          }
+        });
+        TAB_DEFINITIONS = defaults;
+        console.log('[B4] Tab defs loaded:', TAB_DEFINITIONS.length, 'tabs');
+      }
+    }
+  } catch(e) { console.warn('[B4] loadTabDefs failed:', e); }
+}
+
+async function saveTabDefs() {
+  try {
+    const body = {
+      portfolio_id: TABDEFS_PORTFOLIO,
+      property_id:  PROPERTY_ID,
+      state_json:   JSON.stringify({ tabs: TAB_DEFINITIONS }),
+      updated_at:   new Date().toISOString()
+    };
+    const check = await fetch(
+      SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TABDEFS_PORTFOLIO + '&property_id=eq.' + encodeURIComponent(PROPERTY_ID) + '&select=id',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } }
+    );
+    const rows   = await check.json();
+    const method  = rows && rows.length ? 'PATCH' : 'POST';
+    const saveUrl = rows && rows.length
+      ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
+      : SUPA_URL + '/rest/v1/projects';
+    await fetch(saveUrl, {
+      method,
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+    console.log('[B4] Tab defs saved');
+  } catch(e) { console.warn('[B4] saveTabDefs failed:', e); }
+}
+
+// Convert mm to px at 96dpi
+function mmToPx(mm) { return Math.round(mm * 96 / 25.4); }
+
+// Get canvas px dimensions for a tab definition
+function tabPx(tab) {
+  return { w: mmToPx(tab.mmW), h: mmToPx(tab.mmH) };
+}
+
+// Current tab slug — set from URL param, fixed for this page instance
+let _currentTab = CURRENT_TAB_SLUG;
+
+// Tab states — keyed by slug: { elements, mmW, mmH, name, active }
+// Loaded from Supabase per-tab on demand; only current tab is live in `elements`
+let _tabStates = {};
+
+// Per-tab element arrays (cached when switching away)
+// The live elements array IS the current tab's elements
+
+// A4 portrait at 96 dpi: 210mm × 297mm — current artboard, updated when tab changes
+let AW = mmToPx(210), AH = mmToPx(297);
 
 // ════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════
 let userName = '', userId = '', connected = false;
 let agentList = []; // populated on init from Supabase agents table
+let _ctxTabSlug = null; // slug of tab that was right-clicked
 let wsSocket = null, _hbInterval = null, _rcnTimer = null, _ref = 1;
 let presence = {}, _colorIdx = 0;
 let saveTimer = null, _isSaving = false;
@@ -530,7 +713,8 @@ const _undoStack = [];
 const UNDO_MAX   = 50;
 
 const USER_COLORS = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8','#f5c842','#42f5b3'];
-const _TOPIC = 'realtime:' + CHANNEL_NAME;
+// currentTopic() is derived from CHANNEL_NAME which updates per tab
+function currentTopic() { return 'realtime:' + CHANNEL_NAME; }
 
 // ════════════════════════════════════════════════════════
 // NAME GATE
@@ -618,6 +802,25 @@ async function init() {
     if (Array.isArray(data)) { agentList = data; console.log('[B4] Agents loaded:', agentList.length); }
   } catch(e) { console.warn('[B4] Agent load failed:', e); }
 
+  // Load tab definitions from Supabase FIRST — so custom/copy tabs get correct dimensions
+  await loadTabDefs();
+
+  // Set canvas size from this tab's definition (now includes custom tabs from Supabase)
+  const initDef = tabDef(_currentTab);
+  if (initDef) {
+    const px = tabPx(initDef);
+    AW = px.w; AH = px.h;
+    const card = document.getElementById('canvas-card');
+    if (card) { card.style.width = AW + 'px'; card.style.height = AH + 'px'; }
+    updateArtboardLabels(initDef);
+  } else {
+    console.warn('[B4] No tab def found for slug:', _currentTab, '— available:', TAB_DEFINITIONS.map(t=>t.slug));
+  }
+
+  // Channel is fixed for this tab's page instance
+  CHANNEL_NAME = tabChannelName(_currentTab);
+
+  renderTabBar();
   renderCanvas();
   await loadFromSupabase();
   openRealtime();
@@ -633,8 +836,10 @@ async function init() {
 const TEMPLATE_PORTFOLIO = '_b4_template';
 
 async function loadFromSupabase() {
+  // Load from the current tab's Supabase row (brochure = bare PROPERTY_ID, others = suffixed)
+  const sid = tabSupabaseId(_currentTab);
   try {
-    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + PROPERTY_ID + '&select=state_json,updated_at';
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=state_json,updated_at';
     const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
     const rows = await res.json();
     if (rows && rows.length && rows[0].state_json) {
@@ -838,9 +1043,16 @@ async function saveToSupabase() {
   if (_isSaving) return;
   _isSaving = true;
   setSave('saving','Saving…');
+  const sid = tabSupabaseId(_currentTab);
   try {
-    const body = { portfolio_id: PORTFOLIO_ID, property_id: PROPERTY_ID, state_json: JSON.stringify({ elements }), updated_at: new Date().toISOString() };
-    const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + PROPERTY_ID + '&select=id', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const def  = tabDef(_currentTab);
+    const body = {
+      portfolio_id: PORTFOLIO_ID,
+      property_id:  sid,
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH }),
+      updated_at:   new Date().toISOString()
+    };
+    const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
     const rows = await check.json();
     const method  = (rows && rows.length) ? 'PATCH' : 'POST';
     const saveUrl = (rows && rows.length) ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id : SUPA_URL + '/rest/v1/projects';
@@ -864,7 +1076,7 @@ function openRealtime() {
   try { wsSocket = new WebSocket(wsUrl); } catch(e) { scheduleReconnect(); return; }
 
   wsSocket.onopen = () => {
-    send({ topic: _TOPIC, event: 'phx_join', payload: { config: { presence: { key: userId }, broadcast: { self: false, ack: false } } }, ref: nextRef() });
+    send({ topic: currentTopic(), event: 'phx_join', payload: { config: { presence: { key: userId }, broadcast: { self: false, ack: false } } }, ref: nextRef() });
     clearInterval(_hbInterval);
     _hbInterval = setInterval(() => send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() }), 25000);
   };
@@ -880,11 +1092,14 @@ function handleMsg(msg) {
     return;
   }
   if (event === 'broadcast' && payload) {
+    // Ignore messages intended for a different tab
+    if (payload.tab && payload.tab !== _currentTab) return;
     if (payload.type === 'full_state')    { handleRemoteFullState(payload); return; }
     if (payload.type === 'el_crop')       { handleRemoteCrop(payload);     return; }
     if (payload.type === 'el_lock')       { handleRemoteLock(payload);     return; }
     if (payload.type === 'el_rect_prop')  { handleRemoteRectProp(payload); return; }
     if (payload.type === 'el_reorder')    { handleRemoteReorder(payload);  return; }
+    if (payload.type === 'tab_switch')    { /* other user switched tab — no action needed locally */ return; }
     if (payload.type === 'el_add')        { handleRemoteAdd(payload);      return; }
     if (payload.type === 'el_move')       { handleRemoteMove(payload);     return; }
     if (payload.type === 'el_resize')     { handleRemoteResize(payload);   return; }
@@ -899,7 +1114,7 @@ function handleMsg(msg) {
 }
 
 function send(msg) { if (wsSocket && wsSocket.readyState === WebSocket.OPEN) wsSocket.send(JSON.stringify(msg)); }
-function broadcast(payload) { send({ topic: _TOPIC, event: 'broadcast', payload: { type: payload.type, ...payload }, ref: nextRef() }); }
+function broadcast(payload) { send({ topic: currentTopic(), event: 'broadcast', payload: { type: payload.type, tab: _currentTab, ...payload }, ref: nextRef() }); }
 function nextRef() { return String(_ref++); }
 function scheduleReconnect() { clearTimeout(_rcnTimer); _rcnTimer = setTimeout(openRealtime, 3000); }
 
@@ -2439,6 +2654,400 @@ function _cropGhostResizeStart(e, id, dir) {
 // ════════════════════════════════════════════════════════
 // RENDER CANVAS
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// TAB MANAGEMENT
+// ════════════════════════════════════════════════════════
+
+// Get the Supabase property_id for a given tab slug
+function tabSupabaseId(slug) {
+  // Brochure = bare property_id (backward compatible with existing data)
+  return slug === 'brochure' ? PROPERTY_ID : PROPERTY_ID + '_' + slug;
+}
+
+// Get active (visible) tab definitions
+function activeTabs() {
+  return TAB_DEFINITIONS.filter(t => t.active);
+}
+
+// Get a tab definition by slug
+function tabDef(slug) {
+  return TAB_DEFINITIONS.find(t => t.slug === slug);
+}
+
+// Render the tab bar — active tab is current page, others are links
+function renderTabBar() {
+  const bar = document.getElementById('tab-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  activeTabs().forEach(tab => {
+    const isActive = tab.slug === _currentTab;
+    const div = document.createElement('div');
+    div.className = 'tab-item' + (isActive ? ' active' : '');
+    div.dataset.slug = tab.slug;
+    div.innerHTML = esc(tab.name) + ' <span class="tab-size">' + tab.mmW + '×' + tab.mmH + 'mm</span>';
+    if (isActive) {
+      // Current tab — no navigation, just right-click for context menu
+      div.style.cursor = 'default';
+    } else {
+      div.onclick = () => switchTab(tab.slug);
+      div.style.cursor = 'pointer';
+    }
+    div.oncontextmenu = (e) => { e.preventDefault(); openTabCtx(e, tab.slug); };
+    bar.appendChild(div);
+  });
+}
+
+// Build the URL for a given tab — preserves all current URL params
+function tabUrl(slug) {
+  const p = new URLSearchParams(window.location.search);
+  p.set('tab', slug);
+  return window.location.pathname + '?' + p.toString();
+}
+
+// Switch tab = save current tab synchronously then navigate
+function switchTab(slug) {
+  if (slug === _currentTab) return;
+  clearTimeout(saveTimer);
+
+  // Use synchronous XHR to save BEFORE page unloads — async fetch gets cancelled by navigation
+  if (elements.length > 0) {
+    saveSyncBeforeUnload(_currentTab, elements);
+  }
+
+  window.location.href = tabUrl(slug);
+}
+
+// Synchronous save using XHR — survives page navigation unlike fetch()
+function saveSyncBeforeUnload(slug, els) {
+  try {
+    const def = tabDef(slug);
+    const sid = tabSupabaseId(slug);
+    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH });
+    const body = JSON.stringify({ portfolio_id: PORTFOLIO_ID, property_id: sid, state_json: stateJson, updated_at: new Date().toISOString() });
+
+    // First check if row exists (sync XHR)
+    const checkXhr = new XMLHttpRequest();
+    checkXhr.open('GET', SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', false); // false = synchronous
+    checkXhr.setRequestHeader('apikey', SUPA_KEY);
+    checkXhr.setRequestHeader('Authorization', 'Bearer ' + SUPA_KEY);
+    checkXhr.send();
+
+    let method = 'POST', saveUrl = SUPA_URL + '/rest/v1/projects';
+    if (checkXhr.status === 200) {
+      const rows = JSON.parse(checkXhr.responseText || '[]');
+      if (rows && rows.length) {
+        method  = 'PATCH';
+        saveUrl = SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id;
+      }
+    }
+
+    const saveXhr = new XMLHttpRequest();
+    saveXhr.open(method, saveUrl, false); // synchronous
+    saveXhr.setRequestHeader('apikey', SUPA_KEY);
+    saveXhr.setRequestHeader('Authorization', 'Bearer ' + SUPA_KEY);
+    saveXhr.setRequestHeader('Content-Type', 'application/json');
+    saveXhr.setRequestHeader('Prefer', 'return=minimal');
+    saveXhr.send(body);
+  } catch(e) {
+    console.warn('[Tab] Sync save failed:', e);
+  }
+}
+
+// Load a tab's state from Supabase with a 8s timeout
+async function loadTabFromSupabase(slug) {
+  const sid = tabSupabaseId(slug);
+  const url  = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=state_json';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }, signal: controller.signal });
+    clearTimeout(timeout);
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      if (saved.elements) {
+        // Only apply if we're still on this tab (user may have switched again)
+        if (_currentTab === slug) {
+          elements = saved.elements;
+          _nextId  = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
+          const def = tabDef(slug);
+          if (def && saved.mmW) { def.mmW = saved.mmW; def.mmH = saved.mmH; }
+        }
+      }
+    }
+  } catch(e) {
+    clearTimeout(timeout);
+    console.warn('[Tab] Load failed/timeout:', slug, e.message);
+  }
+}
+
+// Fire-and-forget save of a snapshot (used during tab switching)
+function saveTabSnapshot(slug, snapshotElements) {
+  const def  = tabDef(slug);
+  const sid  = tabSupabaseId(slug);
+  const body = JSON.stringify({
+    portfolio_id: PORTFOLIO_ID,
+    property_id:  sid,
+    state_json:   JSON.stringify({ elements: snapshotElements, mmW: def && def.mmW, mmH: def && def.mmH }),
+    updated_at:   new Date().toISOString()
+  });
+  // Use check+PATCH/POST since upsert requires DB unique constraint
+  fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id',
+    { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } })
+    .then(r => r.json())
+    .then(rows => {
+      const method  = rows && rows.length ? 'PATCH' : 'POST';
+      const saveUrl = rows && rows.length
+        ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
+        : SUPA_URL + '/rest/v1/projects';
+      return fetch(saveUrl, { method, headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body });
+    })
+    .catch(e => console.warn('[Tab] Snapshot save failed:', slug, e));
+}
+
+// Save a tab's state to Supabase (awaitable — used for explicit saves)
+async function saveTabToSupabase(slug) {
+  try {
+    const def  = tabDef(slug);
+    const sid  = tabSupabaseId(slug);
+    const body = {
+      portfolio_id: PORTFOLIO_ID,
+      property_id:  sid,
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH }),
+      updated_at:   new Date().toISOString()
+    };
+    const check = await fetch(
+      SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } }
+    );
+    const rows  = await check.json();
+    const method  = rows && rows.length ? 'PATCH' : 'POST';
+    const saveUrl = rows && rows.length
+      ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
+      : SUPA_URL + '/rest/v1/projects';
+    await fetch(saveUrl, {
+      method,
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+  } catch(e) { console.warn('[Tab] Save failed:', slug, e); }
+}
+
+function updateArtboardLabels(def) {
+  const topEl = document.getElementById('ab-label-top-text');
+  if (topEl) topEl.textContent = def.name + '  ·  ' + def.mmW + ' × ' + def.mmH + ' mm  ·  PDF: 300 dpi';
+}
+
+// ── Tab context menu ───────────────────────────────────────────────
+function openTabCtx(e, slug) {
+  _ctxTabSlug = slug;
+  const menu = document.getElementById('tab-ctx');
+  // Only show Edit Size for admins
+  const sizeItem = document.getElementById('ctx-edit-size');
+  if (sizeItem) sizeItem.style.display = USER_ROLE === 'admin' ? '' : 'none';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top  = e.clientY + 'px';
+  menu.classList.add('open');
+  setTimeout(() => document.addEventListener('mousedown', _closeTabCtx, { once: true }), 50);
+}
+function _closeTabCtx(e) {
+  const menu = document.getElementById('tab-ctx');
+  if (menu && !menu.contains(e && e.target)) menu.classList.remove('open');
+}
+function closeTabCtx() { document.getElementById('tab-ctx').classList.remove('open'); }
+
+function ctxRenameTab() {
+  closeTabCtx();
+  const def = tabDef(_ctxTabSlug);
+  if (!def) return;
+  const newName = prompt('Rename tab:', def.name);
+  if (newName && newName.trim()) {
+    def.name = newName.trim();
+    renderTabBar();
+    saveTabDefs();
+  }
+}
+
+function ctxDuplicateTab() {
+  closeTabCtx();
+  const srcSlug = _ctxTabSlug;
+  const def = tabDef(srcSlug);
+  if (!def) return;
+
+  const newSlug = srcSlug + '_copy_' + Date.now();
+  const newDef  = { ...def, slug: newSlug, name: def.name + ' (copy)', active: true, builtIn: false };
+  TAB_DEFINITIONS.push(newDef);
+
+  // Show loading state
+  setSave('saving', 'Duplicating…');
+
+  // Do everything async: save content first, then defs, then navigate
+  _duplicateTabContent(srcSlug, newSlug, newDef).then(() => {
+    return saveTabDefs();
+  }).then(() => {
+    setSave('saved', 'Duplicated');
+    renderTabBar();
+    // Navigate to the new tab — content is fully saved so it will load correctly
+    window.location.href = tabUrl(newSlug);
+  }).catch(e => {
+    console.warn('[B4] Duplicate failed:', e);
+    setSave('error', 'Duplicate failed');
+    // Still render the tab bar so the new tab is visible even if content failed
+    renderTabBar();
+  });
+}
+
+async function _duplicateTabContent(srcSlug, newSlug, newDef) {
+  // 1. Get source elements
+  let srcElements;
+  if (srcSlug === _currentTab) {
+    srcElements = JSON.parse(JSON.stringify(elements));
+    console.log('[B4] Dup: using live elements, count:', srcElements.length);
+  } else {
+    const sid = tabSupabaseId(srcSlug);
+    console.log('[B4] Dup: fetching src from Supabase, sid:', sid);
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=state_json';
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    console.log('[B4] Dup: src rows found:', rows && rows.length);
+    srcElements = (rows && rows.length && rows[0].state_json)
+      ? (JSON.parse(rows[0].state_json).elements || [])
+      : [];
+  }
+  console.log('[B4] Dup: srcElements count:', srcElements.length, 'mmW:', newDef.mmW, 'mmH:', newDef.mmH);
+
+  // 2. Save to new tab's Supabase row
+  const newSid = tabSupabaseId(newSlug);
+  console.log('[B4] Dup: saving to newSid:', newSid);
+  const stateJson = JSON.stringify({ elements: srcElements, mmW: newDef.mmW, mmH: newDef.mmH });
+  const body = JSON.stringify({
+    portfolio_id: PORTFOLIO_ID,
+    property_id:  newSid,
+    state_json:   stateJson,
+    updated_at:   new Date().toISOString()
+  });
+
+  // Check if row exists first (safest approach)
+  const checkRes = await fetch(
+    SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(newSid) + '&select=id',
+    { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } }
+  );
+  const checkRows = await checkRes.json();
+  const method  = checkRows && checkRows.length ? 'PATCH' : 'POST';
+  const saveUrl = checkRows && checkRows.length
+    ? SUPA_URL + '/rest/v1/projects?id=eq.' + checkRows[0].id
+    : SUPA_URL + '/rest/v1/projects';
+
+  const saveRes = await fetch(saveUrl, {
+    method,
+    headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body
+  });
+  console.log('[B4] Dup: save status:', saveRes.status, method, newSid);
+  if (!saveRes.ok) {
+    const errText = await saveRes.text();
+    console.error('[B4] Dup: save failed:', errText);
+    throw new Error('Save failed: ' + saveRes.status + ' ' + errText);
+  }
+}
+
+function ctxDeleteTab() {
+  closeTabCtx();
+  const def = tabDef(_ctxTabSlug);
+  if (!def) return;
+  if (def.builtIn) { alert('The Brochure tab cannot be deleted.'); return; }
+  if (activeTabs().length <= 1) { alert('You must have at least one active tab.'); return; }
+  if (!confirm('Delete tab "' + def.name + '"? This cannot be undone.')) return;
+  def.active = false;
+  saveTabDefs();
+  if (_currentTab === _ctxTabSlug) {
+    const next = activeTabs()[0];
+    if (next) switchTab(next.slug);
+  } else {
+    renderTabBar();
+  }
+}
+
+function ctxEditSize() {
+  closeTabCtx();
+  if (USER_ROLE !== 'admin') return;
+  const def = tabDef(_ctxTabSlug);
+  if (!def) return;
+  document.getElementById('csz-w').value = def.mmW;
+  document.getElementById('csz-h').value = def.mmH;
+  document.getElementById('canvas-size-modal').classList.add('open');
+}
+
+function applyCanvasSize() {
+  const def = tabDef(_ctxTabSlug || _currentTab);
+  if (!def) return;
+  const w = parseInt(document.getElementById('csz-w').value) || def.mmW;
+  const h = parseInt(document.getElementById('csz-h').value) || def.mmH;
+  def.mmW = w; def.mmH = h;
+  document.getElementById('canvas-size-modal').classList.remove('open');
+  if ((_ctxTabSlug || _currentTab) === _currentTab) {
+    const px = tabPx(def);
+    AW = px.w; AH = px.h;
+    const card = document.getElementById('canvas-card');
+    if (card) { card.style.width = AW + 'px'; card.style.height = AH + 'px'; }
+    updateArtboardLabels(def);
+    zoomReset();
+  }
+  saveTabDefs();
+  renderTabBar();
+}
+
+// ── Marketing Items (page type visibility) ─────────────────────────
+let _mktOpen = false;
+
+function toggleMarketingItems(btn) {
+  const dd = document.getElementById('mkt-dropdown');
+  _mktOpen = !_mktOpen;
+  if (_mktOpen) {
+    renderMarketingList();
+    const rect = btn.getBoundingClientRect();
+    dd.style.top  = (rect.bottom + 4) + 'px';
+    dd.style.left = rect.left + 'px';
+    dd.classList.add('open');
+    setTimeout(() => document.addEventListener('mousedown', _closeMktDropdown, { once: true }), 50);
+  } else {
+    dd.classList.remove('open');
+  }
+}
+
+function _closeMktDropdown(e) {
+  const dd = document.getElementById('mkt-dropdown');
+  if (dd && !dd.contains(e && e.target)) { dd.classList.remove('open'); _mktOpen = false; }
+}
+
+function renderMarketingList() {
+  const list = document.getElementById('mkt-list');
+  if (!list) return;
+  list.innerHTML = TAB_DEFINITIONS.map(tab => {
+    const check = tab.active ? ' checked' : '';
+    return '<div class="mkt-item" onclick="toggleTabActive(\'' + tab.slug + '\')">'
+      + '<div class="mkt-item-check' + check + '"></div>'
+      + '<div class="mkt-item-info">'
+      + '<div class="mkt-item-name">' + esc(tab.name) + '</div>'
+      + '<div class="mkt-item-size">' + tab.mmW + ' × ' + tab.mmH + ' mm</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function toggleTabActive(slug) {
+  const def = tabDef(slug);
+  if (!def) return;
+  if (def.builtIn && def.active) { alert('The Brochure tab cannot be hidden.'); return; }
+  def.active = !def.active;
+  saveTabDefs();
+  if (!def.active && _currentTab === slug) {
+    const next = activeTabs()[0];
+    if (next) switchTab(next.slug);
+  }
+  renderMarketingList();
+  renderTabBar();
+}
+
 function renderCanvas() {
   const card = document.getElementById('canvas-card');
   card.querySelectorAll('.cv-el').forEach(n => n.remove());
@@ -2647,6 +3256,10 @@ document.addEventListener('keydown', e => {
 
 window.addEventListener('beforeunload', () => {
   if (connected) broadcast({ type: 'presence_leave', userId, userName });
+  // Save current tab synchronously on any page unload (refresh, close, tab switch)
+  if (elements.length > 0) {
+    saveSyncBeforeUnload(_currentTab, elements);
+  }
 });
 
 // ════════════════════════════════════════════════════════
@@ -2723,8 +3336,8 @@ function pdfFontFor(fontFamily, fontWeight) {
   return { family: 'helvetica', style };
 }
 
-async function exportPDF() {
-  const btn = document.getElementById('btn-export');
+async function exportPDF(allTabs) {
+  const btn = allTabs ? document.getElementById('btn-export-all') : document.getElementById('btn-export');
   btn.textContent = '⏳ Loading fonts…';
   btn.disabled = true;
 
@@ -2983,13 +3596,22 @@ async function exportPDF() {
       }
     } // end for(const el of elements)
 
-    doc.save('CBRE_Builder4.pdf');
+    // Build filename: PropertyName_TabName.pdf
+    const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
+    const tabName  = (tabDef(_currentTab) || {}).name || 'Brochure';
+    const safeProp = propName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+    const safeTab  = tabName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+    const filename = safeProp + '_' + safeTab + '.pdf';
+    doc.save(filename);
     btn.textContent = '✓ Downloaded';
-    setTimeout(() => { btn.textContent = '⬇ Export PDF'; btn.disabled = false; }, 2500);
+    setTimeout(() => {
+      btn.textContent = allTabs ? '⬇ Export All' : '⬇ Export Tab';
+      btn.disabled = false;
+    }, 2500);
   } catch(e) {
     console.error('PDF export error:', e);
     alert('PDF export failed: ' + e.message);
-    btn.textContent = '⬇ Export PDF';
+    btn.textContent = allTabs ? '⬇ Export All' : '⬇ Export Tab';
     btn.disabled = false;
   }
 }
