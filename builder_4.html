@@ -535,7 +535,7 @@ function joinSession() {
   userName = n;
   userId   = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
   document.getElementById('name-gate').style.display = 'none';
-  init();
+  init().then(() => setTimeout(zoomReset, 150));
 }
 
 // Auto-join if userName is in the URL (passed from index.html login session)
@@ -564,6 +564,7 @@ function joinSession() {
 // INIT
 // ════════════════════════════════════════════════════════
 async function init() {
+
   // Fetch agents first so dropdown is ready when properties panel opens
   try {
     const res = await fetch(SUPA_URL + '/rest/v1/agents?select=id,name,phone,email&order=name.asc',
@@ -2465,7 +2466,15 @@ function setZoom(z) {
 }
 
 function zoomBy(delta) { setZoom(_zoom + delta); }
-function zoomReset()   { setZoom(1); }
+function zoomReset() {
+  // Calculate zoom to fit artboard in the canvas-area viewport with padding
+  const area = document.getElementById('canvas-area');
+  if (!area) { setZoom(1); return; }
+  const PAD  = 96; // 48px each side
+  const fitW = (area.clientWidth  - PAD) / AW;
+  const fitH = (area.clientHeight - PAD) / AH;
+  setZoom(Math.min(fitW, fitH));
+}
 
 // Alt/Option + scroll to zoom — set up once after page loads
 window.addEventListener('load', () => {
@@ -2737,15 +2746,16 @@ async function exportPDF() {
           if (!resp.ok) throw new Error('fetch ' + resp.status);
           const blob    = await resp.blob();
 
-          // SVG cannot be embedded directly in jsPDF — convert to PNG via canvas
+          // SVG cannot be embedded directly in jsPDF — convert to JPEG via canvas
           let dataUrl, fmt;
           if (blob.type.includes('svg') || el.imageUrl.toLowerCase().includes('.svg')) {
-            // Render SVG to a canvas then export as PNG
-            dataUrl = await svgToPng(el.imageUrl, el.w * 3, el.h * 3);
+            // SVG → canvas at 2×. Keep as PNG to preserve sharp edges/transparency.
+            dataUrl = await svgToPng(el.imageUrl, el.w * 2, el.h * 2);
             fmt = 'PNG';
           } else {
-            dataUrl = await blobToDataUrl(blob);
-            fmt = blob.type.includes('png') ? 'PNG' : 'JPEG';
+            // Resize photo to 2× display size max — avoids embedding full 4K photos
+            dataUrl = await resizeForPDF(blob, el.w, el.h);
+            fmt = 'JPEG';
           }
 
           // If SVG conversion failed, draw placeholder and skip
@@ -2775,8 +2785,8 @@ async function exportPDF() {
             const sw = el.w / el.imgW * img2.naturalWidth;
             const sh = el.h / el.imgH * img2.naturalHeight;
             ctx.drawImage(img2, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-            const croppedUrl = canvas.toDataURL('image/jpeg', 0.92);
-            doc.addImage(croppedUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'FAST');
+            const croppedUrl = canvas.toDataURL('image/jpeg', 1.0);
+            doc.addImage(croppedUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'SLOW');
           } else if ((el.objectFit || 'cover') === 'contain') {
             // Contain — get natural aspect ratio then fit within box dimensions
             const info   = await getImageDimensions(dataUrl);
@@ -2790,10 +2800,34 @@ async function exportPDF() {
               // Box is taller than image — constrained by width
               dw = wMM; dh = wMM / aspect;
             }
-            doc.addImage(dataUrl, fmt, xMM + (wMM-dw)/2, yMM + (hMM-dh)/2, dw, dh, undefined, 'FAST');
+            doc.addImage(dataUrl, fmt, xMM + (wMM-dw)/2, yMM + (hMM-dh)/2, dw, dh, undefined, 'SLOW');
           } else {
-            // Cover/fill — fill the box
-            doc.addImage(dataUrl, fmt, xMM, yMM, wMM, hMM, undefined, 'FAST');
+            // Cover/fill — crop image to exactly the box aspect ratio on canvas
+            // then embed at box dimensions. Prevents jsPDF stretching/skewing.
+            const info    = await getImageDimensions(dataUrl);
+            const boxAsp  = el.w / el.h;
+            const imgAsp  = info.w / info.h;
+            let sx = 0, sy = 0, sw = info.w, sh = info.h;
+            if (imgAsp > boxAsp) {
+              // Image wider than box — crop sides
+              sw = Math.round(info.h * boxAsp);
+              sx = Math.round((info.w - sw) / 2);
+            } else {
+              // Image taller than box — crop top/bottom
+              sh = Math.round(info.w / boxAsp);
+              sy = Math.round((info.h - sh) / 2);
+            }
+            const SCALE = 2;
+            const cvs = document.createElement('canvas');
+            cvs.width  = Math.round(el.w * SCALE);
+            cvs.height = Math.round(el.h * SCALE);
+            const ctx2 = cvs.getContext('2d');
+            const tmpImg = new Image();
+            tmpImg.crossOrigin = 'anonymous';
+            await new Promise(r => { tmpImg.onload = r; tmpImg.onerror = r; tmpImg.src = dataUrl; });
+            ctx2.drawImage(tmpImg, sx, sy, sw, sh, 0, 0, cvs.width, cvs.height);
+            const covUrl = cvs.toDataURL('image/jpeg', 1.0);
+            doc.addImage(covUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'SLOW');
           }
         } catch(imgErr) {
           console.warn('Image skipped:', el.id, imgErr.message);
@@ -3177,6 +3211,38 @@ function pdfParseHTML(html) {
 
 // ── PDF helpers ───────────────────────────────────────────────────
 
+// Resize an image blob to 2× the display element size, encode as JPEG 80%.
+// Reduces PDF file size dramatically for high-res photos with no visible quality loss at A4.
+async function resizeForPDF(blob, elW, elH) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Target: 2× the LARGER of box or natural dimensions, capped to natural size
+      // Use natural aspect ratio — never distort the image
+      const SCALE = 2;
+      const maxPx = Math.max(elW, elH) * SCALE;
+      // Scale down so the longest edge = maxPx, never upscale
+      const longestEdge = Math.max(img.naturalWidth, img.naturalHeight);
+      const ratio = longestEdge > maxPx ? maxPx / longestEdge : 1;
+      const outW = Math.round(img.naturalWidth  * ratio);
+      const outH = Math.round(img.naturalHeight * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width  = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      // White background (JPEG has no transparency)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, outW, outH);
+      ctx.drawImage(img, 0, 0, outW, outH);
+      resolve(canvas.toDataURL('image/jpeg', 1.0));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); blobToDataUrl(blob).then(resolve); };
+    img.src = url;
+  });
+}
+
 // Convert SVG URL to PNG dataURL via canvas (jsPDF can't embed SVG directly)
 function svgToPng(url, w, h) {
   return new Promise((resolve) => {
@@ -3192,6 +3258,7 @@ function svgToPng(url, w, h) {
       canvas.width  = Math.max(natW * scale, 100);
       canvas.height = Math.max(natH * scale, 100);
       const ctx = canvas.getContext('2d');
+      // PNG preserves transparency for SVGs (logos etc with transparent backgrounds)
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/png'));
     };
