@@ -296,12 +296,14 @@
       });
       document.body.appendChild(badge);
     }
-    badge.textContent = 'Security filter test: ' + stats.changes + (stats.changes === 1 ? ' change' : ' changes');
+    badge.textContent = 'Security filter test: ' + stats.changes + (stats.changes === 1 ? ' change' : ' changes') +
+      (window.__cbreLive ? '  ·  Live sync: ' + (window.__cbreLive === 'private' ? 'private channel' : 'compatibility (public)') : '');
     badge.style.background = stats.changes ? '#f0a030' : '#1f7a4d';
     badge.style.color = stats.changes ? '#1a1a1a' : '#fff';
   }
   if (REPORT) document.addEventListener('DOMContentLoaded', updateBadge);
 
+  window.cbreRefreshBadge = updateBadge;
   window.cbreSafeHtml = safeHtml;
   window.cbreCleanMessage = cleanMessage;
   window.cbreCleanElement = cleanElement;
@@ -1377,25 +1379,93 @@ function scheduleSave() {
 // ════════════════════════════════════════════════════════
 // WEBSOCKET — raw Supabase Realtime (exact sync_test pattern)
 // ════════════════════════════════════════════════════════
+// ── Private channel (Phase 2) ────────────────────────────────────────
+// Live Sync joins a PRIVATE channel using the signed-in person's own token, so only signed-in
+// people can listen or send. While Supabase's "Allow public access" switch is still ON, a private
+// join that the server REFUSES falls back to the old public join, so Live Sync never goes dark
+// during the rollout. Once public access is switched OFF, the server simply refuses that fallback.
+// (To stop even trying the old way, set RT_ALLOW_PUBLIC_FALLBACK to false.)
+const RT_ALLOW_PUBLIC_FALLBACK = true;
+let _rtMode = 'private', _rtToken = null, _rtFailures = 0;
+
 function openRealtime() {
   setConn('connecting','Connecting…');
+  const tokenP = (_rtMode === 'private' && window.Auth && Auth.getToken)
+    ? Auth.getToken().catch(function(){ return null; }) : Promise.resolve(null);
+  tokenP.then(function(tok) {
+    _rtToken = tok;
+    if (_rtMode === 'private' && !tok) { _rtFailed(true, 'no sign-in token'); return; }
+    _connectRealtime();
+  });
+}
+
+function _connectRealtime() {
   const wsUrl = 'wss://pgsgjafgetdvuctmpibf.supabase.co/realtime/v1/websocket?apikey=' + SUPA_KEY + '&vsn=1.0.0';
   try { wsSocket = new WebSocket(wsUrl); } catch(e) { scheduleReconnect(); return; }
 
   wsSocket.onopen = () => {
-    send({ topic: currentTopic(), event: 'phx_join', payload: { config: { presence: { key: userId }, broadcast: { self: false, ack: false } } }, ref: nextRef() });
+    const cfg = { presence: { key: userId }, broadcast: { self: false, ack: false } };
+    const joinPayload = { config: cfg };
+    if (_rtMode === 'private') { cfg.private = true; joinPayload.access_token = _rtToken; }
+    send({ topic: currentTopic(), event: 'phx_join', payload: joinPayload, ref: nextRef() });
     clearInterval(_hbInterval);
-    _hbInterval = setInterval(() => send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() }), 25000);
+    _hbInterval = setInterval(() => {
+      send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() });
+      // keep the server's copy of the sign-in fresh (tokens last about an hour)
+      if (_rtMode === 'private' && connected) {
+        const t = (window.Auth && Auth.tokenSync && Auth.tokenSync()) || null;
+        if (t && t !== _rtToken) { _rtToken = t; send({ topic: currentTopic(), event: 'access_token', payload: { access_token: t }, ref: nextRef() }); }
+      }
+    }, 25000);
   };
   wsSocket.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } handleMsg(m); };
-  wsSocket.onclose   = () => { clearInterval(_hbInterval); connected = false; setConn('connecting','Reconnecting…'); scheduleReconnect(); };
+  wsSocket.onclose   = () => {
+    clearInterval(_hbInterval);
+    const was = connected; connected = false;
+    if (!was) { _rtFailed(false, 'connection closed before joining'); return; }
+    setConn('connecting','Reconnecting…'); scheduleReconnect();
+  };
   wsSocket.onerror   = () => {};
+}
+
+// The server did not let us into the channel (or the connection dropped before we got in).
+function _rtFailed(refused, why) {
+  if (connected) return;
+  console.warn('[B4] live channel not joined (' + _rtMode + '): ' + why);
+  clearInterval(_hbInterval);
+  try { if (wsSocket) { wsSocket.onclose = null; wsSocket.close(); } } catch(e) {}
+  _rtFailures++;
+  clearTimeout(_rcnTimer);
+  if (refused && _rtMode === 'private' && RT_ALLOW_PUBLIC_FALLBACK) {
+    _rtMode = 'public';                                  // compatibility mode: exactly how it worked before the private channel
+    setConn('connecting','Connecting…');
+    _rcnTimer = setTimeout(openRealtime, 50);
+    return;
+  }
+  _rtMode = 'private';                                   // always try the secure way first next time
+  setConn('connecting', _rtFailures >= 2 ? 'Live sync unavailable — retrying…' : 'Reconnecting…');
+  _rcnTimer = setTimeout(openRealtime, _rtFailures >= 2 ? 15000 : 3000);
 }
 
 function handleMsg(msg) {
   let { event, payload } = msg;
   if (event === 'phx_reply' && payload && payload.status === 'ok') {
-    if (!connected) { connected = true; setConn('connected','Live'); broadcastPresence(null); }
+    // Only the reply to OUR channel join counts (heartbeat replies come back on the topic "phoenix").
+    if (msg.topic !== 'phoenix' && !connected) {
+      connected = true; _rtFailures = 0; setConn('connected','Live');
+      window.__cbreLive = _rtMode; if (window.cbreRefreshBadge) cbreRefreshBadge();
+      broadcastPresence(null);
+    }
+    return;
+  }
+  if (!connected && ((msg.topic !== 'phoenix' && ((event === 'phx_reply' && payload && payload.status === 'error') || event === 'phx_error' || event === 'phx_close'))
+                     || (event === 'system' && payload && payload.status === 'error'))) {
+    _rtFailed(true, JSON.stringify((payload && (payload.response || payload.message)) || event).slice(0, 200));
+    return;
+  }
+  if (connected && (event === 'phx_error' || event === 'phx_close') && msg.topic === currentTopic()) {
+    // The server dropped our channel (for example the sign-in ran out): reconnect with a fresh token.
+    connected = false; try { wsSocket.close(); } catch(e) {}
     return;
   }
   if (event === 'broadcast' && payload) {
