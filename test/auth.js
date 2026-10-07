@@ -18,14 +18,43 @@
   // ── tiny helpers ────────────────────────────────────────────────
   function nowSec(){ return Math.floor(Date.now() / 1000); }
 
-  function load(){
-    try {
-      var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      return (s && s.access_token && s.refresh_token && s.user && s.user.id) ? s : null;
-    } catch(e){ return null; }
+  // Where the saved login lives. Normally the browser's localStorage (shared by all tabs).
+  // Several pages also cache whole projects in localStorage (about 5 MB in total), so it
+  // can fill up and refuse the write. That must never fail silently, so we fall back to
+  // this tab's own storage, then to memory, and report which one we ended up with.
+  var memSession = null;
+  var storageMode = 'local';          // 'local' | 'tab' | 'memory'
+
+  function validSession(s){ return !!(s && s.access_token && s.refresh_token && s.user && s.user.id); }
+  function readFrom(store){
+    try { var s = JSON.parse(store.getItem(SESSION_KEY) || 'null'); return validSession(s) ? s : null; }
+    catch(e){ return null; }
   }
-  function save(s){ try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch(e){} }
-  function clear(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} }
+  function tryWrite(store, json){
+    try { store.setItem(SESSION_KEY, json); return store.getItem(SESSION_KEY) === json; }
+    catch(e){ return false; }
+  }
+  function load(){
+    return readFrom(window.localStorage) || readFrom(window.sessionStorage) || (validSession(memSession) ? memSession : null);
+  }
+  function save(s){
+    memSession = s;
+    var json = JSON.stringify(s);
+    if (tryWrite(window.localStorage, json)){
+      try { window.sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+      storageMode = 'local'; return storageMode;
+    }
+    // Refused (usually "storage full"). Our own old copy may be what is in the way: drop it and retry once.
+    try { window.localStorage.removeItem(SESSION_KEY); } catch(e){}
+    if (tryWrite(window.localStorage, json)){ storageMode = 'local'; return storageMode; }
+    if (tryWrite(window.sessionStorage, json)){ storageMode = 'tab'; return storageMode; }
+    storageMode = 'memory'; return storageMode;
+  }
+  function clear(){
+    memSession = null;
+    try { window.localStorage.removeItem(SESSION_KEY); } catch(e){}
+    try { window.sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+  }
 
   function parseJson(res){
     return res.json().then(function(d){ return { ok: res.ok, status: res.status, d: d || {} }; },
@@ -57,7 +86,7 @@
     if (refreshing) return refreshing;
     var run = function(){
       var s = load();
-      if (!s) return Promise.reject(new Error('No session'));
+      if (!s) return Promise.reject(new Error('Your session has ended. Please reload the page and sign in again.'));
       // Another tab may already have refreshed while we waited for the lock.
       if ((s.expires_at - nowSec()) > 60) return Promise.resolve(s);
       return origFetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
@@ -171,7 +200,12 @@
       return fetchProfile(s.access_token, s.user.id).then(function(r){
         if (!r.profile) throw new Error('Your account is not set up for the Hub yet. Please contact an administrator.');
         s.profile = r.profile;
-        save(s);
+        if (save(s) === 'memory'){
+          clear();
+          throw new Error("Your browser could not save your sign-in because its storage for this site is full. " +
+            "Open the site in a private/incognito window, or clear this site's saved data (Chrome: Settings > Privacy and security > " +
+            "Third-party cookies > See all site data, search for this site, and delete it), then sign in again.");
+        }
         return r.profile;
       });
     });
@@ -287,7 +321,7 @@
   window.Auth = {
     signIn: signIn, signOut: signOut, verify: verify, changePassword: changePassword,
     adminUsers: adminUsers, profile: profile, isSignedIn: isSignedIn, needsChange: needsChange,
-    tokenSync: tokenSync, getToken: getToken, safeNext: safeNext,
+    tokenSync: tokenSync, getToken: getToken, safeNext: safeNext, storageMode: function(){ return storageMode; },
     redirectToLogin: redirectToLogin, require: requireLogin
   };
 
