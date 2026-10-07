@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Studio Hub — shared login (auth.js)   [version 3]
+   Studio Hub — shared login (auth.js)   [version 4]
    Loaded by every page. One place for: signing in, staying signed in,
    knowing who the user is (name + role come from the database, never
    from the page address), and attaching the user's own login token to
@@ -91,6 +91,8 @@
   var ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';          // public key: safe to be in the page
   var SESSION_KEY  = 'cbre_auth_session';     // tokens + cached profile (this browser only)
   var LOGIN_PAGE   = 'index.html';
+  // The name of the user-management function exactly as it appears under Edge Functions in Supabase.
+  var ADMIN_FUNCTION = 'super-responder';
 
   var origFetch = window.fetch.bind(window);
 
@@ -346,13 +348,18 @@
     var body = { action: action };
     for (var k in (data || {})){ body[k] = data[k]; }
     return getToken().then(function(tok){
-      return origFetch(SUPABASE_URL + '/functions/v1/admin-users', {
+      return origFetch(SUPABASE_URL + '/functions/v1/' + ADMIN_FUNCTION, {
         method: 'POST',
         headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-    }).then(parseJson).then(function(x){
-      if (!x.ok || x.d.error) throw new Error(x.d.error || ('Request failed (status ' + x.status + ')'));
+    }).then(parseJson, function(){
+      throw new Error('Could not reach the user-management function. Check it is deployed in Supabase and that its name matches ADMIN_FUNCTION in auth.js.');
+    }).then(function(x){
+      if (x.status === 404) throw new Error('The user-management function was not found. Check its name in Supabase matches ADMIN_FUNCTION in auth.js.');
+      if (!x.ok || x.d.error) throw new Error(x.d.error || x.d.message || ('Request failed (status ' + x.status + ')'));
+      // Only our own function answers with ok:true. Anything else means the wrong function is being called.
+      if (x.d.ok !== true) throw new Error('The user-management function did not reply as expected. Check the right code is deployed under the name set in ADMIN_FUNCTION in auth.js.');
       return x.d;
     });
   }
@@ -398,7 +405,7 @@
   });
 
   window.Auth = {
-    version: 3,
+    version: 4,
     signIn: signIn, signOut: signOut, verify: verify, changePassword: changePassword,
     adminUsers: adminUsers, profile: profile, isSignedIn: isSignedIn, needsChange: needsChange,
     tokenSync: tokenSync, getToken: getToken, safeNext: safeNext, storageMode: function(){ return storageMode; },
