@@ -1,10 +1,89 @@
 /* ════════════════════════════════════════════════════════════════════
-   Studio Hub — shared login (auth.js)
+   Studio Hub — shared login (auth.js)   [version 3]
    Loaded by every page. One place for: signing in, staying signed in,
    knowing who the user is (name + role come from the database, never
    from the page address), and attaching the user's own login token to
    every call the pages make to Supabase.
    ════════════════════════════════════════════════════════════════════ */
+
+/* ── Storage guard ───────────────────────────────────────────────────
+   The builders keep a spare copy of every project you open in the
+   browser (roughly 0.3 to 0.5 MB each). Browsers allow about 10 MB per
+   site, so after a couple of dozen projects the storage is full and
+   every later save (including remembering a sign-in) is refused.
+
+   The builders always load from the database first and only use the
+   spare copy if the database cannot be reached, so the spare copies are
+   safe to recycle. When the browser says "full", this drops the least
+   recently used spare project copies, just enough to make room, then
+   retries the write. It never touches anything else, never touches a
+   spare copy written in the last 30 minutes (another tab may be using
+   it), and if it cannot make room the original error is raised exactly
+   as before. */
+(function(){
+  'use strict';
+  var proto = window.Storage && window.Storage.prototype;
+  if (!proto || proto.__cbreGuard) return;
+
+  var CACHE_RE   = /^(cbre_v5_|cbre_aerials_proj_)/;   // per-project spare copies only
+  var INDEX_KEY  = 'cbre_cache_index';                 // when each spare copy was last written
+  var PROTECT_MS = 30 * 60 * 1000;
+
+  var nativeSet = proto.setItem, nativeGet = proto.getItem, nativeRemove = proto.removeItem;
+
+  function isQuota(e){
+    return !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+                   e.code === 22 || e.code === 1014);
+  }
+  function isLocal(store){ try { return store === window.localStorage; } catch(e){ return false; } }
+  function readIndex(ls){ try { return JSON.parse(nativeGet.call(ls, INDEX_KEY) || '{}') || {}; } catch(e){ return {}; } }
+  function writeIndex(ls, idx){ try { nativeSet.call(ls, INDEX_KEY, JSON.stringify(idx)); } catch(e){} }
+
+  function candidates(ls, keepKey){
+    var idx = readIndex(ls), now = Date.now(), out = [];
+    for (var i = 0; i < ls.length; i++){
+      var k = ls.key(i);
+      if (!k || k === keepKey || !CACHE_RE.test(k)) continue;
+      var ts = idx[k] || 0;
+      if (ts && now - ts < PROTECT_MS) continue;               // recently used: leave alone
+      var v = nativeGet.call(ls, k);
+      out.push({ key: k, ts: ts, size: v ? v.length : 0 });
+    }
+    // oldest first; among copies of unknown age, biggest first (frees the most with the fewest removals)
+    out.sort(function(a, b){ return (a.ts - b.ts) || (b.size - a.size); });
+    return out;
+  }
+
+  function makeRoom(ls, keepKey, tryWrite){
+    var list = candidates(ls, keepKey), idx = readIndex(ls), removed = false;
+    for (var i = 0; i < list.length; i++){
+      nativeRemove.call(ls, list[i].key);
+      delete idx[list[i].key];
+      removed = true;
+      if (tryWrite()){ writeIndex(ls, idx); return true; }
+    }
+    if (removed) writeIndex(ls, idx);
+    return false;
+  }
+
+  proto.setItem = function(key, value){
+    var ls = this;
+    if (!isLocal(ls)) return nativeSet.call(ls, key, value);
+    var k = String(key), v = String(value);
+    try {
+      nativeSet.call(ls, k, v);
+    } catch(e){
+      if (!isQuota(e)) throw e;
+      var wrote = makeRoom(ls, k, function(){
+        try { nativeSet.call(ls, k, v); return true; } catch(e2){ return false; }
+      });
+      if (!wrote) throw e;
+    }
+    if (CACHE_RE.test(k)){ var idx = readIndex(ls); idx[k] = Date.now(); writeIndex(ls, idx); }
+  };
+  proto.__cbreGuard = true;
+})();
+
 (function(){
   'use strict';
 
@@ -319,6 +398,7 @@
   });
 
   window.Auth = {
+    version: 3,
     signIn: signIn, signOut: signOut, verify: verify, changePassword: changePassword,
     adminUsers: adminUsers, profile: profile, isSignedIn: isSignedIn, needsChange: needsChange,
     tokenSync: tokenSync, getToken: getToken, safeNext: safeNext, storageMode: function(){ return storageMode; },
