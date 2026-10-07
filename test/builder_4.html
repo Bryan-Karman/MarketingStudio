@@ -1,0 +1,4095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="auth.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBRE Builder 4</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Light.otf') format('opentype');font-weight:300;font-style:normal;font-display:swap;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Medium.otf') format('opentype');font-weight:500;font-style:normal;font-display:swap;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-style:normal;font-display:swap;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Bold.otf') format('opentype');font-weight:700;font-style:normal;font-display:swap;}
+@font-face{font-family:'FinancierDisplay';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap;}
+@font-face{font-family:'FinancierDisplay';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Medium.otf') format('opentype');font-weight:500;font-style:normal;font-display:swap;}
+@font-face{font-family:'FinancierDisplay';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Semibold.otf') format('opentype');font-weight:600;font-style:normal;font-display:swap;}
+</style>
+<style>
+/* ── RESET ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#111314; --surface:#1a1d1f; --surface2:#202325;
+  --border:#272b2e; --border2:#313639;
+  --text:#e8eaeb; --muted:#6b7175;
+  --green:#17e88f; --green-dk:#003f2d; --green-md:#00593f;
+  --amber:#f0a030; --red:#e05555; --blue:#4ab0f5;
+  --radius:3px; --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  /* A4 portrait at 96dpi: 210mm × 297mm = 794 × 1123px */
+  --artboard-w:794px; --artboard-h:1123px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden;}
+
+/* ── NAME GATE ── */
+#name-gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.gate-card{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:36px 40px;width:340px;display:flex;flex-direction:column;gap:20px;}
+.gate-logo{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:var(--green);letter-spacing:.06em;}
+.gate-logo-dot{width:8px;height:8px;border-radius:50%;background:var(--green);}
+.gate-title{font-size:18px;font-weight:600;}
+.gate-sub{font-size:12px;color:var(--muted);line-height:1.6;}
+.gate-field{display:flex;flex-direction:column;gap:6px;}
+.gate-field label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em;}
+.gate-field input{padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s;}
+.gate-field input:focus{border-color:var(--green);}
+.gate-btn{padding:11px;background:var(--green-md);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.gate-btn:hover{background:var(--green);color:#000;}
+
+/* ── MASTHEAD ── */
+.mast{height:44px;background:#0a0c0d;border-bottom:2px solid var(--green);display:flex;align-items:center;padding:0 0 0 16px;gap:0;flex-shrink:0;z-index:100;}
+.mast-logo{display:flex;align-items:center;gap:0;padding-right:16px;border-right:1px solid #1a2a22;flex-shrink:0;}
+.mast-logo img{height:20px;width:auto;display:block;}
+.mast-sep{width:1px;height:24px;background:#1e2e26;margin:0 14px;flex-shrink:0;}
+.mast-nav{display:flex;align-items:center;gap:0;flex:1;}
+.mast-nav-link{font-size:11px;font-weight:700;color:#6b7175;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;padding:0 14px;height:44px;display:flex;align-items:center;white-space:nowrap;transition:color .15s;border-right:1px solid #131a17;}
+.mast-nav-link:hover{color:#e8eaeb;}
+.mast-nav-link.back{color:#6b7175;font-size:10px;}
+.mast-nav-link.back::before{content:'← ';letter-spacing:0;}
+.mast-nav-link.portfolio{color:#6b7175;}
+.mast-nav-link.property{color:var(--green);border-right:none;}
+.mast-title{font-size:12px;color:var(--muted);flex:1;display:none;}
+.mast-title strong{color:var(--text);font-weight:600;}
+.conn-pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;border:1px solid var(--border2);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--muted);transition:all .3s;}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background .3s;}
+.conn-pill.connected{border-color:rgba(23,232,143,.3);color:var(--green);}
+.conn-pill.connected .conn-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
+.conn-pill.connecting{border-color:rgba(240,160,48,.3);color:var(--amber);}
+.conn-pill.connecting .conn-dot{background:var(--amber);animation:pulse .8s infinite;}
+.conn-pill.error{border-color:rgba(224,85,85,.3);color:var(--red);}
+.conn-pill.error .conn-dot{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── TOOLBAR ── */
+.toolbar{height:40px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:6px;flex-shrink:0;}
+.tb-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.tb-btn:hover{background:var(--border2);border-color:var(--muted);}
+.tb-btn.active{background:var(--green-dk);border-color:var(--green);color:var(--green);}
+.tb-sep{width:1px;height:20px;background:var(--border2);margin:0 2px;}
+.tb-save{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.save-dot{width:5px;height:5px;border-radius:50%;background:var(--muted);}
+.save-lbl{font-size:10px;color:var(--muted);}
+.save-wrap.saving .save-dot{background:var(--amber);animation:pulse .6s infinite;}
+.save-wrap.saving .save-lbl{color:var(--amber);}
+.save-wrap.saved .save-dot{background:var(--green);}
+.save-wrap.saved .save-lbl{color:var(--green);}
+.save-wrap.error .save-dot{background:var(--red);}
+.save-wrap.error .save-lbl{color:var(--red);}
+
+/* ── PRESENCE BAR ── */
+.presence-bar{height:34px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0;}
+.presence-label{font-size:10px;color:var(--muted);flex-shrink:0;}
+.presence-avatars{display:flex;gap:5px;flex:1;}
+.avatar{display:flex;align-items:center;gap:5px;padding:2px 7px 2px 3px;border-radius:20px;border:1px solid;font-size:10px;font-weight:700;}
+.avatar-dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#000;flex-shrink:0;}
+.avatar-name{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.avatar-field{font-size:9px;opacity:.65;font-weight:400;}
+
+/* ── TAB BAR ── */
+.tab-bar{height:36px;background:#111314;border-bottom:1px solid var(--border);display:flex;align-items:stretch;padding:0 8px;gap:2px;flex-shrink:0;overflow-x:auto;overflow-y:hidden;}
+.tab-bar::-webkit-scrollbar{height:3px;}
+.tab-bar::-webkit-scrollbar-track{background:transparent;}
+.tab-bar::-webkit-scrollbar-thumb{background:var(--border2);}
+.tab-item{display:flex;align-items:center;gap:6px;padding:0 12px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;user-select:none;transition:all .15s;flex-shrink:0;}
+.tab-item:hover{color:var(--text);}
+.tab-item.active{color:var(--green);border-bottom-color:var(--green);}
+.tab-item .tab-size{font-size:9px;color:var(--muted);font-weight:400;}
+
+/* ── TAB RIGHT-CLICK CONTEXT MENU ── */
+.tab-ctx{position:fixed;z-index:9000;background:#1a1d1f;border:1px solid var(--border2);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:160px;padding:4px;display:none;}
+.tab-ctx.open{display:block;}
+.tab-ctx-item{padding:7px 12px;font-size:11px;font-weight:600;color:var(--text);cursor:pointer;border-radius:3px;display:flex;align-items:center;gap:8px;}
+.tab-ctx-item:hover{background:var(--surface2);}
+.tab-ctx-item.danger{color:var(--red);}
+.tab-ctx-sep{height:1px;background:var(--border);margin:4px 0;}
+
+/* ── MARKETING ITEMS DROPDOWN ── */
+.mkt-dropdown{position:fixed;z-index:9000;background:#1a1d1f;border:1px solid var(--border2);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);width:260px;max-height:400px;display:none;flex-direction:column;}
+.mkt-dropdown.open{display:flex;}
+.mkt-dropdown-head{padding:10px 14px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0;}
+.mkt-dropdown-list{overflow-y:auto;padding:6px;}
+.mkt-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:3px;cursor:pointer;transition:background .1s;}
+.mkt-item:hover{background:var(--surface2);}
+.mkt-item-check{width:14px;height:14px;border:1.5px solid var(--border2);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.mkt-item-check.checked{background:var(--green);border-color:var(--green);}
+.mkt-item-check.checked::after{content:'✓';font-size:9px;color:#000;font-weight:800;}
+.mkt-item-info{flex:1;}
+.mkt-item-name{font-size:12px;font-weight:600;color:var(--text);}
+.mkt-item-size{font-size:10px;color:var(--muted);}
+
+/* ── CANVAS SIZE MODAL ── */
+#canvas-size-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8500;display:none;align-items:center;justify-content:center;}
+#canvas-size-modal.open{display:flex;}
+
+/* ── LAYOUT ── */
+.app{display:flex;flex:1;overflow:hidden;height:calc(100vh - 154px);} /* mast+toolbar+presence+tabbar */
+
+/* ── SIDEBAR ADD BUTTONS (bottom of properties panel) ── */
+.sb-add-footer{
+  flex-shrink:0;border-top:1px solid var(--border);padding:10px;
+  display:flex;flex-direction:column;gap:6px;background:var(--surface);
+}
+.sb-add-btn{
+  width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);
+  background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;
+  cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:6px;
+}
+.sb-add-btn:hover{background:var(--green-dk);border-color:var(--green);color:var(--green);}
+
+/* ── SIDEBAR LEFT — properties ── */
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.sb-head{padding:10px 12px 8px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;}
+.sb-body{flex:1;overflow-y:auto;padding:10px;}
+.sb-empty{font-size:11px;color:var(--muted);padding:8px 0;line-height:1.6;}
+
+/* property rows */
+.prop-section{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.prop-section:first-child{margin-top:0;}
+.prop-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;}
+.prop-label{font-size:10px;color:var(--muted);flex-shrink:0;min-width:56px;}
+.prop-input{flex:1;padding:4px 7px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:11px;font-family:var(--font);outline:none;min-width:0;}
+.prop-input:focus{border-color:var(--green);}
+.prop-input[type=number]{width:64px;flex:none;}
+.prop-input[type=color]{width:36px;height:26px;padding:1px 2px;cursor:pointer;flex:none;}
+.prop-row-full{display:flex;gap:4px;margin-bottom:6px;}
+.prop-row-full .prop-input{flex:1;}
+.align-btns{display:flex;gap:3px;}
+.align-btn{width:26px;height:26px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.align-btn:hover{border-color:var(--muted);color:var(--text);}
+.align-btn.active{background:var(--green-dk);border-color:var(--green);color:var(--green);}
+.del-btn{width:100%;margin-top:10px;padding:6px;border:1px solid #5a2222;border-radius:var(--radius);background:#2a1515;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;}
+.del-btn:hover{background:#3a1818;}
+
+/* image upload in sidebar */
+.img-upload-area{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;background:var(--bg);transition:all .2s;position:relative;overflow:hidden;margin-top:4px;}
+.img-upload-area:hover,.img-upload-area.drag-over{border-color:var(--green);background:rgba(23,232,143,.04);}
+.img-upload-area input{display:none;}
+.img-upload-label{font-size:11px;color:var(--muted);pointer-events:none;}
+.img-upload-label span{color:var(--green);font-weight:600;}
+.img-preview-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:2px;display:none;border:1px solid var(--border2);}
+.img-uploading{position:absolute;inset:0;background:rgba(17,19,20,.85);display:none;align-items:center;justify-content:center;font-size:11px;color:var(--green);font-weight:700;gap:6px;}
+.img-uploading.active{display:flex;}
+.spinner{width:12px;height:12px;border:2px solid rgba(23,232,143,.3);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── CANVAS AREA ── */
+.canvas-area{flex:1;overflow:auto;padding:48px;background:#161819;display:flex;align-items:flex-start;justify-content:center;position:relative;}
+.canvas-wrap{position:relative;flex-shrink:0;}
+/* A4 landscape artboard */
+.canvas-card{
+  width:var(--artboard-w);
+  height:var(--artboard-h);
+  background:#fff;
+  box-shadow:0 8px 48px rgba(0,0,0,.6);
+  position:relative;
+  overflow:visible; /* allow resize handles outside artboard to remain accessible */
+  flex-shrink:0;
+}
+/* Artboard labels — on .canvas-wrap so overflow:hidden on canvas-card doesn't clip them */
+.ab-label-top{
+  position:absolute;top:-20px;left:0;right:0;
+  font-size:10px;color:rgba(255,255,255,.5);
+  pointer-events:none;white-space:nowrap;letter-spacing:.03em;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ab-label-bottom{
+  position:absolute;bottom:-20px;left:0;right:0;
+  font-size:10px;color:rgba(255,255,255,.3);
+  pointer-events:none;white-space:nowrap;letter-spacing:.04em;text-align:center;
+}
+.ab-label-right{
+  position:absolute;right:-44px;top:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+.ab-label-right span{
+  font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.04em;
+  transform:rotate(90deg);display:block;white-space:nowrap;
+}
+/* Subtle size watermark inside the artboard */
+.artboard-size-badge{
+  position:absolute;bottom:6px;right:8px;
+  font-size:9px;color:rgba(0,0,0,.15);
+  pointer-events:none;letter-spacing:.04em;font-family:monospace;z-index:1;
+  user-select:none;
+}
+
+/* ── ZOOM ── */
+.canvas-wrap{transform-origin:top center;transition:transform .15s ease;}
+.zoom-display{font-size:11px;color:var(--muted);min-width:36px;text-align:center;font-variant-numeric:tabular-nums;}
+
+/* ── CANVAS ELEMENTS ── */
+.cv-el{position:absolute;cursor:move;user-select:none;}
+.cv-el-outline{position:absolute;inset:-2px;border:1.5px dashed transparent;border-radius:1px;pointer-events:none;transition:border-color .1s;}
+.cv-el:hover .cv-el-outline,.cv-el.selected .cv-el-outline{border-color:rgba(23,232,143,.6);}
+.cv-el.selected .cv-el-outline{border-style:solid;}
+.cv-el.editing{cursor:default;}
+/* resize handles — 8 points */
+.cv-rh{display:none;position:absolute;width:8px;height:8px;background:#111;border:2px solid #17e88f;border-radius:1px;z-index:20;}
+.cv-el.selected .cv-rh{display:block;}
+.cv-rh-n {top:-5px;left:calc(50% - 4px);cursor:n-resize;}
+.cv-rh-s {bottom:-5px;left:calc(50% - 4px);cursor:s-resize;}
+.cv-rh-e {right:-5px;top:calc(50% - 4px);cursor:e-resize;}
+.cv-rh-w {left:-5px;top:calc(50% - 4px);cursor:w-resize;}
+.cv-rh-nw{top:-5px;left:-5px;cursor:nw-resize;}
+.cv-rh-ne{top:-5px;right:-5px;cursor:ne-resize;}
+.cv-rh-sw{bottom:-5px;left:-5px;cursor:sw-resize;}
+.cv-rh-se{bottom:-5px;right:-5px;cursor:se-resize;}
+/* image placeholder */
+.cv-img-inner{width:100%;height:100%;object-fit:cover;display:block;background:#e0e4e0;}
+.cv-img-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;background:#e8ebe8;font-size:11px;color:#aaa;letter-spacing:.04em;pointer-events:none;}
+.cv-img-ph-icon{font-size:24px;opacity:.4;}
+/* text element */
+.cv-text-inner{width:100%;height:100%;outline:none;overflow:hidden;word-break:break-word;padding:4px;}
+.cv-text-inner[contenteditable="true"]{cursor:text;overflow:auto;box-shadow:inset 0 0 0 1px rgba(23,232,143,.4);}
+.canvas-card{cursor:default;}
+
+/* ── COLOUR BOX ── */
+.cv-rect-inner { width:100%; height:100%; pointer-events:none; }
+
+/* ── LOCK ── */
+.cv-el.locked .cv-rh           { display: none !important; }
+.cv-el.locked .cv-el-outline   { border-color: rgba(240,160,48,.4) !important; border-style: dotted !important; }
+.cv-el.locked                  { cursor: default; }
+.cv-lock-badge {
+  position: absolute; top: 3px; right: 4px;
+  font-size: 11px; line-height: 1; pointer-events: none;
+  z-index: 10; opacity: .55; user-select: none;
+}
+.lock-btn {
+  width: 100%; padding: 7px 10px; margin-bottom: 8px;
+  border-radius: var(--radius); font-size: 11px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all .15s;
+}
+.lock-btn.unlocked {
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--muted);
+}
+.lock-btn.unlocked:hover { border-color: var(--amber); color: var(--amber); }
+.lock-btn.locked {
+  background: #2a1800; border: 1px solid #7a4a00; color: var(--amber);
+}
+.lock-btn.locked:hover { background: #3a2200; }
+
+/* ── MULTI-SELECT ── */
+.cv-el.multi-selected .cv-el-outline { border-color: rgba(23,232,143,.5); border-style: dashed; opacity:1; }
+.cv-el.multi-selected .cv-rh { display: none; } /* hide per-el handles when multi-selected */
+
+/* ── MARQUEE SELECT ── */
+#marquee {
+  position: absolute; pointer-events: none; z-index: 999;
+  border: 1.5px solid rgba(23,232,143,.7);
+  background: rgba(23,232,143,.06);
+  display: none;
+}
+
+/* ── IMAGE CROP MODE ── */
+.cv-el.crop-mode { overflow: visible !important; cursor: default; }
+.cv-el.crop-mode .cv-el-outline { border-color: #f0a030; border-style: solid; box-shadow: 0 0 0 2px rgba(240,160,48,.2); }
+.cv-el.crop-mode .cv-rh { border-color: #f0a030; background: #fff; }
+/* clip frame — the visible area */
+.cv-img-clip {
+  position: absolute; inset: 0; overflow: hidden;
+  border-radius: 1px;
+}
+/* The actual image inside — can be larger than clip frame */
+.cv-img-crop {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  transition: none;
+}
+.cv-img-crop:active { cursor: grabbing; }
+/* Ghost — shows the overflow area of the image */
+.cv-img-ghost {
+  position: absolute; pointer-events: none;
+  opacity: 0.25; border: 1.5px dashed #f0a030;
+  display: none;
+}
+.crop-mode .cv-img-ghost { display: block; }
+/* Ghost corner handles — 4 draggable squares at the image boundary */
+.cv-ghost-rh {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: #fff;
+  border: 2px solid #f0a030;
+  border-radius: 2px;
+  z-index: 600;
+  cursor: nwse-resize;
+}
+.cv-ghost-rh-nw { cursor: nw-resize; }
+.cv-ghost-rh-ne { cursor: ne-resize; }
+.cv-ghost-rh-sw { cursor: sw-resize; }
+.cv-ghost-rh-se { cursor: se-resize; }
+
+/* Crop mode label */
+.crop-label {
+  position: absolute; top: -24px; left: 0;
+  font-size: 10px; font-weight: 700; color: #f0a030;
+  white-space: nowrap; pointer-events: none; letter-spacing: .04em;
+}
+/* ── LIVE CURSORS ── */
+.remote-cursor{position:absolute;pointer-events:none;z-index:500;transition:left .06s linear,top .06s linear;}
+.remote-cursor-icon{width:0;height:0;border-left:6px solid transparent;border-right:2px solid transparent;border-bottom:18px solid currentColor;transform:rotate(-20deg);filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.remote-cursor-label{position:absolute;top:16px;left:5px;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;color:#000;white-space:nowrap;background:currentColor;}
+
+/* ── SCROLLBARS ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#2a2d30;border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- NAME GATE -->
+<div id="name-gate">
+  <div class="gate-card">
+    <div class="gate-logo"><div class="gate-logo-dot"></div>CBRE Builder 4</div>
+    <div>
+      <div class="gate-title">Join Session</div>
+      <div class="gate-sub" style="margin-top:6px;">Enter your name. Open in multiple tabs to collaborate in real time — live cursors and instant sync.</div>
+    </div>
+    <div class="gate-field">
+      <label>Your name</label>
+      <input type="text" id="gate-name" placeholder="e.g. Jane Smith" autocomplete="off" maxlength="40">
+    </div>
+    <button class="gate-btn" onclick="joinSession()">Join Session</button>
+  </div>
+</div>
+
+<!-- MASTHEAD -->
+<div class="mast">
+  <!-- CBRE Logo → index.html -->
+  <a href="index.html" class="mast-logo" id="mast-home-link" title="Back to Studio">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxNDI3LjgyIDM4My44MiI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjQuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDIyNikgIC0tPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuc3QwIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTkzLjc0LDI4NC41OGgtMTE1Ljgzdi01OC4yNmgxMTguOTVjMTQuNTcsMS41NiwyNS42NiwxMy43LDI1Ljg0LDI4LjQ0LDAsMTYuMTMtMTIuODMsMjkuMy0yOC45NiwyOS44Mk00NzcuOTEsOTMuODVoMTIxLjM4YzEzLjg3LDEuOTEsMjQuMSwxMy43LDI0LjQ1LDI3LjU3LDAsMTQuMzktMTAuNTgsMjYuNy0yNC44LDI5LjEzaC0xMjEuMzhzLjM1LTU2LjcuMzUtNTYuN1pNNjUwLjI3LDE4Ni45NmM0NC4zOS0xNC43NCw1Mi4wMi01Mi4wMiw1Mi4wMi04Mi4zNiwwLTQ2LjQ3LTMyLjc3LTg2LjctMTI5LjctODYuN2gtMTgwLjV2MzQ3LjgzaDE4MC4zM2M5OC4xNCwwLDEzMi44Mi00OS45NCwxMzIuODItMTAwLjA1LDAtMzUuMzctMjIuMTktNjYuOTMtNTUuMzEtNzkuNDFNMTExMC40NiwxNy4zOHYzNDkuMDRoMzA1Ljd2LTc5LjU5aC0yMjAuNTZ2LTYxLjM4aDE5OC44OHYtNzUuNzdoLTE5OC44OHYtNTYuMThoMjIwLjU2VjE3LjM4aC0zMDUuN1pNOTc5LjAyLDEyNS45M2MtMi4yNSwxMy41Mi0xMy41MiwyMy40MS0yNy4yMiwyMy45M2gtMTE5LjN2LTU1LjY2aDExOS4zYzEzLjg3LDAsMjUuNjYsMTAuNCwyNy4yMiwyNC4yOHY3LjQ2aDBaTTkzMi43MywxNy4zOGgtMTg0LjY3djM0OC41Mmg4NC43OXYtMTQwLjQ1aDkzLjQ2YzI2LjcuNTIsNDguMDMsMjIuNzEsNDcuNTEsNDkuNDJ2OTEuMzhoODMuMDZ2LTExMi43MWMtLjg3LTMwLjg2LTIwLjk4LTU3LjkxLTUwLjI4LTY3LjQ1LDMyLjQyLTExLjQ0LDUzLjU4LTQyLjY2LDUyLjAyLTc2Ljk5LS42OS03NS40My02NS41NC05MS43My0xMjUuODgtOTEuNzNNMzM2Ljk0LDI4Mi4xNmMtMS4yMSwwLTExNiwyLjI1LTE1Ni4wNi0xLjU2LTQ5LjQyLTEuNTYtODguMDgtNDIuNjYtODYuNy05Mi4wNy0uNjktNDcuNTEsMzYuMDctODcuMjIsODMuNTgtOTAuMTcsMjQuMS0zLjI5LDE1Ni4wNi0xLjczLDE1Ny42Mi0xLjczaDIuNzdsMS4yMS03OS4yNGgtMTUyLjQxYy0yNC44LjY5LTQ5LjI0LDUuNzItNzIuNDgsMTQuNTctMjYuODgsMTIuMzEtNTAuMjgsMzEuMjEtNjguMTQsNTQuNzktMjIuNTQsMzAtMzQuNjgsNjYuNTgtMzQuNjgsMTA0LjA0LDAsMTEuNjIuODcsMjMuMjMsMi43NywzNC42OCwxMC40LDUzLjQxLDQ1Ljk1LDk4LjQ5LDk1LjE5LDEyMS4zOCwzMCwxMi4zMSw2Mi4yNSwxOC45LDk0LjY3LDE5LjI1aDEzNS4yNXYtODMuOTJoLTIuNnYtLjAyWiIvPgo8L3N2Zz4=" alt="CBRE" style="height:20px;width:auto;display:block;">
+  </a>
+  <div class="mast-sep"></div>
+  <nav class="mast-nav">
+    <!-- Studio → index.html -->
+    <a href="index.html" class="mast-nav-link" id="mast-studio-link">Studio</a>
+    <!-- ← Products → index.html (portfolio view) -->
+    <a href="index.html" class="mast-nav-link back" id="mast-products-link">Products</a>
+    <!-- Portfolio name → index.html#portfolioId -->
+    <a href="index.html" class="mast-nav-link portfolio" id="mast-portfolio-link">Portfolio</a>
+    <!-- Property name (current page — no link) -->
+    <span class="mast-nav-link property" id="mast-property-name">A4 Portrait</span>
+  </nav>
+  <div class="mast-title" id="mast-title">Builder 4 &mdash; <strong>A4 Portrait</strong></div>
+  <div class="conn-pill connecting" id="conn-pill"><div class="conn-dot"></div><span id="conn-label">Connecting…</span></div>
+</div>
+
+<!-- FLOATING AGENT DROPDOWN -->
+<div id="agent-dropdown" style="display:none;position:fixed;z-index:5000;background:#1a1d1f;border:1px solid #313639;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:220px;overflow:hidden;">
+  <div style="padding:8px 10px;border-bottom:1px solid #272b2e;">
+    <input id="agent-search" type="text" placeholder="Search agents…" autocomplete="off"
+      style="width:100%;padding:6px 8px;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;"
+      oninput="filterAgentList(this.value)">
+  </div>
+  <div id="agent-dropdown-list" style="max-height:260px;overflow-y:auto;padding:4px;"></div>
+</div>
+<style>
+.agent-dd-item{padding:8px 10px;border-radius:3px;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:background .1s;}
+.agent-dd-item:hover{background:#003f2d;}
+.agent-dd-name{font-size:12px;font-weight:600;color:#e8eaeb;}
+.agent-dd-phone{font-size:10px;color:#6b7175;}
+/* Agent box marker — amber dashed border */
+.cv-el[data-agent-box="1"] .cv-text-inner { outline: 1.5px dashed #f0a030 !important; }
+</style>
+
+<!-- TOOLBAR (top) -->
+<div class="toolbar">
+  <button class="tb-btn" id="btn-undo"   onclick="undo()"         title="Undo (⌘Z)">↩ Undo</button>
+  <button class="tb-btn" id="btn-copy"   onclick="copySelected()" title="Copy (⌘D)" style="display:none;">⎘ Copy</button>
+  <button class="tb-btn" id="btn-delete" onclick="deleteSelected()" title="Delete (⌫)" style="color:var(--red);border-color:#5a2222;display:none;">✕ Delete</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="zoomBy(-0.1)" title="Zoom out (Alt+scroll)">−</button>
+  <span class="zoom-display" id="zoom-display">100%</span>
+  <button class="tb-btn" onclick="zoomBy(+0.1)" title="Zoom in">＋</button>
+  <button class="tb-btn" onclick="zoomReset()" style="font-size:10px;padding:4px 7px;">Fit</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-templates" onclick="openTemplatesModal()" title="Templates" style="color:var(--amber);border-color:#7a4a00;">⭐ Templates</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="toggleMarketingItems(this)" title="Show/hide page types" style="color:var(--amber);border-color:#7a4a00;">☰ Pages</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-export" onclick="exportPDF(false)" title="Export current tab as PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export Tab</button>
+  <button class="tb-btn" id="btn-export-all" onclick="exportPDF(true)" title="Export all active tabs as one PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export All</button>
+  <div class="tb-save" id="save-wrap">
+    <div class="save-dot"></div>
+    <span class="save-lbl" id="save-lbl">—</span>
+  </div>
+</div>
+
+<!-- PRESENCE BAR -->
+<div class="presence-bar">
+  <span class="presence-label">In session:</span>
+  <div class="presence-avatars" id="presence-avatars"><span style="color:var(--muted);font-size:10px;">Waiting…</span></div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar" id="tab-bar"></div>
+
+<!-- TAB RIGHT-CLICK CONTEXT MENU -->
+<div class="tab-ctx" id="tab-ctx">
+  <div class="tab-ctx-item" onclick="ctxRenameTab()">✏️ Rename</div>
+  <div class="tab-ctx-item" onclick="ctxDuplicateTab()">⊕ Duplicate</div>
+  <div class="tab-ctx-item" onclick="ctxEditSize()" id="ctx-edit-size">⚙ Edit Canvas Size</div>
+  <div class="tab-ctx-sep"></div>
+  <div class="tab-ctx-item danger" onclick="ctxDeleteTab()">✕ Delete Tab</div>
+</div>
+
+<!-- MARKETING ITEMS DROPDOWN -->
+<div class="mkt-dropdown" id="mkt-dropdown">
+  <div class="mkt-dropdown-head">PAGE TYPES</div>
+  <div class="mkt-dropdown-list" id="mkt-list"></div>
+</div>
+
+<!-- CANVAS SIZE MODAL (admin only) -->
+<div id="canvas-size-modal">
+  <div style="background:#1a1d1f;border:1px solid var(--border2);border-radius:8px;padding:24px;width:320px;">
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;">Edit Canvas Size</div>
+    <div style="display:flex;gap:12px;margin-bottom:12px;">
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">WIDTH (mm)</div>
+        <input id="csz-w" type="number" min="50" max="2000" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">HEIGHT (mm)</div>
+        <input id="csz-h" type="number" min="50" max="2000" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:16px;">Common: A4=210×297  A3=297×420  Square=200×200</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="applyCanvasSize()" style="flex:1;padding:8px;background:var(--green-dk);border:1px solid var(--green);border-radius:3px;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;">Apply</button>
+      <button onclick="document.getElementById('canvas-size-modal').classList.remove('open')" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- PROPERTIES SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-head">Properties</div>
+    <div class="sb-body" id="props-panel">
+      <div class="sb-empty">Click an element on the canvas to edit its properties.</div>
+    </div>
+    <!-- Add element buttons pinned to sidebar bottom -->
+    <div class="sb-add-footer">
+      <button class="sb-add-btn" onclick="addElement('text')" title="Add a text box">＋ Text Box</button>
+      <button class="sb-add-btn" onclick="addElement('img')"  title="Add an image box">＋ Image Box</button>
+      <button class="sb-add-btn" onclick="addElement('rect')" title="Add a colour box">＋ Colour Box</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvas-area">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <!-- Artboard size labels (DOM elements so overflow:hidden doesn't clip them) -->
+      <div class="ab-label-top">
+        <span id="ab-label-top-text">Brochure &nbsp;·&nbsp; 210 × 297 mm &nbsp;·&nbsp; PDF: 300 dpi</span>
+        <span id="ab-zoom-label" style="opacity:.6;"></span>
+      </div>
+      <div class="ab-label-bottom">← 210 mm →</div>
+      <div class="ab-label-right"><span>↕ 297 mm</span></div>
+
+      <div class="canvas-card" id="canvas-card" onmousedown="canvasBgClick(event)">
+        <!-- Elements injected by JS -->
+        <div class="artboard-size-badge">210 × 297 mm</div>
+        <div id="marquee"></div>
+      </div>
+      <!-- Remote cursors injected here -->
+    </div>
+  </div>
+
+</div>
+
+<!-- TEMPLATES MODAL -->
+<div id="tpl-modal-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;align-items:center;justify-content:center;">
+  <div style="background:#1a1d1f;border:1px solid #313639;border-radius:8px;width:520px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+    <!-- Header -->
+    <div style="padding:16px 20px;border-bottom:1px solid #272b2e;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:15px;font-weight:700;color:#e8eaeb;">⭐ Templates</div>
+      <button onclick="closeTemplatesModal()" style="background:none;border:none;color:#6b7175;font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:1px solid #272b2e;flex-shrink:0;">
+      <button id="tpl-tab-apply"  onclick="tplTab('apply')"  style="flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:#202325;color:#17e88f;border-bottom:2px solid #17e88f;letter-spacing:.04em;">APPLY TEMPLATE</button>
+      <button id="tpl-tab-manage" onclick="tplTab('manage')" style="flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:#6b7175;border-bottom:2px solid transparent;letter-spacing:.04em;" id="tpl-tab-manage">MANAGE (ADMIN)</button>
+    </div>
+    <!-- Apply tab -->
+    <div id="tpl-pane-apply" style="flex:1;overflow-y:auto;padding:16px;">
+      <p style="font-size:11px;color:#6b7175;margin-bottom:14px;line-height:1.6;">Choose a template to load onto the current canvas. Your existing work will be replaced.</p>
+      <div id="tpl-list" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">Loading templates…</div>
+      </div>
+    </div>
+    <!-- Manage tab (admin only) -->
+    <div id="tpl-pane-manage" style="flex:1;overflow-y:auto;padding:16px;display:none;">
+      <div id="tpl-admin-warning" style="display:none;font-size:11px;color:#f0a030;background:#2a1800;border:1px solid #7a4a00;border-radius:3px;padding:8px 10px;margin-bottom:14px;">Only admins can manage templates.</div>
+      <!-- Save current as template -->
+      <div style="background:#202325;border:1px solid #313639;border-radius:4px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#e8eaeb;margin-bottom:8px;">Save current layout as new template</div>
+        <div style="display:flex;gap:8px;">
+          <input id="tpl-new-name" type="text" placeholder="Template name e.g. Retail A4" maxlength="60"
+            style="flex:1;padding:8px 10px;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;font-family:inherit;outline:none;">
+          <button onclick="saveTemplate()" style="padding:8px 14px;background:#003f2d;border:1px solid #17e88f;border-radius:3px;color:#17e88f;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Save</button>
+        </div>
+        <div id="tpl-save-status" style="font-size:10px;color:#6b7175;margin-top:6px;min-height:14px;"></div>
+      </div>
+      <!-- Existing templates list -->
+      <div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;margin-bottom:8px;">SAVED TEMPLATES</div>
+      <div id="tpl-manage-list" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#tpl-modal-bg { display:none; }
+#tpl-modal-bg.open { display:flex; }
+.tpl-card { background:#202325; border:1px solid #313639; border-radius:4px; padding:12px 14px; display:flex; align-items:center; gap:12px; transition:border-color .15s; }
+.tpl-card:hover { border-color:#17e88f; }
+.tpl-card-name { flex:1; font-size:13px; font-weight:600; color:#e8eaeb; }
+.tpl-card-meta { font-size:10px; color:#6b7175; margin-top:2px; }
+.tpl-apply-btn { padding:5px 12px; background:#003f2d; border:1px solid #17e88f; border-radius:3px; color:#17e88f; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.tpl-apply-btn:hover { background:#17e88f; color:#000; }
+.tpl-del-btn { padding:5px 10px; background:transparent; border:1px solid #5a2222; border-radius:3px; color:#e05555; font-size:11px; cursor:pointer; }
+.tpl-del-btn:hover { background:#3a1515; }
+</style>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════
+const SUPA_URL     = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+const SUPA_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
+// Read portfolio/property from URL — each property gets its own channel + storage
+const _urlP        = new URLSearchParams(window.location.search);
+const PORTFOLIO_ID = _urlP.get('portfolioId') || 'builder4';
+const PROPERTY_ID  = _urlP.get('propertyId')  || 'builder4_001';
+const USER_ROLE    = (window.Auth && Auth.profile() && Auth.profile().role === 'admin') ? 'admin' : 'user'; // from the signed-in profile
+const CURRENT_TAB_SLUG = _urlP.get('tab')     || 'brochure'; // which tab this page instance is
+// Channel name is per-tab — updated when switching tabs
+let CHANNEL_NAME = 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID + ':brochure';
+const LS_KEY     = 'cbre_' + PORTFOLIO_ID + '_' + PROPERTY_ID;
+
+function tabChannelName(slug) {
+  return 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID + ':' + slug;
+}
+
+// ════════════════════════════════════════════════════════
+// TAB / PAGE SYSTEM
+// ════════════════════════════════════════════════════════
+
+// Master list of all available page types.
+// slug: used as the Supabase property_id suffix (property_id = PROPERTY_ID + '_' + slug)
+//       EXCEPT the brochure tab which uses the bare PROPERTY_ID (backward compatible)
+// w/h: canvas dimensions in px at 96dpi (convert mm: px = mm * 96/25.4)
+// mmW/mmH: physical dimensions in mm (for PDF)
+// active: whether the tab is currently shown in the builder (user-controlled via Marketing Items)
+// Default tab definitions — overwritten by Supabase on load
+let TAB_DEFINITIONS = [
+  { slug:'brochure',      name:'Brochure',             mmW:210, mmH:297,  active:true,  builtIn:true },
+  { slug:'brochure2',     name:'Brochure 2 Page',      mmW:210, mmH:297,  active:true  },
+  { slug:'edm',           name:'EDM',                  mmW:158, mmH:800,  active:true  },
+  { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
+  { slug:'pressad',       name:'Press Ad',             mmW:210, mmH:148,  active:true  },
+];
+// Supabase storage for tab definitions: portfolio_id='_b4_tabdefs', property_id=PROPERTY_ID
+const TABDEFS_PORTFOLIO = '_b4_tabdefs';
+
+// ── Tab definition persistence ─────────────────────────────────────
+
+async function loadTabDefs() {
+  try {
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TABDEFS_PORTFOLIO + '&property_id=eq.' + encodeURIComponent(PROPERTY_ID) + '&select=state_json';
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      if (saved.tabs && Array.isArray(saved.tabs) && saved.tabs.length) {
+        // Merge saved tabs into defaults — preserve builtIn flag, add any custom tabs
+        const defaults = TAB_DEFINITIONS.slice();
+        saved.tabs.forEach(savedTab => {
+          const existing = defaults.find(d => d.slug === savedTab.slug);
+          if (existing) {
+            // Update mutable properties from saved state
+            existing.name   = savedTab.name;
+            existing.active = savedTab.active;
+            existing.mmW    = savedTab.mmW || existing.mmW;
+            existing.mmH    = savedTab.mmH || existing.mmH;
+          } else {
+            // Custom tab (e.g. duplicate) — add it
+            defaults.push(savedTab);
+          }
+        });
+        TAB_DEFINITIONS = defaults;
+        console.log('[B4] Tab defs loaded:', TAB_DEFINITIONS.length, 'tabs');
+      }
+    }
+  } catch(e) { console.warn('[B4] loadTabDefs failed:', e); }
+}
+
+async function saveTabDefs() {
+  try {
+    const body = {
+      portfolio_id: TABDEFS_PORTFOLIO,
+      property_id:  PROPERTY_ID,
+      state_json:   JSON.stringify({ tabs: TAB_DEFINITIONS }),
+      updated_at:   new Date().toISOString()
+    };
+    const check = await fetch(
+      SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TABDEFS_PORTFOLIO + '&property_id=eq.' + encodeURIComponent(PROPERTY_ID) + '&select=id',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } }
+    );
+    const rows   = await check.json();
+    const method  = rows && rows.length ? 'PATCH' : 'POST';
+    const saveUrl = rows && rows.length
+      ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
+      : SUPA_URL + '/rest/v1/projects';
+    await fetch(saveUrl, {
+      method,
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+    console.log('[B4] Tab defs saved');
+  } catch(e) { console.warn('[B4] saveTabDefs failed:', e); }
+}
+
+// Convert mm to px at 96dpi
+function mmToPx(mm) { return Math.round(mm * 96 / 25.4); }
+
+// Get canvas px dimensions for a tab definition
+function tabPx(tab) {
+  return { w: mmToPx(tab.mmW), h: mmToPx(tab.mmH) };
+}
+
+// Current tab slug — set from URL param, fixed for this page instance
+let _currentTab = CURRENT_TAB_SLUG;
+
+// Tab states — keyed by slug: { elements, mmW, mmH, name, active }
+// Loaded from Supabase per-tab on demand; only current tab is live in `elements`
+let _tabStates = {};
+
+// Per-tab element arrays (cached when switching away)
+// The live elements array IS the current tab's elements
+
+// A4 portrait at 96 dpi: 210mm × 297mm — current artboard, updated when tab changes
+let AW = mmToPx(210), AH = mmToPx(297);
+
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+let userName = '', userId = '', connected = false;
+let agentList = []; // populated on init from Supabase agents table
+let _ctxTabSlug = null; // slug of tab that was right-clicked
+let wsSocket = null, _hbInterval = null, _rcnTimer = null, _ref = 1;
+let presence = {}, _colorIdx = 0;
+let saveTimer = null, _isSaving = false;
+let elements = [], _nextId = 1;
+let _selectedIds = new Set(); // multi-select
+let _selectedId  = null;      // primary selected id (last clicked)
+let _cropId      = null;      // element currently in image crop mode
+let _lastCursorSend = 0, _cursorRafId = null, _pendingCX = null, _pendingCY = null;
+
+// ── Zoom ──────────────────────────────────────────────────────────
+let _zoom = 1.0;
+const ZOOM_MIN = 0.25, ZOOM_MAX = 3.0;
+
+// ── Undo stack ────────────────────────────────────────────────────
+// Each entry is a deep snapshot of `elements` at a point in time.
+const _undoStack = [];
+const UNDO_MAX   = 50;
+
+const USER_COLORS = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8','#f5c842','#42f5b3'];
+// currentTopic() is derived from CHANNEL_NAME which updates per tab
+function currentTopic() { return 'realtime:' + CHANNEL_NAME; }
+
+// ════════════════════════════════════════════════════════
+// NAME GATE
+// ════════════════════════════════════════════════════════
+// ── Global error guard — surfaces JS errors visibly so silent failures are caught ──
+window.addEventListener('error', function(ev) {
+  const gate = document.getElementById('name-gate');
+  if (gate && gate.style.display !== 'none') {
+    // Error before joining — show it on the gate
+    const errDiv = document.getElementById('gate-js-error') || document.createElement('div');
+    errDiv.id = 'gate-js-error';
+    errDiv.style.cssText = 'margin-top:8px;padding:8px 10px;background:#3a0d0d;border:1px solid #e05555;border-radius:3px;font-size:11px;color:#f09090;line-height:1.5;';
+    errDiv.textContent = 'JS error: ' + ev.message + ' (line ' + ev.lineno + ')';
+    const card = gate.querySelector('.gate-card');
+    if (card && !document.getElementById('gate-js-error')) card.appendChild(errDiv);
+  }
+  console.error('[Builder4 Error]', ev.message, ev.filename, ev.lineno);
+});
+
+document.getElementById('gate-name').addEventListener('keydown', e => { if (e.key === 'Enter') joinSession(); });
+
+function joinSession() {
+  const n = document.getElementById('gate-name').value.trim();
+  if (!n) { document.getElementById('gate-name').focus(); return; }
+  userName = n;
+  userId   = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+  document.getElementById('name-gate').style.display = 'none';
+  init().then(() => setTimeout(zoomReset, 150));
+}
+
+// Auto-join if userName is in the URL (passed from index.html login session)
+(function autoJoinFromUrl(){
+  const params      = new URLSearchParams(window.location.search);
+  const urlName     = ((window.Auth && Auth.profile() && Auth.profile().name) || '').trim();
+  const portName    = (params.get('portfolioName') || '').trim();
+  const propName    = (params.get('propertyName')  || '').trim();
+
+  // Build the index.html back-URL with portfolio anchor so it returns to the right place
+  const indexBase = 'index.html';
+  const portfolioAnchor = PORTFOLIO_ID ? indexBase + '?portfolioId=' + encodeURIComponent(PORTFOLIO_ID) : indexBase;
+
+  // Update nav links
+  const homeLink      = document.getElementById('mast-home-link');
+  const studioLink    = document.getElementById('mast-studio-link');
+  const productsLink  = document.getElementById('mast-products-link');
+  const portfolioLink = document.getElementById('mast-portfolio-link');
+  const propertySpan  = document.getElementById('mast-property-name');
+
+  if (homeLink)     homeLink.href     = indexBase;
+  if (studioLink)   studioLink.href   = indexBase;
+  if (productsLink) productsLink.href = portfolioAnchor;
+  if (portfolioLink) {
+    portfolioLink.href        = portfolioAnchor;
+    portfolioLink.textContent = portName || 'Portfolio';
+  }
+  if (propertySpan) {
+    propertySpan.textContent = propName || 'A4 Portrait';
+  }
+
+  // Keep legacy title element in sync (hidden but used elsewhere)
+  if (portName || propName) {
+    const titleEl = document.getElementById('mast-title');
+    if (titleEl) titleEl.innerHTML = (portName ? escHtml(portName) : 'Builder 4')
+      + (propName ? ' &rsaquo; <strong>' + escHtml(propName) + '</strong>' : '');
+  }
+
+  if (urlName) {
+    document.getElementById('gate-name').value = urlName;
+    joinSession();
+  }
+
+  function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+})();
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+async function init() {
+
+  // Fetch agents first so dropdown is ready when properties panel opens
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/agents?select=id,name,phone,email&order=name.asc',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const data = await res.json();
+    if (Array.isArray(data)) { agentList = data; console.log('[B4] Agents loaded:', agentList.length); }
+  } catch(e) { console.warn('[B4] Agent load failed:', e); }
+
+  // Load tab definitions from Supabase FIRST — so custom/copy tabs get correct dimensions
+  await loadTabDefs();
+
+  // Set canvas size from this tab's definition (now includes custom tabs from Supabase)
+  const initDef = tabDef(_currentTab);
+  if (initDef) {
+    const px = tabPx(initDef);
+    AW = px.w; AH = px.h;
+    const card = document.getElementById('canvas-card');
+    if (card) { card.style.width = AW + 'px'; card.style.height = AH + 'px'; }
+    updateArtboardLabels(initDef);
+  } else {
+    console.warn('[B4] No tab def found for slug:', _currentTab, '— available:', TAB_DEFINITIONS.map(t=>t.slug));
+  }
+
+  // Channel is fixed for this tab's page instance
+  CHANNEL_NAME = tabChannelName(_currentTab);
+
+  renderTabBar();
+  renderCanvas();
+  await loadFromSupabase();
+  openRealtime();
+  setupCursorTracking();
+}
+
+// ════════════════════════════════════════════════════════
+// SUPABASE LOAD / SAVE
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// TEMPLATE SYSTEM
+// ════════════════════════════════════════════════════════
+const TEMPLATE_PORTFOLIO = '_b4_template';
+
+async function loadFromSupabase() {
+  // Load from the current tab's Supabase row (brochure = bare PROPERTY_ID, others = suffixed)
+  const sid = tabSupabaseId(_currentTab);
+  try {
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=state_json,updated_at';
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      if (saved.elements && saved.elements.length) {
+        elements = saved.elements;
+        // Migration: strip embedded "– " from content if bulletMode is true
+        // (old system stored dashes in content; new system uses CSS ::before)
+        elements.forEach(el => {
+          if (el.type === 'text' && el.bulletMode && el.content) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = el.content;
+            tmp.querySelectorAll('div').forEach(d => {
+              if (d.textContent.trimStart().startsWith('\u2013')) {
+                d.textContent = d.textContent.replace(/^\s*\u2013\s?/, '');
+              }
+            });
+            el.content = tmp.innerHTML;
+          }
+        });
+        _nextId = Math.max(...elements.map(e => e.id)) + 1;
+        renderCanvas();
+      }
+    } else {
+      // New property — load the template named "Default" as starting point
+      await applyDefaultTemplate();
+    }
+  } catch(e) { console.warn('Load failed:', e); }
+}
+
+// Load the template whose name is exactly "Default" (case-insensitive)
+async function applyDefaultTemplate() {
+  try {
+    const templates = await fetchTemplates();
+    const def = templates.find(t => t.name.trim().toLowerCase() === 'default');
+    if (def) {
+      await applyTemplateById(def.slug, false);
+      console.log('[B4] Default template applied:', def.name);
+    } else {
+      console.log('[B4] No Default template found — starting blank');
+    }
+  } catch(e) { console.warn('[B4] Default template load failed:', e); }
+}
+
+// Fetch all saved templates from Supabase
+async function fetchTemplates() {
+  const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&select=id,property_id,state_json,updated_at&order=updated_at.desc';
+  const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+  const rows = await res.json();
+  return (rows || []).map(r => {
+    let name = r.property_id, createdAt = r.updated_at;
+    try { const s = JSON.parse(r.state_json); if (s.name) name = s.name; } catch(e){}
+    return { id: r.id, slug: r.property_id, name, updatedAt: r.updated_at };
+  });
+}
+
+// Apply a template by its slug to the current canvas
+async function applyTemplateById(slug, confirm_prompt) {
+  if (confirm_prompt) {
+    if (!confirm('Load template onto this canvas?\n\nYour current work will be replaced. This cannot be undone.')) return;
+  }
+  try {
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&property_id=eq.' + slug + '&select=state_json';
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      if (saved.elements && saved.elements.length) {
+        _pushUndo();
+        elements = JSON.parse(JSON.stringify(saved.elements));
+        _nextId  = Math.max(...elements.map(e => e.id)) + 1;
+        renderCanvas(); deselectAll();
+        scheduleSave();
+        closeTemplatesModal();
+        setSave('saved', 'Template applied');
+      }
+    }
+  } catch(e) { console.warn('Template apply failed:', e); }
+}
+
+// Save current layout as a named template
+async function saveTemplate() {
+  if (USER_ROLE !== 'admin') return;
+  const nameEl = document.getElementById('tpl-new-name');
+  const name   = (nameEl && nameEl.value.trim()) || '';
+  if (!name) { nameEl && nameEl.focus(); return; }
+  const slug    = 'tpl_' + Date.now();
+  const statusEl = document.getElementById('tpl-save-status');
+  if (statusEl) statusEl.textContent = 'Saving…';
+  try {
+    const body = {
+      portfolio_id: TEMPLATE_PORTFOLIO,
+      property_id:  slug,
+      state_json:   JSON.stringify({ name, elements }),
+      updated_at:   new Date().toISOString()
+    };
+    await fetch(SUPA_URL + '/rest/v1/projects', {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+    if (statusEl) statusEl.textContent = '✓ Saved!';
+    if (nameEl) nameEl.value = '';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2500);
+    await renderManageList(); // refresh list
+  } catch(e) { if (statusEl) statusEl.textContent = 'Save failed'; }
+}
+
+// Delete a template by its DB id
+async function deleteTemplate(id) {
+  if (USER_ROLE !== 'admin') return;
+  if (!confirm('Delete this template? This cannot be undone.')) return;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/projects?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }
+    });
+    await renderManageList();
+    await renderApplyList();
+  } catch(e) { alert('Delete failed'); }
+}
+
+// ── Modal UI ─────────────────────────────────────────────────────
+let _tplCurrentTab = 'apply';
+
+async function openTemplatesModal() {
+  document.getElementById('tpl-modal-bg').classList.add('open');
+  tplTab('apply');
+}
+function closeTemplatesModal() {
+  document.getElementById('tpl-modal-bg').classList.remove('open');
+}
+
+async function tplTab(tab) {
+  _tplCurrentTab = tab;
+  // Update tab styles
+  const applyTab  = document.getElementById('tpl-tab-apply');
+  const manageTab = document.getElementById('tpl-tab-manage');
+  const active  = 'flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:#202325;color:#17e88f;border-bottom:2px solid #17e88f;letter-spacing:.04em;';
+  const inactive= 'flex:1;padding:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:#6b7175;border-bottom:2px solid transparent;letter-spacing:.04em;';
+  applyTab.style.cssText  = tab === 'apply'  ? active : inactive;
+  manageTab.style.cssText = tab === 'manage' ? active : inactive;
+  document.getElementById('tpl-pane-apply').style.display  = tab === 'apply'  ? '' : 'none';
+  document.getElementById('tpl-pane-manage').style.display = tab === 'manage' ? '' : 'none';
+  // Show admin warning if not admin
+  const warn = document.getElementById('tpl-admin-warning');
+  if (warn) warn.style.display = (tab === 'manage' && USER_ROLE !== 'admin') ? '' : 'none';
+  if (tab === 'apply')  await renderApplyList();
+  if (tab === 'manage') await renderManageList();
+}
+
+async function renderApplyList() {
+  const el = document.getElementById('tpl-list');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">Loading…</div>';
+  try {
+    const templates = await fetchTemplates();
+    if (!templates.length) { el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">No templates saved yet.</div>'; return; }
+    el.innerHTML = templates.map(t => {
+      const d = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
+      return '<div class="tpl-card">'
+        + '<div><div class="tpl-card-name">' + esc(t.name) + '</div><div class="tpl-card-meta">Saved ' + d + '</div></div>'
+        + '<button class="tpl-apply-btn" onclick="applyTemplateById(\'' + t.slug + '\', true)">Apply →</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="color:#e05555;font-size:12px;padding:12px;">Failed to load templates.</div>'; }
+}
+
+async function renderManageList() {
+  const el = document.getElementById('tpl-manage-list');
+  if (!el) return;
+  // Disable controls if not admin
+  const saveBtn = document.querySelector('[onclick="saveTemplate()"]');
+  const nameInput = document.getElementById('tpl-new-name');
+  if (USER_ROLE !== 'admin') {
+    if (saveBtn)   { saveBtn.disabled = true; saveBtn.style.opacity = '.4'; }
+    if (nameInput) { nameInput.disabled = true; nameInput.placeholder = 'Admin only'; }
+    el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Admin access required to manage templates.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>';
+  try {
+    const templates = await fetchTemplates();
+    if (!templates.length) { el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">No templates yet — save one above.</div>'; return; }
+    el.innerHTML = templates.map(t => {
+      const d = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
+      return '<div class="tpl-card">'
+        + '<div style="flex:1;"><div class="tpl-card-name">' + esc(t.name) + '</div><div class="tpl-card-meta">Saved ' + d + ' · slug: ' + esc(t.slug) + '</div></div>'
+        + '<button class="tpl-del-btn" onclick="deleteTemplate(\'' + t.id + '\')">✕ Delete</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="color:#e05555;font-size:12px;padding:12px;">Failed to load.</div>'; }
+}
+
+// Close modal on background click
+document.getElementById('tpl-modal-bg').addEventListener('mousedown', function(e) {
+  if (e.target === this) closeTemplatesModal();
+});
+
+async function saveToSupabase() {
+  if (_isSaving) return;
+  _isSaving = true;
+  setSave('saving','Saving…');
+  const sid = tabSupabaseId(_currentTab);
+  try {
+    const def  = tabDef(_currentTab);
+    const body = {
+      portfolio_id: PORTFOLIO_ID,
+      property_id:  sid,
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH }),
+      updated_at:   new Date().toISOString()
+    };
+    const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await check.json();
+    const method  = (rows && rows.length) ? 'PATCH' : 'POST';
+    const saveUrl = (rows && rows.length) ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id : SUPA_URL + '/rest/v1/projects';
+    await fetch(saveUrl, { method, headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+    setSave('saved','Saved');
+  } catch(e) { setSave('error','Save failed'); } finally { _isSaving = false; }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  setSave('saving','Saving…');
+  saveTimer = setTimeout(saveToSupabase, 1200);
+}
+
+// ════════════════════════════════════════════════════════
+// WEBSOCKET — raw Supabase Realtime (exact sync_test pattern)
+// ════════════════════════════════════════════════════════
+function openRealtime() {
+  setConn('connecting','Connecting…');
+  const wsUrl = 'wss://pgsgjafgetdvuctmpibf.supabase.co/realtime/v1/websocket?apikey=' + SUPA_KEY + '&vsn=1.0.0';
+  try { wsSocket = new WebSocket(wsUrl); } catch(e) { scheduleReconnect(); return; }
+
+  wsSocket.onopen = () => {
+    send({ topic: currentTopic(), event: 'phx_join', payload: { config: { presence: { key: userId }, broadcast: { self: false, ack: false } } }, ref: nextRef() });
+    clearInterval(_hbInterval);
+    _hbInterval = setInterval(() => send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() }), 25000);
+  };
+  wsSocket.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } handleMsg(m); };
+  wsSocket.onclose   = () => { clearInterval(_hbInterval); connected = false; setConn('connecting','Reconnecting…'); scheduleReconnect(); };
+  wsSocket.onerror   = () => {};
+}
+
+function handleMsg(msg) {
+  const { event, payload } = msg;
+  if (event === 'phx_reply' && payload && payload.status === 'ok') {
+    if (!connected) { connected = true; setConn('connected','Live'); broadcastPresence(null); }
+    return;
+  }
+  if (event === 'broadcast' && payload) {
+    // Ignore messages intended for a different tab
+    if (payload.tab && payload.tab !== _currentTab) return;
+    if (payload.type === 'full_state')    { handleRemoteFullState(payload); return; }
+    if (payload.type === 'el_crop')       { handleRemoteCrop(payload);     return; }
+    if (payload.type === 'el_lock')       { handleRemoteLock(payload);     return; }
+    if (payload.type === 'el_rect_prop')  { handleRemoteRectProp(payload); return; }
+    if (payload.type === 'el_reorder')    { handleRemoteReorder(payload);  return; }
+    if (payload.type === 'tab_switch')    { /* other user switched tab — no action needed locally */ return; }
+    if (payload.type === 'el_add')        { handleRemoteAdd(payload);      return; }
+    if (payload.type === 'el_move')       { handleRemoteMove(payload);     return; }
+    if (payload.type === 'el_resize')     { handleRemoteResize(payload);   return; }
+    if (payload.type === 'el_style')      { handleRemoteStyle(payload);    return; }
+    if (payload.type === 'el_content')    { handleRemoteContent(payload);  return; }
+    if (payload.type === 'el_delete')     { handleRemoteDelete(payload);   return; }
+    if (payload.type === 'el_image')      { handleRemoteImage(payload);    return; }
+    if (payload.type === 'cursor')        { handleRemoteCursor(payload);   return; }
+    if (payload.type === 'presence')      { handleRemotePresence(payload); return; }
+    if (payload.type === 'presence_leave'){ handlePresenceLeave(payload.userId); return; }
+  }
+}
+
+function send(msg) { if (wsSocket && wsSocket.readyState === WebSocket.OPEN) wsSocket.send(JSON.stringify(msg)); }
+function broadcast(payload) { send({ topic: currentTopic(), event: 'broadcast', payload: { type: payload.type, tab: _currentTab, ...payload }, ref: nextRef() }); }
+function nextRef() { return String(_ref++); }
+function scheduleReconnect() { clearTimeout(_rcnTimer); _rcnTimer = setTimeout(openRealtime, 3000); }
+
+// ════════════════════════════════════════════════════════
+// CURSOR TRACKING
+// ════════════════════════════════════════════════════════
+function setupCursorTracking() {
+  const area = document.getElementById('canvas-area');
+  const card = document.getElementById('canvas-card');
+  area.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    _pendingCX = Math.round(e.clientX - r.left);
+    _pendingCY = Math.round(e.clientY - r.top);
+    if (!_cursorRafId) _cursorRafId = requestAnimationFrame(sendCursor);
+  });
+  area.addEventListener('mouseleave', () => {
+    _pendingCX = null; _pendingCY = null;
+    if (connected) broadcast({ type: 'cursor', userId, userName, x: null, y: null });
+  });
+}
+
+function sendCursor() {
+  _cursorRafId = null;
+  if (!connected) return;
+  const now = Date.now();
+  if (now - _lastCursorSend < 30) { _cursorRafId = requestAnimationFrame(sendCursor); return; }
+  _lastCursorSend = now;
+  broadcast({ type: 'cursor', userId, userName, x: _pendingCX, y: _pendingCY });
+}
+
+function handleRemoteCursor(payload) {
+  const { userId: rid, userName: rname, x, y } = payload;
+  if (rid === userId) return;
+  if (!presence[rid]) { presence[rid] = { name: rname, color: USER_COLORS[_colorIdx++ % USER_COLORS.length], activeField: null }; renderPresence(); }
+  const color = presence[rid].color;
+  let el = document.getElementById('cursor-' + rid);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cursor-' + rid;
+    el.className = 'remote-cursor';
+    el.style.color = color;
+    el.innerHTML = '<div class="remote-cursor-icon"></div><div class="remote-cursor-label" style="background:' + color + '">' + esc(rname) + '</div>';
+    document.getElementById('canvas-wrap').appendChild(el);
+  }
+  if (x === null) { el.style.display = 'none'; } else { el.style.display = ''; el.style.left = x + 'px'; el.style.top = y + 'px'; }
+}
+
+// ════════════════════════════════════════════════════════
+// PRESENCE
+// ════════════════════════════════════════════════════════
+function broadcastPresence(activeField) { if (connected) broadcast({ type: 'presence', userId, userName, activeField }); }
+function handleRemotePresence(payload) {
+  const { userId: rid, userName: rname, activeField } = payload;
+  if (rid === userId) return;
+  if (!presence[rid]) { presence[rid] = { name: rname, color: USER_COLORS[_colorIdx++ % USER_COLORS.length], activeField }; broadcastPresence(null); }
+  else presence[rid].activeField = activeField;
+  renderPresence();
+}
+function handlePresenceLeave(rid) {
+  delete presence[rid];
+  const c = document.getElementById('cursor-' + rid); if (c) c.remove();
+  renderPresence();
+}
+function renderPresence() {
+  const bar = document.getElementById('presence-avatars');
+  const mc = '#17e88f';
+  let h = '<div class="avatar" style="color:' + mc + ';border-color:' + mc + '22;background:' + mc + '11;"><div class="avatar-dot" style="background:' + mc + '">' + initials(userName) + '</div><span class="avatar-name">' + esc(userName) + '</span><span class="avatar-field">(you)</span></div>';
+  Object.entries(presence).forEach(([id, p]) => {
+    h += '<div class="avatar" style="color:' + p.color + ';border-color:' + p.color + '22;background:' + p.color + '11;"><div class="avatar-dot" style="background:' + p.color + '">' + initials(p.name) + '</div><span class="avatar-name">' + esc(p.name) + '</span>' + (p.activeField ? '<span class="avatar-field">· ' + esc(p.activeField) + '</span>' : '') + '</div>';
+  });
+  bar.innerHTML = h;
+}
+
+// ════════════════════════════════════════════════════════
+// ELEMENT DEFAULTS
+// ════════════════════════════════════════════════════════
+function defaultElements() {
+  return [];  // start blank — user adds elements
+}
+
+function makeTextEl(x, y) {
+  return { id: _nextId++, type: 'text', x, y, w: 300, h: 60, content: 'Text', bulletMode: false, style: { fontSize: '16px', fontWeight: '400', color: '#111111', fontFamily: 'Calibre, sans-serif', lineHeight: '1.4', letterSpacing: '0', textAlign: 'left', paragraphSpacing: '0' } };
+}
+
+function makeImgEl(x, y) {
+  return { id: _nextId++, type: 'img', x, y, w: 300, h: 200, imageUrl: '', objectFit: 'cover' };
+}
+
+function makeRectEl(x, y) {
+  return { id: _nextId++, type: 'rect', x, y, w: 200, h: 120,
+    fillColor: '#003f2d', strokeColor: '', strokeWidth: 0, borderRadius: 0 };
+}
+
+// ════════════════════════════════════════════════════════
+// ADD / DELETE ELEMENTS
+// ════════════════════════════════════════════════════════
+function addElement(type) {
+  _pushUndo();
+  const el = type === 'text' ? makeTextEl(Math.round(AW/2 - 150), Math.round(AH/2 - 30))
+           : type === 'rect' ? makeRectEl(Math.round(AW/2 - 100), Math.round(AH/2 - 60))
+           : makeImgEl(Math.round(AW/2 - 150), Math.round(AH/2 - 100));
+  elements.push(el);
+  createElDOM(el);
+  selectEl(el.id);
+  if (connected) broadcast({ type: 'el_add', el: JSON.parse(JSON.stringify(el)), userId, userName });
+  scheduleSave();
+}
+
+function deleteSelected() {
+  if (!_selectedIds.size) return;
+  // Only delete unlocked elements
+  const ids = [..._selectedIds].filter(id => {
+    const el = elements.find(e => e.id === id);
+    return el && !el.locked;
+  });
+  if (!ids.length) return;
+  _pushUndo();
+  ids.forEach(id => {
+    const idx = elements.findIndex(e => e.id === id);
+    if (idx !== -1) elements.splice(idx, 1);
+    const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+    if (wrap) wrap.remove();
+    if (connected) broadcast({ type: 'el_delete', id, userId, userName });
+  });
+  _selectedIds.clear(); _selectedId = null;
+  showProps(null);
+  document.getElementById('btn-delete').style.display = 'none';
+  document.getElementById('btn-copy').style.display   = 'none';
+  scheduleSave();
+}
+
+function handleRemoteCrop(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  el.imgX = payload.imgX; el.imgY = payload.imgY;
+  el.imgW = payload.imgW; el.imgH = payload.imgH;
+  el.hasCrop = payload.hasCrop || true;
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  const img  = wrap && wrap.querySelector('.cv-img-crop');
+  if (img) {
+    img.style.left   = el.imgX + 'px'; img.style.top    = el.imgY + 'px';
+    img.style.width  = el.imgW + 'px'; img.style.height = el.imgH + 'px';
+  }
+}
+
+function handleRemoteRectProp(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el || el.type !== 'rect') return;
+  el[payload.key] = payload.value;
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  const rect = wrap && wrap.querySelector('.cv-rect-inner');
+  if (rect) applyRectStyle(rect, el);
+  if (_selectedId === payload.id) showProps(payload.id);
+}
+
+function handleRemoteReorder(payload) {
+  // Reorder elements array to match remote order, then re-render DOM
+  const idOrder = payload.elements; // array of ids in new order
+  elements.sort((a, b) => idOrder.indexOf(a.id) - idOrder.indexOf(b.id));
+  const card = document.getElementById('canvas-card');
+  // Re-append in new order
+  elements.forEach(el => {
+    const wrap = card.querySelector('.cv-el[data-id="' + el.id + '"]');
+    if (wrap) card.appendChild(wrap);
+  });
+}
+
+function handleRemoteFullState(payload) {
+  if (!payload.elements) return;
+  elements = payload.elements;
+  _nextId = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
+  renderCanvas();
+  deselectAll();
+}
+
+function handleRemoteAdd(payload) {
+  const el = payload.el;
+  if (!el || elements.find(e => e.id === el.id)) return;
+  elements.push(el);
+  if (el.id >= _nextId) _nextId = el.id + 1;
+  createElDOM(el);
+}
+function handleRemoteDelete(payload) {
+  const idx = elements.findIndex(e => e.id === payload.id);
+  if (idx !== -1) elements.splice(idx, 1);
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  if (wrap) wrap.remove();
+  _selectedIds.delete(payload.id);
+  if (_selectedId === payload.id) { _selectedId = null; showProps(null); document.getElementById('btn-delete').style.display = 'none'; document.getElementById('btn-copy').style.display = 'none'; }
+}
+
+// ════════════════════════════════════════════════════════
+// CREATE ELEMENT DOM
+// ════════════════════════════════════════════════════════
+function createElDOM(el) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cv-el' + (el.locked ? ' locked' : '');
+  wrap.dataset.id = String(el.id);
+  wrap.style.cssText = 'left:' + el.x + 'px;top:' + el.y + 'px;width:' + el.w + 'px;height:' + el.h + 'px;';
+
+  // Outline + 8 resize handles + optional lock badge
+  wrap.innerHTML = '<div class="cv-el-outline"></div>'
+    + ['nw','n','ne','e','se','s','sw','w'].map(d => '<div class="cv-rh cv-rh-' + d + '"></div>').join('')
+    + (el.locked ? '<div class="cv-lock-badge">🔒</div>' : '');
+
+  if (el.type === 'rect') {
+    const rect = document.createElement('div');
+    rect.className = 'cv-rect-inner';
+    applyRectStyle(rect, el);
+    wrap.appendChild(rect);
+
+  } else if (el.type === 'img') {
+    // Clip frame — the visible box
+    const clip = document.createElement('div');
+    clip.className = 'cv-img-clip';
+
+    const img = document.createElement('img');
+    img.className = 'cv-img-crop';
+    img.draggable = false;
+    img.style.display = el.imageUrl ? 'block' : 'none';
+    if (el.imageUrl) img.src = el.imageUrl;
+
+    // Only use absolute crop positioning if the user has actively used crop mode.
+    // Otherwise use normal object-fit so contain/cover/fill work correctly.
+    const hasCropData = el.hasCrop && el.imgW;
+    if (hasCropData) {
+      img.style.position = 'absolute';
+      img.style.width    = el.imgW + 'px';
+      img.style.height   = el.imgH + 'px';
+      img.style.left     = (el.imgX || 0) + 'px';
+      img.style.top      = (el.imgY || 0) + 'px';
+    } else {
+      // Normal fit — fill the clip frame using objectFit
+      img.style.position   = 'relative';
+      img.style.width      = '100%';
+      img.style.height     = '100%';
+      img.style.objectFit  = el.objectFit || 'cover';
+      img.style.objectPosition = 'center';
+    }
+
+    const ph = document.createElement('div');
+    ph.className = 'cv-img-ph';
+    ph.innerHTML = '<div class="cv-img-ph-icon">🖼</div><span>Click to upload image</span>';
+    ph.style.display = el.imageUrl ? 'none' : '';
+
+    clip.appendChild(img);
+    clip.appendChild(ph);
+    wrap.appendChild(clip);
+
+    ph.addEventListener('click', e => { e.stopPropagation(); triggerImageUpload(el.id); });
+
+    // Double-click enters crop/pan mode
+    wrap.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      if (el.imageUrl) enterCropMode(el.id);
+    });
+
+  } else {
+    const inner = document.createElement('div');
+    inner.className = 'cv-text-inner';
+    inner.contentEditable = 'false';
+    inner.dataset.eid = String(el.id);
+    inner.innerHTML = el.content || '';
+    applyTextStyle(inner, el.style || {});
+    // Apply bullet CSS if bulletMode is set on element
+    if (el.bulletMode) applyBulletCSS(inner, el.id, true);
+    if (el.isAgentBox) wrap.dataset.agentBox = '1';
+    wrap.appendChild(inner);
+
+    wrap.addEventListener('dblclick', e => { e.stopPropagation(); enterEditMode(wrap, inner, el.id); });
+
+    inner.addEventListener('input', () => {
+      el.content = sanitiseHTML(inner.innerHTML);
+      if (connected) broadcast({ type: 'el_content', id: el.id, content: el.content, userId, userName });
+      scheduleSave();
+    });
+  }
+
+  // Select on click (shift = add to multi-selection)
+  wrap.addEventListener('mousedown', e => {
+    if (wrap.classList.contains('editing')) return;
+    if (e.target.classList.contains('cv-rh')) return;
+    if (_cropId === el.id) return; // in crop mode — image drag handler takes over
+    e.stopPropagation();
+    if (e.button !== 0) return;
+
+    if (e.shiftKey) {
+      // Shift+click: toggle this element in/out of selection
+      selectEl(el.id, true);
+    } else if (_selectedIds.has(el.id) && _selectedIds.size > 1) {
+      // Clicking an already-selected element in a multi-selection:
+      // DON'T change selection — just start dragging the whole group
+      startMultiDrag(e);
+      return;
+    } else {
+      // Normal click: select just this element
+      selectEl(el.id, false);
+    }
+    startMultiDrag(e);
+  });
+
+  // Resize handles — in crop mode, resize the image inside; otherwise resize the box
+  wrap.querySelectorAll('.cv-rh').forEach(rh => {
+    const m = rh.className.match(/cv-rh-(\w+)/);
+    if (!m) return;
+    rh.addEventListener('mousedown', e => {
+      e.stopPropagation(); e.preventDefault();
+      if (_cropId === el.id) {
+        _cropResizeStart(e, el.id, rh); // resize image inside the box
+      } else {
+        startResize(e, wrap, m[1]);     // resize the box itself
+      }
+    });
+  });
+
+  document.getElementById('canvas-card').appendChild(wrap);
+  return wrap;
+}
+
+function applyTextStyle(inner, s) {
+  inner.style.fontSize      = s.fontSize      || '16px';
+  inner.style.fontWeight    = s.fontWeight    || '400';
+  inner.style.color         = s.color         || '#111111';
+  inner.style.fontFamily    = s.fontFamily    || 'Arial, sans-serif';
+  inner.style.lineHeight    = s.lineHeight    || '1.4';
+  inner.style.letterSpacing = s.letterSpacing || '0';
+  inner.style.textAlign     = s.textAlign     || 'left';
+  // Paragraph spacing: injected via a dynamic <style> tag keyed to the element's data-elid
+  applyParaSpacing(inner, s.paragraphSpacing || '0');
+}
+
+function applyRectStyle(rect, el) {
+  rect.style.width        = '100%';
+  rect.style.height       = '100%';
+  rect.style.background   = el.fillColor   || 'transparent';
+  rect.style.opacity      = el.fillOpacity !== undefined ? el.fillOpacity : 1;
+  rect.style.borderStyle  = el.strokeWidth ? 'solid' : 'none';
+  rect.style.borderWidth  = (el.strokeWidth || 0) + 'px';
+  rect.style.borderColor  = el.strokeColor || 'transparent';
+  rect.style.borderRadius = (el.borderRadius || 0) + 'px';
+  rect.style.boxSizing    = 'border-box';
+}
+
+function setRectOpacity(id, value) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'rect' || el.locked) return;
+  el.fillOpacity = parseFloat(value);
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const rect = wrap && wrap.querySelector('.cv-rect-inner');
+  if (rect) rect.style.opacity = el.fillOpacity;
+  if (connected) broadcast({ type: 'el_rect_prop', id, key: 'fillOpacity', value: el.fillOpacity, userId, userName });
+  scheduleSave();
+}
+
+function setRectProp(id, key, value) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'rect' || el.locked) return;
+  _pushUndo();
+  el[key] = value;
+  const wrap  = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const rect  = wrap && wrap.querySelector('.cv-rect-inner');
+  if (rect) applyRectStyle(rect, el);
+  if (connected) broadcast({ type: 'el_rect_prop', id, key, value, userId, userName });
+  scheduleSave();
+}
+
+// Inject a per-element <style> rule for paragraph spacing.
+// contentEditable produces <div> for new lines (Chrome/Edge) and <br> (Firefox/Safari).
+// We target both: div + div and br spacing via a wrapper class.
+function _applyElStyle(eid, px, bulletOn) {
+  let tag = document.getElementById('el-style-' + eid);
+  if (!tag) { tag = document.createElement('style'); tag.id = 'el-style-' + eid; document.head.appendChild(tag); }
+  if (bulletOn) {
+    tag.textContent =
+      `.cv-text-inner[data-eid="${eid}"] > div { padding-left:1.3ch; text-indent:-1.3ch; margin-top:${px}px; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:first-child { margin-top:0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div::before { content:"\\2013\\00A0"; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:empty { padding-left:0; text-indent:0; margin-top:0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:empty::before { content:""; }`;
+  } else {
+    tag.textContent =
+      `.cv-text-inner[data-eid="${eid}"] > div { padding-left:0; text-indent:0; margin-top:${px}px; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div:first-child { margin-top:0; }` +
+      `.cv-text-inner[data-eid="${eid}"] > div::before { content:""; }`;
+  }
+}
+
+function applyParaSpacing(inner, value) {
+  const eid = inner && inner.dataset && inner.dataset.eid;
+  if (!eid) return;
+  const px = parseFloat(value) || 0;
+  inner.dataset.paraSpacing = String(px);
+  const existingTag = document.getElementById('el-style-' + eid);
+  const bulletOn = existingTag ? existingTag.textContent.includes('\\2013') : false;
+  _applyElStyle(eid, px, bulletOn);
+}
+
+// ════════════════════════════════════════════════════════
+// PROPERTIES PANEL
+// ════════════════════════════════════════════════════════
+function showProps(id) {
+  const panel = document.getElementById('props-panel');
+  if (!id) { panel.innerHTML = '<div class="sb-empty">Click an element on the canvas to edit its properties.</div>'; return; }
+  const el = elements.find(e => e.id === id);
+  if (!el) { panel.innerHTML = '<div class="sb-empty">—</div>'; return; }
+
+  const locked = !!el.locked;
+  const dis    = locked ? 'disabled' : '';
+  const lkDim  = locked ? 'opacity:.4;pointer-events:none;' : '';
+
+  // Lock button — same for text and image
+  const lockBtn = '<button class="lock-btn ' + (locked?'locked':'unlocked') + '" onclick="toggleLock(' + id + ')">'
+    + (locked ? '🔒 Locked — click to unlock' : '🔓 Unlocked — click to lock') + '</button>'
+    + (locked ? '<div style="font-size:10px;color:var(--amber);background:#2a1800;border:1px solid #5a3000;border-radius:3px;padding:6px 8px;margin-bottom:8px;line-height:1.5;">'
+      + (el.type === 'text' ? 'Position, size &amp; formatting are locked.<br>Double-click to still edit text.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
+      + '</div>' : '');
+
+  // Layer order block — shared, always enabled (locking doesn't affect layer order)
+  const layerIdx = elements.findIndex(e => e.id === id);
+  const layerTotal = elements.length;
+  const layerBlock = '<div class="prop-section">Layer</div>'
+    + '<div style="display:flex;gap:4px;margin-bottom:6px;">'
+    + '<button class="align-btn" style="flex:1;font-size:10px;" title="Bring to Front" onclick="reorderElement(' + id + ',\'front\')">⬆ Front</button>'
+    + '<button class="align-btn" style="flex:1;font-size:10px;" title="Bring Forward" onclick="reorderElement(' + id + ',\'fwd\')">↑ Fwd</button>'
+    + '<button class="align-btn" style="flex:1;font-size:10px;" title="Send Backward" onclick="reorderElement(' + id + ',\'bwd\')">↓ Bwd</button>'
+    + '<button class="align-btn" style="flex:1;font-size:10px;" title="Send to Back" onclick="reorderElement(' + id + ',\'back\')">⬇ Back</button>'
+    + '</div>'
+    + '<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:4px;">Layer ' + (layerIdx + 1) + ' of ' + layerTotal + '</div>';
+
+  // Position & Size block — shared
+  const posSizeBlock = '<div style="' + lkDim + '">'
+    + '<div class="prop-section">Position &amp; Size</div>'
+    + '<div class="prop-row"><span class="prop-label">X / Y</span>'
+    + '<input class="prop-input" type="number" value="' + el.x + '" style="width:52px;flex:none;" ' + dis + ' onchange="setPosSize(' + id + ',\'x\',+this.value)">'
+    + '<input class="prop-input" type="number" value="' + el.y + '" style="width:52px;flex:none;" ' + dis + ' onchange="setPosSize(' + id + ',\'y\',+this.value)"></div>'
+    + '<div class="prop-row"><span class="prop-label">W / H</span>'
+    + '<input class="prop-input" type="number" value="' + el.w + '" style="width:52px;flex:none;" ' + dis + ' onchange="setPosSize(' + id + ',\'w\',+this.value)">'
+    + '<input class="prop-input" type="number" value="' + el.h + '" style="width:52px;flex:none;" ' + dis + ' onchange="setPosSize(' + id + ',\'h\',+this.value)"></div>'
+    + '</div>';
+
+  const delBtn = '<button class="del-btn" style="' + lkDim + '" onclick="deleteSelected()">✕ Delete Element</button>';
+
+  if (el.type === 'text') {
+    const s = el.style || {};
+
+    // Font options
+    const fonts = [['Calibre, sans-serif','Calibre'],['FinancierDisplay, serif','Financier Display'],
+      ['Arial, sans-serif','Arial'],['Georgia, serif','Georgia'],['Times New Roman, serif','Times New Roman'],
+      ['Helvetica, sans-serif','Helvetica'],['Verdana, sans-serif','Verdana'],['Courier New, monospace','Courier New']];
+    const fontOpts = fonts.map(function(f){ return '<option value="' + f[0] + '"' + ((s.fontFamily||'Calibre, sans-serif')===f[0]?' selected':'') + '>' + f[1] + '</option>'; }).join('');
+
+    const weightOpts = [['300','Light'],['400','Regular'],['500','Medium'],['600','Semi Bold'],['700','Bold'],['800','Extra Bold']]
+      .map(function(w){ return '<option value="' + w[0] + '"' + ((s.fontWeight||'400')===w[0]?' selected':'') + '>' + w[1] + '</option>'; }).join('');
+
+    const alignBtns = [['left','⬅'],['center','⬌'],['right','➡'],['justify','≡']]
+      .map(function(a){ return '<button class="align-btn ' + ((s.textAlign||'left')===a[0]?'active':'') + '" onclick="setProp(' + id + ',\'textAlign\',\'' + a[0] + '\');this.closest(\'.align-btns\').querySelectorAll(\'.align-btn\').forEach(function(b){b.classList.remove(\'active\')});this.classList.add(\'active\')" title="' + a[0] + '">' + a[1] + '</button>'; }).join('');
+
+    const formattingBlock = '<div style="' + lkDim + '">'
+      + '<div class="prop-section">Typography</div>'
+      + '<div class="prop-row"><span class="prop-label">Font</span><select class="prop-input" ' + dis + ' onchange="setProp(' + id + ',\'fontFamily\',this.value)">' + fontOpts + '</select></div>'
+      + '<div class="prop-row"><span class="prop-label">Size</span><input class="prop-input" type="number" min="6" max="200" value="' + parseFloat(s.fontSize||16) + '" ' + dis + ' onchange="setProp(' + id + ',\'fontSize\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
+      + '<div class="prop-row"><span class="prop-label">Weight</span><select class="prop-input" ' + dis + ' onchange="setProp(' + id + ',\'fontWeight\',this.value)">' + weightOpts + '</select></div>'
+      + '<div class="prop-row"><span class="prop-label">Format</span><div class="align-btns">'
+      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'bold\')" title="Bold selected text" style="font-weight:700;width:28px;"><b>B</b></button>'
+      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'italic\')" title="Italic selected text" style="font-style:italic;width:28px;"><i>I</i></button>'
+      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'underline\')" title="Underline selected text" style="text-decoration:underline;width:28px;">U</button>'
+      + '</div></div>'
+      + '<div class="prop-row"><span class="prop-label">Colour</span>'
+      + '<input class="prop-input" type="color" value="' + (s.color||'#111111') + '" ' + dis + ' oninput="setProp(' + id + ',\'color\',this.value)">'
+      + '<input class="prop-input" type="text" value="' + (s.color||'#111111') + '" style="width:68px;flex:none;" ' + dis + ' oninput="setProp(' + id + ',\'color\',this.value);this.previousElementSibling.value=this.value"></div>'
+      + '<div class="prop-row"><span class="prop-label">Align</span><div class="align-btns">' + alignBtns + '</div></div>'
+      + '<div class="prop-section" style="margin-top:8px;">List</div>'
+      + '<div class="prop-row"><button class="align-btn' + (el.bulletMode?' active':'') + '" id="btn-bullet-' + id + '" ' + dis + ' onclick="toggleBullets(' + id + ')" style="width:100%;padding:6px 10px;font-size:11px;font-weight:700;justify-content:center;">– Dash Bullets</button></div>'
+      + '<div class="prop-section" style="margin-top:8px;">Agent Box</div>'
+      + '<div class="prop-row"><button class="align-btn' + (el.isAgentBox ? ' active' : '') + '" onclick="toggleAgentBox(' + id + ')" style="width:100%;padding:6px 10px;font-size:11px;font-weight:700;justify-content:center;">'
+      + (el.isAgentBox ? '★ Agent Box (click to remove)' : '☆ Make Agent Box') + '</button></div>'
+      + '<div class="prop-section">Spacing</div>'
+      + '<div class="prop-row"><span class="prop-label">Line</span><input class="prop-input" type="number" min="0.5" max="5" step="0.05" value="' + parseFloat(s.lineHeight||1.4) + '" ' + dis + ' onchange="setProp(' + id + ',\'lineHeight\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">×</span></div>'
+      + '<div class="prop-row"><span class="prop-label">Letter</span><input class="prop-input" type="number" min="-5" max="20" step="0.5" value="' + parseFloat(s.letterSpacing||0) + '" ' + dis + ' onchange="setProp(' + id + ',\'letterSpacing\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
+      + '<div class="prop-row"><span class="prop-label">Para gap</span><input class="prop-input" type="number" min="0" max="200" step="1" value="' + parseFloat(s.paragraphSpacing||0) + '" ' + dis + ' onchange="setProp(' + id + ',\'paragraphSpacing\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
+      + '</div>';
+
+    panel.innerHTML = lockBtn + formattingBlock + layerBlock + posSizeBlock + delBtn;
+
+  } else if (el.type === 'img') {
+    // Image element
+    const fitOpts = ['cover','contain','fill'].map(function(v){ return '<option value="' + v + '"' + ((el.objectFit||'cover')===v?' selected':'') + '>' + v + '</option>'; }).join('');
+    const imgBlock = '<div class="prop-section">Image</div>'
+      + '<label class="img-upload-area" id="img-upload-area-' + id + '" ondragover="imgDragOver(event,' + id + ')" ondragleave="imgDragLeave(' + id + ')" ondrop="imgDrop(event,' + id + ')">'
+      + '<input type="file" accept="image/*" onchange="imgFileSelected(this,' + id + ')">'
+      + '<div class="img-uploading" id="img-uploading-' + id + '"><div class="spinner"></div> Uploading…</div>'
+      + (el.imageUrl ? '<img class="img-preview-thumb" src="' + el.imageUrl + '" style="display:block">' : '<div class="img-upload-label"><span>Click or drag</span> to upload image</div>')
+      + '</label>'
+      + (el.imageUrl ? '<button class="del-btn" style="margin-top:6px;color:var(--amber);border-color:#7a4a00;background:#2a1800;" onclick="clearImage(' + id + ')">✕ Remove Image</button>' : '')
+      + '<div class="prop-section" style="margin-top:10px;">Fit</div>'
+      + '<div class="prop-row"><span class="prop-label">Object fit</span><select class="prop-input" onchange="setImgFit(' + id + ',this.value)">' + fitOpts + '</select></div>';
+
+    panel.innerHTML = lockBtn + imgBlock + layerBlock + posSizeBlock + delBtn;
+
+  } else if (el.type === 'rect') {
+    // Colour box properties
+    const rectBlock = '<div class="prop-section">Fill</div>'
+      + '<div class="prop-row"><span class="prop-label">Colour</span>'
+      + '<input class="prop-input" type="color" value="' + (el.fillColor||'#003f2d') + '" ' + dis + ' oninput="setRectProp(' + id + ',\'fillColor\',this.value)">'
+      + '<input class="prop-input" type="text" value="' + (el.fillColor||'#003f2d') + '" style="width:68px;flex:none;" ' + dis + ' oninput="setRectProp(' + id + ',\'fillColor\',this.value);this.previousElementSibling.value=this.value"></div>'
+      + '<div class="prop-row"><span class="prop-label">Opacity</span>'
+      + '<input class="prop-input" type="range" min="0" max="100" value="' + Math.round((el.fillOpacity||1)*100) + '" style="flex:1;" oninput="setRectOpacity(' + id + ',this.value/100);this.nextElementSibling.textContent=this.value+\'%\'">'
+      + '<span style="font-size:10px;color:var(--muted);min-width:28px;text-align:right;">' + Math.round((el.fillOpacity||1)*100) + '%</span></div>'
+      + '<div class="prop-section">Border</div>'
+      + '<div class="prop-row"><span class="prop-label">Colour</span>'
+      + '<input class="prop-input" type="color" value="' + (el.strokeColor||'#000000') + '" ' + dis + ' oninput="setRectProp(' + id + ',\'strokeColor\',this.value)">'
+      + '<input class="prop-input" type="text" value="' + (el.strokeColor||'#000000') + '" style="width:68px;flex:none;" ' + dis + ' oninput="setRectProp(' + id + ',\'strokeColor\',this.value);this.previousElementSibling.value=this.value"></div>'
+      + '<div class="prop-row"><span class="prop-label">Width</span>'
+      + '<input class="prop-input" type="number" min="0" max="50" value="' + (el.strokeWidth||0) + '" ' + dis + ' onchange="setRectProp(' + id + ',\'strokeWidth\',+this.value)">'
+      + '<span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
+      + '<div class="prop-section">Shape</div>'
+      + '<div class="prop-row"><span class="prop-label">Radius</span>'
+      + '<input class="prop-input" type="number" min="0" max="400" value="' + (el.borderRadius||0) + '" ' + dis + ' onchange="setRectProp(' + id + ',\'borderRadius\',+this.value)">'
+      + '<span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>';
+
+    panel.innerHTML = lockBtn + rectBlock + layerBlock + posSizeBlock + delBtn;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// LOCK
+// ════════════════════════════════════════════════════════
+function toggleLock(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  el.locked = !el.locked;
+
+  // Update DOM — locked elements get a badge and different outline
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (wrap) {
+    wrap.classList.toggle('locked', el.locked);
+    // Add/remove lock badge on the canvas element
+    let badge = wrap.querySelector('.cv-lock-badge');
+    if (el.locked) {
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'cv-lock-badge';
+        badge.textContent = '🔒';
+        wrap.appendChild(badge);
+      }
+    } else {
+      if (badge) badge.remove();
+    }
+  }
+
+  if (connected) broadcast({ type: 'el_lock', id, locked: el.locked, userId, userName });
+  showProps(id); // refresh panel to show/hide controls
+  scheduleSave();
+}
+
+// Handle remote lock change
+function handleRemoteLock(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  el.locked = payload.locked;
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  if (wrap) {
+    wrap.classList.toggle('locked', el.locked);
+    let badge = wrap.querySelector('.cv-lock-badge');
+    if (el.locked && !badge) {
+      badge = document.createElement('div');
+      badge.className = 'cv-lock-badge';
+      badge.textContent = '🔒';
+      wrap.appendChild(badge);
+    } else if (!el.locked && badge) {
+      badge.remove();
+    }
+  }
+  if (_selectedId === payload.id) showProps(payload.id);
+}
+
+// ════════════════════════════════════════════════════════
+// PROPERTY SETTERS (local + broadcast)
+// ════════════════════════════════════════════════════════
+function setProp(id, key, value) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'text') return;
+  if (el.locked) return; // formatting locked
+  if (!el.style) el.style = {};
+  _pushUndo();
+  el.style[key] = value;
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
+  if (inner) {
+    if (key === 'paragraphSpacing') {
+      applyParaSpacing(inner, value);
+    } else {
+      inner.style[key] = value;
+    }
+  }
+  if (connected) broadcast({ type: 'el_style', id, key, value, userId, userName });
+  scheduleSave();
+}
+
+// ── Format selection (bold / italic / underline) ──────────────────
+// Saves the current browser selection BEFORE the sidebar button click
+// steals focus, then restores it and applies execCommand to that range.
+let _savedSelection = null; // { range, innerId }
+
+// Call this on mousedown on any formatting button (before focus shifts)
+function saveSelectionBeforeBlur(event) {
+  event.preventDefault(); // prevent button from stealing focus
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    _savedSelection = sel.getRangeAt(0).cloneRange();
+  }
+}
+
+function formatSelection(cmd) {
+  let inner = null;
+  let targetId = null;
+
+  // If we have a saved selection from a mousedown, restore it
+  if (_savedSelection) {
+    // Find which inner element the selection is inside
+    const container = _savedSelection.commonAncestorContainer;
+    const el = container.nodeType === Node.ELEMENT_NODE
+      ? container.closest('.cv-text-inner')
+      : container.parentElement && container.parentElement.closest('.cv-text-inner');
+    if (el) {
+      inner = el;
+      const wrap = el.closest('.cv-el');
+      if (wrap) targetId = parseInt(wrap.dataset.id);
+      // Restore selection
+      el.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(_savedSelection);
+    }
+    _savedSelection = null;
+  } else {
+    // Fallback: use current focus
+    const active = document.activeElement;
+    inner = active && active.classList.contains('cv-text-inner') ? active : null;
+    if (inner) {
+      const wrap = inner.closest('.cv-el');
+      if (wrap) targetId = parseInt(wrap.dataset.id);
+    }
+  }
+
+  if (!inner) {
+    // Nothing focused or selected — if element is selected, enter edit mode + select all
+    if (_selectedId) {
+      const wrap = document.querySelector('.cv-el[data-id="' + _selectedId + '"]');
+      const inn  = wrap ? wrap.querySelector('.cv-text-inner') : null;
+      if (wrap && inn) {
+        enterEditMode(wrap, inn, _selectedId);
+        document.execCommand('selectAll', false, null);
+        document.execCommand(cmd, false, null);
+        saveFormattedContent(_selectedId);
+      }
+    }
+    return;
+  }
+
+  // Check if anything is actually selected (non-collapsed)
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) {
+    // Nothing selected — select all text in this box then apply
+    document.execCommand('selectAll', false, null);
+  }
+
+  document.execCommand(cmd, false, null);
+
+  if (targetId) saveFormattedContent(targetId);
+}
+
+function saveFormattedContent(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  const wrap  = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
+  if (!inner) return;
+  el.content = sanitiseHTML(inner.innerHTML);
+  if (connected) broadcast({ type: 'el_content', id, content: el.content, userId, userName });
+  scheduleSave();
+}
+
+// ── Bullet toggle ─────────────────────────────────────────────────
+// Prefixes every non-empty line with "– " (en-dash + space).
+// Toggle off removes the prefix. Uses DOM parsing for reliable detection.
+// ── Bullet mode ───────────────────────────────────────────────────
+// bulletMode is stored as a flag on the element — NOT embedded in content.
+// On screen we apply CSS to prefix each line with "– "; in PDF we prefix in extractPDFLines.
+// This avoids the problem of bullets getting stored as content then double-applied.
+
+// ════════════════════════════════════════════════════════
+// AGENT BOX — floating dropdown on canvas click
+// ════════════════════════════════════════════════════════
+let _agentDropdownForId = null;
+
+function toggleAgentBox(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  _pushUndo();
+  el.isAgentBox = !el.isAgentBox;
+  if (connected) broadcast({ type: 'el_style', id, key: 'isAgentBox', value: el.isAgentBox, userId, userName });
+  scheduleSave();
+  showProps(id);
+  // Update the visual marker on the element
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (wrap) wrap.dataset.agentBox = el.isAgentBox ? '1' : '';
+}
+
+function showAgentDropdown(id) {
+  if (!agentList.length) return;
+  _agentDropdownForId = id;
+  const dropdown = document.getElementById('agent-dropdown');
+  const list     = document.getElementById('agent-dropdown-list');
+
+  // Clear search and build full list
+  const searchEl = document.getElementById('agent-search');
+  if (searchEl) { searchEl.value = ''; }
+  renderAgentItems(id, agentList);
+
+  // Position dropdown below the element on the canvas
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (wrap) {
+    const rect = wrap.getBoundingClientRect();
+    dropdown.style.display = 'block';
+    // Position below element, aligned to left edge
+    let top  = rect.bottom + 6;
+    let left = rect.left;
+    // Keep within viewport
+    const ddW = 220;
+    if (left + ddW > window.innerWidth - 10) left = window.innerWidth - ddW - 10;
+    if (top + 300 > window.innerHeight - 10) top = rect.top - Math.min(300, top) - 6;
+    dropdown.style.top  = top + 'px';
+    dropdown.style.left = left + 'px';
+  }
+
+  // Focus search input
+  setTimeout(() => {
+    const s = document.getElementById('agent-search');
+    if (s) s.focus();
+  }, 60);
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('mousedown', _closeAgentDropdown, { once: true });
+  }, 80);
+}
+
+function renderAgentItems(id, filtered) {
+  const list = document.getElementById('agent-dropdown-list');
+  if (!list) return;
+  list.innerHTML =
+    '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
+    + '<span class="agent-dd-name" style="color:#6b7175;">— No agent (leave blank)</span>'
+    + '</div>'
+    + (filtered.length
+        ? filtered.map(a =>
+            '<div class="agent-dd-item" onclick="insertAgent(' + id + ',\'' + a.id + '\')">'
+            + '<span class="agent-dd-name">' + esc(a.name) + '</span>'
+            + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
+            + '</div>'
+          ).join('')
+        : '<div style="padding:10px 8px;font-size:11px;color:#6b7175;">No agents match</div>'
+      );
+}
+
+function filterAgentList(query) {
+  const id = _agentDropdownForId;
+  if (!id) return;
+  const q = query.trim().toLowerCase();
+  const filtered = q ? agentList.filter(a =>
+    a.name.toLowerCase().includes(q) ||
+    (a.phone && a.phone.toLowerCase().includes(q))
+  ) : agentList;
+  renderAgentItems(id, filtered);
+}
+
+function _closeAgentDropdown(e) {
+  const dd = document.getElementById('agent-dropdown');
+  if (dd && !dd.contains(e && e.target)) {
+    dd.style.display = 'none';
+    _agentDropdownForId = null;
+  }
+}
+
+function hideAgentDropdown() {
+  const dd = document.getElementById('agent-dropdown');
+  if (dd) dd.style.display = 'none';
+  _agentDropdownForId = null;
+}
+
+// ── Agent insertion ────────────────────────────────────────────────
+function insertAgent(id, agentId) {
+  hideAgentDropdown();
+  if (!agentId) return;
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'text') return;
+
+  _pushUndo();
+
+  let newContent;
+  if (agentId === '__blank__') {
+    // Clear the box
+    newContent = '<div></div>';
+  } else {
+    const agent = agentList.find(a => String(a.id) === String(agentId));
+    if (!agent) return;
+    // Format: Name PhoneNumber — replaces the entire box content
+    const line = agent.name + (agent.phone ? ' ' + agent.phone : '');
+    newContent = '<div>' + esc(line) + '</div>';
+  }
+
+  el.content = newContent;
+
+  const wrap  = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const inner = wrap && wrap.querySelector('.cv-text-inner');
+  if (inner) inner.innerHTML = newContent;
+
+  if (connected) broadcast({ type: 'el_content', id, content: newContent, userId, userName });
+  scheduleSave();
+}
+
+function toggleBullets(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'text') return;
+
+  el.bulletMode = !el.bulletMode;
+
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
+
+  // Apply/remove bullet CSS via the per-element style tag
+  applyBulletCSS(inner, el.id, el.bulletMode);
+
+  // Update button active state
+  const btn = document.getElementById('btn-bullet-' + id);
+  if (btn) btn.classList.toggle('active', el.bulletMode);
+
+  if (connected) broadcast({ type: 'el_style', id, key: 'bulletMode', value: el.bulletMode, userId, userName });
+  scheduleSave();
+}
+
+// Apply bullet CSS — uses combined _applyElStyle so para spacing is preserved
+function applyBulletCSS(inner, eid, on) {
+  if (!eid) return;
+  const px = inner ? (parseFloat(inner.dataset.paraSpacing) || 0) : 0;
+  _applyElStyle(eid, px, on);
+}
+
+function setPosSize(id, key, value) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  if (el.locked) return;
+  el[key] = value;
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (wrap) {
+    if (key === 'x') wrap.style.left   = value + 'px';
+    if (key === 'y') wrap.style.top    = value + 'px';
+    if (key === 'w') wrap.style.width  = value + 'px';
+    if (key === 'h') wrap.style.height = value + 'px';
+  }
+  if (connected) broadcast({ type: 'el_resize', id, x: el.x, y: el.y, w: el.w, h: el.h, userId, userName });
+  scheduleSave();
+}
+
+function setImgFit(id, fit) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  el.objectFit = fit;
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const img = wrap ? wrap.querySelector('img') : null;
+  if (img) img.style.objectFit = fit;
+  if (connected) broadcast({ type: 'el_style', id, key: 'objectFit', value: fit, userId, userName });
+  scheduleSave();
+}
+
+// ════════════════════════════════════════════════════════
+// REMOTE STYLE / CONTENT HANDLERS
+// ════════════════════════════════════════════════════════
+function handleRemoteStyle(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  if (el.type === 'text') {
+    if (!el.style) el.style = {};
+    el.style[payload.key] = payload.value;
+    const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
+    if (inner) {
+      if (payload.key === 'paragraphSpacing') {
+        applyParaSpacing(inner, payload.value);
+      } else if (payload.key === 'bulletMode') {
+        el.bulletMode = payload.value;
+        const remoteWrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+        const remoteInner = remoteWrap && remoteWrap.querySelector('.cv-text-inner');
+        if (remoteInner) applyBulletCSS(remoteInner, payload.id, payload.value);
+        const btn = document.getElementById('btn-bullet-' + payload.id);
+        if (btn) btn.classList.toggle('active', payload.value);
+      } else {
+        inner.style[payload.key] = payload.value;
+      }
+    }
+  } else {
+    el.objectFit = payload.value;
+    const img = wrap ? wrap.querySelector('img') : null;
+    if (img) img.style.objectFit = payload.value;
+  }
+  if (_selectedId === payload.id) showProps(payload.id);
+}
+
+function handleRemoteContent(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  el.content = payload.content;
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
+  if (inner && !wrap.classList.contains('editing')) inner.innerHTML = payload.content;
+}
+
+function handleRemoteMove(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (el) { el.x = payload.x; el.y = payload.y; }
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  if (wrap) { wrap.style.left = payload.x + 'px'; wrap.style.top = payload.y + 'px'; }
+  if (_selectedId === payload.id) showProps(payload.id);
+}
+
+function handleRemoteResize(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (el) { el.x=payload.x; el.y=payload.y; el.w=payload.w; el.h=payload.h; }
+  const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
+  if (wrap) wrap.style.cssText = 'left:'+payload.x+'px;top:'+payload.y+'px;width:'+payload.w+'px;height:'+payload.h+'px;';
+  if (_selectedId === payload.id) showProps(payload.id);
+}
+
+function handleRemoteImage(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  el.imageUrl = payload.url;
+  applyImageToEl(el.id, payload.url);
+  if (_selectedId === el.id) showProps(el.id);
+}
+
+// ════════════════════════════════════════════════════════
+// IMAGE UPLOAD (per element)
+// ════════════════════════════════════════════════════════
+function triggerImageUpload(id) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = () => { if (input.files[0]) uploadImageForEl(input.files[0], id); };
+  input.click();
+}
+function imgDragOver(e, id) { e.preventDefault(); const a = document.getElementById('img-upload-area-' + id); if (a) a.classList.add('drag-over'); }
+function imgDragLeave(id)   { const a = document.getElementById('img-upload-area-' + id); if (a) a.classList.remove('drag-over'); }
+function imgDrop(e, id)     { e.preventDefault(); imgDragLeave(id); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) uploadImageForEl(f, id); }
+function imgFileSelected(input, id) { if (input.files[0]) uploadImageForEl(input.files[0], id); input.value = ''; }
+
+async function uploadImageForEl(file, id) {
+  const spinner = document.getElementById('img-uploading-' + id);
+  if (spinner) spinner.classList.add('active');
+  setSave('saving','Uploading…');
+  try {
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = PORTFOLIO_ID + '/' + PROPERTY_ID + '/' + id + '_' + Date.now() + '.' + ext;
+    const res  = await fetch(SUPA_URL + '/storage/v1/object/assets/' + path, { method: 'POST', headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': file.type }, body: file });
+    if (!res.ok) throw new Error(await res.text());
+    const url = SUPA_URL + '/storage/v1/object/public/assets/' + path;
+    const el = elements.find(e => e.id === id);
+    if (el) el.imageUrl = url;
+    applyImageToEl(id, url);
+    if (connected) broadcast({ type: 'el_image', id, url, userId, userName });
+    if (_selectedId === id) showProps(id);
+    scheduleSave();
+  } catch(e) { setSave('error','Upload failed'); } finally { if (spinner) spinner.classList.remove('active'); }
+}
+
+function clearImage(id) {
+  const el = elements.find(e => e.id === id);
+  if (el) el.imageUrl = '';
+  applyImageToEl(id, '');
+  if (connected) broadcast({ type: 'el_image', id, url: '', userId, userName });
+  if (_selectedId === id) showProps(id);
+  scheduleSave();
+}
+
+function applyImageToEl(id, url) {
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  if (!wrap) return;
+  const img = wrap.querySelector('.cv-img-crop');
+  const ph  = wrap.querySelector('.cv-img-ph');
+  if (ph) ph.style.display = url ? 'none' : '';
+  if (img) {
+    img.src = url || '';
+    img.style.display = url ? 'block' : 'none';
+    if (url) {
+      // Clear all crop data — revert to normal objectFit rendering
+      const el = elements.find(e => e.id === id);
+      if (el) { delete el.imgX; delete el.imgY; delete el.imgW; delete el.imgH; }
+      img.style.position      = 'relative';
+      img.style.width         = '100%';
+      img.style.height        = '100%';
+      img.style.left          = '';
+      img.style.top           = '';
+      img.style.objectFit     = (elements.find(e=>e.id===id)||{}).objectFit || 'cover';
+      img.style.objectPosition= 'center';
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// SELECT / DESELECT  (multi-select aware)
+// ════════════════════════════════════════════════════════
+function selectEl(id, addToSelection) {
+  exitCropMode();
+  if (addToSelection) {
+    // Shift+click: toggle this id in the set
+    if (_selectedIds.has(id)) {
+      _selectedIds.delete(id);
+      document.querySelector('.cv-el[data-id="' + id + '"]')?.classList.remove('selected','multi-selected');
+    } else {
+      _selectedIds.add(id);
+      document.querySelector('.cv-el[data-id="' + id + '"]')?.classList.add('multi-selected');
+    }
+    _selectedId = _selectedIds.size === 1 ? [..._selectedIds][0] : id;
+  } else {
+    // Normal click: single selection
+    _selectedIds.clear();
+    _selectedIds.add(id);
+    _selectedId = id;
+    document.querySelectorAll('.cv-el').forEach(w => {
+      w.classList.remove('selected','multi-selected');
+      exitEditMode(w);
+    });
+    document.querySelector('.cv-el[data-id="' + id + '"]')?.classList.add('selected');
+  }
+
+  _updateMultiSelectUI();
+
+  // If this is an agent box, show the floating agent picker
+  if (!addToSelection && agentList.length > 0) {
+    const el = elements.find(e => e.id === id);
+    if (el && el.isAgentBox) {
+      setTimeout(() => showAgentDropdown(id), 80);
+    } else {
+      hideAgentDropdown();
+    }
+  }
+}
+
+function _updateMultiSelectUI() {
+  const count = _selectedIds.size;
+  const delBtn  = document.getElementById('btn-delete');
+  const copyBtn = document.getElementById('btn-copy');
+  if (count === 0) {
+    delBtn.style.display  = 'none';
+    copyBtn.style.display = 'none';
+    showProps(null);
+  } else if (count === 1) {
+    delBtn.style.display  = 'flex';
+    copyBtn.style.display = 'flex';
+    showProps(_selectedId);
+  } else {
+    delBtn.style.display  = 'flex';
+    copyBtn.style.display = 'none'; // copy not supported for multi yet
+    showProps(null); // no props panel for multi
+  }
+
+  // Visual: apply correct class to all elements
+  document.querySelectorAll('.cv-el').forEach(w => {
+    const wid = parseInt(w.dataset.id);
+    if (!_selectedIds.has(wid)) { w.classList.remove('selected','multi-selected'); return; }
+    if (count === 1) { w.classList.add('selected'); w.classList.remove('multi-selected'); }
+    else             { w.classList.add('multi-selected'); w.classList.remove('selected'); }
+  });
+}
+
+function deselectAll() {
+  hideAgentDropdown();
+  exitCropMode();
+  _selectedIds.clear();
+  _selectedId = null;
+  document.querySelectorAll('.cv-el').forEach(w => { w.classList.remove('selected','multi-selected'); exitEditMode(w); });
+  showProps(null);
+  document.getElementById('btn-delete').style.display = 'none';
+  document.getElementById('btn-copy').style.display   = 'none';
+}
+
+function canvasBgClick(e) {
+  if (e.target !== document.getElementById('canvas-card') && e.target !== document.getElementById('marquee') && !e.target.classList.contains('artboard-size-badge')) return;
+  if (_cropId !== null) { exitCropMode(); return; }
+  // Start marquee on background mousedown
+  if (e.button === 0) startMarquee(e);
+}
+
+// ── Marquee (rubber-band) selection ──────────────────────────────
+let _marqueeStart = null;
+
+function startMarquee(e) {
+  const card    = document.getElementById('canvas-card');
+  const marquee = document.getElementById('marquee');
+  const rect    = card.getBoundingClientRect();
+  const sx      = (e.clientX - rect.left) / _zoom;
+  const sy      = (e.clientY - rect.top)  / _zoom;
+  _marqueeStart = { sx, sy };
+
+  marquee.style.cssText = 'left:'+sx+'px;top:'+sy+'px;width:0;height:0;display:block;';
+
+  const onMove = (ev) => {
+    const cx = (ev.clientX - rect.left) / _zoom;
+    const cy = (ev.clientY - rect.top)  / _zoom;
+    const x  = Math.min(sx, cx), y = Math.min(sy, cy);
+    const w  = Math.abs(cx - sx), h = Math.abs(cy - sy);
+    marquee.style.cssText = 'left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;display:block;';
+  };
+
+  const onUp = (ev) => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    marquee.style.display = 'none';
+    if (!_marqueeStart) return;
+    const cx  = (ev.clientX - rect.left) / _zoom;
+    const cy  = (ev.clientY - rect.top)  / _zoom;
+    const sel = { x: Math.min(sx,cx), y: Math.min(sy,cy), r: Math.max(sx,cx), b: Math.max(sy,cy) };
+    if (sel.r - sel.x < 4 && sel.b - sel.y < 4) { deselectAll(); return; } // tiny drag = deselect
+    // Find all elements overlapping the marquee
+    const hit = elements.filter(el =>
+      el.x < sel.r && el.x + el.w > sel.x &&
+      el.y < sel.b && el.y + el.h > sel.y
+    );
+    deselectAll();
+    hit.forEach(el => {
+      _selectedIds.add(el.id);
+      _selectedId = el.id;
+    });
+    _updateMultiSelectUI();
+    _marqueeStart = null;
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ════════════════════════════════════════════════════════
+// EDIT MODE (double-click to type)
+// ════════════════════════════════════════════════════════
+function enterEditMode(wrap, inner, id) {
+  selectEl(id);
+  wrap.classList.add('editing');
+  inner.contentEditable = 'true';
+  inner.focus();
+  const range = document.createRange();
+  range.selectNodeContents(inner); range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(range);
+  inner.onblur = () => exitEditMode(wrap);
+
+  // Paste handler — strip all incoming formatting, preserve plain text only
+  inner._pasteHandler = function(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (!text) return;
+    // Insert plain text at cursor position, preserving existing element styles
+    const sel2 = window.getSelection();
+    if (!sel2.rangeCount) return;
+    sel2.deleteFromDocument();
+    // Split pasted text on newlines — each line becomes a separate div
+    const lines = text.split(/\r?\n/);
+    const r = sel2.getRangeAt(0);
+    lines.forEach((line, i) => {
+      if (i > 0) {
+        // Insert a new block div for each newline
+        const div = document.createElement('div');
+        div.textContent = line || '\u200B';
+        r.insertNode(div);
+        r.setStartAfter(div);
+        r.collapse(true);
+      } else {
+        const tn = document.createTextNode(line);
+        r.insertNode(tn);
+        r.setStartAfter(tn);
+        r.collapse(true);
+      }
+    });
+    sel2.removeAllRanges(); sel2.addRange(r);
+    // Trigger content save
+    inner.dispatchEvent(new Event('input'));
+  };
+  inner.addEventListener('paste', inner._pasteHandler);
+}
+
+function exitEditMode(wrap) {
+  if (!wrap) return;
+  wrap.classList.remove('editing');
+  const inner = wrap.querySelector('.cv-text-inner');
+  if (inner) {
+    inner.contentEditable = 'false';
+    inner.onblur = null;
+    if (inner._pasteHandler) {
+      inner.removeEventListener('paste', inner._pasteHandler);
+      inner._pasteHandler = null;
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// DRAG — moves all selected elements together
+// ════════════════════════════════════════════════════════
+function startMultiDrag(e) {
+  e.preventDefault();
+  // Filter out locked elements from dragging
+  const ids = [..._selectedIds].filter(id => {
+    const el = elements.find(el => el.id === id);
+    return el && !el.locked;
+  });
+  if (!ids.length) return;
+
+  // Snapshot start positions
+  const starts = {};
+  ids.forEach(id => {
+    const el = elements.find(el => el.id === id);
+    if (el) starts[id] = { x: el.x, y: el.y };
+  });
+  const mx0 = e.clientX, my0 = e.clientY;
+  let moved = false;
+
+  function onMove(ev) {
+    let dx = Math.round((ev.clientX - mx0) / _zoom);
+    let dy = Math.round((ev.clientY - my0) / _zoom);
+    if (!moved && Math.abs(dx) + Math.abs(dy) > 3) { _pushUndo(); moved = true; }
+    // Shift = constrain to dominant axis (straight line drag)
+    if (ev.shiftKey) {
+      if (Math.abs(dx) >= Math.abs(dy)) dy = 0; else dx = 0;
+    }
+    ids.forEach(id => {
+      const el = elements.find(el => el.id === id);
+      if (!el || !starts[id]) return;
+      el.x = Math.max(0, Math.min(AW - el.w, starts[id].x + dx));
+      el.y = Math.max(0, Math.min(AH - el.h, starts[id].y + dy));
+      const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+      if (wrap) { wrap.style.left = el.x + 'px'; wrap.style.top = el.y + 'px'; }
+    });
+  }
+
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (!moved) return;
+    ids.forEach(id => {
+      const el = elements.find(el => el.id === id);
+      if (!el) return;
+      if (connected) broadcast({ type: 'el_move', id, x: el.x, y: el.y, userId, userName });
+    });
+    if (_selectedIds.size === 1) showProps(_selectedId);
+    scheduleSave();
+  }
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ════════════════════════════════════════════════════════
+// RESIZE (8-handle)
+// ════════════════════════════════════════════════════════
+function startResize(e, wrap, dir) {
+  e.preventDefault();
+  const id = parseInt(wrap.dataset.id);
+  const el = elements.find(el => el.id === id);
+  if (!el || el.locked) return;
+  const sx=e.clientX, sy=e.clientY, ox=el.x, oy=el.y, ow=el.w, oh=el.h;
+  function onMove(ev) {
+    const dx=ev.clientX-sx, dy=ev.clientY-sy;
+    let nx=ox,ny=oy,nw=ow,nh=oh;
+    if(dir.includes('e')) nw=Math.max(40,ow+dx);
+    if(dir.includes('s')) nh=Math.max(20,oh+dy);
+    if(dir.includes('w')){ nx=ox+dx; nw=Math.max(40,ow-dx); }
+    if(dir.includes('n')){ ny=oy+dy; nh=Math.max(20,oh-dy); }
+    el.x=nx;el.y=ny;el.w=nw;el.h=nh;
+    wrap.style.cssText='left:'+nx+'px;top:'+ny+'px;width:'+nw+'px;height:'+nh+'px;';
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (_selectedId === id) showProps(id);
+    if(connected) broadcast({ type:'el_resize', id, x:el.x, y:el.y, w:el.w, h:el.h, userId, userName });
+    scheduleSave();
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ════════════════════════════════════════════════════════
+// IMAGE CROP / PAN MODE
+// ════════════════════════════════════════════════════════
+function enterCropMode(id) {
+  if (_cropId === id) return;
+  exitCropMode();
+  _cropId = id;
+  const el   = elements.find(e => e.id === id);
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const clip = wrap && wrap.querySelector('.cv-img-clip');
+  const img  = clip && clip.querySelector('img');
+  if (!el || !wrap || !img) return;
+
+  // Initialise crop state — always start at box size with correct aspect ratio.
+  // Never use naturalWidth/Height directly as 4K photos would expand to thousands of px.
+  const natW = img.naturalWidth  || el.w;
+  const natH = img.naturalHeight || el.h;
+  const aspect = natW / natH;
+  // Start image sized to COVER the box (same as objectFit:cover) so nothing looks wrong
+  if (!el.imgW || !el.imgH) {
+    if (el.w / el.h > aspect) {
+      // Box wider than image aspect — match width, image is taller than box
+      el.imgW = el.w;
+      el.imgH = Math.round(el.w / aspect);
+    } else {
+      // Box taller — match height, image is wider than box
+      el.imgH = el.h;
+      el.imgW = Math.round(el.h * aspect);
+    }
+  }
+  if (el.imgX === undefined) el.imgX = 0;
+  if (el.imgY === undefined) el.imgY = 0;
+
+  // Switch from objectFit to absolute crop positioning
+  img.style.position      = 'absolute';
+  img.style.objectFit     = '';
+  img.style.objectPosition= '';
+  img.style.width         = el.imgW + 'px';
+  img.style.height        = el.imgH + 'px';
+  img.style.left          = el.imgX + 'px';
+  img.style.top           = el.imgY + 'px';
+
+  wrap.classList.add('crop-mode');
+
+  // Label
+  let lbl = wrap.querySelector('.crop-label');
+  if (!lbl) {
+    lbl = document.createElement('div');
+    lbl.className = 'crop-label';
+    lbl.textContent = '✂ Crop — drag image to pan · ghost corners to scale · Shift = proportional · Esc to exit';
+    wrap.appendChild(lbl);
+  }
+
+  // Ghost image — full image shown faded behind the clip
+  let ghost = wrap.querySelector('.cv-img-ghost');
+  if (!ghost) {
+    ghost = document.createElement('img');
+    ghost.className = 'cv-img-ghost';
+    ghost.src = el.imageUrl;
+    ghost.draggable = false;
+    wrap.appendChild(ghost);
+  }
+
+  // Ghost corner handles — 4 squares at the image boundary corners
+  // These resize imgW/imgH (the image scale) from each corner
+  const GHOST_DIRS = ['nw','ne','sw','se'];
+  GHOST_DIRS.forEach(dir => {
+    const gh = document.createElement('div');
+    gh.className = 'cv-ghost-rh cv-ghost-rh-' + dir;
+    gh.dataset.dir = dir;
+    wrap.appendChild(gh);
+    gh.addEventListener('mousedown', e => {
+      e.stopPropagation(); e.preventDefault();
+      _cropGhostResizeStart(e, id, dir);
+    });
+  });
+
+  _updateCropGhost(el, wrap);
+
+  // Make img draggable for panning
+  img.addEventListener('mousedown', _cropImgMousedown);
+}
+
+function exitCropMode() {
+  if (_cropId === null) return;
+  const wrap = document.querySelector('.cv-el[data-id="' + _cropId + '"]');
+  if (wrap) {
+    wrap.classList.remove('crop-mode');
+    wrap.querySelector('.crop-label') ?.remove();
+    wrap.querySelector('.cv-img-ghost') ?.remove();
+    wrap.querySelectorAll('.cv-ghost-rh').forEach(h => h.remove());
+    const img = wrap.querySelector('.cv-img-crop');
+    if (img) img.removeEventListener('mousedown', _cropImgMousedown);
+  }
+  const el = elements.find(e => e.id === _cropId);
+  if (el) {
+    // Mark that real crop data exists so createElDOM uses absolute positioning
+    el.hasCrop = true;
+    if (connected) broadcast({ type: 'el_crop', id: _cropId, imgX: el.imgX, imgY: el.imgY, imgW: el.imgW, imgH: el.imgH, hasCrop: true, userId, userName });
+    scheduleSave();
+  }
+  _cropId = null;
+}
+
+function _updateCropGhost(el, wrap) {
+  const ghost = wrap.querySelector('.cv-img-ghost');
+  const ix = el.imgX || 0, iy = el.imgY || 0;
+  const iw = el.imgW || el.w, ih = el.imgH || el.h;
+
+  if (ghost) {
+    ghost.src          = el.imageUrl;
+    ghost.style.left   = ix + 'px';
+    ghost.style.top    = iy + 'px';
+    ghost.style.width  = iw + 'px';
+    ghost.style.height = ih + 'px';
+  }
+
+  // Position ghost corner handles at the 4 corners of the ghost image
+  const RH = 8; // handle size px, half = 4
+  const corners = { nw:[ix,iy], ne:[ix+iw,iy], sw:[ix,iy+ih], se:[ix+iw,iy+ih] };
+  wrap.querySelectorAll('.cv-ghost-rh').forEach(h => {
+    const [cx, cy] = corners[h.dataset.dir] || [0,0];
+    h.style.left = (cx - 5) + 'px';
+    h.style.top  = (cy - 5) + 'px';
+  });
+}
+
+function _cropImgMousedown(e) {
+  if (_cropId === null) return;
+  e.preventDefault(); e.stopPropagation();
+  const el   = elements.find(el => el.id === _cropId);
+  const wrap = document.querySelector('.cv-el[data-id="' + _cropId + '"]');
+  const img  = e.currentTarget;
+  if (!el || !wrap) return;
+  const sx = e.clientX, sy = e.clientY;
+  const ox = el.imgX || 0, oy = el.imgY || 0;
+  function onMove(ev) {
+    const dx = Math.round((ev.clientX - sx) / _zoom);
+    const dy = Math.round((ev.clientY - sy) / _zoom);
+    // Clamp so image edge doesn't go past clip edge
+    const iw = el.imgW || el.w, ih = el.imgH || el.h;
+    el.imgX = Math.min(0, Math.max(el.w - iw, ox + dx));
+    el.imgY = Math.min(0, Math.max(el.h - ih, oy + dy));
+    img.style.left = el.imgX + 'px';
+    img.style.top  = el.imgY + 'px';
+    _updateCropGhost(el, wrap);
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// Box resize handles in crop mode — these resize the visible crop box, not the image
+function _cropResizeStart(e, id, rh) {
+  const el   = elements.find(el => el.id === id);
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const img  = wrap && wrap.querySelector('.cv-img-crop');
+  if (!el || !img) return;
+  const dir = rh.className.match(/cv-rh-(\w+)/)[1];
+  const sx=e.clientX, sy=e.clientY;
+  const ox=el.x, oy=el.y, ow=el.w, oh=el.h;
+  // Also remember image position relative to the box
+  const origImgX = el.imgX || 0, origImgY = el.imgY || 0;
+  const origAspect = (el.imgW || el.w) / (el.imgH || el.h);
+  function onMove(ev) {
+    const dx = Math.round((ev.clientX - sx) / _zoom);
+    const dy = Math.round((ev.clientY - sy) / _zoom);
+    let nx=ox,ny=oy,nw=ow,nh=oh;
+    if(dir.includes('e')) nw=Math.max(40,ow+dx);
+    if(dir.includes('s')) nh=Math.max(20,oh+dy);
+    if(dir.includes('w')){ nx=ox+dx; nw=Math.max(40,ow-dx); }
+    if(dir.includes('n')){ ny=oy+dy; nh=Math.max(20,oh-dy); }
+    if(ev.shiftKey && dir.length===2){ // corner — lock aspect of the BOX
+      const ba = ow/oh; const cdx=nw-ow, cdy=nh-oh;
+      if(Math.abs(cdx)>Math.abs(cdy)) nh=Math.round(nw/ba); else nw=Math.round(nh*ba);
+    }
+    el.x=nx;el.y=ny;el.w=nw;el.h=nh;
+    wrap.style.cssText='left:'+nx+'px;top:'+ny+'px;width:'+nw+'px;height:'+nh+'px;';
+    // Keep image clamped within new box
+    el.imgX = Math.min(0, Math.max(nw-(el.imgW||nw), el.imgX||0));
+    el.imgY = Math.min(0, Math.max(nh-(el.imgH||nh), el.imgY||0));
+    img.style.left = el.imgX+'px'; img.style.top = el.imgY+'px';
+    _updateCropGhost(el, wrap);
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if(connected) broadcast({type:'el_resize', id, x:el.x, y:el.y, w:el.w, h:el.h, userId, userName});
+    scheduleSave();
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// Ghost corner handles — resize the IMAGE (imgW/imgH) from each corner
+// The box stays fixed; the image gets larger/smaller inside it.
+// Shift key locks the image's aspect ratio.
+function _cropGhostResizeStart(e, id, dir) {
+  const el   = elements.find(el => el.id === id);
+  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const img  = wrap && wrap.querySelector('.cv-img-crop');
+  if (!el || !img) return;
+  e.preventDefault();
+  const sx = e.clientX, sy = e.clientY;
+  const ow = el.imgW || el.w, oh = el.imgH || el.h;
+  const ox = el.imgX || 0,   oy = el.imgY || 0;
+  const aspect = ow / oh; // original image aspect ratio
+
+  function onMove(ev) {
+    const dx = Math.round((ev.clientX - sx) / _zoom);
+    const dy = Math.round((ev.clientY - sy) / _zoom);
+    let nw = ow, nh = oh, nx = ox, ny = oy;
+
+    // Each corner scales the image from that corner
+    if (dir === 'se') { nw = Math.max(el.w, ow + dx); nh = Math.max(el.h, oh + dy); }
+    if (dir === 'sw') { nw = Math.max(el.w, ow - dx); nh = Math.max(el.h, oh + dy); nx = Math.min(0, ox + (ow - nw)); }
+    if (dir === 'ne') { nw = Math.max(el.w, ow + dx); nh = Math.max(el.h, oh - dy); ny = Math.min(0, oy + (oh - nh)); }
+    if (dir === 'nw') { nw = Math.max(el.w, ow - dx); nh = Math.max(el.h, oh - dy); nx = Math.min(0, ox + (ow - nw)); ny = Math.min(0, oy + (oh - nh)); }
+
+    // Shift = maintain original image aspect ratio
+    if (ev.shiftKey) {
+      const useDx = Math.abs(dx) > Math.abs(dy);
+      if (useDx) { nh = Math.round(nw / aspect); }
+      else        { nw = Math.round(nh * aspect); }
+      nw = Math.max(el.w, nw); nh = Math.max(el.h, nh);
+      // Recalculate offset for w/n directions
+      if (dir === 'sw' || dir === 'nw') nx = Math.min(0, ox + (ow - nw));
+      if (dir === 'ne' || dir === 'nw') ny = Math.min(0, oy + (oh - nh));
+    }
+
+    el.imgW = nw; el.imgH = nh; el.imgX = nx; el.imgY = ny;
+    img.style.width  = nw + 'px'; img.style.height = nh + 'px';
+    img.style.left   = nx + 'px'; img.style.top    = ny + 'px';
+    _updateCropGhost(el, wrap);
+  }
+
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ════════════════════════════════════════════════════════
+// RENDER CANVAS
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// TAB MANAGEMENT
+// ════════════════════════════════════════════════════════
+
+// Get the Supabase property_id for a given tab slug
+function tabSupabaseId(slug) {
+  // Brochure = bare property_id (backward compatible with existing data)
+  return slug === 'brochure' ? PROPERTY_ID : PROPERTY_ID + '_' + slug;
+}
+
+// Get active (visible) tab definitions
+function activeTabs() {
+  return TAB_DEFINITIONS.filter(t => t.active);
+}
+
+// Get a tab definition by slug
+function tabDef(slug) {
+  return TAB_DEFINITIONS.find(t => t.slug === slug);
+}
+
+// Render the tab bar — active tab is current page, others are links
+function renderTabBar() {
+  const bar = document.getElementById('tab-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  activeTabs().forEach(tab => {
+    const isActive = tab.slug === _currentTab;
+    const div = document.createElement('div');
+    div.className = 'tab-item' + (isActive ? ' active' : '');
+    div.dataset.slug = tab.slug;
+    div.innerHTML = esc(tab.name) + ' <span class="tab-size">' + tab.mmW + '×' + tab.mmH + 'mm</span>';
+    if (isActive) {
+      // Current tab — no navigation, just right-click for context menu
+      div.style.cursor = 'default';
+    } else {
+      div.onclick = () => switchTab(tab.slug);
+      div.style.cursor = 'pointer';
+    }
+    div.oncontextmenu = (e) => { e.preventDefault(); openTabCtx(e, tab.slug); };
+    bar.appendChild(div);
+  });
+}
+
+// Build the URL for a given tab — preserves all current URL params
+function tabUrl(slug) {
+  const p = new URLSearchParams(window.location.search);
+  p.set('tab', slug);
+  return window.location.pathname + '?' + p.toString();
+}
+
+// Switch tab = save current tab synchronously then navigate
+function switchTab(slug) {
+  if (slug === _currentTab) return;
+  clearTimeout(saveTimer);
+
+  // Use synchronous XHR to save BEFORE page unloads — async fetch gets cancelled by navigation
+  if (elements.length > 0) {
+    saveSyncBeforeUnload(_currentTab, elements);
+  }
+
+  window.location.href = tabUrl(slug);
+}
+
+// Synchronous save using XHR — survives page navigation unlike fetch()
+function saveSyncBeforeUnload(slug, els) {
+  try {
+    const def = tabDef(slug);
+    const sid = tabSupabaseId(slug);
+    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH });
+    const body = JSON.stringify({ portfolio_id: PORTFOLIO_ID, property_id: sid, state_json: stateJson, updated_at: new Date().toISOString() });
+
+    // First check if row exists (sync XHR)
+    const checkXhr = new XMLHttpRequest();
+    checkXhr.open('GET', SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', false); // false = synchronous
+    checkXhr.setRequestHeader('apikey', SUPA_KEY);
+    checkXhr.setRequestHeader('Authorization', 'Bearer ' + ((window.Auth && Auth.tokenSync && Auth.tokenSync()) || SUPA_KEY));
+    checkXhr.send();
+
+    let method = 'POST', saveUrl = SUPA_URL + '/rest/v1/projects';
+    if (checkXhr.status === 200) {
+      const rows = JSON.parse(checkXhr.responseText || '[]');
+      if (rows && rows.length) {
+        method  = 'PATCH';
+        saveUrl = SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id;
+      }
+    }
+
+    const saveXhr = new XMLHttpRequest();
+    saveXhr.open(method, saveUrl, false); // synchronous
+    saveXhr.setRequestHeader('apikey', SUPA_KEY);
+    saveXhr.setRequestHeader('Authorization', 'Bearer ' + ((window.Auth && Auth.tokenSync && Auth.tokenSync()) || SUPA_KEY));
+    saveXhr.setRequestHeader('Content-Type', 'application/json');
+    saveXhr.setRequestHeader('Prefer', 'return=minimal');
+    saveXhr.send(body);
+  } catch(e) {
+    console.warn('[Tab] Sync save failed:', e);
+  }
+}
+
+// Load a tab's state from Supabase with a 8s timeout
+async function loadTabFromSupabase(slug) {
+  const sid = tabSupabaseId(slug);
+  const url  = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=state_json';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }, signal: controller.signal });
+    clearTimeout(timeout);
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const saved = JSON.parse(rows[0].state_json);
+      if (saved.elements) {
+        // Only apply if we're still on this tab (user may have switched again)
+        if (_currentTab === slug) {
+          elements = saved.elements;
+          _nextId  = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
+          const def = tabDef(slug);
+          if (def && saved.mmW) { def.mmW = saved.mmW; def.mmH = saved.mmH; }
+        }
+      }
+    }
+  } catch(e) {
+    clearTimeout(timeout);
+    console.warn('[Tab] Load failed/timeout:', slug, e.message);
+  }
+}
+
+// Fire-and-forget save of a snapshot (used during tab switching)
+function saveTabSnapshot(slug, snapshotElements) {
+  const def  = tabDef(slug);
+  const sid  = tabSupabaseId(slug);
+  const body = JSON.stringify({
+    portfolio_id: PORTFOLIO_ID,
+    property_id:  sid,
+    state_json:   JSON.stringify({ elements: snapshotElements, mmW: def && def.mmW, mmH: def && def.mmH }),
+    updated_at:   new Date().toISOString()
+  });
+  // Use check+PATCH/POST since upsert requires DB unique constraint
+  fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id',
+    { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } })
+    .then(r => r.json())
+    .then(rows => {
+      const method  = rows && rows.length ? 'PATCH' : 'POST';
+      const saveUrl = rows && rows.length
+        ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
+        : SUPA_URL + '/rest/v1/projects';
+      return fetch(saveUrl, { method, headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body });
+    })
+    .catch(e => console.warn('[Tab] Snapshot save failed:', slug, e));
+}
+
+// Save a tab's state to Supabase (awaitable — used for explicit saves)
+async function saveTabToSupabase(slug) {
+  try {
+    const def  = tabDef(slug);
+    const sid  = tabSupabaseId(slug);
+    const body = {
+      portfolio_id: PORTFOLIO_ID,
+      property_id:  sid,
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH }),
+      updated_at:   new Date().toISOString()
+    };
+    const check = await fetch(
+      SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } }
+    );
+    const rows  = await check.json();
+    const method  = rows && rows.length ? 'PATCH' : 'POST';
+    const saveUrl = rows && rows.length
+      ? SUPA_URL + '/rest/v1/projects?id=eq.' + rows[0].id
+      : SUPA_URL + '/rest/v1/projects';
+    await fetch(saveUrl, {
+      method,
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+  } catch(e) { console.warn('[Tab] Save failed:', slug, e); }
+}
+
+function updateArtboardLabels(def) {
+  const topEl = document.getElementById('ab-label-top-text');
+  if (topEl) topEl.textContent = def.name + '  ·  ' + def.mmW + ' × ' + def.mmH + ' mm  ·  PDF: 300 dpi';
+}
+
+// ── Tab context menu ───────────────────────────────────────────────
+function openTabCtx(e, slug) {
+  _ctxTabSlug = slug;
+  const menu = document.getElementById('tab-ctx');
+  // Only show Edit Size for admins
+  const sizeItem = document.getElementById('ctx-edit-size');
+  if (sizeItem) sizeItem.style.display = USER_ROLE === 'admin' ? '' : 'none';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top  = e.clientY + 'px';
+  menu.classList.add('open');
+  setTimeout(() => document.addEventListener('mousedown', _closeTabCtx, { once: true }), 50);
+}
+function _closeTabCtx(e) {
+  const menu = document.getElementById('tab-ctx');
+  if (menu && !menu.contains(e && e.target)) menu.classList.remove('open');
+}
+function closeTabCtx() { document.getElementById('tab-ctx').classList.remove('open'); }
+
+function ctxRenameTab() {
+  closeTabCtx();
+  const def = tabDef(_ctxTabSlug);
+  if (!def) return;
+  const newName = prompt('Rename tab:', def.name);
+  if (newName && newName.trim()) {
+    def.name = newName.trim();
+    renderTabBar();
+    saveTabDefs();
+  }
+}
+
+function ctxDuplicateTab() {
+  closeTabCtx();
+  const srcSlug = _ctxTabSlug;
+  const def = tabDef(srcSlug);
+  if (!def) return;
+
+  const newSlug = srcSlug + '_copy_' + Date.now();
+  const newDef  = { ...def, slug: newSlug, name: def.name + ' (copy)', active: true, builtIn: false };
+  TAB_DEFINITIONS.push(newDef);
+
+  // Show loading state
+  setSave('saving', 'Duplicating…');
+
+  // Do everything async: save content first, then defs, then navigate
+  _duplicateTabContent(srcSlug, newSlug, newDef).then(() => {
+    return saveTabDefs();
+  }).then(() => {
+    setSave('saved', 'Duplicated');
+    renderTabBar();
+    // Navigate to the new tab — content is fully saved so it will load correctly
+    window.location.href = tabUrl(newSlug);
+  }).catch(e => {
+    console.warn('[B4] Duplicate failed:', e);
+    setSave('error', 'Duplicate failed');
+    // Still render the tab bar so the new tab is visible even if content failed
+    renderTabBar();
+  });
+}
+
+async function _duplicateTabContent(srcSlug, newSlug, newDef) {
+  // 1. Get source elements
+  let srcElements;
+  if (srcSlug === _currentTab) {
+    srcElements = JSON.parse(JSON.stringify(elements));
+    console.log('[B4] Dup: using live elements, count:', srcElements.length);
+  } else {
+    const sid = tabSupabaseId(srcSlug);
+    console.log('[B4] Dup: fetching src from Supabase, sid:', sid);
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=state_json';
+    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const rows = await res.json();
+    console.log('[B4] Dup: src rows found:', rows && rows.length);
+    srcElements = (rows && rows.length && rows[0].state_json)
+      ? (JSON.parse(rows[0].state_json).elements || [])
+      : [];
+  }
+  console.log('[B4] Dup: srcElements count:', srcElements.length, 'mmW:', newDef.mmW, 'mmH:', newDef.mmH);
+
+  // 2. Save to new tab's Supabase row
+  const newSid = tabSupabaseId(newSlug);
+  console.log('[B4] Dup: saving to newSid:', newSid);
+  const stateJson = JSON.stringify({ elements: srcElements, mmW: newDef.mmW, mmH: newDef.mmH });
+  const body = JSON.stringify({
+    portfolio_id: PORTFOLIO_ID,
+    property_id:  newSid,
+    state_json:   stateJson,
+    updated_at:   new Date().toISOString()
+  });
+
+  // Check if row exists first (safest approach)
+  const checkRes = await fetch(
+    SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(newSid) + '&select=id',
+    { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } }
+  );
+  const checkRows = await checkRes.json();
+  const method  = checkRows && checkRows.length ? 'PATCH' : 'POST';
+  const saveUrl = checkRows && checkRows.length
+    ? SUPA_URL + '/rest/v1/projects?id=eq.' + checkRows[0].id
+    : SUPA_URL + '/rest/v1/projects';
+
+  const saveRes = await fetch(saveUrl, {
+    method,
+    headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body
+  });
+  console.log('[B4] Dup: save status:', saveRes.status, method, newSid);
+  if (!saveRes.ok) {
+    const errText = await saveRes.text();
+    console.error('[B4] Dup: save failed:', errText);
+    throw new Error('Save failed: ' + saveRes.status + ' ' + errText);
+  }
+}
+
+function ctxDeleteTab() {
+  closeTabCtx();
+  const def = tabDef(_ctxTabSlug);
+  if (!def) return;
+  if (def.builtIn) { alert('The Brochure tab cannot be deleted.'); return; }
+  if (activeTabs().length <= 1) { alert('You must have at least one active tab.'); return; }
+  if (!confirm('Delete tab "' + def.name + '"? This cannot be undone.')) return;
+  def.active = false;
+  saveTabDefs();
+  if (_currentTab === _ctxTabSlug) {
+    const next = activeTabs()[0];
+    if (next) switchTab(next.slug);
+  } else {
+    renderTabBar();
+  }
+}
+
+function ctxEditSize() {
+  closeTabCtx();
+  if (USER_ROLE !== 'admin') return;
+  const def = tabDef(_ctxTabSlug);
+  if (!def) return;
+  document.getElementById('csz-w').value = def.mmW;
+  document.getElementById('csz-h').value = def.mmH;
+  document.getElementById('canvas-size-modal').classList.add('open');
+}
+
+function applyCanvasSize() {
+  const def = tabDef(_ctxTabSlug || _currentTab);
+  if (!def) return;
+  const w = parseInt(document.getElementById('csz-w').value) || def.mmW;
+  const h = parseInt(document.getElementById('csz-h').value) || def.mmH;
+  def.mmW = w; def.mmH = h;
+  document.getElementById('canvas-size-modal').classList.remove('open');
+  if ((_ctxTabSlug || _currentTab) === _currentTab) {
+    const px = tabPx(def);
+    AW = px.w; AH = px.h;
+    const card = document.getElementById('canvas-card');
+    if (card) { card.style.width = AW + 'px'; card.style.height = AH + 'px'; }
+    updateArtboardLabels(def);
+    zoomReset();
+  }
+  saveTabDefs();
+  renderTabBar();
+}
+
+// ── Marketing Items (page type visibility) ─────────────────────────
+let _mktOpen = false;
+
+function toggleMarketingItems(btn) {
+  const dd = document.getElementById('mkt-dropdown');
+  _mktOpen = !_mktOpen;
+  if (_mktOpen) {
+    renderMarketingList();
+    const rect = btn.getBoundingClientRect();
+    dd.style.top  = (rect.bottom + 4) + 'px';
+    dd.style.left = rect.left + 'px';
+    dd.classList.add('open');
+    setTimeout(() => document.addEventListener('mousedown', _closeMktDropdown, { once: true }), 50);
+  } else {
+    dd.classList.remove('open');
+  }
+}
+
+function _closeMktDropdown(e) {
+  const dd = document.getElementById('mkt-dropdown');
+  if (dd && !dd.contains(e && e.target)) { dd.classList.remove('open'); _mktOpen = false; }
+}
+
+function renderMarketingList() {
+  const list = document.getElementById('mkt-list');
+  if (!list) return;
+  list.innerHTML = TAB_DEFINITIONS.map(tab => {
+    const check = tab.active ? ' checked' : '';
+    return '<div class="mkt-item" onclick="toggleTabActive(\'' + tab.slug + '\')">'
+      + '<div class="mkt-item-check' + check + '"></div>'
+      + '<div class="mkt-item-info">'
+      + '<div class="mkt-item-name">' + esc(tab.name) + '</div>'
+      + '<div class="mkt-item-size">' + tab.mmW + ' × ' + tab.mmH + ' mm</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function toggleTabActive(slug) {
+  const def = tabDef(slug);
+  if (!def) return;
+  if (def.builtIn && def.active) { alert('The Brochure tab cannot be hidden.'); return; }
+  def.active = !def.active;
+  saveTabDefs();
+  if (!def.active && _currentTab === slug) {
+    const next = activeTabs()[0];
+    if (next) switchTab(next.slug);
+  }
+  renderMarketingList();
+  renderTabBar();
+}
+
+function renderCanvas() {
+  const card = document.getElementById('canvas-card');
+  card.querySelectorAll('.cv-el').forEach(n => n.remove());
+  elements.forEach(el => createElDOM(el));
+}
+
+// ════════════════════════════════════════════════════════
+// LAYER ORDER — forward / backward
+// ════════════════════════════════════════════════════════
+function reorderElement(id, dir) {
+  const idx = elements.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  let newIdx = idx;
+  if      (dir === 'front') newIdx = elements.length - 1;
+  else if (dir === 'back')  newIdx = 0;
+  else if (dir === 'fwd')   newIdx = Math.min(elements.length - 1, idx + 1);
+  else if (dir === 'bwd')   newIdx = Math.max(0, idx - 1);
+  if (newIdx === idx) return;
+  _pushUndo();
+  const [el] = elements.splice(idx, 1);
+  elements.splice(newIdx, 0, el);
+  // Re-append just this element's DOM node in the right position
+  const card = document.getElementById('canvas-card');
+  const wraps = Array.from(card.querySelectorAll('.cv-el'));
+  const wrap  = wraps.find(w => w.dataset.id === String(id));
+  if (wrap) {
+    // Insert before the element that is now at newIdx+1
+    const after = elements[newIdx + 1];
+    const afterWrap = after ? card.querySelector('.cv-el[data-id="' + after.id + '"]') : null;
+    if (afterWrap) card.insertBefore(wrap, afterWrap);
+    else card.appendChild(wrap);
+  }
+  if (connected) broadcast({ type: 'el_reorder', elements: elements.map(e => e.id), userId, userName });
+  scheduleSave();
+  showProps(id); // refresh layer position display
+}
+
+// ════════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════════
+function setConn(state, label) {
+  const pill = document.getElementById('conn-pill');
+  pill.className = 'conn-pill ' + state;
+  document.getElementById('conn-label').textContent = label;
+  if (state === 'connected') renderPresence();
+}
+function setSave(state, label) {
+  const w = document.getElementById('save-wrap');
+  w.className = 'save-wrap ' + state;
+  document.getElementById('save-lbl').textContent = label;
+  if (state === 'saved') setTimeout(() => { if (document.getElementById('save-lbl').textContent === 'Saved') { w.className = 'save-wrap'; document.getElementById('save-lbl').textContent = '—'; } }, 3000);
+}
+function initials(n) { return n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Keyboard shortcuts
+// ════════════════════════════════════════════════════════
+// ZOOM
+// ════════════════════════════════════════════════════════
+function setZoom(z) {
+  _zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.style.transform = 'scale(' + _zoom + ')';
+  wrap.style.marginBottom = (_zoom < 1 ? (AH * _zoom - AH) + 'px' : '');
+  const pct = Math.round(_zoom * 100) + '%';
+  const disp = document.getElementById('zoom-display');
+  if (disp) disp.textContent = pct;
+  const zlbl = document.getElementById('ab-zoom-label');
+  if (zlbl) zlbl.textContent = _zoom !== 1 ? pct : '';
+}
+
+function zoomBy(delta) { setZoom(_zoom + delta); }
+function zoomReset() {
+  // Calculate zoom to fit artboard in the canvas-area viewport with padding
+  const area = document.getElementById('canvas-area');
+  if (!area) { setZoom(1); return; }
+  const PAD  = 96; // 48px each side
+  const fitW = (area.clientWidth  - PAD) / AW;
+  const fitH = (area.clientHeight - PAD) / AH;
+  setZoom(Math.min(fitW, fitH));
+}
+
+// Alt/Option + scroll to zoom — set up once after page loads
+window.addEventListener('load', () => {
+  const area = document.getElementById('canvas-area');
+  if (area) area.addEventListener('wheel', e => {
+    if (!e.altKey) return;
+    e.preventDefault();
+    zoomBy(e.deltaY < 0 ? 0.05 : -0.05);
+  }, { passive: false });
+});
+
+// ════════════════════════════════════════════════════════
+// UNDO
+// ════════════════════════════════════════════════════════
+function _pushUndo() {
+  _undoStack.push(JSON.stringify(elements));
+  if (_undoStack.length > UNDO_MAX) _undoStack.shift();
+}
+
+function undo() {
+  if (!_undoStack.length) return;
+  const snap = _undoStack.pop();
+  try {
+    elements = JSON.parse(snap);
+    _nextId = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
+  } catch(e) { return; }
+  renderCanvas();
+  deselectAll();
+  scheduleSave();
+  if (connected) broadcast({ type: 'full_state', elements: elements.map(e => ({...e})), userId, userName });
+}
+
+// Hook _pushUndo into all mutating operations
+const _origAddElement      = addElement;
+const _origDeleteSelected  = deleteSelected;
+const _origSetProp         = setProp;
+const _origSetPosSize      = setPosSize;
+
+// We'll wrap these after they're defined — see bottom of script.
+
+// ════════════════════════════════════════════════════════
+// COPY ELEMENT
+// ════════════════════════════════════════════════════════
+function copySelected() {
+  if (!_selectedId) return;
+  const src = elements.find(e => e.id === _selectedId);
+  if (!src) return;
+  _pushUndo();
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = _nextId++;
+  copy.x  = Math.min(src.x + 20, AW - src.w);
+  copy.y  = Math.min(src.y + 20, AH - src.h);
+  elements.push(copy);
+  createElDOM(copy);
+  selectEl(copy.id);
+  if (connected) broadcast({ type: 'el_add', el: JSON.parse(JSON.stringify(copy)), userId, userName });
+  scheduleSave();
+}
+
+// ════════════════════════════════════════════════════════
+// FULL STATE SYNC (for undo broadcast)
+// ════════════════════════════════════════════════════════
+// Handled in handleMsg — when a remote undo fires we do a full re-render
+// (already handled via el_add / el_delete chain, but for undo we send full_state)
+
+// ════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const active  = document.activeElement;
+  const inInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  const inText  = active && active.contentEditable === 'true'; // inside a canvas text box
+  const typing  = inInput || inText;
+
+  // Always let native copy/paste/cut/select-all pass through when typing
+  if ((e.metaKey || e.ctrlKey) && ['c','v','x','a'].includes(e.key)) return;
+
+  // ⌘Z / Ctrl+Z — Undo (only when not typing in a text box or input)
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+    if (typing) return; // let browser handle undo inside text boxes
+    e.preventDefault();
+    undo();
+    return;
+  }
+
+  // ⌘D / Ctrl+D — Duplicate selected element
+  if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+    if (typing) return;
+    e.preventDefault();
+    copySelected();
+    return;
+  }
+
+  // Delete / Backspace — delete all selected elements
+  if ((e.key === 'Delete' || e.key === 'Backspace') && _selectedIds.size) {
+    if (typing) return;
+    deleteSelected();
+    return;
+  }
+
+  // Escape — exit crop mode first, then deselect
+  if (e.key === 'Escape') {
+    if (_cropId !== null) { exitCropMode(); return; }
+    deselectAll();
+  }
+
+  // Arrow keys — nudge selected element
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && _selectedId) {
+    if (typing) return;
+    e.preventDefault();
+    const el = elements.find(el => el.id === _selectedId);
+    if (!el) return;
+    const step = e.shiftKey ? 10 : 1;
+    if (e.key === 'ArrowUp')    el.y = Math.max(0, el.y - step);
+    if (e.key === 'ArrowDown')  el.y = Math.min(AH - el.h, el.y + step);
+    if (e.key === 'ArrowLeft')  el.x = Math.max(0, el.x - step);
+    if (e.key === 'ArrowRight') el.x = Math.min(AW - el.w, el.x + step);
+    const wrap = document.querySelector('.cv-el[data-id="' + _selectedId + '"]');
+    if (wrap) { wrap.style.left = el.x + 'px'; wrap.style.top = el.y + 'px'; }
+    showProps(_selectedId);
+    if (connected) broadcast({ type: 'el_move', id: el.id, x: el.x, y: el.y, userId, userName });
+    scheduleSave();
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (connected) broadcast({ type: 'presence_leave', userId, userName });
+  // Save current tab synchronously on any page unload (refresh, close, tab switch)
+  if (elements.length > 0) {
+    saveSyncBeforeUnload(_currentTab, elements);
+  }
+});
+
+// ════════════════════════════════════════════════════════
+// PDF EXPORT — true vector: embedded fonts + real images
+// ════════════════════════════════════════════════════════
+
+// Font cache — loaded once per session
+// Font loading — Calibre + FinancierDisplay from Supabase storage
+let _pdfFontCache = null;
+
+async function loadPDFFonts(doc) {
+  if (!_pdfFontCache) {
+    const BASE  = SUPA_URL + '/storage/v1/object/public/fonts/';
+    const fonts = [
+      { file:'Calibre-Light.ttf',            name:'Calibre',          style:'normal', weight:'300' },
+      { file:'Calibre-Regular.ttf',          name:'Calibre',          style:'normal', weight:'400' },
+      { file:'Calibre-Medium.ttf',           name:'Calibre',          style:'normal', weight:'500' },
+      { file:'Calibre-Semibold.ttf',         name:'Calibre',          style:'normal', weight:'600' },
+      { file:'Calibre-Bold.ttf',             name:'Calibre',          style:'normal', weight:'700' },
+      { file:'FinancierDisplay-Regular.ttf', name:'FinancierDisplay', style:'normal', weight:'400' },
+      { file:'FinancierDisplay-Medium.ttf',  name:'FinancierDisplay', style:'normal', weight:'500' },
+      { file:'FinancierDisplay-Semibold.ttf',name:'FinancierDisplay', style:'normal', weight:'600' },
+    ];
+    const results = await Promise.all(fonts.map(async f => {
+      try {
+        const res   = await fetch(BASE + f.file);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const buf   = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let b64 = '';
+        const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          b64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        return { ...f, b64: btoa(b64) };
+      } catch(e) {
+        console.warn('[PDF] Font load failed:', f.file, e.message);
+        return null;
+      }
+    }));
+    _pdfFontCache = results.filter(Boolean);
+  }
+  _pdfFontCache.forEach(f => {
+    try {
+      doc.addFileToVFS(f.file, f.b64);
+      doc.addFont(f.file, f.name + '_' + f.weight, 'normal');
+    } catch(e) { console.warn('[PDF] Font register failed:', f.name, e); }
+  });
+}
+
+// Map fontFamily + weight → jsPDF built-in font (helvetica/times/courier)
+// All three are embedded in every jsPDF document with no external files needed.
+function pdfFontFor(fontFamily, fontWeight) {
+  const ff      = (fontFamily || '');
+  const fw      = String(fontWeight || '400').replace('px','').trim();
+  const fwN     = parseInt(fw) || 400;
+  const bold    = fwN >= 600;
+  const style   = bold ? 'bold' : 'normal';
+  const hasFonts = _pdfFontCache && _pdfFontCache.length > 0;
+
+  if (hasFonts) {
+    const isF  = ff.includes('Financier') || ff.includes('financier');
+    const base = isF ? 'FinancierDisplay' : 'Calibre';
+    const wm   = isF
+      ? {'400':'400','500':'500','600':'600','700':'600','300':'400','900':'600'}
+      : {'300':'300','400':'400','500':'500','600':'600','700':'700','900':'700'};
+    return { family: base + '_' + (wm[fw] || '400'), style: 'normal' };
+  }
+  // Fallback built-in
+  const ffl = ff.toLowerCase();
+  if (ffl.includes('financier') || ffl.includes('georgia') ||
+      (ffl.includes('serif') && !ffl.includes('sans'))) return { family: 'times',     style };
+  if (ffl.includes('courier') || ffl.includes('mono'))   return { family: 'courier',   style };
+  return { family: 'helvetica', style };
+}
+
+async function exportPDF(allTabs) {
+  const btn = allTabs ? document.getElementById('btn-export-all') : document.getElementById('btn-export');
+  btn.textContent = '⏳ Loading fonts…';
+  btn.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: [210, 297], orientation: 'portrait' });
+
+    btn.textContent = (_pdfFontCache && _pdfFontCache.length) ? '⏳ Building PDF…' : '⏳ Loading fonts…';
+    await loadPDFFonts(doc);
+
+    const PX_TO_MM = 25.4 / 96;
+    const PAGE_W = 210, PAGE_H = 297;
+
+    btn.textContent = '⏳ Building PDF…';
+
+    for (const el of elements) {
+      const xMM = el.x * PX_TO_MM;
+      const yMM = el.y * PX_TO_MM;
+      const wMM = el.w * PX_TO_MM;
+      const hMM = el.h * PX_TO_MM;
+
+      // ── Colour rect ────────────────────────────────────────────
+      if (el.type === 'rect') {
+        const op = el.fillOpacity !== undefined ? el.fillOpacity : 1;
+        if (el.fillColor && el.fillColor !== 'transparent') {
+          const rgb = hexToRgb(el.fillColor);
+          // Simulate opacity by blending with white — avoids GState which causes Acrobat errors
+          const blended = {
+            r: Math.round(rgb.r * op + 255 * (1 - op)),
+            g: Math.round(rgb.g * op + 255 * (1 - op)),
+            b: Math.round(rgb.b * op + 255 * (1 - op)),
+          };
+          doc.setFillColor(blended.r, blended.g, blended.b);
+          doc.setDrawColor(blended.r, blended.g, blended.b);
+          doc.setLineWidth(0);
+          const r = (el.borderRadius || 0) * PX_TO_MM;
+          if (r > 0.5) doc.roundedRect(xMM, yMM, wMM, hMM, r, r, 'F');
+          else         doc.rect(xMM, yMM, wMM, hMM, 'F');
+        }
+        if ((el.strokeWidth || 0) > 0 && el.strokeColor) {
+          const srgb = hexToRgb(el.strokeColor);
+          doc.setDrawColor(srgb.r, srgb.g, srgb.b);
+          doc.setLineWidth((el.strokeWidth || 1) * PX_TO_MM);
+          const r = (el.borderRadius || 0) * PX_TO_MM;
+          if (r > 0.5) doc.roundedRect(xMM, yMM, wMM, hMM, r, r, 'S');
+          else         doc.rect(xMM, yMM, wMM, hMM, 'S');
+          doc.setLineWidth(0.1);
+        }
+        continue;
+      }
+
+      // ── Image ──────────────────────────────────────────────────
+      // Draw placeholder for empty image boxes
+      if (el.type === 'img' && !el.imageUrl) {
+        doc.setFillColor(224, 228, 224);
+        doc.setDrawColor(200, 208, 200);
+        doc.setLineWidth(0.1);
+        doc.rect(xMM, yMM, wMM, hMM, 'FD');
+        continue;
+      }
+      if (el.type === 'img' && el.imageUrl) {
+        try {
+          const resp = await fetch(el.imageUrl);
+          if (!resp.ok) throw new Error('fetch ' + resp.status);
+          const blob    = await resp.blob();
+
+          // SVG cannot be embedded directly in jsPDF — convert to JPEG via canvas
+          let dataUrl, fmt;
+          if (blob.type.includes('svg') || el.imageUrl.toLowerCase().includes('.svg')) {
+            // SVG → canvas at 2×. Keep as PNG to preserve sharp edges/transparency.
+            dataUrl = await svgToPng(el.imageUrl, el.w * 2, el.h * 2);
+            fmt = 'PNG';
+          } else {
+            // Resize photo to 2× display size max — avoids embedding full 4K photos
+            dataUrl = await resizeForPDF(blob, el.w, el.h);
+            fmt = 'JPEG';
+          }
+
+          // If SVG conversion failed, draw placeholder and skip
+          if (!dataUrl) {
+            doc.setFillColor(220, 224, 220);
+            doc.rect(xMM, yMM, wMM, hMM, 'F');
+            continue;
+          }
+
+          // Determine if real crop data exists (user has used crop tool)
+          const realCrop = el.hasCrop && el.imgW && (el.imgW !== el.w || el.imgH !== el.h || el.imgX || el.imgY);
+          if (realCrop) {
+            // Pre-crop on canvas so the image is clipped correctly in PDF
+            // (jsPDF 2.5.1 has no native clip path without GState)
+            const SCALE = 3; // render at 3x for quality
+            const canvas = document.createElement('canvas');
+            canvas.width  = el.w * SCALE;
+            canvas.height = el.h * SCALE;
+            const ctx = canvas.getContext('2d');
+            // Draw only the visible portion: source rect maps from the img coords
+            const img2 = new Image();
+            img2.crossOrigin = 'anonymous';
+            await new Promise(resolve => { img2.onload = resolve; img2.onerror = resolve; img2.src = el.imageUrl; });
+            // imgX/imgY are the offset of the image inside the box (usually negative = panned)
+            const sx = -(el.imgX || 0) / el.imgW * img2.naturalWidth;
+            const sy = -(el.imgY || 0) / el.imgH * img2.naturalHeight;
+            const sw = el.w / el.imgW * img2.naturalWidth;
+            const sh = el.h / el.imgH * img2.naturalHeight;
+            ctx.drawImage(img2, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+            const croppedUrl = canvas.toDataURL('image/jpeg', 1.0);
+            doc.addImage(croppedUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'SLOW');
+          } else if ((el.objectFit || 'cover') === 'contain') {
+            // Contain — get natural aspect ratio then fit within box dimensions
+            const info   = await getImageDimensions(dataUrl);
+            const aspect = info.w / info.h;
+            // Fit within the box using the aspect ratio only (not the canvas pixel size)
+            let dw, dh;
+            if (wMM / hMM > aspect) {
+              // Box is wider than image — constrained by height
+              dh = hMM; dw = hMM * aspect;
+            } else {
+              // Box is taller than image — constrained by width
+              dw = wMM; dh = wMM / aspect;
+            }
+            doc.addImage(dataUrl, fmt, xMM + (wMM-dw)/2, yMM + (hMM-dh)/2, dw, dh, undefined, 'SLOW');
+          } else {
+            // Cover/fill — crop image to exactly the box aspect ratio on canvas
+            // then embed at box dimensions. Prevents jsPDF stretching/skewing.
+            const info    = await getImageDimensions(dataUrl);
+            const boxAsp  = el.w / el.h;
+            const imgAsp  = info.w / info.h;
+            let sx = 0, sy = 0, sw = info.w, sh = info.h;
+            if (imgAsp > boxAsp) {
+              // Image wider than box — crop sides
+              sw = Math.round(info.h * boxAsp);
+              sx = Math.round((info.w - sw) / 2);
+            } else {
+              // Image taller than box — crop top/bottom
+              sh = Math.round(info.w / boxAsp);
+              sy = Math.round((info.h - sh) / 2);
+            }
+            const SCALE = 2;
+            const cvs = document.createElement('canvas');
+            cvs.width  = Math.round(el.w * SCALE);
+            cvs.height = Math.round(el.h * SCALE);
+            const ctx2 = cvs.getContext('2d');
+            const tmpImg = new Image();
+            tmpImg.crossOrigin = 'anonymous';
+            await new Promise(r => { tmpImg.onload = r; tmpImg.onerror = r; tmpImg.src = dataUrl; });
+            ctx2.drawImage(tmpImg, sx, sy, sw, sh, 0, 0, cvs.width, cvs.height);
+            const covUrl = cvs.toDataURL('image/jpeg', 1.0);
+            doc.addImage(covUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'SLOW');
+          }
+        } catch(imgErr) {
+          console.warn('Image skipped:', el.id, imgErr.message);
+          doc.setFillColor(220, 224, 220);
+          doc.rect(xMM, yMM, wMM, hMM, 'F');
+        }
+        continue;
+      }
+
+      // ── Text ───────────────────────────────────────────────────
+      if (el.type === 'text' && el.content && el.content.trim()) {
+        const s          = el.style || {};
+        // Font size: use same scale approach as old builder
+        // scaleX = artboardWidthMM / artboardWidthPx = 210 / 794 = 0.2645
+        // fontSizeMM = fontSizePx * scaleX; fontSizePt = fontSizeMM * 2.835
+        const fontSizePx = parseFloat(s.fontSize || '16');
+        const scaleX     = 210 / AW; // AW = 794px artboard width
+        const fontSizePt = Math.max(1, fontSizePx * scaleX * 2.835);
+        const baseFont   = pdfFontFor(s.fontFamily, s.fontWeight);
+        const rgb        = hexToRgb(s.color || '#111111');
+        const lh         = parseFloat(s.lineHeight || '1.4');
+        const lineHMM    = fontSizePt * lh * (25.4 / 72);
+        const paraSpMM   = parseFloat(s.paragraphSpacing || '0') * PX_TO_MM;
+        // Match the 4px screen padding so word-wrap matches what you see
+        const padMM      = 4 * PX_TO_MM;
+        // 2% tighter wrap — Calibre renders slightly wider in jsPDF than browser (old builder fix)
+        const maxW       = Math.max((wMM - padMM) * 0.98, 3);
+        const align      = s.textAlign || 'left';
+        const lsMM       = parseFloat(s.letterSpacing || '0') * PX_TO_MM;
+        const textX      = align === 'center' ? xMM + wMM / 2
+                         : align === 'right'  ? xMM + wMM - padMM
+                         : xMM + padMM;
+        const pdfAlign   = (align === 'center' || align === 'right') ? align : 'left';
+
+        doc.setFontSize(fontSizePt);
+        doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        doc.setCharSpace(lsMM !== 0 ? lsMM * 2.835 : 0);
+
+        // Use DOM-rendered lines for exact browser line breaks
+        // This avoids jsPDF metric differences causing extra/missing line wraps
+        const domLines = extractDOMLines(el.id, el.content, el.bulletMode);
+        const textLines = domLines.length > 0 ? domLines : extractPDFLines(el.content, el.bulletMode);
+        const ascMM = fontSizePt * 0.8 * (25.4 / 72);
+        let curY    = yMM + ascMM;
+        let isFirst        = true;
+        let lastWasBullet  = false;
+        let prevWasBlank   = false; // track if previous line was blank (triggers para gap)
+
+        // Bullet indent: dash width + space (~1.1em)
+        // "– " width: en-dash (~0.5em) + space (~0.25em) = ~0.75em in mm
+        const dashW    = fontSizePt * 0.75 * (25.4 / 72);
+        const indentMM = dashW;
+
+        for (const { text, bold: lineBold, isBlankLine, isSoftReturn, bullet } of textLines) {
+          if (isBlankLine) {
+            // Blank line acts as paragraph separator — record it and move down
+            prevWasBlank = true;
+            curY += lineHMM;
+            isFirst = false;
+            continue;
+          }
+          // Para spacing: CSS applies margin-top to every > div after the first.
+          // Match that exactly — add paraSpMM before every non-blank, non-soft-return line after the first.
+          if (!isFirst && !isSoftReturn && paraSpMM > 0) curY += paraSpMM;
+          prevWasBlank = false;
+
+          const lineFont = lineBold
+            ? pdfFontFor(el.style && el.style.fontFamily, '700')
+            : baseFont;
+          try { doc.setFont(lineFont.family, lineFont.style); }
+          catch(e) { doc.setFont('helvetica', lineBold ? 'bold' : 'normal'); }
+
+          if (bullet && !isSoftReturn) {
+            const bulletX  = textX;
+            const contentX = textX + indentMM;
+            const contentW = Math.max(maxW - indentMM, 5);
+            // DOM lines are already pre-broken — use directly; fallback to split
+            const lines = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', contentW);
+            const lineArr = Array.isArray(lines) ? lines : [lines];
+            doc.text('\u2013 ', bulletX, curY);
+            if (lineArr[0]) doc.text(lineArr[0], contentX, curY);
+            curY += lineHMM;
+            for (let wi = 1; wi < lineArr.length; wi++) {
+              doc.text(lineArr[wi], contentX, curY);
+              curY += lineHMM;
+            }
+          } else if (isSoftReturn) {
+            const softX = lastWasBullet ? textX + indentMM : textX;
+            const softW = lastWasBullet ? Math.max(maxW - indentMM, 5) : maxW;
+            const lineArr = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', softW);
+            for (const wl of lineArr) {
+              doc.text(wl, softX, curY, { align: pdfAlign });
+              curY += lineHMM;
+            }
+          } else {
+            const lineArr = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', maxW);
+            for (const wl of lineArr) {
+              doc.text(wl, textX, curY, { align: pdfAlign });
+              curY += lineHMM;
+            }
+          }
+          isFirst = false;
+          if (!isSoftReturn) lastWasBullet = !!bullet;
+        }
+        doc.setCharSpace(0);
+        doc.setTextColor(0, 0, 0);
+        try { doc.setFont(baseFont.family, baseFont.style); } catch(e) {}
+      }
+    } // end for(const el of elements)
+
+    // Build filename: PropertyName_TabName.pdf
+    const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
+    const tabName  = (tabDef(_currentTab) || {}).name || 'Brochure';
+    const safeProp = propName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+    const safeTab  = tabName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+    const filename = safeProp + '_' + safeTab + '.pdf';
+    doc.save(filename);
+    btn.textContent = '✓ Downloaded';
+    setTimeout(() => {
+      btn.textContent = allTabs ? '⬇ Export All' : '⬇ Export Tab';
+      btn.disabled = false;
+    }, 2500);
+  } catch(e) {
+    console.error('PDF export error:', e);
+    alert('PDF export failed: ' + e.message);
+    btn.textContent = allTabs ? '⬇ Export All' : '⬇ Export Tab';
+    btn.disabled = false;
+  }
+}
+
+// Extract exact rendered lines from the DOM using the Range API.
+// This captures the browser's actual line wrapping — font metrics, width constraints —
+// so the PDF matches the screen exactly with no jsPDF metric differences.
+function extractDOMLines(elId, content, bulletMode) {
+  const wrap  = document.querySelector('.cv-el[data-id="' + elId + '"]');
+  const inner = wrap && wrap.querySelector('.cv-text-inner');
+  if (!inner) return [];
+
+  const result = [];
+  // Walk each direct child div (each paragraph line)
+  const children = Array.from(inner.children);
+  if (!children.length) {
+    // Plain text — treat as single block
+    const text = inner.textContent;
+    if (text.trim()) result.push({ text, bold: false, isBlankLine: false, bullet: !!bulletMode });
+    return result;
+  }
+
+  children.forEach((div, i) => {
+    const rawText = div.textContent || '';
+    const isBlank = rawText.trim() === '';
+    if (isBlank) {
+      result.push({ text: '', bold: false, isBlankLine: true, isSoftReturn: false, bullet: false });
+      return;
+    }
+
+    // Check if this div contains inline BR (soft return)
+    const brs = div.querySelectorAll('br');
+    if (brs.length) {
+      // Split on BR — each segment is a soft return line
+      let seg = '';
+      let isFirstSeg = true;
+      div.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) seg += node.textContent;
+        else if (node.nodeType === Node.ELEMENT_NODE) {
+          if (node.tagName.toLowerCase() === 'br') {
+            result.push({ text: seg, bold: false, isBlankLine: false, isSoftReturn: !isFirstSeg, bullet: bulletMode && isFirstSeg });
+            seg = ''; isFirstSeg = false;
+          } else seg += node.textContent;
+        }
+      });
+      if (seg) result.push({ text: seg, bold: false, isBlankLine: false, isSoftReturn: !isFirstSeg, bullet: bulletMode && isFirstSeg });
+      return;
+    }
+
+    // Use Range API to get actual rendered visual lines within this div
+    try {
+      const range = document.createRange();
+      const textNodes = [];
+      const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) textNodes.push(n);
+
+      if (!textNodes.length) {
+        result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+        return;
+      }
+
+      // Get all client rects for the div to find visual line breaks
+      const divRect = div.getBoundingClientRect();
+      const visualLines = [];
+      let currentLine = '';
+      let currentY = null;
+
+      textNodes.forEach(tn => {
+        const str = tn.textContent;
+        for (let ci = 0; ci < str.length; ci++) {
+          range.setStart(tn, ci);
+          range.setEnd(tn, ci + 1);
+          const rects = range.getClientRects();
+          if (!rects.length) continue;
+          const charY = Math.round(rects[0].top);
+          if (currentY === null) currentY = charY;
+          if (charY > currentY + 2) {
+            // New visual line
+            visualLines.push(currentLine.trimEnd());
+            currentLine = str[ci];
+            currentY = charY;
+          } else {
+            currentLine += str[ci];
+          }
+        }
+      });
+      if (currentLine.trim()) visualLines.push(currentLine.trimEnd());
+
+      if (!visualLines.length) {
+        result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+        return;
+      }
+
+      const hasBold = div.querySelector('b,strong') !== null;
+      visualLines.forEach((vl, vi) => {
+        result.push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: bulletMode && vi === 0 });
+      });
+    } catch(e) {
+      // Fallback if Range API fails
+      result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+    }
+  });
+  return result;
+}
+
+// Simple reliable plain-text line extractor for PDF rendering.
+// Returns [{text: string, isParaBreak: bool}]
+// Handles <div>line</div> format (new) and <br>-separated (legacy).
+function extractPDFLines(html, bulletMode) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const result = [];
+
+  // Check if ALL text content in a node is wrapped in bold
+  function isAllBold(node) {
+    // If this node is a bold tag, yes
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'b' || tag === 'strong') return true;
+    }
+    // If this node has only one child and that child is bold, yes
+    const kids = Array.from(node.childNodes).filter(n =>
+      n.nodeType === Node.ELEMENT_NODE || (n.nodeType === Node.TEXT_NODE && n.textContent.trim())
+    );
+    if (kids.length === 1) return isAllBold(kids[0]);
+    return false;
+  }
+
+  const children = Array.from(tmp.childNodes);
+  const hasDivs  = children.some(c => c.nodeType === Node.ELEMENT_NODE
+    && c.tagName && c.tagName.toLowerCase() === 'div');
+
+  if (hasDivs) {
+    children.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const t = child.textContent;
+        if (t.trim()) result.push({ text: t, bold: false, isBlankLine: false });
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'div') {
+          // Check for soft returns (Shift+Enter = <br> inside the div)
+          const hasBr = child.querySelector('br');
+          if (hasBr) {
+            // Split on <br> — first sub-line is a normal line, rest are soft returns
+            // Soft returns get no paragraph spacing and no bullet prefix
+            let cur = '';
+            let curBold = false;
+            let isFirst = true;
+            function walkDiv(node) {
+              if (node.nodeType === Node.TEXT_NODE) {
+                cur += node.textContent;
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const t2 = node.tagName.toLowerCase();
+                if (t2 === 'br') {
+                  result.push({ text: cur, bold: curBold, isBlankLine: cur.trim() === '', isSoftReturn: !isFirst });
+                  cur = ''; curBold = false; isFirst = false;
+                } else {
+                  if (t2 === 'b' || t2 === 'strong') curBold = true;
+                  node.childNodes.forEach(walkDiv);
+                }
+              }
+            }
+            child.childNodes.forEach(walkDiv);
+            if (cur !== undefined) {
+              result.push({ text: cur, bold: curBold, isBlankLine: cur.trim() === '', isSoftReturn: !isFirst });
+            }
+          } else {
+            const text = child.textContent || '';
+            const isBlankLine = text.trim() === '';
+            result.push({ text, bold: isAllBold(child), isBlankLine });
+          }
+        }
+      }
+    });
+  } else {
+    // Legacy <br>-separated format
+    let current = '';
+    let currentBold = false;
+    function walk(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        current += node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        if (tag === 'br') {
+          const isBlank = current.trim() === '';
+          result.push({ text: current, bold: currentBold, isBlankLine: isBlank });
+          current = ''; currentBold = false;
+        } else if (tag === 'b' || tag === 'strong') {
+          // Only set bold if this tag wraps the entire remaining content
+          const prev = current;
+          node.childNodes.forEach(walk);
+          if (current !== prev) currentBold = true;
+        } else {
+          node.childNodes.forEach(walk);
+        }
+      }
+    }
+    tmp.childNodes.forEach(walk);
+    if (current) result.push({ text: current, bold: currentBold, isBlankLine: current.trim() === '' });
+  }
+
+  const out = result.length ? result : [{ text: tmp.textContent || '', bold: false, isBlankLine: false }];
+  // If bulletMode, mark non-blank lines for bullet rendering in the PDF
+  // The renderer will handle the hanging indent
+  if (bulletMode) {
+    return out.map(line => (line.isBlankLine || line.isSoftReturn) ? line : { ...line, bullet: true });
+  }
+  return out;
+}
+
+// Parse div-based HTML content into lines of runs [{text, bold, italic}]
+// Returns: [{isParaBreak:bool, runs:[{text,bold,italic}]}]
+function pdfParseHTML(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const result = [];
+
+  function extractRuns(node, bold, italic) {
+    const runs = [];
+    node.childNodes.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        if (child.textContent) runs.push({ text: child.textContent, bold, italic });
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'b' || tag === 'strong') runs.push(...extractRuns(child, true,  italic));
+        else if (tag === 'i' || tag === 'em') runs.push(...extractRuns(child, bold, true));
+        else if (tag === 'u')                 runs.push(...extractRuns(child, bold, italic));
+        else if (tag === 'br')                runs.push({ text: '', bold, italic, br: true });
+        else                                  runs.push(...extractRuns(child, bold, italic));
+      }
+    });
+    return runs;
+  }
+
+  const children = Array.from(tmp.childNodes);
+  const hasDivs  = children.some(c => c.nodeType === Node.ELEMENT_NODE && c.tagName.toLowerCase() === 'div');
+
+  if (hasDivs) {
+    children.forEach((child, i) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        result.push({ isParaBreak: false, runs: [{ text: child.textContent, bold: false, italic: false }] });
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'div') {
+          const runs = extractRuns(child, false, false);
+          if (runs.length === 0) result.push({ isParaBreak: false, runs: [{ text: '', bold: false, italic: false }] });
+          else result.push({ isParaBreak: false, runs });
+        }
+      }
+    });
+  } else {
+    // Legacy <br>-based
+    const runs = extractRuns(tmp, false, false);
+    let current = [];
+    for (const run of runs) {
+      if (run.br) { result.push({ isParaBreak: false, runs: current }); current = []; }
+      else current.push(run);
+    }
+    if (current.length) result.push({ isParaBreak: false, runs: current });
+  }
+  return result;
+}
+
+// ── PDF helpers ───────────────────────────────────────────────────
+
+// Resize an image blob to 2× the display element size, encode as JPEG 80%.
+// Reduces PDF file size dramatically for high-res photos with no visible quality loss at A4.
+async function resizeForPDF(blob, elW, elH) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Target: 2× the LARGER of box or natural dimensions, capped to natural size
+      // Use natural aspect ratio — never distort the image
+      const SCALE = 2;
+      const maxPx = Math.max(elW, elH) * SCALE;
+      // Scale down so the longest edge = maxPx, never upscale
+      const longestEdge = Math.max(img.naturalWidth, img.naturalHeight);
+      const ratio = longestEdge > maxPx ? maxPx / longestEdge : 1;
+      const outW = Math.round(img.naturalWidth  * ratio);
+      const outH = Math.round(img.naturalHeight * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width  = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      // White background (JPEG has no transparency)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, outW, outH);
+      ctx.drawImage(img, 0, 0, outW, outH);
+      resolve(canvas.toDataURL('image/jpeg', 1.0));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); blobToDataUrl(blob).then(resolve); };
+    img.src = url;
+  });
+}
+
+// Convert SVG URL to PNG dataURL via canvas (jsPDF can't embed SVG directly)
+function svgToPng(url, w, h) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      // Use natural dimensions if available, otherwise fall back to element size
+      const natW = img.naturalWidth  || w;
+      const natH = img.naturalHeight || h;
+      // Render at 3× for sharpness
+      const scale = 3;
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.max(natW * scale, 100);
+      canvas.height = Math.max(natH * scale, 100);
+      const ctx = canvas.getContext('2d');
+      // PNG preserves transparency for SVGs (logos etc with transparent backgrounds)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = () => resolve(r.result);
+    r.onerror = () => reject(new Error('FileReader failed'));
+    r.readAsDataURL(blob);
+  });
+}
+
+function getImageDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve({ w: 300, h: 200 });
+    img.src = dataUrl;
+  });
+}
+
+// Sanitise contentEditable HTML using the DOM itself — 100% reliable across all browsers.
+// Walks the live node tree of the contentEditable div and extracts a clean
+// string of plain text + <br> markers. Never passes raw HTML through the wire.
+// Sanitise contentEditable HTML into a canonical format:
+// Each line is stored as <div>content</div> so that CSS margin-top on > div
+// works reliably in ALL browsers for paragraph spacing.
+// Inline formatting (<b>, <i>, <u>) is preserved inside the divs.
+function sanitiseHTML(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const lines = extractLines(tmp);
+  // Remove trailing empty line
+  while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  if (lines.length === 0) return '';
+  // Single line — no wrapping needed, just return cleaned inline content
+  if (lines.length === 1) return cleanInline(tmp);
+  // Multiple lines — wrap each in <div>
+  return lines.map(l => '<div>' + (l || '<br>') + '</div>').join('');
+}
+
+// Extract an array of line strings (with inline HTML preserved) from a DOM node.
+// Handles both Chrome's <div> wrapping and Firefox's <br> separation.
+function extractLines(container) {
+  const lines = [];
+  let currentLine = '';
+  let hasBlockChild = false;
+
+  Array.from(container.childNodes).forEach(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      currentLine += escapeText(child.textContent);
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      const tag = child.tagName.toLowerCase();
+      if (tag === 'br') {
+        lines.push(currentLine);
+        currentLine = '';
+      } else if (tag === 'div' || tag === 'p') {
+        hasBlockChild = true;
+        // Flush any preceding inline content as its own line
+        if (currentLine) { lines.push(currentLine); currentLine = ''; }
+        const inner = cleanInline(child);
+        lines.push(inner === '<br>' ? '' : inner);
+      } else {
+        currentLine += cleanInlineNode(child);
+      }
+    }
+  });
+
+  if (currentLine || !hasBlockChild) lines.push(currentLine);
+  return lines;
+}
+
+// Get clean inline HTML from a node (preserves <b>, <i>, <u>, strips the rest)
+function cleanInline(node) {
+  let out = '';
+  Array.from(node.childNodes).forEach(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      out += escapeText(child.textContent);
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      out += cleanInlineNode(child);
+    }
+  });
+  return out;
+}
+
+function cleanInlineNode(child) {
+  const tag = child.tagName.toLowerCase();
+  if (tag === 'br')               return '<br>';
+  if (tag === 'b' || tag === 'strong') return '<b>' + cleanInline(child) + '</b>';
+  if (tag === 'i' || tag === 'em')     return '<i>' + cleanInline(child) + '</i>';
+  if (tag === 'u')                     return '<u>' + cleanInline(child) + '</u>';
+  if (tag === 'span') {
+    const fw = child.style && child.style.fontWeight;
+    const fs = child.style && child.style.fontStyle;
+    const td = child.style && child.style.textDecoration;
+    let inner = cleanInline(child);
+    if (fw === 'bold' || fw === '700' || fw === '800') inner = '<b>' + inner + '</b>';
+    if (fs === 'italic')                               inner = '<i>' + inner + '</i>';
+    if (td && td.includes('underline'))                inner = '<u>' + inner + '</u>';
+    return inner;
+  }
+  return cleanInline(child);
+}
+
+function escapeText(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Convert saved HTML to an array of paragraph strings for PDF rendering.
+// Each <br> = new line within paragraph. Double <br> = paragraph break.
+function htmlToLines(html) {
+  // Content is stored as <div>line</div><div>line</div> or plain text.
+  // Parse into flat list of text lines then group into paragraphs by blank lines.
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const flat = [];   // [ { text, isParaBreak } ]
+  let buf = '';
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      buf += node.textContent;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'br') {
+        flat.push({ text: buf, paraBreak: false });
+        buf = '';
+      } else {
+        node.childNodes.forEach(walk);
+      }
+    }
+  }
+  tmp.childNodes.forEach(walk);
+  if (buf) flat.push({ text: buf, paraBreak: false });
+
+  // Group into paragraphs: consecutive empty lines act as para separator
+  const paragraphs = [];
+  let currentPara = [];
+  for (let i = 0; i < flat.length; i++) {
+    const line = flat[i].text;
+    const nextEmpty = i + 1 < flat.length && flat[i + 1].text.trim() === '';
+    const prevEmpty = i > 0 && flat[i - 1].text.trim() === '';
+    if (line.trim() === '' && nextEmpty) {
+      // Double empty = paragraph break
+      if (currentPara.length) { paragraphs.push(currentPara); currentPara = []; }
+    } else if (line.trim() === '' && prevEmpty) {
+      // Skip second of double empty
+    } else {
+      currentPara.push(line);
+    }
+  }
+  if (currentPara.length) paragraphs.push(currentPara);
+  return paragraphs.length ? paragraphs : [['']];
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c+c).join('') : h, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+</script>
+</body>
+</html>
