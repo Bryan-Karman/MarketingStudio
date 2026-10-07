@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="auth.js" data-page="login"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CBRE Studio Hub</title>
@@ -442,8 +443,6 @@ function _buildBuilderUrl(portfolioId, propertyId){
     propertyId:    propertyId,
     portfolioName: port ? port.name : '',
     propertyName:  pr   ? pr.name  : '',
-    userRole:      currentUser ? currentUser.role : 'user',
-    userName:      currentUser ? currentUser.name : '',
   });
   const tpl = (port && port.template) || (port && port.product === 'marketing_b4' ? 'builder4' : 'classic');
   const builderFile = tpl === 'builder4' ? 'builder_4.html' : 'builder.html';
@@ -817,16 +816,7 @@ function runGlobalSearch(query){
 const SUPABASE_URL = 'https://pgsgjafgetdvuctmpibf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
 
-// ─── DEMO / LOCAL FALLBACK ─────────────────────────────────────
-// IS_DEMO=true uses the FALLBACK_USERS below if Supabase users
-// table isn't reachable yet. Set to false once the table is live.
-const IS_DEMO = false;
-
-// Fallback users (only used if Supabase users table fails to load)
-const FALLBACK_USERS = [
-  { id:'u1', email: 'bryan.karman@cbre.com', password: 'Surfing1987', role: 'admin', name: 'Bryan Karman' },
-  { email: 'connie.duan@cbre.com',           password: 'Password123', role: 'user',  name: 'Connie Duan' },
-];
+// (Old hardcoded fallback logins removed. Sign-in is handled by auth.js / Supabase Auth.)
 
 // Simple localStorage helpers
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem('cbre_hub_'+k)||'null'); }catch(e){return null;} }
@@ -992,13 +982,14 @@ async function saveDemoData(){
 // ═══════════════════════════════════════════════════════════════
 async function loadUsers(){
   try {
-    const rows = await SB.get('users', '?order=name.asc');
+    const rows = await SB.get('profiles', '?select=id,name,email,role,must_change_password,password_expires_at&order=name.asc');
     if(Array.isArray(rows)){
-      allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, password:u.password, role:u.role}));
+      allUsers = rows.map(u => ({id:u.id, name:u.name, email:u.email, role:u.role,
+        must_change_password:u.must_change_password, password_expires_at:u.password_expires_at}));
     }
   } catch(e){
     console.warn('Could not load users from Supabase:', e);
-    allUsers = [...FALLBACK_USERS];
+    allUsers = [];
   }
 }
 
@@ -1012,7 +1003,7 @@ function renderUsers(){
     <tr>
       <td><strong>${escHtml(u.name)}</strong></td>
       <td>${escHtml(u.email)}</td>
-      <td><span style="font-family:monospace;letter-spacing:.05em;">${'•'.repeat(Math.min(u.password?u.password.length:8, 12))}</span></td>
+      <td><span style="font-size:12px;color:var(--muted);">${u.must_change_password ? 'Temporary — must change' : (u.password_expires_at ? 'Change due ' + new Date(u.password_expires_at).toLocaleDateString() : 'Set by user')}</span></td>
       <td><span class="role-badge ${u.role}">${u.role}</span></td>
       <td>
         <div class="user-actions">
@@ -1036,13 +1027,17 @@ function openUserModal(userId){
     if(!u) return;
     document.getElementById('user-name').value  = u.name;
     document.getElementById('user-email').value = u.email;
-    document.getElementById('user-pass').value  = u.password || '';
+    document.getElementById('user-pass').value  = '';
+    document.getElementById('user-pass').placeholder = 'Leave blank to keep current password';
+    var _mc = document.getElementById('user-must-change'); if(_mc) _mc.checked = !!u.must_change_password;
     document.getElementById('user-role').value  = u.role;
   } else {
     document.getElementById('user-name').value  = '';
     document.getElementById('user-email').value = '';
     document.getElementById('user-pass').value  = '';
     document.getElementById('user-role').value  = 'user';
+    document.getElementById('user-pass').placeholder = 'Min. 8 characters';
+    var _mc2 = document.getElementById('user-must-change'); if(_mc2) _mc2.checked = true;
   }
   document.getElementById('modal-user').classList.add('open');
   setTimeout(()=> document.getElementById('user-name').focus(), 50);
@@ -1059,48 +1054,40 @@ async function saveUser(){
   if(!name)  { errEl.textContent = 'Name is required.'; return; }
   if(!email) { errEl.textContent = 'Email is required.'; return; }
   if(!_editingUserId && !pass) { errEl.textContent = 'Password is required.'; return; }
-  if(pass && pass.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if(pass && pass.length < 8)  { errEl.textContent = 'Password must be at least 8 characters.'; return; }
 
   // Check email uniqueness
-  const duplicate = allUsers.find(u => u.email === email && u.id !== _editingUserId);
+  const duplicate = allUsers.find(u => u.email.toLowerCase() === email && u.id !== _editingUserId);
   if(duplicate){ errEl.textContent = 'That email is already in use.'; return; }
 
   const isEdit = !!_editingUserId;
+  const mustChange = (document.getElementById('user-must-change')||{}).checked !== false;
+  const saveBtn = document.getElementById('user-modal-save');
+  if(saveBtn) saveBtn.disabled = true;
   try {
     if(isEdit){
-      const updates = {name, email, role};
-      if(pass) updates.password = pass;
-      await SB.patch('users', `?id=eq.${_editingUserId}`, updates);
+      const payload = {id:_editingUserId, name, email, role};
+      if(pass){ payload.password = pass; payload.mustChange = mustChange; }
+      const res = await Auth.adminUsers('update', payload);
       const idx = allUsers.findIndex(u => u.id === _editingUserId);
-      if(idx > -1){
-        allUsers[idx] = {...allUsers[idx], name, email, role};
-        if(pass) allUsers[idx].password = pass;
-      }
+      if(idx > -1 && res.profile) allUsers[idx] = {...allUsers[idx], ...res.profile};
       if(_editingUserId === currentUser.id){
-        currentUser.name = name; currentUser.role = role;
-        lsSet('session', currentUser);
+        currentUser.name = name;
         document.getElementById('mast-username').textContent = name;
+        await Auth.verify();
       }
     } else {
-      const id = 'u' + Date.now();
-      const mustChange = (document.getElementById('user-must-change')||{}).checked !== false;
-      await SB.post('users', {id, name, email, password: pass, role, must_change_password: mustChange});
-      allUsers.push({id, name, email, password: pass, role, must_change_password: mustChange});
+      const res = await Auth.adminUsers('create', {name, email, password: pass, role, mustChange});
+      if(res.profile) allUsers.push(res.profile);
+      allUsers.sort((a,b) => (a.name||'').localeCompare(b.name||''));
     }
     closeModal('modal-user');
     renderUsers();
   } catch(e){
     console.error('Save user failed:', e);
-    // Show the actual error from Supabase so we can diagnose it
-    const msg = e.message || String(e);
-    if(msg.includes('42501') || msg.includes('row-level security') || msg.includes('permission denied')){
-      errEl.textContent = 'Permission denied — RLS policy blocking write. See instructions below.';
-      errEl.title = msg;
-    } else if(msg.includes('23505') || msg.includes('unique')){
-      errEl.textContent = 'That email is already in the database.';
-    } else {
-      errEl.textContent = `Save failed: ${msg}`;
-    }
+    errEl.textContent = e.message || 'Save failed.';
+  } finally {
+    if(saveBtn) saveBtn.disabled = false;
   }
 }
 
@@ -1109,11 +1096,11 @@ async function deleteUser(userId){
   if(!u) return;
   if(!confirm(`Delete user "${u.name}" (${u.email})? They will no longer be able to log in.`)) return;
   try {
-    await SB.delete('users', `?id=eq.${userId}`);
+    await Auth.adminUsers('delete', {id: userId});
     allUsers = allUsers.filter(x => x.id !== userId);
     renderUsers();
   } catch(e){
-    alert('Could not delete user — check Supabase connection.');
+    alert('Could not delete user: ' + (e.message || 'check your connection.'));
   }
 }
 
@@ -1124,7 +1111,7 @@ function togglePwReveal(inputId, btn){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// AUTH — checks against Supabase users table
+// AUTH — sign-in is handled by auth.js (Supabase Auth)
 // ═══════════════════════════════════════════════════════════════
 async function doLogin(){
   const email = document.getElementById('login-email').value.trim().toLowerCase();
@@ -1134,40 +1121,27 @@ async function doLogin(){
 
   if(!email || !pass){ err.textContent = 'Please enter your email and password.'; return; }
 
+  const btn = document.querySelector('#login-screen .login-btn');
+  if(btn) btn.disabled = true;
   try {
-    const rows = await SB.get('users', `?email=eq.${encodeURIComponent(email)}&select=id,name,email,password,role,must_change_password`);
-    if(Array.isArray(rows) && rows.length){
-      const match = rows.find(u => u.password === pass);
-      if(match){
-        if(match.must_change_password){
-          showPasswordResetScreen(match);
-          return;
-        }
-        currentUser = {id: match.id, name: match.name, email: match.email, role: match.role};
-        lsSet('session', currentUser);
-        await onLoginSuccess();
-        return;
-      }
-    }
+    const p = await Auth.signIn(email, pass);
+    document.getElementById('login-pass').value = '';
+    await afterAuth(p);
   } catch(e){
-    console.warn('Supabase auth failed, trying fallback:', e);
+    err.textContent = e.message || 'Incorrect email or password.';
+  } finally {
+    if(btn) btn.disabled = false;
   }
-
-  const fallback = FALLBACK_USERS.find(u => u.email === email && u.password === pass);
-  if(fallback){
-    currentUser = {id: fallback.id||'local', name: fallback.name, email: fallback.email, role: fallback.role};
-    lsSet('session', currentUser);
-    await onLoginSuccess();
-    return;
-  }
-
-  err.textContent = 'Incorrect email or password.';
 }
 
-let _resetUser = null;
+// Called once we hold a verified session. Forces the password screen when required.
+async function afterAuth(p){
+  if(Auth.needsChange(p)){ showPasswordResetScreen(); return; }
+  currentUser = {id: p.id, name: p.name, email: p.email, role: p.role};
+  await onLoginSuccess();
+}
 
-function showPasswordResetScreen(user){
-  _resetUser = user;
+function showPasswordResetScreen(){
   document.getElementById('login-screen').style.display = 'none';
   const rs = document.getElementById('reset-screen');
   if(rs){ rs.style.display = 'flex'; }
@@ -1181,34 +1155,35 @@ async function doPasswordReset(){
   err.textContent = '';
   if(!p1 || p1.length < 8){ err.textContent = 'Password must be at least 8 characters.'; return; }
   if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
-  if(p1 === _resetUser.password){ err.textContent = 'New password must be different from your temporary password.'; return; }
   const btn = document.querySelector('#reset-screen .login-btn');
   if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
-    await SB.patch('users', `?id=eq.${_resetUser.id}`, { password: p1, must_change_password: false });
-    currentUser = { id: _resetUser.id, name: _resetUser.name, email: _resetUser.email, role: _resetUser.role };
-    lsSet('session', currentUser);
+    const p = await Auth.changePassword(p1);
     document.getElementById('reset-screen').style.display = 'none';
-    await onLoginSuccess();
+    await afterAuth(p || Auth.profile());
   } catch(e) {
-    err.textContent = 'Could not save password — please try again.';
+    err.textContent = e.message || 'Could not save password — please try again.';
   } finally {
     if(btn){ btn.disabled = false; btn.textContent = 'Set Password & Sign In'; }
   }
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key === 'Enter' && !currentUser) doLogin();
-  if(e.key === 'Enter' && document.getElementById('reset-screen') && document.getElementById('reset-screen').style.display === 'flex') doPasswordReset();
+  if(e.key !== 'Enter') return;
+  const rs = document.getElementById('reset-screen');
+  if(rs && rs.style.display === 'flex') doPasswordReset();
+  else if(!currentUser) doLogin();
 });
 
 function doLogout(){
   currentUser = null;
-  lsSet('session', null);
-  location.reload();
+  Auth.signOut().then(function(){ location.replace('index.html'); });
 }
 
 async function onLoginSuccess(){
+  // Shared links: after signing in, go to the page the person was originally sent to.
+  const _next = Auth.safeNext();
+  if(_next && _next.split('?')[0] !== 'index.html'){ location.replace(_next); return; }
   document.getElementById('login-screen').style.opacity = '0';
   setTimeout(()=>{ document.getElementById('login-screen').style.display = 'none'; }, 400);
   document.getElementById('masthead').style.display = 'flex';
@@ -1771,8 +1746,6 @@ function openBuilder(portfolioId, propertyId){
     propertyId,
     portfolioName: portfolio?.name || '',
     propertyName: property?.name || '',
-    userRole: currentUser?.role || 'user',
-    userName: currentUser?.name || '',
   });
   console.log('[CBRE] Routing to:', builderFile);
   window.location.href = builderFile + '?' + params.toString();
@@ -2022,21 +1995,9 @@ async function deleteAgent(agentId){
 // AUTO-LOGIN (restore session from localStorage)
 // ═══════════════════════════════════════════════════════════════
 (async function(){
-  const saved = lsGet('session');
-  if(saved && saved.email){
-    // Re-verify against Supabase in case role or name changed since last session
-    try {
-      const rows = await SB.get('users', `?email=eq.${encodeURIComponent(saved.email)}&select=id,name,email,role`);
-      if(Array.isArray(rows) && rows.length){
-        currentUser = {id: rows[0].id, name: rows[0].name, email: rows[0].email, role: rows[0].role};
-        lsSet('session', currentUser);
-        await onLoginSuccess(); return;
-      }
-    } catch(e){ /* Supabase unreachable — fall through to saved session */ }
-    // Use saved session as fallback (Supabase may be temporarily unreachable)
-    currentUser = saved;
-    await onLoginSuccess();
-  }
+  const p = await Auth.verify();
+  if(p) await afterAuth(p);
+  // otherwise the sign-in screen stays up
 })();
 function closeModal(id){
   document.getElementById(id).classList.remove('open');

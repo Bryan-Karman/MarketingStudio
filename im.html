@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="auth.js"></script>
+<style>#login-screen .login-box{display:none!important;}</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CBRE Information Memorandums</title>
@@ -319,10 +321,7 @@ const PRODUCT_KEY = 'im';  // namespace for localStorage
 const BUILDER_FILE = 'im-builder.html';
 const PROPERTY_LABEL = 'Property';
 
-const FALLBACK_USERS = [
-  { id:'u1', email:'bryan.karman@cbre.com', password:'Surfing1987', role:'admin', name:'Bryan Karman' },
-  { email:'connie.duan@cbre.com', password:'Password123', role:'user', name:'Connie Duan' },
-];
+// (Old hardcoded fallback logins removed. Sign-in is handled by auth.js / Supabase Auth.)
 
 // ── localStorage helpers — namespaced per product ──
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem('cbre_'+PRODUCT_KEY+'_'+k)||'null'); }catch(e){return null;} }
@@ -409,40 +408,10 @@ function saveData() {
 // ═══════════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════════
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const pass  = document.getElementById('login-pass').value;
-  const err   = document.getElementById('login-err');
-  err.textContent = '';
-  if(!email||!pass){ err.textContent='Please enter your email and password.'; return; }
-
-  try {
-    const rows = await SB.get('users', `?email=eq.${encodeURIComponent(email)}&select=id,name,email,password,role`);
-    if(Array.isArray(rows) && rows.length) {
-      const match = rows.find(u => u.password === pass);
-      if(match) {
-        currentUser = {id:match.id, name:match.name, email:match.email, role:match.role};
-        sessSet('session', currentUser);
-        await onLoginSuccess(); return;
-      }
-    }
-  } catch(e) { console.warn('Supabase auth failed, trying fallback:', e); }
-
-  const fb = FALLBACK_USERS.find(u => u.email===email && u.password===pass);
-  if(fb) {
-    currentUser = {id:fb.id||'local', name:fb.name, email:fb.email, role:fb.role};
-    sessSet('session', currentUser);
-    await onLoginSuccess(); return;
-  }
-  err.textContent = 'Incorrect email or password.';
-}
-
-document.addEventListener('keydown', e => { if(e.key==='Enter' && !currentUser) doLogin(); });
 
 function doLogout() {
   currentUser = null;
-  sessSet('session', null);
-  location.reload();
+  Auth.signOut().then(function(){ location.replace('index.html'); });
 }
 
 async function onLoginSuccess() {
@@ -679,8 +648,6 @@ function openBuilder(portfolioId, propertyId) {
     portfolioId, propertyId,
     portfolioName: portfolio?.name||'',
     propertyName:  pr?.name||'',
-    userRole: currentUser?.role||'user',
-    userName: currentUser?.name||'',
   });
   window.location.href = BUILDER_FILE+'?'+params.toString();
 }
@@ -710,19 +677,10 @@ function escHtml(str) { const d=document.createElement('div'); d.textContent=str
 // AUTO-LOGIN (restore shared session)
 // ═══════════════════════════════════════════════════════════════
 (async function() {
-  const saved = sessGet('session');
-  if(saved && saved.email) {
-    try {
-      const rows = await SB.get('users', `?email=eq.${encodeURIComponent(saved.email)}&select=id,name,email,role`);
-      if(Array.isArray(rows) && rows.length) {
-        currentUser = {id:rows[0].id, name:rows[0].name, email:rows[0].email, role:rows[0].role};
-        sessSet('session', currentUser);
-        await onLoginSuccess(); return;
-      }
-    } catch(e) { /* Supabase unreachable — use saved */ }
-    currentUser = saved;
-    await onLoginSuccess();
-  }
+  const p = await Auth.verify();
+  if(!p || Auth.needsChange(p)){ Auth.redirectToLogin(); return; }   // sign-in happens on index.html
+  currentUser = {id:p.id, name:p.name, email:p.email, role:p.role};
+  await onLoginSuccess();
 })();
 </script>
 </body>

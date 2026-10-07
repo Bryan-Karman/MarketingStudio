@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="auth.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CBRE Aerials Studio</title>
@@ -899,8 +900,9 @@ const portfolioId  = params.get('portfolioId')  || 'demo';
 const propertyId   = params.get('propertyId')   || 'demo';
 const portfolioName= params.get('portfolioName')|| 'Portfolio';
 const propertyName = params.get('propertyName') || 'Property';
-const userRole     = params.get('userRole')     || 'user';
-const userName     = params.get('userName')     || 'User';
+const _authProfile = (window.Auth && Auth.profile && Auth.profile()) || {};
+const userRole     = _authProfile.role === 'admin' ? 'admin' : 'user';
+const userName     = _authProfile.name || 'User';
 const isAdmin      = userRole === 'admin';
 
 document.getElementById('mast-port').textContent = portfolioName;
@@ -908,7 +910,7 @@ document.getElementById('mast-prop').textContent = propertyName;
 document.getElementById('mast-usr-name').textContent = userName;
 
 function goHome(){ window.location.href = 'aerials.html'; }
-function doLogout(){ localStorage.removeItem('cbre_session'); window.location.href = 'aerials.html'; }
+function doLogout(){ Auth.signOut().then(function(){ window.location.href = 'index.html'; }); }
 
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE HELPERS
@@ -5556,7 +5558,7 @@ function openAssistModal(){
   document.getElementById('assist-success').style.display='none';
   const errEl=document.getElementById('assist-error'); if(errEl) errEl.textContent='';
   let userName='',userEmail='';
-  try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s){userName=s.name||'';userEmail=s.email||'';} }catch(e){}
+  try{ const s=(window.Auth&&Auth.profile&&Auth.profile()); if(s){userName=s.name||'';userEmail=s.email||'';} }catch(e){}
   const nameEl=document.getElementById('assist-name'); if(nameEl) nameEl.value=userName;
   const emailEl=document.getElementById('assist-email'); if(emailEl) emailEl.value=userEmail;
   const projEl=document.getElementById('assist-project');

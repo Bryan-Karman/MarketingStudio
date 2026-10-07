@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="auth.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CBRE Builder 4</title>
@@ -578,7 +579,7 @@ const SUPA_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const _urlP        = new URLSearchParams(window.location.search);
 const PORTFOLIO_ID = _urlP.get('portfolioId') || 'builder4';
 const PROPERTY_ID  = _urlP.get('propertyId')  || 'builder4_001';
-const USER_ROLE    = _urlP.get('userRole')     || 'user'; // 'admin' or 'user'
+const USER_ROLE    = (window.Auth && Auth.profile() && Auth.profile().role === 'admin') ? 'admin' : 'user'; // from the signed-in profile
 const CURRENT_TAB_SLUG = _urlP.get('tab')     || 'brochure'; // which tab this page instance is
 // Channel name is per-tab — updated when switching tabs
 let CHANNEL_NAME = 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID + ':brochure';
@@ -748,7 +749,7 @@ function joinSession() {
 // Auto-join if userName is in the URL (passed from index.html login session)
 (function autoJoinFromUrl(){
   const params      = new URLSearchParams(window.location.search);
-  const urlName     = (params.get('userName')      || '').trim();
+  const urlName     = ((window.Auth && Auth.profile() && Auth.profile().name) || '').trim();
   const portName    = (params.get('portfolioName') || '').trim();
   const propName    = (params.get('propertyName')  || '').trim();
 
@@ -2729,7 +2730,7 @@ function saveSyncBeforeUnload(slug, els) {
     const checkXhr = new XMLHttpRequest();
     checkXhr.open('GET', SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', false); // false = synchronous
     checkXhr.setRequestHeader('apikey', SUPA_KEY);
-    checkXhr.setRequestHeader('Authorization', 'Bearer ' + SUPA_KEY);
+    checkXhr.setRequestHeader('Authorization', 'Bearer ' + ((window.Auth && Auth.tokenSync && Auth.tokenSync()) || SUPA_KEY));
     checkXhr.send();
 
     let method = 'POST', saveUrl = SUPA_URL + '/rest/v1/projects';
@@ -2744,7 +2745,7 @@ function saveSyncBeforeUnload(slug, els) {
     const saveXhr = new XMLHttpRequest();
     saveXhr.open(method, saveUrl, false); // synchronous
     saveXhr.setRequestHeader('apikey', SUPA_KEY);
-    saveXhr.setRequestHeader('Authorization', 'Bearer ' + SUPA_KEY);
+    saveXhr.setRequestHeader('Authorization', 'Bearer ' + ((window.Auth && Auth.tokenSync && Auth.tokenSync()) || SUPA_KEY));
     saveXhr.setRequestHeader('Content-Type', 'application/json');
     saveXhr.setRequestHeader('Prefer', 'return=minimal');
     saveXhr.send(body);

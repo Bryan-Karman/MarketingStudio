@@ -1,6 +1,7 @@
 <!-- !! CBRE_BUILDER_WORKING_FILE !! DO NOT OVERWRITE — always continue editing THIS file, never re-copy from uploads/ -->
 <!DOCTYPE html>
 <html lang="en"><head>
+<script src="auth.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CBRE Marketing Studio</title>
@@ -1475,53 +1476,23 @@ function createElement(cfg){
               // Free-text element (field='', bullets='1'): read all child divs,
               // rebuild clean span.bt structure, save sv.content, update textarea.
               var _fd=Array.from(inner.querySelectorAll(':scope > div'));
-              var _fl=[];   // plain-text lines (used for sv.content + props textarea)
-              var _fh=[];   // matching inner HTML per line (keeps bold/italic/underline/sup)
-              function _fesc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+              var _fl=[];
               if(_fd.length){
-                _fd.forEach(function(d){
-                  var bt=d.querySelector('span.bt');
-                  var txt=(bt?bt.textContent:d.textContent).replace(/^–\s*/,'').trim();
-                  if(!txt) return;
-                  var html;
-                  if(bt){
-                    html=bt.innerHTML;
-                  } else {
-                    // Browser-created div (no span.bt): drop the dash marker span, keep the rest of the markup
-                    var _cl=d.cloneNode(true);
-                    var _dash=_cl.firstElementChild;
-                    if(_dash && /^\s*[–-]\s*$/.test(_dash.textContent)) _dash.remove();
-                    html=_cl.innerHTML.replace(/^\s*–\s*/,'');
-                  }
-                  html=html.replace(/<br\s*\/?>\s*$/i,'');
-                  _fl.push(txt); _fh.push(html);
-                });
+                _fl=_fd.map(function(d){var bt=d.querySelector('span.bt');return(bt?bt.textContent:d.textContent).replace(/^–\s*/,'').trim();}).filter(Boolean);
               } else {
-                (inner.innerText||inner.textContent||'').split('\n').forEach(function(l){
-                  var t=l.replace(/^–\s*/,'').trim();
-                  if(t){ _fl.push(t); _fh.push(_fesc(t)); }
-                });
+                _fl=(inner.innerText||inner.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();}).filter(Boolean);
               }
               // Never strip income from free-text elements — user typed it intentionally
               var _fiFr=''; // no income stripping for free-text
               var _fc=_fl.join('\n');
               var _fsp=parseFloat(_blurEl.dataset.bulletParaSpacing||'0')||parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0')||4;
               var _fmb=_fsp>0?'margin-bottom:'+_fsp+'px;':'';
-              // Rebuild clean span.bt structure but KEEP each line's inline formatting (bold/italic/underline/sup).
-              inner.innerHTML=_fh.map(function(h){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+h+'</span></div>';}).join('');
+              function _fesc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+              inner.innerHTML=_fl.map(function(l){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span class="bt">'+_fesc(l)+'</span></div>';}).join('');
               inner.style.whiteSpace='normal';inner.style.wordBreak='break-word';
-              // Persist formatting: only clear richHtml if no real formatting remains.
-              var _fRichRx=/<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
-              var _fHasFmt=_fRichRx.test(inner.innerHTML);
-              if(_fHasFmt){ _blurEl.dataset.richHtml=inner.innerHTML; } else { delete _blurEl.dataset.richHtml; }
               if(savedStates[currentTab]){
                 var _feid=_blurEl?_blurEl.dataset.eid:null;
-                savedStates[currentTab].forEach(function(sv){
-                  if(sv.eid===_feid){
-                    sv.content=_fc;
-                    if(_fHasFmt){ sv.richHtml=inner.innerHTML; } else { delete sv.richHtml; }
-                  }
-                });
+                savedStates[currentTab].forEach(function(sv){if(sv.eid===_feid){sv.content=_fc;delete sv.richHtml;}});
               }
               var _fta=document.querySelector('#props-content textarea');
               if(_fta) _fta.value=_fl.join('\n');
@@ -6441,10 +6412,8 @@ const _portfolioName=_qp.get('portfolioName')||'Portfolio';
 const _propertyName=_qp.get('propertyName')||'Property';
 const _openedFromHub=_qp.has('portfolioId');
 const _userRole=(function(){
-  var _r=_qp.get('userRole');
-  if(_r==='admin'){ try{localStorage.setItem('cbre_user_role','admin');}catch(e){} }
-  if(!_r){ try{_r=localStorage.getItem('cbre_user_role');}catch(e){} }
-  return _r||(_openedFromHub?'user':'admin');
+  var _p=(window.Auth&&Auth.profile&&Auth.profile());
+  return (_p&&_p.role==='admin')?'admin':'user';
 })();
 const LS_KEY='cbre_v5_'+_portfolioId+'_'+_propertyId;
 
@@ -6469,9 +6438,8 @@ const LS_KEY='cbre_v5_'+_portfolioId+'_'+_propertyId;
   const un=document.getElementById('mast-usr-name');
   if(pp) pp.textContent=_portfolioName||'Portfolios';
   if(pr) pr.textContent=_propertyName||'Property';
-  const userName=_qp.get('userName')||'';
-  if(un&&userName) un.textContent=userName;
-  else { try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s&&s.name&&un) un.textContent=s.name; }catch(e){} }
+  var _ap=(window.Auth&&Auth.profile&&Auth.profile());
+  if(un&&_ap&&_ap.name) un.textContent=_ap.name;
 })();
 
 function goHome(){ window.location.href='index.html'; }
@@ -6480,7 +6448,7 @@ function goPortfolio(){
   const pid = _qp.get('portfolioId');
   window.location.href = 'index.html' + (pid ? '?openPortfolio='+encodeURIComponent(pid) : '');
 }
-function doLogout(){ localStorage.removeItem('cbre_hub_session'); localStorage.removeItem('cbre_user_role'); window.location.href='index.html'; }
+function doLogout(){ Auth.signOut().then(function(){ window.location.href='index.html'; }); }
 function setCdtStatus(cls,txt){ const el=document.getElementById('cld'); const lb=document.getElementById('cld-lbl'); if(el) el.className='cld '+cls; if(lb) lb.textContent=txt; }
 
 // Default hidden tabs for NEW projects — only Brochure(0), EDM(2), LinkedIn(4), Auction(8), Marketing Schedule(9) are ON by default
@@ -7379,7 +7347,7 @@ async function init(){
   });
   // Capture current user name for history attribution (safe, after RAF settles)
   try{
-    var _histSess=JSON.parse(localStorage.getItem('cbre_hub_session')||'null');
+    var _histSess=(window.Auth&&Auth.profile&&Auth.profile());
     if(_histSess&&_histSess.name) _currentUserName=_histSess.name;
   }catch(e){}
   // Pre-load last snapshot fingerprint so first edit doesn't write a duplicate.
@@ -8812,7 +8780,7 @@ function openAssistModal(){
   document.getElementById('assist-success').style.display='none';
   const errEl=document.getElementById('assist-error'); if(errEl) errEl.textContent='';
   let userName='',userEmail='';
-  try{ const s=JSON.parse(localStorage.getItem('cbre_hub_session')||'null'); if(s){userName=s.name||'';userEmail=s.email||'';} }catch(e){}
+  try{ const s=(window.Auth&&Auth.profile&&Auth.profile()); if(s){userName=s.name||'';userEmail=s.email||'';} }catch(e){}
   const nameEl=document.getElementById('assist-name'); if(nameEl) nameEl.value=userName;
   const emailEl=document.getElementById('assist-email'); if(emailEl) emailEl.value=userEmail;
   const projEl=document.getElementById('assist-project');
