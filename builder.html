@@ -1475,23 +1475,53 @@ function createElement(cfg){
               // Free-text element (field='', bullets='1'): read all child divs,
               // rebuild clean span.bt structure, save sv.content, update textarea.
               var _fd=Array.from(inner.querySelectorAll(':scope > div'));
-              var _fl=[];
+              var _fl=[];   // plain-text lines (used for sv.content + props textarea)
+              var _fh=[];   // matching inner HTML per line (keeps bold/italic/underline/sup)
+              function _fesc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
               if(_fd.length){
-                _fl=_fd.map(function(d){var bt=d.querySelector('span.bt');return(bt?bt.textContent:d.textContent).replace(/^–\s*/,'').trim();}).filter(Boolean);
+                _fd.forEach(function(d){
+                  var bt=d.querySelector('span.bt');
+                  var txt=(bt?bt.textContent:d.textContent).replace(/^–\s*/,'').trim();
+                  if(!txt) return;
+                  var html;
+                  if(bt){
+                    html=bt.innerHTML;
+                  } else {
+                    // Browser-created div (no span.bt): drop the dash marker span, keep the rest of the markup
+                    var _cl=d.cloneNode(true);
+                    var _dash=_cl.firstElementChild;
+                    if(_dash && /^\s*[–-]\s*$/.test(_dash.textContent)) _dash.remove();
+                    html=_cl.innerHTML.replace(/^\s*–\s*/,'');
+                  }
+                  html=html.replace(/<br\s*\/?>\s*$/i,'');
+                  _fl.push(txt); _fh.push(html);
+                });
               } else {
-                _fl=(inner.innerText||inner.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();}).filter(Boolean);
+                (inner.innerText||inner.textContent||'').split('\n').forEach(function(l){
+                  var t=l.replace(/^–\s*/,'').trim();
+                  if(t){ _fl.push(t); _fh.push(_fesc(t)); }
+                });
               }
               // Never strip income from free-text elements — user typed it intentionally
               var _fiFr=''; // no income stripping for free-text
               var _fc=_fl.join('\n');
               var _fsp=parseFloat(_blurEl.dataset.bulletParaSpacing||'0')||parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0')||4;
               var _fmb=_fsp>0?'margin-bottom:'+_fsp+'px;':'';
-              function _fesc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-              inner.innerHTML=_fl.map(function(l){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span class="bt">'+_fesc(l)+'</span></div>';}).join('');
+              // Rebuild clean span.bt structure but KEEP each line's inline formatting (bold/italic/underline/sup).
+              inner.innerHTML=_fh.map(function(h){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+h+'</span></div>';}).join('');
               inner.style.whiteSpace='normal';inner.style.wordBreak='break-word';
+              // Persist formatting: only clear richHtml if no real formatting remains.
+              var _fRichRx=/<(b|i|u|sup|strong|em)[\s>]|font-weight:\s*700/i;
+              var _fHasFmt=_fRichRx.test(inner.innerHTML);
+              if(_fHasFmt){ _blurEl.dataset.richHtml=inner.innerHTML; } else { delete _blurEl.dataset.richHtml; }
               if(savedStates[currentTab]){
                 var _feid=_blurEl?_blurEl.dataset.eid:null;
-                savedStates[currentTab].forEach(function(sv){if(sv.eid===_feid){sv.content=_fc;delete sv.richHtml;}});
+                savedStates[currentTab].forEach(function(sv){
+                  if(sv.eid===_feid){
+                    sv.content=_fc;
+                    if(_fHasFmt){ sv.richHtml=inner.innerHTML; } else { delete sv.richHtml; }
+                  }
+                });
               }
               var _fta=document.querySelector('#props-content textarea');
               if(_fta) _fta.value=_fl.join('\n');
