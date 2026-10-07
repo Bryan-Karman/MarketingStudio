@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Studio Hub — Live Sync door check</title>
+<style>
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
+:root{
+  --dk:#0d2b21; --g:#006A4D; --gb:#00965E; --bg:#f5f5f0; --card:#fff; --border:#d8d8d0;
+  --text:#1a1a1a; --muted:#666; --ok:#1f7a4d; --okbg:#e6f3ec; --bad:#b3261e; --badbg:#fbeae8; --note:#7a5b00; --notebg:#fbf3dc;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.45;}
+header{background:var(--dk);color:#fff;padding:16px 24px;display:flex;align-items:baseline;gap:14px;}
+header strong{font-weight:600;font-size:17px;}
+header span{color:rgba(255,255,255,.55);font-size:13px;}
+main{max-width:640px;margin:28px auto 60px;padding:0 16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:22px 24px;margin-bottom:18px;}
+h2{font-size:17px;font-weight:600;margin-bottom:4px;}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 4px;}
+input{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:3px;font:inherit;color:var(--text);}
+input:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--gb);outline-offset:2px;}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:3px;border:1px solid var(--g);background:var(--g);color:#fff;cursor:pointer;margin-top:16px;}
+button:hover{background:var(--gb);}
+button.plain{background:#fff;color:var(--text);border-color:var(--border);}
+button.plain:hover{background:var(--bg);}
+button:disabled{opacity:.55;cursor:default;}
+label.chk{display:flex;gap:8px;align-items:flex-start;font-weight:400;color:var(--text);font-size:13px;margin-top:14px;}
+label.chk input{width:auto;margin-top:3px;}
+.msg{margin-top:12px;font-size:13px;min-height:18px;}
+.msg.bad{color:var(--bad);} .msg.ok{color:var(--ok);}
+.who{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;}
+.who button{margin:0;padding:7px 12px;}
+.checks{list-style:none;}
+.checks li{display:grid;grid-template-columns:78px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border);}
+.checks li:first-child{border-top:0;}
+.tag{font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;height:fit-content;text-align:center;}
+.tag.pass{background:var(--okbg);color:var(--ok);} .tag.fail{background:var(--badbg);color:var(--bad);} .tag.info{background:var(--notebg);color:var(--note);}
+.checks b{font-weight:600;display:block;}
+.checks small{color:var(--muted);font-size:13px;}
+details summary{cursor:pointer;font-weight:600;}
+details p{color:var(--muted);font-size:13px;margin-top:8px;}
+.hidden{display:none;}
+footer{max-width:640px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:12px;}
+</style>
+</head>
+<body>
+<header><strong>Studio Hub</strong><span>Live Sync door check</span></header>
+
+<main>
+  <section class="card" id="signin-card">
+    <h2>Sign in</h2>
+    <p class="sub">Sign in with your normal Studio Hub email and password. This page only <em>listens</em>: it asks the Live Sync service whether it would let a stranger in, and whether it still lets you in. It joins a random throw-away channel, sends one tiny test message to itself, and touches no projects.</p>
+    <label for="email">Email address</label>
+    <input id="email" type="email" autocomplete="username" placeholder="you@cbre.com">
+    <label for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password">
+    <label class="chk"><input id="cutover" type="checkbox"> I have already switched OFF "Allow public access" in Supabase (Realtime &gt; Settings)</label>
+    <button id="signin-btn" type="button">Sign in and run checks</button>
+    <div class="msg" id="signin-msg" role="status"></div>
+  </section>
+
+  <section class="card hidden" id="results-card">
+    <div class="who">
+      <div><h2 id="who-name"></h2><div class="sub" id="who-sub" style="margin:0;"></div></div>
+      <button class="plain" id="signout-btn" type="button">Sign out</button>
+    </div>
+    <ul class="checks" id="checks"></ul>
+  </section>
+
+</main>
+<footer>Nothing on this page is saved in your browser. Closing the tab ends the session. Sending nothing but a test message to a random channel name.</footer>
+
+<script>
+// ───────────── core ─────────────
+var SUPABASE_URL = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';   // the public key, safe to be in the page
+
+async function signIn(email, password){
+  var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST', headers: { 'apikey': ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: password }) });
+  var d = null; try { d = await res.json(); } catch(e) {}
+  if(!res.ok || !d || !d.access_token) throw new Error((d && (d.error_description || d.msg || d.message)) || 'Sign-in failed (status ' + res.status + ')');
+  return d;
+}
+
+function reasonOf(p){ var r = p && (p.response && (p.response.reason || p.response.message) || p.message); return r ? String(r).slice(0, 140) : ''; }
+
+// Joins a throw-away channel and reports what the server said. Never touches any real channel.
+// result: 'joined' | 'echo' | 'refused' | 'joined-no-echo' | 'noanswer'
+function probeJoin(opts){
+  return new Promise(function(resolve){
+    var done = false, joined = false, ref = 1, ws, timer;
+    var topic = 'realtime:cbre-door-check-' + Math.random().toString(36).slice(2, 10);
+    function finish(r){ if(done) return; done = true; clearTimeout(timer); try { ws.close(); } catch(e) {} resolve(r); }
+    try { ws = new WebSocket('wss://pgsgjafgetdvuctmpibf.supabase.co/realtime/v1/websocket?apikey=' + ANON_KEY + '&vsn=1.0.0'); }
+    catch(e){ return resolve({ result: 'noanswer', detail: 'could not open a connection' }); }
+    timer = setTimeout(function(){ finish(joined ? { result: 'joined-no-echo', detail: 'joined, but the test message never came back' } : { result: 'noanswer', detail: 'no answer within 8 seconds' }); }, 8000);
+    ws.onopen = function(){
+      var cfg = { broadcast: { self: true, ack: false }, presence: { key: 'door-check' } };
+      var payload = { config: cfg };
+      if(opts.private) cfg.private = true;
+      if(opts.token) payload.access_token = opts.token;
+      ws.send(JSON.stringify({ topic: topic, event: 'phx_join', payload: payload, ref: String(ref++) }));
+    };
+    ws.onmessage = function(e){
+      var m; try { m = JSON.parse(e.data); } catch(x) { return; }
+      if(m.topic === 'phoenix') return;
+      var p = m.payload || {};
+      if(!joined && m.event === 'phx_reply' && p.status === 'ok'){
+        joined = true;
+        if(opts.echo) ws.send(JSON.stringify({ topic: topic, event: 'broadcast', payload: { type: 'door-check', n: 1 }, ref: String(ref++) }));
+        else finish({ result: 'joined', detail: '' });
+        return;
+      }
+      if(!joined && ((m.event === 'phx_reply' && p.status === 'error') || m.event === 'phx_error' || m.event === 'phx_close' || (m.event === 'system' && p.status === 'error'))){
+        finish({ result: 'refused', detail: reasonOf(p) }); return;
+      }
+      if(joined && opts.echo && m.event === 'broadcast') finish({ result: 'echo', detail: '' });
+    };
+    ws.onclose = function(){ if(!done) finish(joined ? { result: 'joined-no-echo', detail: 'the connection closed' } : { result: 'refused', detail: 'the server closed the connection' }); };
+    ws.onerror = function(){};
+  });
+}
+
+// report(status, title, detail): status is 'pass' | 'fail' | 'info'
+async function runDoorChecks(token, cutover, report){
+  var r, tail;
+
+  r = await probeJoin({ private: false, token: null });
+  tail = r.detail ? ' (' + r.detail + ')' : '';
+  if(r.result === 'joined'){
+    if(cutover) report('fail', 'A stranger can still join a public Live Sync channel', 'Public channels are still allowed. In Supabase go to Realtime, then Settings, and switch OFF "Allow public access".');
+    else report('info', 'A stranger can join a public Live Sync channel (the open door)', 'This is the weakness, and it is expected until you switch OFF "Allow public access" at the final step.');
+  } else if(r.result === 'refused') report('pass', 'Strangers cannot join public channels', 'The server refused a visitor who is not signed in.' + tail);
+  else report('info', 'Could not tell whether strangers can join public channels', (r.detail || 'No clear answer') + '. Try again.');
+
+  r = await probeJoin({ private: true, token: null });
+  tail = r.detail ? ' (' + r.detail + ')' : '';
+  if(r.result === 'joined') report('fail', 'A stranger can join a PRIVATE channel', 'The Live Sync rules are too open. They must allow signed-in users only. Tell Claude.');
+  else if(r.result === 'refused') report('pass', 'Strangers cannot join private channels', 'The server refused a visitor with no sign-in.' + tail);
+  else report('info', 'Could not tell whether strangers can join private channels', (r.detail || 'No clear answer') + '. Try again.');
+
+  r = await probeJoin({ private: true, token: token, echo: true });
+  tail = r.detail ? ' (' + r.detail + ')' : '';
+  if(r.result === 'echo') report('pass', 'Signed-in users can join, send and receive on a private channel', 'This is what Builder 4 will use. Live Sync will work for your staff.');
+  else if(r.result === 'joined-no-echo') report('fail', 'You can join a private channel but sending or receiving is blocked', 'One of the two Live Sync rules is missing. Re-run phase2_realtime_policies.sql. ' + tail);
+  else if(r.result === 'refused') report('fail', 'Signed-in users are refused on the private channel', 'The Live Sync rules are not in place yet. Run phase2_realtime_policies.sql in the SQL Editor. ' + tail);
+  else report('info', 'Could not tell whether signed-in users can use the private channel', (r.detail || 'No clear answer') + '. Try again.');
+
+  r = await probeJoin({ private: false, token: token });
+  tail = r.detail ? ' (' + r.detail + ')' : '';
+  if(r.result === 'joined'){
+    if(cutover) report('fail', 'Old-style public channels still work, even for you', 'They should be switched off now. Check "Allow public access" is OFF in Realtime settings.');
+    else report('info', 'Old-style public channels still work (compatibility on)', 'Expected until the final step. Old Builder 4 pages keep working because of this.');
+  } else if(r.result === 'refused') report('pass', 'Old-style public channels are switched off', 'Only private channels work now.' + tail);
+  else report('info', 'Could not tell about old-style public channels', (r.detail || 'No clear answer') + '. Try again.');
+}
+// ───────────── end of core ─────────────
+
+(function(){
+  if(typeof document === 'undefined') return;
+  var $ = function(id){ return document.getElementById(id); };
+  var token = null;
+  function setMsg(el, text, kind){ el.textContent = text || ''; el.className = 'msg' + (kind ? ' ' + kind : ''); }
+  function addCheck(status, title, detail){
+    var li = document.createElement('li');
+    var tag = document.createElement('span'); tag.className = 'tag ' + status;
+    tag.textContent = status === 'pass' ? 'OK' : status === 'fail' ? 'Problem' : 'Note';
+    var box = document.createElement('div');
+    var b = document.createElement('b'); b.textContent = title;
+    var s = document.createElement('small'); s.textContent = detail;
+    box.appendChild(b); box.appendChild(s); li.appendChild(tag); li.appendChild(box);
+    $('checks').appendChild(li);
+  }
+  async function go(){
+    var email = $('email').value.trim().toLowerCase(), pass = $('pass').value;
+    if(!email || !pass){ setMsg($('signin-msg'), 'Enter your email and password.', 'bad'); return; }
+    $('signin-btn').disabled = true; setMsg($('signin-msg'), 'Signing in…');
+    try {
+      var session = await signIn(email, pass); token = session.access_token;
+      $('pass').value = ''; setMsg($('signin-msg'), '');
+      var cutover = $('cutover').checked;
+      $('signin-card').classList.add('hidden'); $('results-card').classList.remove('hidden');
+      $('checks').textContent = '';
+      $('who-name').textContent = session.user && session.user.email || email;
+      $('who-sub').textContent = 'Checking the Live Sync service… this takes up to 30 seconds';
+      await runDoorChecks(token, cutover, addCheck);
+      $('who-sub').textContent = cutover ? 'Checked as: after the final switch' : 'Checked as: before the final switch';
+    } catch(e){ setMsg($('signin-msg'), e.message || 'Sign-in failed.', 'bad'); }
+    finally { $('signin-btn').disabled = false; }
+  }
+  $('signin-btn').addEventListener('click', go);
+  $('pass').addEventListener('keydown', function(e){ if(e.key === 'Enter') go(); });
+  $('email').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('pass').focus(); });
+  $('signout-btn').addEventListener('click', function(){ token = null; $('results-card').classList.add('hidden'); $('signin-card').classList.remove('hidden'); });
+})();
+</script>
+</body>
+</html>
