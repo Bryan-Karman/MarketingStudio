@@ -2,6 +2,312 @@
 <html lang="en">
 <head>
 <script src="auth.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   Builder 4 — security filter (Phase 1)
+
+   Everything that arrives over the live-sync connection is treated as
+   untrusted. Before any of it touches the page it is checked here:
+     • rich text is parsed safely and only simple formatting is kept
+       (bold, italic, underline, lists, line breaks, colours, sizes);
+       scripts, event handlers, outside images and the like are removed
+     • numbers and ids must really be numbers (they are written into the
+       page's property panel, so text there could carry code)
+     • image links must point at your own Supabase storage
+     • every message type is rebuilt from its known fields only
+   Messages and elements are never changed when they are legitimate.
+   Add  &filter=report  to a Builder 4 address to show a small badge that
+   counts any time the filter alters something (for testing).
+   If a NEW live-sync message type or element field is ever added to the
+   page, it has to be added here too, or it will be ignored.
+   ════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+
+  var STORAGE_PREFIX = 'https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/';
+  var REPORT = /[?&]filter=report\b/.test(location.search);
+  var stats = { changes: 0, samples: [] };
+
+  function note(kind, before, after){
+    stats.changes++;
+    var b = String(before).slice(0, 300), a = String(after).slice(0, 300);
+    if (stats.samples.length < 25) stats.samples.push({ kind: kind, before: b, after: a });
+    if (REPORT){
+      try { console.warn('[security filter]', kind, { before: b, after: a }); } catch(e){}
+      updateBadge();
+    }
+  }
+
+  // ── rich text ───────────────────────────────────────────────────
+  var ALLOWED_TAGS = { B:1, STRONG:1, I:1, EM:1, U:1, S:1, STRIKE:1, SUB:1, SUP:1, BR:1, DIV:1, P:1, SPAN:1,
+                       UL:1, OL:1, LI:1, FONT:1, H1:1, H2:1, H3:1, H4:1, H5:1, H6:1, A:1 };
+  var DROP_TAGS    = { SCRIPT:1, STYLE:1, IFRAME:1, OBJECT:1, EMBED:1, LINK:1, META:1, BASE:1, TEMPLATE:1, NOSCRIPT:1,
+                       SVG:1, MATH:1, FORM:1, INPUT:1, BUTTON:1, TEXTAREA:1, SELECT:1, OPTION:1, AUDIO:1, VIDEO:1,
+                       SOURCE:1, TRACK:1, CANVAS:1, FRAME:1, FRAMESET:1, APPLET:1, IMG:1, PICTURE:1, TITLE:1,
+                       HEAD:1, XMP:1, PLAINTEXT:1, LISTING:1 };
+  var ALLOWED_CSS  = /^(color|background-color|font(-[a-z-]+)?|letter-spacing|word-spacing|line-height|text-align|text-decoration(-[a-z-]+)?|text-transform|text-indent|white-space|vertical-align|margin(-(top|right|bottom|left))?|padding(-(top|right|bottom|left))?|list-style(-[a-z]+)?|direction)$/;
+  var BAD_CSS      = /url\s*\(|expression|javascript|@import|behavior|binding|[<>\\]/i;
+
+  function cleanStyleAttr(el, original){
+    var st = el.style, keep = [], dropped = false, i;
+    if (!st) { el.removeAttribute('style'); return; }
+    for (i = 0; i < st.length; i++){
+      var p = st[i], v = st.getPropertyValue(p);
+      if (ALLOWED_CSS.test(p) && v.length <= 200 && !BAD_CSS.test(v)) keep.push([p, v, st.getPropertyPriority(p)]);
+      else dropped = true;
+    }
+    // Leave the author's own text untouched unless something has to go.
+    if (!dropped && !BAD_CSS.test(original)) return;
+    el.removeAttribute('style');
+    keep.forEach(function(k){ el.style.setProperty(k[0], k[1], k[2]); });
+  }
+
+  function cleanAttributes(el, tag){
+    Array.prototype.slice.call(el.attributes).forEach(function(a){
+      var n = a.name.toLowerCase(), v = a.value;
+      if (n === 'style') { cleanStyleAttr(el, v); return; }
+      if (tag === 'A' && n === 'href') {
+        if (/^\s*(https?:|mailto:|tel:)/i.test(v) && !/[\u0000-\u001f]/.test(v)) return;
+        el.removeAttribute(a.name); return;
+      }
+      if (tag === 'A' && n === 'target' && v === '_blank') return;
+      if (tag === 'A' && n === 'rel') return;
+      if (/^(dir|lang|align|color|size|face)$/.test(n) && v.length <= 60 && !/[<>"'`\\]/.test(v)) return;
+      el.removeAttribute(a.name);
+    });
+    if (tag === 'A' && el.getAttribute('target')) el.setAttribute('rel', 'noopener noreferrer');
+  }
+
+  function cleanNode(parent){
+    Array.prototype.slice.call(parent.childNodes).forEach(function(n){
+      if (n.nodeType === 3) return;                                   // text
+      if (n.nodeType !== 1) { parent.removeChild(n); return; }        // comments etc.
+      var tag = String(n.tagName).toUpperCase();
+      if (DROP_TAGS[tag]) { parent.removeChild(n); return; }
+      if (!ALLOWED_TAGS[tag]) {                                       // unknown tag: keep the text, drop the wrapper
+        cleanNode(n);
+        while (n.firstChild) parent.insertBefore(n.firstChild, n);
+        parent.removeChild(n);
+        return;
+      }
+      cleanAttributes(n, tag);
+      cleanNode(n);
+    });
+  }
+
+  function escapeText(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function parseBody(html){ return new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html').body; }
+
+  function safeHtml(html){
+    if (html === null || html === undefined) return '';
+    html = String(html);
+    if (html.length > 300000) { note('text too long, cut', html.length, 300000); html = html.slice(0, 300000); }
+    var out;
+    try {
+      var body = parseBody(html);          // inert document: nothing in it runs or loads
+      cleanNode(body);
+      out = body.innerHTML;
+    } catch(e){
+      out = escapeText(html);
+      note('filter error, text escaped', html, out);
+    }
+    if (REPORT){
+      var base; try { base = parseBody(html).innerHTML; } catch(e){ base = html; }
+      if (out !== base) note('rich text changed', base, out);
+    }
+    return out;
+  }
+
+  // ── values ──────────────────────────────────────────────────────
+  var HAS = Object.prototype.hasOwnProperty;
+  var BAD_KEY = /^(cssText|length|parentRule|constructor|prototype|__proto__|setProperty|removeProperty|getPropertyValue|getPropertyPriority|item|toString|valueOf|hasOwnProperty|isPrototypeOf)$/;
+  var SAFE_STR = /^[A-Za-z0-9 #%.,()\-_+\/]{0,120}$/;
+
+  function num(v, lo, hi){
+    var n = (typeof v === 'number') ? v : ((typeof v === 'string' && /^\s*-?\d+(\.\d+)?\s*$/.test(v)) ? parseFloat(v) : NaN);
+    if (!isFinite(n)) return null;
+    return Math.max(lo, Math.min(hi, n));
+  }
+  function idOf(v){ var n = num(v, 0, 9007199254740991); return (n !== null && Math.floor(n) === n) ? n : null; }
+  function cssVal(v){
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'number')  return isFinite(v) ? v : null;
+    if (typeof v === 'string' && SAFE_STR.test(v) && !BAD_CSS.test(v)) return v;
+    return null;
+  }
+  function cleanName(s, max){
+    if (typeof s !== 'string') return '';
+    return s.replace(/[\u0000-\u001f\u007f<>`\\]/g, '').trim().slice(0, max || 60);
+  }
+  function cleanUserId(s){ return (typeof s === 'string' && /^[A-Za-z0-9_\-.:]{1,80}$/.test(s)) ? s : null; }
+  function imageUrl(u){
+    if (u === '' || u === null || u === undefined) return '';
+    u = String(u);
+    return (u.indexOf(STORAGE_PREFIX) === 0 && u.length < 600 && !/[\s"'<>`\\]/.test(u)) ? u : null;
+  }
+
+  // ── elements ────────────────────────────────────────────────────
+  var NUM_RANGE = { x:[-50000,50000], y:[-50000,50000], w:[0,50000], h:[0,50000],
+                    imgX:[-50000,50000], imgY:[-50000,50000], imgW:[0,50000], imgH:[0,50000],
+                    strokeWidth:[0,1000], borderRadius:[0,5000], fillOpacity:[0,1] };
+
+  function cleanStyleObj(o){
+    var out = {};
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return out;
+    Object.keys(o).forEach(function(k){
+      if (!/^[A-Za-z]{1,30}$/.test(k) || BAD_KEY.test(k)) { note('style name removed', k, ''); return; }
+      var v = cssVal(o[k]);
+      if (v === null) { note('style value removed', k + '=' + String(o[k]), ''); return; }
+      out[k] = v;
+    });
+    return out;
+  }
+
+  function cleanElement(el){
+    if (!el || typeof el !== 'object' || Array.isArray(el)) return null;
+    var out = {}, eid = idOf(el.id);
+    if (eid === null) { note('element without a valid id dropped', JSON.stringify(el).slice(0,200), ''); return null; }
+    if (el.type !== 'text' && el.type !== 'img' && el.type !== 'rect') { note('element of unknown type dropped', el.type, ''); return null; }
+    out.id = eid; out.type = el.type;
+    Object.keys(el).forEach(function(k){
+      if (k === 'id' || k === 'type') return;
+      var v = el[k];
+      if (!/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k) || BAD_KEY.test(k)) { note('field name removed', k, ''); return; }
+      if (k === 'content')  { if (typeof v === 'string') out.content = safeHtml(v); return; }
+      if (k === 'imageUrl') { var u = imageUrl(v); if (u === null) { note('image link removed', v, ''); out.imageUrl = ''; } else out.imageUrl = u; return; }
+      if (k === 'style')    { out.style = cleanStyleObj(v); return; }
+      if (HAS.call(NUM_RANGE, k)) { var n = num(v, NUM_RANGE[k][0], NUM_RANGE[k][1]); if (n === null) note('number removed', k + '=' + String(v), ''); else out[k] = n; return; }
+      if (typeof v === 'boolean') { out[k] = v; return; }
+      if (typeof v === 'number')  { if (isFinite(v)) out[k] = v; return; }
+      if (typeof v === 'string')  { var s = cssVal(v); if (s === null) note('text value removed', k + '=' + v, ''); else out[k] = s; return; }
+      note('field removed', k, '');
+    });
+    if (typeof out.x !== 'number') out.x = 0;
+    if (typeof out.y !== 'number') out.y = 0;
+    if (typeof out.w !== 'number') out.w = 100;
+    if (typeof out.h !== 'number') out.h = 50;
+    return out;
+  }
+
+  // ── messages ────────────────────────────────────────────────────
+  var MSG = { full_state:1, el_crop:1, el_lock:1, el_rect_prop:1, el_reorder:1, tab_switch:1, el_add:1, el_move:1,
+              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, cursor:1, presence:1, presence_leave:1 };
+
+  function reject(why, p){ note('message ignored: ' + why, JSON.stringify(p).slice(0, 200), ''); return null; }
+
+  function cleanMessage(p){
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+    var t = p.type;
+    if (typeof t !== 'string' || !HAS.call(MSG, t)) return null;      // unknown types were ignored before, too
+    var out = { type: t }, i, k, v;
+
+    if (p.tab !== undefined) {
+      if (typeof p.tab === 'string' && /^[\w\-.]{1,60}$/.test(p.tab)) out.tab = p.tab;
+      else return reject('bad tab', p);
+    }
+    var uid = cleanUserId(p.userId);
+    if (uid !== null) out.userId = uid;
+    if (typeof p.userName === 'string') out.userName = cleanName(p.userName, 60);
+
+    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1 };
+    if (needId[t]) { var eid = idOf(p.id); if (eid === null) return reject('bad id', p); out.id = eid; }
+
+    switch (t) {
+      case 'cursor':
+        if (uid === null) return reject('bad user', p);
+        out.x = (p.x === null || p.x === undefined) ? null : num(p.x, -100000, 100000);
+        out.y = (p.y === null || p.y === undefined) ? null : num(p.y, -100000, 100000);
+        if ((p.x !== null && p.x !== undefined && out.x === null) || (p.y !== null && p.y !== undefined && out.y === null)) return reject('bad position', p);
+        break;
+      case 'presence':
+        if (uid === null) return reject('bad user', p);
+        out.activeField = (typeof p.activeField === 'string') ? cleanName(p.activeField, 80) : null;
+        break;
+      case 'presence_leave':
+        if (uid === null) return reject('bad user', p);
+        break;
+      case 'tab_switch': break;
+      case 'el_add':
+        out.el = cleanElement(p.el);
+        if (!out.el) return null;
+        break;
+      case 'full_state':
+        if (!Array.isArray(p.elements) || p.elements.length > 1000) return reject('bad element list', {n: p.elements && p.elements.length});
+        out.elements = [];
+        for (i = 0; i < p.elements.length; i++) { var ce = cleanElement(p.elements[i]); if (ce) out.elements.push(ce); }
+        break;
+      case 'el_move':
+        out.x = num(p.x, -50000, 50000); out.y = num(p.y, -50000, 50000);
+        if (out.x === null || out.y === null) return reject('bad position', p);
+        break;
+      case 'el_resize':
+        out.x = num(p.x, -50000, 50000); out.y = num(p.y, -50000, 50000);
+        out.w = num(p.w, 0, 50000);      out.h = num(p.h, 0, 50000);
+        if (out.x === null || out.y === null || out.w === null || out.h === null) return reject('bad size', p);
+        break;
+      case 'el_crop':
+        out.imgX = num(p.imgX, -50000, 50000); out.imgY = num(p.imgY, -50000, 50000);
+        out.imgW = num(p.imgW, 0, 50000);      out.imgH = num(p.imgH, 0, 50000);
+        if (out.imgX === null || out.imgY === null || out.imgW === null || out.imgH === null) return reject('bad crop', p);
+        if (p.hasCrop !== undefined) out.hasCrop = !!p.hasCrop;
+        break;
+      case 'el_lock':
+        if (typeof p.locked !== 'boolean') return reject('bad lock value', p);
+        out.locked = p.locked;
+        break;
+      case 'el_delete': break;
+      case 'el_reorder':
+        if (!Array.isArray(p.elements) || p.elements.length > 1000) return reject('bad order list', p);
+        out.elements = [];
+        for (i = 0; i < p.elements.length; i++) { var oid = idOf(p.elements[i]); if (oid === null) return reject('bad order list', p); out.elements.push(oid); }
+        break;
+      case 'el_content':
+        if (typeof p.content !== 'string') return reject('bad text', p);
+        out.content = safeHtml(p.content);
+        break;
+      case 'el_image':
+        var url = imageUrl(p.url);
+        if (url === null) return reject('image link not from your storage', p);
+        out.url = url;
+        break;
+      case 'el_style':
+      case 'el_rect_prop':
+        k = p.key; v = cssVal(p.value);
+        if (typeof k !== 'string' || !/^[A-Za-z]{1,30}$/.test(k) || BAD_KEY.test(k)) return reject('bad property name', p);
+        if (v === null) return reject('bad property value', p);
+        out.key = k; out.value = v;
+        break;
+    }
+    return out;
+  }
+
+  // ── diagnostics (only when the address ends with &filter=report) ─
+  var badge = null;
+  function updateBadge(){
+    if (!REPORT || !document.body) return;
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99999;padding:6px 10px;border-radius:4px;font:600 12px/1.3 Arial,sans-serif;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.35);';
+      badge.title = 'Security filter test. Click to copy the details.';
+      badge.addEventListener('click', function(){
+        var txt = JSON.stringify(stats.samples, null, 1);
+        try { navigator.clipboard.writeText(txt); } catch(e){}
+        alert('Copied ' + stats.samples.length + ' sample(s). Paste them to Claude.');
+      });
+      document.body.appendChild(badge);
+    }
+    badge.textContent = 'Security filter test: ' + stats.changes + (stats.changes === 1 ? ' change' : ' changes');
+    badge.style.background = stats.changes ? '#f0a030' : '#1f7a4d';
+    badge.style.color = stats.changes ? '#1a1a1a' : '#fff';
+  }
+  if (REPORT) document.addEventListener('DOMContentLoaded', updateBadge);
+
+  window.cbreSafeHtml = safeHtml;
+  window.cbreCleanMessage = cleanMessage;
+  window.cbreCleanElement = cleanElement;
+  window.cbreFilterStats = stats;
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CBRE Builder 4</title>
@@ -852,7 +1158,7 @@ async function loadFromSupabase() {
         elements.forEach(el => {
           if (el.type === 'text' && el.bulletMode && el.content) {
             const tmp = document.createElement('div');
-            tmp.innerHTML = el.content;
+            tmp.innerHTML = cbreSafeHtml(el.content);
             tmp.querySelectorAll('div').forEach(d => {
               if (d.textContent.trimStart().startsWith('\u2013')) {
                 d.textContent = d.textContent.replace(/^\s*\u2013\s?/, '');
@@ -1087,12 +1393,14 @@ function openRealtime() {
 }
 
 function handleMsg(msg) {
-  const { event, payload } = msg;
+  let { event, payload } = msg;
   if (event === 'phx_reply' && payload && payload.status === 'ok') {
     if (!connected) { connected = true; setConn('connected','Live'); broadcastPresence(null); }
     return;
   }
   if (event === 'broadcast' && payload) {
+    payload = cbreCleanMessage(payload);   // security filter: nothing below sees raw network data
+    if (!payload) return;
     // Ignore messages intended for a different tab
     if (payload.tab && payload.tab !== _currentTab) return;
     if (payload.type === 'full_state')    { handleRemoteFullState(payload); return; }
@@ -1378,7 +1686,7 @@ function createElDOM(el) {
     inner.className = 'cv-text-inner';
     inner.contentEditable = 'false';
     inner.dataset.eid = String(el.id);
-    inner.innerHTML = el.content || '';
+    inner.innerHTML = cbreSafeHtml(el.content || '');
     applyTextStyle(inner, el.style || {});
     // Apply bullet CSS if bulletMode is set on element
     if (el.bulletMode) applyBulletCSS(inner, el.id, true);
@@ -2031,7 +2339,7 @@ function handleRemoteContent(payload) {
   el.content = payload.content;
   const wrap = document.querySelector('.cv-el[data-id="' + payload.id + '"]');
   const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
-  if (inner && !wrap.classList.contains('editing')) inner.innerHTML = payload.content;
+  if (inner && !wrap.classList.contains('editing')) inner.innerHTML = cbreSafeHtml(payload.content);
 }
 
 function handleRemoteMove(payload) {
