@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
-<title>Studio Hub — login check</title>
+<title>Studio Hub — login and lockdown check</title>
 <style>
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
 @font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
@@ -47,12 +47,12 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font
 </style>
 </head>
 <body>
-<header><strong>Studio Hub</strong><span>Login check — test page</span></header>
+<header><strong>Studio Hub</strong><span>Login and lockdown check</span></header>
 
 <main>
   <section class="card" id="signin-card">
     <h2>Sign in</h2>
-    <p class="sub">Use your normal Studio Hub email and password. This page only reads information, apart from the optional password test further down. It does not change any projects.</p>
+    <p class="sub">Use your normal Studio Hub email and password. This page checks that sign-in works and that your data is locked down. It reads information only, apart from one tiny temporary file it uploads and deletes to test file storage, and the optional password test further down. It does not change any projects.</p>
     <label for="email">Email address</label>
     <input id="email" type="email" autocomplete="username" placeholder="you@cbre.com">
     <label for="pass">Password</label>
@@ -187,6 +187,95 @@ async function runChecks(session, report){
   return profile;
 }
 
+
+// ───────────── lockdown checks (what a stranger on the internet can and cannot do) ─────────────
+var DATA_TABLES = ['projects','project_history','portfolios','properties','agents','settings','markup_icons','aerials_projects'];
+var PRIVATE_TABLES = ['users','profiles','users_safe'];
+
+function isBlocked(r){ return !r.ok || (Array.isArray(r.data) && r.data.length === 0); }
+
+async function runLockdownChecks(session, report, profile){
+  var token = session.access_token;
+  var isAdmin = !!(profile && profile.role === 'admin');
+  var i, r, t;
+
+  // 1. A signed-out visitor must get nothing from any table
+  var leaking = [];
+  var everyTable = DATA_TABLES.concat(PRIVATE_TABLES, ['assistance_requests']);
+  for (i = 0; i < everyTable.length; i++){
+    t = everyTable[i];
+    try { r = await api('/rest/v1/' + t + '?select=id&limit=1'); if(!isBlocked(r)) leaking.push(t); }
+    catch(e){ /* a network failure is not a leak */ }
+  }
+  if(leaking.length) report('fail', 'Your data is readable without signing in', 'Open to the public: ' + leaking.join(', ') + '. The lockdown rules have not been applied (or something is still open).');
+  else report('pass', 'Signed-out visitors can read nothing', 'All ' + everyTable.length + ' tables returned no data to someone who is not signed in.');
+
+  // 2. A signed-in user must still be able to read everything the pages need
+  var cannot = [];
+  for (i = 0; i < DATA_TABLES.length; i++){
+    t = DATA_TABLES[i];
+    try { r = await api('/rest/v1/' + t + '?select=id&limit=1', { token: token }); if(!r.ok) cannot.push(t + ' (' + r.status + ')'); }
+    catch(e){ cannot.push(t); }
+  }
+  if(cannot.length) report('fail', 'Signed-in users cannot read some tables', cannot.join(', ') + '. The pages will show empty lists. Run stage3_rollback.sql and tell Claude.');
+  else report('pass', 'Signed-in users can read all project data', DATA_TABLES.length + ' tables load normally with your login.');
+
+  // 3. The old users table (plain-text passwords) must be closed even to signed-in users
+  try {
+    r = await api('/rest/v1/users?select=id&limit=1', { token: token });
+    if(isBlocked(r)) report('pass', 'The old users table is closed', 'Nobody can read it through the website, including signed-in users.');
+    else report('fail', 'The old users table is still readable', 'Signed-in users can still read it. It holds the old plain-text passwords.');
+  } catch(e){ report('info', 'Could not check the old users table', 'Network problem.'); }
+
+  // 4. Assistance requests are for admins only
+  try {
+    r = await api('/rest/v1/assistance_requests?select=id&limit=1', { token: token });
+    if(isAdmin){
+      if(r.ok) report('pass', 'Admins can read assistance requests', 'As expected for your admin account.');
+      else report('fail', 'Admins cannot read assistance requests', errText(r, 'Request failed'));
+    } else {
+      if(isBlocked(r)) report('pass', 'Assistance requests are hidden from regular users', 'As expected for your account.');
+      else report('fail', 'Regular users can read assistance requests', 'They should be visible to admins only.');
+    }
+  } catch(e){ report('info', 'Could not check assistance requests', 'Network problem.'); }
+
+  // 5. File storage: strangers cannot upload
+  var probe = '__lockdown_probe/probe_' + Date.now() + '.txt';
+  try {
+    var up = await fetch(SUPABASE_URL + '/storage/v1/object/assets/' + probe, {
+      method: 'POST',
+      headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Content-Type': 'text/plain' },
+      body: 'probe'
+    });
+    if(up.ok){
+      report('fail', 'Anyone can still upload files', 'A signed-out upload succeeded. The storage rules have not been applied.');
+      try { await fetch(SUPABASE_URL + '/storage/v1/object/assets/' + probe, { method:'DELETE', headers:{ 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token } }); } catch(e){}
+    } else report('pass', 'Strangers cannot upload files', 'A signed-out upload was refused.');
+  } catch(e){ report('info', 'Could not check anonymous uploads', 'Network problem.'); }
+
+  // 6. File storage: signed-in users can still upload and remove (the builders need this)
+  var probe2 = '__lockdown_probe/signed_in_' + Date.now() + '.txt';
+  try {
+    var up2 = await fetch(SUPABASE_URL + '/storage/v1/object/assets/' + probe2, {
+      method: 'POST',
+      headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'text/plain' },
+      body: 'probe'
+    });
+    if(up2.ok){
+      var del = await fetch(SUPABASE_URL + '/storage/v1/object/assets/' + probe2, { method:'DELETE', headers:{ 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token } });
+      if(del.ok) report('pass', 'Signed-in users can upload and remove images', 'The builders\' image uploads will keep working.');
+      else report('info', 'Upload worked, but the test file could not be removed', 'Harmless, but tell Claude. A tiny file named ' + probe2 + ' remains in the assets bucket.');
+    } else report('fail', 'Signed-in users cannot upload images', 'Image uploads in the builders would fail (status ' + up2.status + '). Run stage3_rollback.sql and tell Claude.');
+  } catch(e){ report('info', 'Could not check signed-in uploads', 'Network problem.'); }
+
+  // 7. Public viewing of fonts and images must still work for everyone
+  try {
+    var f = await fetch(SUPABASE_URL + '/storage/v1/object/public/fonts/Calibre-Regular.otf', { method:'HEAD' });
+    if(f.ok) report('pass', 'Fonts and images still load for everyone', 'The sign-in screen will look right.');
+    else report('fail', 'Fonts did not load for a signed-out visitor', 'Status ' + f.status + '. The sign-in screen would lose its font.');
+  } catch(e){ report('info', 'Could not check public fonts', 'Network problem.'); }
+}
+
 async function changePassword(token, newPass){
   var r = await api('/auth/v1/user', { method:'PUT', token: token, body:{ password: newPass } });
   if(!r.ok) throw new Error(errText(r, 'Could not change password'));
@@ -237,6 +326,8 @@ async function signOut(token){
       $('who-name').textContent = session.user.email;
       $('who-sub').textContent = 'Running checks…';
       var profile = await runChecks(session, addCheck);
+      addCheck('info', 'Lockdown checks', 'Next: what a stranger on the internet can and cannot reach.');
+      await runLockdownChecks(session, addCheck, profile);
       $('who-name').textContent = profile ? profile.name : session.user.email;
       $('who-sub').textContent = profile ? (profile.email + ' · ' + profile.role) : session.user.email;
     } catch(e){
