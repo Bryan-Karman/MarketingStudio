@@ -1476,23 +1476,67 @@ function createElement(cfg){
               // Free-text element (field='', bullets='1'): read all child divs,
               // rebuild clean span.bt structure, save sv.content, update textarea.
               var _fd=Array.from(inner.querySelectorAll(':scope > div'));
-              var _fl=[];
+              var _fl=[];   // plain text per line
+              var _fh=[];   // sanitised rich HTML per line (bold/italic/underline/sup kept)
+              var _frRx=/<(b|i|u|sup|strong|em)[\s>]/i;
+              // Keep only b/i/u/sup/strong/em; convert font-weight/italic spans to <b>/<i>
+              function _fSan(node){
+                var out='';
+                Array.from(node.childNodes).forEach(function(n){
+                  if(n.nodeType===3){ out+=n.nodeValue.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return; }
+                  if(n.nodeType!==1) return;
+                  var tg=n.tagName.toLowerCase(), inn=_fSan(n);
+                  if(tg==='br') return;
+                  var st=n.style||{};
+                  var fw=st.fontWeight, isB=(tg==='b'||tg==='strong'||fw==='bold'||parseInt(fw,10)>=600);
+                  var isI=(tg==='i'||tg==='em'||st.fontStyle==='italic');
+                  var isU=(tg==='u'||(st.textDecoration||'').indexOf('underline')>-1);
+                  var isS=(tg==='sup');
+                  if(isB) inn='<b>'+inn+'</b>';
+                  if(isI) inn='<i>'+inn+'</i>';
+                  if(isU) inn='<u>'+inn+'</u>';
+                  if(isS) inn='<sup>'+inn+'</sup>';
+                  out+=inn;
+                });
+                return out;
+              }
               if(_fd.length){
-                _fl=_fd.map(function(d){var bt=d.querySelector('span.bt');return(bt?bt.textContent:d.textContent).replace(/^–\s*/,'').trim();}).filter(Boolean);
+                _fd.forEach(function(d){
+                  var bt=d.querySelector('span.bt'), src;
+                  if(bt){ src=bt; }
+                  else {
+                    // Browser-created div (Enter key): drop any leading dash marker span
+                    src=d.cloneNode(true);
+                    var _f1=src.firstElementChild;
+                    if(_f1 && _f1.textContent.trim()==='\u2013') _f1.remove();
+                  }
+                  var tx=src.textContent.replace(/\u200B/g,'').replace(/^\s*[–-]\s*/,'').trim();
+                  if(!tx) return;
+                  var hh=_fSan(src).replace(/\u200B/g,'').replace(/^\s*[–-]\s*/,'');
+                  _fl.push(tx); _fh.push(hh);
+                });
               } else {
                 _fl=(inner.innerText||inner.textContent||'').split('\n').map(function(l){return l.replace(/^–\s*/,'').trim();}).filter(Boolean);
+                _fh=_fl.map(function(l){return l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');});
               }
+              var _fHasRich=_fh.some(function(h){return _frRx.test(h);});
               // Never strip income from free-text elements — user typed it intentionally
-              var _fiFr=''; // no income stripping for free-text
               var _fc=_fl.join('\n');
               var _fsp=parseFloat(_blurEl.dataset.bulletParaSpacing||'0')||parseFloat(inner.style.getPropertyValue('--bullet-spacing')||'0')||4;
               var _fmb=_fsp>0?'margin-bottom:'+_fsp+'px;':'';
               function _fesc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-              inner.innerHTML=_fl.map(function(l){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">–</span><span class="bt">'+_fesc(l)+'</span></div>';}).join('');
+              inner.innerHTML=_fl.map(function(l,ix){return'<div style="display:flex;align-items:baseline;'+_fmb+'"><span style="flex:0 0 auto;margin-right:0.25em;">\u2013</span><span class="bt">'+(_fHasRich?_fh[ix]:_fesc(l))+'</span></div>';}).join('');
               inner.style.whiteSpace='normal';inner.style.wordBreak='break-word';
+              // Persist bold/italic so it survives deselect, tab switch and refresh
+              if(_fHasRich){ el.dataset.richHtml=inner.innerHTML; } else { delete el.dataset.richHtml; }
               if(savedStates[currentTab]){
                 var _feid=_blurEl?_blurEl.dataset.eid:null;
-                savedStates[currentTab].forEach(function(sv){if(sv.eid===_feid){sv.content=_fc;delete sv.richHtml;}});
+                savedStates[currentTab].forEach(function(sv){
+                  if(sv.eid===_feid){
+                    sv.content=_fc;
+                    if(_fHasRich) sv.richHtml=inner.innerHTML; else delete sv.richHtml;
+                  }
+                });
               }
               var _fta=document.querySelector('#props-content textarea');
               if(_fta) _fta.value=_fl.join('\n');
