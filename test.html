@@ -192,7 +192,16 @@ async function runChecks(session, report){
 var DATA_TABLES = ['projects','project_history','portfolios','properties','agents','settings','markup_icons','aerials_projects'];
 var PRIVATE_TABLES = ['users','profiles','users_safe'];
 
-function isBlocked(r){ return !r.ok || (Array.isArray(r.data) && r.data.length === 0); }
+// Tables that have no `id` column (the settings table is a key/value store).
+var KEY_COLUMN = { settings: 'key' };
+function col(t){ return KEY_COLUMN[t] || 'id'; }
+// 'blocked' = refused (401/403) or nothing returned; 'open' = data came back;
+// 'unknown' = the request itself was wrong (400, 5xx), which tells us nothing about access.
+function verdict(r){
+  if(r.status === 401 || r.status === 403 || r.status === 404) return 'blocked';
+  if(r.ok) return (Array.isArray(r.data) && r.data.length === 0) ? 'blocked' : 'open';
+  return 'unknown';
+}
 
 async function runLockdownChecks(session, report, profile){
   var token = session.access_token;
@@ -200,21 +209,25 @@ async function runLockdownChecks(session, report, profile){
   var i, r, t;
 
   // 1. A signed-out visitor must get nothing from any table
-  var leaking = [];
+  var leaking = [], unverified = [];
   var everyTable = DATA_TABLES.concat(PRIVATE_TABLES, ['assistance_requests']);
   for (i = 0; i < everyTable.length; i++){
     t = everyTable[i];
-    try { r = await api('/rest/v1/' + t + '?select=id&limit=1'); if(!isBlocked(r)) leaking.push(t); }
-    catch(e){ /* a network failure is not a leak */ }
+    try {
+      r = await api('/rest/v1/' + t + '?select=' + col(t) + '&limit=1');
+      var v = verdict(r);
+      if(v === 'open') leaking.push(t); else if(v === 'unknown') unverified.push(t + ' (' + r.status + ')');
+    } catch(e){ unverified.push(t + ' (network)'); }
   }
   if(leaking.length) report('fail', 'Your data is readable without signing in', 'Open to the public: ' + leaking.join(', ') + '. The lockdown rules have not been applied (or something is still open).');
+  else if(unverified.length) report('info', 'Signed-out check could not be completed for every table', 'Could not verify: ' + unverified.join(', ') + '. Tell Claude.');
   else report('pass', 'Signed-out visitors can read nothing', 'All ' + everyTable.length + ' tables returned no data to someone who is not signed in.');
 
   // 2. A signed-in user must still be able to read everything the pages need
   var cannot = [];
   for (i = 0; i < DATA_TABLES.length; i++){
     t = DATA_TABLES[i];
-    try { r = await api('/rest/v1/' + t + '?select=id&limit=1', { token: token }); if(!r.ok) cannot.push(t + ' (' + r.status + ')'); }
+    try { r = await api('/rest/v1/' + t + '?select=' + col(t) + '&limit=1', { token: token }); if(!r.ok) cannot.push(t + ' (' + r.status + ')'); }
     catch(e){ cannot.push(t); }
   }
   if(cannot.length) report('fail', 'Signed-in users cannot read some tables', cannot.join(', ') + '. The pages will show empty lists. Run stage3_rollback.sql and tell Claude.');
@@ -223,8 +236,10 @@ async function runLockdownChecks(session, report, profile){
   // 3. The old users table (plain-text passwords) must be closed even to signed-in users
   try {
     r = await api('/rest/v1/users?select=id&limit=1', { token: token });
-    if(isBlocked(r)) report('pass', 'The old users table is closed', 'Nobody can read it through the website, including signed-in users.');
-    else report('fail', 'The old users table is still readable', 'Signed-in users can still read it. It holds the old plain-text passwords.');
+    var uv = verdict(r);
+    if(uv === 'blocked') report('pass', 'The old users table is closed', 'Nobody can read it through the website, including signed-in users.');
+    else if(uv === 'open') report('fail', 'The old users table is still readable', 'Signed-in users can still read it. It holds the old plain-text passwords.');
+    else report('info', 'Could not check the old users table', 'Status ' + r.status + '. Tell Claude.');
   } catch(e){ report('info', 'Could not check the old users table', 'Network problem.'); }
 
   // 4. Assistance requests are for admins only
@@ -234,8 +249,9 @@ async function runLockdownChecks(session, report, profile){
       if(r.ok) report('pass', 'Admins can read assistance requests', 'As expected for your admin account.');
       else report('fail', 'Admins cannot read assistance requests', errText(r, 'Request failed'));
     } else {
-      if(isBlocked(r)) report('pass', 'Assistance requests are hidden from regular users', 'As expected for your account.');
-      else report('fail', 'Regular users can read assistance requests', 'They should be visible to admins only.');
+      if(verdict(r) === 'blocked') report('pass', 'Assistance requests are hidden from regular users', 'As expected for your account.');
+      else if(verdict(r) === 'open') report('fail', 'Regular users can read assistance requests', 'They should be visible to admins only.');
+      else report('info', 'Could not check assistance requests', 'Status ' + r.status + '. Tell Claude.');
     }
   } catch(e){ report('info', 'Could not check assistance requests', 'Network problem.'); }
 
