@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Studio Hub — login check</title>
+<style>
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
+@font-face{font-family:'Calibre';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/Calibre-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
+:root{
+  --dk:#0d2b21; --g:#006A4D; --gb:#00965E; --bg:#f5f5f0; --card:#fff; --border:#d8d8d0;
+  --text:#1a1a1a; --muted:#666; --ok:#1f7a4d; --okbg:#e6f3ec; --bad:#b3261e; --badbg:#fbeae8; --note:#7a5b00; --notebg:#fbf3dc;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Calibre','Franklin Gothic Medium',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.45;}
+header{background:var(--dk);color:#fff;padding:16px 24px;display:flex;align-items:baseline;gap:14px;}
+header strong{font-weight:600;font-size:17px;}
+header span{color:rgba(255,255,255,.55);font-size:13px;}
+main{max-width:640px;margin:28px auto 60px;padding:0 16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:22px 24px;margin-bottom:18px;}
+h2{font-size:17px;font-weight:600;margin-bottom:4px;}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 4px;}
+input{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:3px;font:inherit;color:var(--text);}
+input:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--gb);outline-offset:2px;}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:3px;border:1px solid var(--g);background:var(--g);color:#fff;cursor:pointer;margin-top:16px;}
+button:hover{background:var(--gb);}
+button.plain{background:#fff;color:var(--text);border-color:var(--border);}
+button.plain:hover{background:var(--bg);}
+button:disabled{opacity:.55;cursor:default;}
+.msg{margin-top:12px;font-size:13px;min-height:18px;}
+.msg.bad{color:var(--bad);} .msg.ok{color:var(--ok);}
+.who{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;}
+.who button{margin:0;padding:7px 12px;}
+.checks{list-style:none;}
+.checks li{display:grid;grid-template-columns:78px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border);}
+.checks li:first-child{border-top:0;}
+.tag{font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;height:fit-content;text-align:center;}
+.tag.pass{background:var(--okbg);color:var(--ok);} .tag.fail{background:var(--badbg);color:var(--bad);} .tag.info{background:var(--notebg);color:var(--note);}
+.checks b{font-weight:600;display:block;}
+.checks small{color:var(--muted);font-size:13px;}
+details summary{cursor:pointer;font-weight:600;}
+details p{color:var(--muted);font-size:13px;margin-top:8px;}
+.hidden{display:none;}
+footer{max-width:640px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:12px;}
+</style>
+</head>
+<body>
+<header><strong>Studio Hub</strong><span>Login check — test page</span></header>
+
+<main>
+  <section class="card" id="signin-card">
+    <h2>Sign in</h2>
+    <p class="sub">Use your normal Studio Hub email and password. This page only reads information, apart from the optional password test further down. It does not change any projects.</p>
+    <label for="email">Email address</label>
+    <input id="email" type="email" autocomplete="username" placeholder="you@cbre.com">
+    <label for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password">
+    <button id="signin-btn" type="button">Sign in and run checks</button>
+    <div class="msg" id="signin-msg" role="status"></div>
+  </section>
+
+  <section class="card hidden" id="results-card">
+    <div class="who">
+      <div><h2 id="who-name"></h2><div class="sub" id="who-sub" style="margin:0;"></div></div>
+      <button class="plain" id="signout-btn" type="button">Sign out</button>
+    </div>
+    <ul class="checks" id="checks"></ul>
+  </section>
+
+  <section class="card hidden" id="pw-card">
+    <details>
+      <summary>Optional: test the "set a new password" step</summary>
+      <p>This really does change your password for the new login system, and clears your "change password" reminder. The live site's current login is not affected yet, so afterwards your old and new passwords will be different. Only try it on your own account.</p>
+      <label for="pw1">New password (at least 8 characters)</label>
+      <input id="pw1" type="password" autocomplete="new-password">
+      <label for="pw2">Confirm new password</label>
+      <input id="pw2" type="password" autocomplete="new-password">
+      <button id="pw-btn" type="button" class="plain">Change my password</button>
+      <div class="msg" id="pw-msg" role="status"></div>
+    </details>
+  </section>
+</main>
+<footer>Nothing on this page is saved in your browser. Closing the tab ends the session.</footer>
+
+<script>
+// ───────────── core (no page elements used here) ─────────────
+var SUPABASE_URL = 'https://pgsgjafgetdvuctmpibf.supabase.co';
+var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';   // the public key — safe to be in the page
+
+async function api(path, opts){
+  opts = opts || {};
+  var headers = {
+    'apikey': ANON_KEY,
+    'Authorization': 'Bearer ' + (opts.token || ANON_KEY),
+    'Content-Type': 'application/json'
+  };
+  var res = await fetch(SUPABASE_URL + path, {
+    method: opts.method || 'GET',
+    headers: headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  var data = null;
+  try { data = await res.json(); } catch(e) {}
+  return { ok: res.ok, status: res.status, data: data };
+}
+
+function errText(r, fallback){
+  var d = r && r.data;
+  return (d && (d.error_description || d.msg || d.message || d.error)) || (fallback + ' (status ' + (r ? r.status : '?') + ')');
+}
+
+async function signIn(email, password){
+  var r = await api('/auth/v1/token?grant_type=password', { method:'POST', body:{ email: email, password: password } });
+  if(!r.ok || !r.data || !r.data.access_token) throw new Error(errText(r, 'Sign-in failed'));
+  return r.data; // { access_token, user, ... }
+}
+
+function fmtDate(iso){
+  try { return new Date(iso).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }); }
+  catch(e){ return iso; }
+}
+
+// Runs every check and reports each one as (status, title, detail).
+// status is 'pass', 'fail' or 'info'.
+async function runChecks(session, report){
+  var token = session.access_token;
+  var uid = session.user.id;
+  var profile = null;
+
+  report('pass', 'Signed in', 'Your email and password were accepted by the new login system.');
+
+  // 1. Is public sign-up switched off?
+  try {
+    var s = await api('/auth/v1/settings');
+    if(s.ok && s.data && typeof s.data.disable_signup === 'boolean'){
+      if(s.data.disable_signup) report('pass', 'Public sign-up is closed', 'Only accounts created by an admin can exist.');
+      else report('fail', 'Public sign-up is still open', 'In Supabase go to Authentication, then Sign In / Providers, and turn off "Allow new users to sign up".');
+    } else report('info', 'Sign-up setting not readable', 'Could not read this setting from here. Check it in the Supabase dashboard.');
+  } catch(e){ report('info', 'Sign-up setting not readable', 'Network problem while checking.'); }
+
+  // 2. Profile (name and role come from the database, never the URL)
+  try {
+    var p = await api('/rest/v1/profiles?id=eq.' + encodeURIComponent(uid) + '&select=name,email,role,must_change_password,password_expires_at', { token: token });
+    if(p.ok && Array.isArray(p.data) && p.data.length){
+      profile = p.data[0];
+      report('pass', 'Profile found', 'Name: ' + profile.name + '. Role: ' + profile.role + '.');
+    } else if(p.ok){
+      report('fail', 'No profile for this login', 'The login exists but has no row in the profiles table. The import may need to be re-run.');
+    } else report('fail', 'Could not read your profile', errText(p, 'Request failed'));
+  } catch(e){ report('fail', 'Could not read your profile', 'Network problem.'); }
+
+  // 3. Password-change status
+  if(profile){
+    var expired = profile.password_expires_at && new Date(profile.password_expires_at) <= new Date();
+    if(profile.must_change_password || expired){
+      report('info', 'You would be asked for a new password', 'When the new pages go live you will see the "Set Your Password" screen straight after signing in.');
+    } else if(profile.password_expires_at){
+      report('info', 'Password change due ' + fmtDate(profile.password_expires_at), 'You can keep signing in as normal until then.');
+    } else {
+      report('pass', 'No password change required yet', 'You can keep signing in as normal for now.');
+    }
+  }
+
+  // 4. Profiles must be unreadable without a login
+  try {
+    var anon = await api('/rest/v1/profiles?select=id&limit=5');
+    if(!anon.ok || (Array.isArray(anon.data) && anon.data.length === 0)) report('pass', 'Profiles are hidden from signed-out visitors', 'Anyone without a login sees nothing.');
+    else report('fail', 'Profiles are visible without logging in', 'The access rules need attention. Do not go live until this is fixed.');
+  } catch(e){ report('info', 'Could not run the signed-out check', 'Network problem.'); }
+
+  // 5. Profiles must be readable with a login
+  try {
+    var all = await api('/rest/v1/profiles?select=id&limit=1000', { token: token });
+    if(all.ok && Array.isArray(all.data)) report('pass', 'Signed-in users can see the user list', all.data.length + ' profiles visible (expected 125).');
+    else report('fail', 'Signed-in users cannot read profiles', errText(all, 'Request failed'));
+  } catch(e){ report('fail', 'Could not read the user list', 'Network problem.'); }
+
+  // 6. Existing project data must still load with the login token
+  try {
+    var pr = await api('/rest/v1/projects?select=id&limit=1', { token: token });
+    if(pr.ok) report('pass', 'Your existing project data loads with this login', 'The new login works against your current tables.');
+    else report('fail', 'Existing project data did not load', errText(pr, 'Request failed'));
+  } catch(e){ report('fail', 'Existing project data did not load', 'Network problem.'); }
+
+  return profile;
+}
+
+async function changePassword(token, newPass){
+  var r = await api('/auth/v1/user', { method:'PUT', token: token, body:{ password: newPass } });
+  if(!r.ok) throw new Error(errText(r, 'Could not change password'));
+  var c = await api('/rest/v1/rpc/complete_password_change', { method:'POST', token: token, body:{} });
+  if(!c.ok) throw new Error('Password changed, but clearing the reminder failed: ' + errText(c, 'Request failed'));
+  return true;
+}
+
+async function signOut(token){
+  try { await api('/auth/v1/logout', { method:'POST', token: token, body:{} }); } catch(e){}
+}
+// ───────────── end of core ─────────────
+
+// ───────────── page wiring ─────────────
+(function(){
+  if(typeof document === 'undefined') return;
+  var $ = function(id){ return document.getElementById(id); };
+  var session = null;
+
+  function setMsg(el, text, kind){ el.textContent = text || ''; el.className = 'msg' + (kind ? ' ' + kind : ''); }
+
+  function addCheck(status, title, detail){
+    var li = document.createElement('li');
+    var tag = document.createElement('span'); tag.className = 'tag ' + status;
+    tag.textContent = status === 'pass' ? 'OK' : status === 'fail' ? 'Problem' : 'Note';
+    var box = document.createElement('div');
+    var b = document.createElement('b'); b.textContent = title;
+    var s = document.createElement('small'); s.textContent = detail;
+    box.appendChild(b); box.appendChild(s);
+    li.appendChild(tag); li.appendChild(box);
+    $('checks').appendChild(li);
+  }
+
+  async function doSignIn(){
+    var email = $('email').value.trim().toLowerCase();
+    var pass = $('pass').value;
+    if(!email || !pass){ setMsg($('signin-msg'), 'Enter your email and password.', 'bad'); return; }
+    $('signin-btn').disabled = true;
+    setMsg($('signin-msg'), 'Signing in…');
+    try {
+      session = await signIn(email, pass);
+      $('pass').value = '';
+      setMsg($('signin-msg'), '');
+      $('signin-card').classList.add('hidden');
+      $('results-card').classList.remove('hidden');
+      $('pw-card').classList.remove('hidden');
+      $('checks').textContent = '';
+      $('who-name').textContent = session.user.email;
+      $('who-sub').textContent = 'Running checks…';
+      var profile = await runChecks(session, addCheck);
+      $('who-name').textContent = profile ? profile.name : session.user.email;
+      $('who-sub').textContent = profile ? (profile.email + ' · ' + profile.role) : session.user.email;
+    } catch(e){
+      setMsg($('signin-msg'), e.message || 'Sign-in failed.', 'bad');
+    } finally {
+      $('signin-btn').disabled = false;
+    }
+  }
+
+  async function doSignOut(){
+    if(session) await signOut(session.access_token);
+    session = null;
+    $('results-card').classList.add('hidden');
+    $('pw-card').classList.add('hidden');
+    $('signin-card').classList.remove('hidden');
+    $('pw1').value = ''; $('pw2').value = ''; setMsg($('pw-msg'), '');
+  }
+
+  async function doPasswordTest(){
+    var p1 = $('pw1').value, p2 = $('pw2').value;
+    if(p1.length < 8){ setMsg($('pw-msg'), 'Password must be at least 8 characters.', 'bad'); return; }
+    if(p1 !== p2){ setMsg($('pw-msg'), 'The two passwords do not match.', 'bad'); return; }
+    if(!window.confirm('This will change your password for the new login system. Continue?')) return;
+    $('pw-btn').disabled = true;
+    setMsg($('pw-msg'), 'Saving…');
+    try {
+      await changePassword(session.access_token, p1);
+      $('pw1').value = ''; $('pw2').value = '';
+      setMsg($('pw-msg'), 'Done. Your password was changed and your reminder cleared. Sign out and back in with the new password to confirm.', 'ok');
+    } catch(e){
+      setMsg($('pw-msg'), e.message, 'bad');
+    } finally {
+      $('pw-btn').disabled = false;
+    }
+  }
+
+  $('signin-btn').addEventListener('click', doSignIn);
+  $('pass').addEventListener('keydown', function(e){ if(e.key === 'Enter') doSignIn(); });
+  $('email').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('pass').focus(); });
+  $('signout-btn').addEventListener('click', doSignOut);
+  $('pw-btn').addEventListener('click', doPasswordTest);
+})();
+</script>
+</body>
+</html>
