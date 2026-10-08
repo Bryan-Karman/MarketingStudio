@@ -753,6 +753,12 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
       <button id="btn-pen" onclick="setTool('pen')" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #3a5a3a;background:#003f2d;color:#5bbf7a;font-family:inherit;" title="Draw a boundary around the property">✏ Draw Boundary</button>
       <button onclick="clearAllPaths()" style="flex:1;padding:7px 6px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid #5a2222;background:#3a1515;color:#e06060;font-family:inherit;" title="Clear all drawn lines">✕ Clear Lines</button>
     </div>
+    <div style="padding:2px 10px 8px;border-bottom:1px solid #2a2a2a;">
+      <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:#aaa;cursor:pointer;">
+        <input type="checkbox" id="chk-boundary-disclaimer" checked onchange="toggleBoundaryDisclaimer(this.checked)" style="accent-color:#17E88F;cursor:pointer;">
+        "Indicative Only" text
+      </label>
+    </div>
 
     <!-- Fill Zone tool -->
     <div style="padding:6px 10px 4px;margin-top:4px;"><span style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;">Fill Zone</span></div>
@@ -1404,6 +1410,7 @@ function renderPage(i){
   setTimeout(_retryInject, 1000);
   // Sync brightness slider to this page's saved value
   syncBrightnessSlider();
+  syncBoundaryToggles();
   refreshMarkupList();
   // Render road lines on canvas (stored as paths with isRoadLine:true)
   requestAnimationFrame(function(){ _renderRoadLinePaths(p); });
@@ -1730,8 +1737,9 @@ function _renderCanvasGlows(p){
     if(!path.anchors||path.anchors.length<2) return;
     if(path.isRoadLine) return; // road lines rendered on canvas, no SVG glow needed
     const d = _buildPathD(path);
-    const dataUrl = _buildGlowCanvas(path, d);
     const grpIdx = svgGroupIdx++;
+    if(path.noGlow) return; // glow switched off for this outline
+    const dataUrl = _buildGlowCanvas(path, d);
     if(!dataUrl) return;
 
     // Find the path-group for this index and prepend the glow image
@@ -2504,6 +2512,10 @@ function showPathProps(idx){
   const badge = '<span id="markup-count-badge" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#242424;border:1px solid #333;color:#777;">0/15</span>';
 
   let extra = '';
+  if(!isRoad){
+    extra = '<label style="display:flex;align-items:center;gap:7px;font-size:11px;color:#aaa;cursor:pointer;margin:8px 0;">'
+      + '<input type="checkbox" id="path-glow-chk" '+(path.noGlow?'':'checked')+' style="accent-color:#17E88F;cursor:pointer;"> Glow on this outline</label>';
+  }
   if(isRoad){
     const w = path.roadWidth || 25;
     extra = '<div class="pf" style="margin-top:8px;"><label>Thickness</label>'
@@ -2525,6 +2537,13 @@ function showPathProps(idx){
   // Wire buttons via addEventListener
   var delBtn = document.getElementById('path-del-btn');
   if(delBtn) delBtn.addEventListener('click', function(){ deleteSelectedPath(); });
+  var glowChk = document.getElementById('path-glow-chk');
+  if(glowChk) glowChk.addEventListener('change', function(){
+    pushUndo();
+    path.noGlow = !this.checked;
+    _renderCanvasGlows(pages[currentPage]);
+    scheduleSave();
+  });
   if(isRoad){
     var sl = document.getElementById('rl-sel-slider');
     if(sl) sl.addEventListener('input', function(){
@@ -4744,13 +4763,26 @@ function placeMultiIconMarkup(iconIds){
   scheduleSave();
 }
 
+function toggleBoundaryDisclaimer(on){
+  var p = pages[currentPage]; if(!p) return;
+  p.hideBoundaryDisclaimer = !on;
+  _updateBoundaryDisclaimer(p);
+  scheduleSave();
+}
+
+function syncBoundaryToggles(){
+  var p = pages[currentPage]; if(!p) return;
+  var d = document.getElementById('chk-boundary-disclaimer');
+  if(d) d.checked = !p.hideBoundaryDisclaimer;
+}
+
 function _updateBoundaryDisclaimer(p){
   var ab = document.getElementById('artboard');
   if(!ab) return;
   var existing = ab.querySelector('.boundary-disclaimer');
   // Only show disclaimer for boundary paths, not road lines
   var hasPaths = p && p.paths && p.paths.some(function(path){ return !path.isRoadLine; });
-  if(hasPaths){
+  if(hasPaths && !p.hideBoundaryDisclaimer){
     if(!existing){
       var d = document.createElement('div');
       d.className = 'boundary-disclaimer';
