@@ -2009,6 +2009,7 @@ function createElDOM(el) {
     inner.contentEditable = 'false';
     inner.dataset.eid = String(el.id);
     inner.innerHTML = cbreSafeHtml(el.content || '');
+    if (el.bulletMode) _wrapLooseBlocks(inner); // bullets/gaps style top-level paragraphs, so loose text must be wrapped
     { const stale = document.getElementById('el-style-' + el.id); if (stale) stale.remove(); } // start from this box's own settings
     applyTextStyle(inner, el.style || {});
     // Apply bullet CSS if bulletMode is set on element
@@ -2020,7 +2021,7 @@ function createElDOM(el) {
 
     inner.addEventListener('input', () => {
       _pushUndoGrouped('text:' + el.id); // snapshot the OLD content before it's overwritten below
-      el.content = sanitiseHTML(inner.innerHTML);
+      el.content = sanitiseHTML(inner.innerHTML, !!el.bulletMode);
       if (connected) broadcast({ type: 'el_content', id: el.id, content: el.content, userId, userName });
       scheduleSave();
     });
@@ -2298,10 +2299,10 @@ function showProps(id) {
 // ════════════════════════════════════════════════════════
 // LOCK
 // ════════════════════════════════════════════════════════
-function toggleLock(id) {
-  const el = elements.find(e => e.id === id);
-  if (!el) return;
-  el.locked = !el.locked;
+// Set one box's locked state (DOM badge + live sync). Used by the single and multi-select lock buttons.
+function applyLockState(el, locked) {
+  el.locked = !!locked;
+  const id = el.id;
 
   // Update DOM — locked elements get a badge and different outline
   const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
@@ -2322,8 +2323,41 @@ function toggleLock(id) {
   }
 
   if (connected) broadcast({ type: 'el_lock', id, locked: el.locked, userId, userName });
+}
+
+function toggleLock(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  _pushUndo();
+  applyLockState(el, !el.locked);
   showProps(id); // refresh panel to show/hide controls
   scheduleSave();
+}
+
+// Lock or unlock every selected box in one go
+function setLockForSelected(lock) {
+  const targets = [..._selectedIds].map(id => elements.find(e => e.id === id)).filter(e => e && !!e.locked !== !!lock);
+  if (!targets.length) return;
+  _pushUndo();
+  targets.forEach(e => applyLockState(e, lock));
+  showMultiProps();
+  scheduleSave();
+}
+
+// Properties panel shown when more than one box is selected
+function showMultiProps() {
+  const panel = document.getElementById('props-panel');
+  if (!panel) return;
+  const els = [..._selectedIds].map(id => elements.find(e => e.id === id)).filter(Boolean);
+  const nLocked = els.filter(e => e.locked).length, nOpen = els.length - nLocked;
+  const btn = (label, cls, lock, disabled) =>
+    '<button class="lock-btn ' + cls + '" ' + (disabled ? 'disabled style="opacity:.4;cursor:default;"' : '') + ' onclick="setLockForSelected(' + lock + ')">' + label + '</button>';
+  panel.innerHTML = '<div class="prop-section">' + els.length + ' items selected</div>'
+    + '<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px;">'
+    + (nLocked ? '🔒 ' + nLocked + ' locked' : '') + (nLocked && nOpen ? ' &nbsp;·&nbsp; ' : '') + (nOpen ? '🔓 ' + nOpen + ' unlocked' : '') + '</div>'
+    + btn('🔒 Lock all selected', 'unlocked', true,  nOpen === 0)
+    + btn('🔓 Unlock all selected', 'locked', false, nLocked === 0)
+    + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:10px;">Locked boxes keep their position and size when you drag a group. Select a single box to change its settings.</div>';
 }
 
 // Handle remote lock change
@@ -2344,7 +2378,7 @@ function handleRemoteLock(payload) {
       badge.remove();
     }
   }
-  if (_selectedId === payload.id) showProps(payload.id);
+  if (_selectedIds.size > 1) showMultiProps(); else if (_selectedId === payload.id) showProps(payload.id);
 }
 
 // ════════════════════════════════════════════════════════
@@ -2740,6 +2774,12 @@ function toggleBullets(id) {
   const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
   const inner = wrap ? wrap.querySelector('.cv-text-inner') : null;
 
+  // Bullets are drawn on top-level paragraphs: make sure loose text has one, then save that structure
+  if (el.bulletMode && inner) {
+    _wrapLooseBlocks(inner);
+    el.content = sanitiseHTML(inner.innerHTML, true);
+    if (connected) broadcast({ type: 'el_content', id, content: el.content, userId, userName });
+  }
   // Apply/remove bullet CSS via the per-element style tag
   applyBulletCSS(inner, el.id, el.bulletMode);
 
@@ -3092,7 +3132,7 @@ function _updateMultiSelectUI() {
   } else {
     delBtn.style.display  = 'flex';
     copyBtn.style.display = 'none'; // copy not supported for multi yet
-    showProps(null); // no props panel for multi
+    showMultiProps();
   }
 
   // Visual: apply correct class to all elements
@@ -3184,40 +3224,88 @@ function enterEditMode(wrap, inner, id) {
   sel.removeAllRanges(); sel.addRange(range);
   inner.onblur = () => exitEditMode(wrap);
 
-  // Paste handler — strip all incoming formatting, preserve plain text only
+  // Paste handler — strip all incoming formatting, keep plain text. Each pasted line becomes its OWN top-level
+  // paragraph, so paragraph gaps and bullets (which style top-level paragraphs) apply to every line.
   inner._pasteHandler = function(e) {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
     if (!text) return;
-    // Insert plain text at cursor position, preserving existing element styles
-    const sel2 = window.getSelection();
-    if (!sel2.rangeCount) return;
-    sel2.deleteFromDocument();
-    // Split pasted text on newlines — each line becomes a separate div
-    const lines = text.split(/\r?\n/);
-    const r = sel2.getRangeAt(0);
-    lines.forEach((line, i) => {
-      if (i > 0) {
-        // Insert a new block div for each newline
-        const div = document.createElement('div');
-        div.textContent = line || '\u200B';
-        r.insertNode(div);
-        r.setStartAfter(div);
-        r.collapse(true);
-      } else {
-        const tn = document.createTextNode(line);
-        r.insertNode(tn);
-        r.setStartAfter(tn);
-        r.collapse(true);
-      }
-    });
-    sel2.removeAllRanges(); sel2.addRange(r);
-    // Trigger content save — close any open typing group so the paste is its own undo step
+    _pasteTextAsParagraphs(inner, text);
+    // The paste is its own undo step; then the normal input handler saves the text
     _endUndoGroup();
     inner.dispatchEvent(new Event('input'));
     _endUndoGroup();
   };
   inner.addEventListener('paste', inner._pasteHandler);
+}
+
+// Make every direct child of a text box a paragraph <div> (wrap loose text / inline bits; top-level <br> = line break).
+// Paragraph gaps and bullets are styled on top-level <div>s, so loose text next to them would miss both.
+function _wrapLooseBlocks(inner) {
+  const out = []; let run = [];
+  const flush = () => { if (run.length) { const d = document.createElement('div'); run.forEach(n => d.appendChild(n)); out.push(d); run = []; } };
+  Array.from(inner.childNodes).forEach(n => {
+    const tag = n.nodeType === 1 ? n.tagName.toLowerCase() : '';
+    if (tag === 'div' || tag === 'p') { flush(); out.push(n); }
+    else if (tag === 'br') {
+      if (run.length) flush();
+      else { const d = document.createElement('div'); d.appendChild(document.createElement('br')); out.push(d); }
+    }
+    else if (n.nodeType === 3 && n.textContent === '') { /* empty text node */ }
+    else run.push(n);
+  });
+  flush();
+  inner.replaceChildren(...out);
+}
+
+function _keepParagraphHeight(div) { if (div.textContent === '' && !div.querySelector('br')) div.innerHTML = '<br>'; }
+
+// Insert plain text at the caret. One line stays inline; several lines split the current paragraph at the caret and
+// give every pasted line its own paragraph (first line joins the text before the caret, last joins the text after it).
+function _pasteTextAsParagraphs(inner, text) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  const lines = String(text).replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
+  sel.deleteFromDocument();
+  const range = sel.getRangeAt(0);
+
+  if (lines.length === 1) {
+    const tn = document.createTextNode(lines[0]);
+    range.insertNode(tn); range.setStartAfter(tn); range.collapse(true);
+    sel.removeAllRanges(); sel.addRange(range);
+    return;
+  }
+
+  const marker = document.createElement('span');
+  range.insertNode(marker);
+  _wrapLooseBlocks(inner);
+  let block = marker; while (block.parentNode && block.parentNode !== inner) block = block.parentNode;
+  if (block.parentNode !== inner) { marker.remove(); return; }
+
+  // Split the paragraph at the caret: everything after the marker moves into a new paragraph
+  const r = document.createRange();
+  r.setStartAfter(marker); r.setEnd(block, block.childNodes.length);
+  const afterBlock = document.createElement('div');
+  afterBlock.appendChild(r.extractContents());
+
+  block.insertBefore(document.createTextNode(lines[0]), marker);
+  marker.remove();
+  _keepParagraphHeight(block);
+
+  let ref = block;
+  for (let i = 1; i < lines.length - 1; i++) {
+    const d = document.createElement('div'); d.textContent = lines[i]; _keepParagraphHeight(d);
+    ref.after(d); ref = d;
+  }
+  const lastTxt = document.createTextNode(lines[lines.length - 1]);
+  afterBlock.insertBefore(lastTxt, afterBlock.firstChild);
+  _keepParagraphHeight(afterBlock);
+  ref.after(afterBlock);
+
+  const caret = document.createRange();
+  if (lastTxt.textContent) caret.setStartAfter(lastTxt); else caret.setStart(afterBlock, 0);
+  caret.collapse(true);
+  sel.removeAllRanges(); sel.addRange(caret);
 }
 
 function exitEditMode(wrap) {
@@ -5050,7 +5138,7 @@ function getImageDimensions(dataUrl) {
 // Each line is stored as <div>content</div> so that CSS margin-top on > div
 // works reliably in ALL browsers for paragraph spacing.
 // Inline formatting (<b>, <i>, <u>) is preserved inside the divs.
-function sanitiseHTML(html) {
+function sanitiseHTML(html, keepParagraph) {
   const tmp = document.createElement('div');
   tmp.innerHTML = html;
   const lines = extractLines(tmp);
@@ -5058,7 +5146,8 @@ function sanitiseHTML(html) {
   while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   if (lines.length === 0) return '';
   // Single line — no wrapping needed, just return cleaned inline content
-  if (lines.length === 1) return cleanInline(tmp);
+  // (bullet boxes keep their paragraph <div>, otherwise the bullet has nothing to attach to after a reload)
+  if (lines.length === 1) return keepParagraph ? '<div>' + (lines[0] || '<br>') + '</div>' : cleanInline(tmp);
   // Multiple lines — wrap each in <div>
   return lines.map(l => '<div>' + (l || '<br>') + '</div>').join('');
 }
@@ -5082,8 +5171,13 @@ function extractLines(container) {
         hasBlockChild = true;
         // Flush any preceding inline content as its own line
         if (currentLine) { lines.push(currentLine); currentLine = ''; }
-        const inner = cleanInline(child);
-        lines.push(inner === '<br>' ? '' : inner);
+        if (child.querySelector('div, p')) {
+          // Paragraphs nested inside a paragraph (e.g. from a paste): keep each one as its own line
+          extractLines(child).forEach(l => lines.push(l));
+        } else {
+          const inner = cleanInline(child);
+          lines.push(inner === '<br>' ? '' : inner);
+        }
       } else {
         currentLine += cleanInlineNode(child);
       }
