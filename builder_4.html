@@ -1958,6 +1958,8 @@ function createElDOM(el) {
       img.style.height   = el.imgH + 'px';
       img.style.left     = (el.imgX || 0) + 'px';
       img.style.top      = (el.imgY || 0) + 'px';
+      // Never let a saved crop box stretch the picture: honour the chosen fit (default cover) inside it
+      img.style.objectFit = el.objectFit || 'cover';
     } else {
       // Normal fit — fill the clip frame using objectFit
       img.style.position   = 'relative';
@@ -1986,8 +1988,20 @@ function createElDOM(el) {
 
   } else if (el.type === 'agent') {
     renderAgentCard(wrap, el);
-    // Double-click opens the searchable agent picker
-    wrap.addEventListener('dblclick', e => { e.stopPropagation(); showAgentDropdown(el.id); });
+    // A plain click (not a drag or resize) opens the searchable agent picker next to the card.
+    // Clicking the card again while the picker is open just closes it.
+    let _down = null, _wasOpen = false;
+    wrap.addEventListener('mousedown', e => {
+      _down = { x: e.clientX, y: e.clientY };
+      _wasOpen = _agentDropdownForId === el.id;
+    });
+    wrap.addEventListener('click', e => {
+      if (e.shiftKey || e.button !== 0 || !_down) return;
+      if (e.target.classList && e.target.classList.contains('cv-rh')) return;
+      if (Math.abs(e.clientX - _down.x) + Math.abs(e.clientY - _down.y) > 3) return; // it was a drag
+      if (_wasOpen) return;
+      showAgentDropdown(el.id);
+    });
 
   } else {
     const inner = document.createElement('div');
@@ -1995,6 +2009,7 @@ function createElDOM(el) {
     inner.contentEditable = 'false';
     inner.dataset.eid = String(el.id);
     inner.innerHTML = cbreSafeHtml(el.content || '');
+    { const stale = document.getElementById('el-style-' + el.id); if (stale) stale.remove(); } // start from this box's own settings
     applyTextStyle(inner, el.style || {});
     // Apply bullet CSS if bulletMode is set on element
     if (el.bulletMode) applyBulletCSS(inner, el.id, true);
@@ -2245,7 +2260,7 @@ function showProps(id) {
     const agentBlock = '<div class="prop-section">Agent</div>'
       + '<div class="prop-row">' + agentSelectHtml(id, el) + '</div>'
       + (note ? '<div style="font-size:10px;color:var(--amber);line-height:1.5;margin:4px 0 6px;">' + note + '</div>' : '')
-      + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;">Photo, name and number come from the agents list. Double-click the card for a searchable picker.</div>'
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;">Photo, name and number come from the agents list. You can also just click the card on the canvas to pick from a searchable list.</div>'
       + '<div class="prop-section" style="margin-top:8px;">Look</div>'
       + '<div class="prop-row"><span class="prop-label">Font size</span><input class="prop-input" type="number" min="6" max="200" step="1" value="' + (parseFloat(st.fontSize) || 26) + '" onchange="setAgentStyle(' + id + ',\'fontSize\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '<div class="prop-row"><span class="prop-label">Colour</span>'
@@ -2512,6 +2527,7 @@ function renderAgentCard(wrap, el) {
   const tx = document.createElement('div'); tx.className = 'cv-agent-text';
   const inner = document.createElement('div');
   inner.className = 'cv-text-inner'; inner.contentEditable = 'false'; inner.dataset.eid = String(el.id);
+  { const stale = document.getElementById('el-style-' + el.id); if (stale) stale.remove(); }
   inner.innerHTML = d.name || d.phone
     ? '<div>' + esc(d.name) + '</div>' + (d.phone ? '<div>' + esc(d.phone) + '</div>' : '')
     : '<div style="opacity:.45">Choose an agent</div>';
@@ -2758,13 +2774,26 @@ function setPosSize(id, key, value) {
   scheduleSave();
 }
 
+// Apply a Fit choice (cover / contain / fill) to an image box. Choosing a fit replaces any manual crop,
+// so the picture is shown exactly as chosen — on screen now, after a reload, and in the PDF.
+function applyImgFit(el, fit) {
+  if (_cropId === el.id) exitCropMode();
+  el.objectFit = fit;
+  delete el.imgX; delete el.imgY; delete el.imgW; delete el.imgH; el.hasCrop = false;
+  const wrap = document.querySelector('.cv-el[data-id="' + el.id + '"]');
+  const img  = wrap ? wrap.querySelector('.cv-img-crop') : null;
+  if (img) {
+    img.style.position = 'relative'; img.style.width = '100%'; img.style.height = '100%';
+    img.style.left = ''; img.style.top = '';
+    img.style.objectFit = fit; img.style.objectPosition = 'center';
+  }
+}
+
 function setImgFit(id, fit) {
   const el = elements.find(e => e.id === id);
-  if (!el) return;
-  el.objectFit = fit;
-  const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
-  const img = wrap ? wrap.querySelector('img') : null;
-  if (img) img.style.objectFit = fit;
+  if (!el || !['cover','contain','fill'].includes(fit)) return;
+  _pushUndo();
+  applyImgFit(el, fit);
   if (connected) broadcast({ type: 'el_style', id, key: 'objectFit', value: fit, userId, userName });
   scheduleSave();
 }
@@ -2794,10 +2823,8 @@ function handleRemoteStyle(payload) {
         inner.style[payload.key] = payload.value;
       }
     }
-  } else {
-    el.objectFit = payload.value;
-    const img = wrap ? wrap.querySelector('img') : null;
-    if (img) img.style.objectFit = payload.value;
+  } else if (el.type === 'img') {
+    if (payload.key === 'objectFit' && ['cover','contain','fill'].includes(payload.value)) applyImgFit(el, payload.value);
   }
   if (_selectedId === payload.id) showProps(payload.id);
 }
@@ -3976,6 +4003,9 @@ function toggleTabActive(slug) {
 }
 
 function renderCanvas() {
+  // Per-box paragraph/bullet style sheets are keyed by box id. Boxes get rebuilt (template, undo, paste…) and ids get
+  // reused, so clear them all first — otherwise a new box can inherit the dash bullets of an old box that had the same id.
+  document.querySelectorAll('style[id^="el-style-"]').forEach(t => t.remove());
   const card = document.getElementById('canvas-card');
   card.querySelectorAll('.cv-el').forEach(n => n.remove());
   elements.forEach(el => createElDOM(el));
