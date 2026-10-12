@@ -167,7 +167,7 @@
     if (!el || typeof el !== 'object' || Array.isArray(el)) return null;
     var out = {}, eid = idOf(el.id);
     if (eid === null) { note('element without a valid id dropped', JSON.stringify(el).slice(0,200), ''); return null; }
-    if (el.type !== 'text' && el.type !== 'img' && el.type !== 'rect') { note('element of unknown type dropped', el.type, ''); return null; }
+    if (el.type !== 'text' && el.type !== 'img' && el.type !== 'rect' && el.type !== 'agent') { note('element of unknown type dropped', el.type, ''); return null; }
     out.id = eid; out.type = el.type;
     Object.keys(el).forEach(function(k){
       if (k === 'id' || k === 'type') return;
@@ -191,7 +191,7 @@
 
   // ── messages ────────────────────────────────────────────────────
   var MSG = { full_state:1, el_crop:1, el_lock:1, el_rect_prop:1, el_reorder:1, tab_switch:1, el_add:1, el_move:1,
-              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, cursor:1, presence:1, presence_leave:1 };
+              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, cursor:1, presence:1, presence_leave:1 };
 
   function reject(why, p){ note('message ignored: ' + why, JSON.stringify(p).slice(0, 200), ''); return null; }
 
@@ -209,7 +209,7 @@
     if (uid !== null) out.userId = uid;
     if (typeof p.userName === 'string') out.userName = cleanName(p.userName, 60);
 
-    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1 };
+    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1 };
     if (needId[t]) { var eid = idOf(p.id); if (eid === null) return reject('bad id', p); out.id = eid; }
 
     switch (t) {
@@ -269,6 +269,16 @@
         var url = imageUrl(p.url);
         if (url === null) return reject('image link not from your storage', p);
         out.url = url;
+        break;
+      case 'el_agent':
+        if (p.agentId !== undefined) {
+          var aid = (typeof p.agentId === 'number') ? String(p.agentId) : p.agentId;
+          if (typeof aid !== 'string' || !/^[A-Za-z0-9_\-.:]{0,80}$/.test(aid)) return reject('bad agent id', p);
+          out.agentId = aid;
+        }
+        if (p.fontSize !== undefined) { out.fontSize = num(p.fontSize, 4, 400);  if (out.fontSize === null) return reject('bad font size', p); }
+        if (p.gap !== undefined)      { out.gap      = num(p.gap, 0, 1000);      if (out.gap === null)      return reject('bad gap', p); }
+        if (p.color !== undefined)    { var cc = cssVal(p.color); if (typeof cc !== 'string') return reject('bad colour', p); out.color = cc; }
         break;
       case 'el_style':
       case 'el_rect_prop':
@@ -484,6 +494,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .img-upload-area input{display:none;}
 .img-upload-label{font-size:11px;color:var(--muted);pointer-events:none;}
 .img-upload-label span{color:var(--green);font-weight:600;}
+.cv-agent{position:absolute;inset:0;display:flex;align-items:stretch;overflow:hidden;}
+.cv-agent-photo{height:100%;aspect-ratio:1/1;flex:none;background:#e0e4e0;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.cv-agent-photo img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;}
+.cv-agent-ph{font-size:28px;font-weight:700;color:#9aa49f;letter-spacing:.04em;}
+.cv-agent-text{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
+.cv-agent-text .cv-text-inner{height:auto;padding:0;overflow:visible;cursor:inherit;}
+.img-lib{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto;}
+.img-lib-item{display:flex;align-items:center;gap:8px;padding:4px;border:1px solid var(--border2);border-radius:3px;background:var(--bg);cursor:pointer;}
+.img-lib-item:hover{border-color:var(--green);}
+.img-lib-item.current{border-color:var(--green);background:rgba(23,232,143,.08);cursor:default;}
+.img-lib-item img{width:44px;height:44px;object-fit:cover;border-radius:2px;flex:none;background:#2a2e30;}
+.img-lib-text{min-width:0;flex:1;}
+.img-lib-name{font-size:11px;font-weight:600;color:var(--text,#e8eaeb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.img-lib-meta{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.img-lib-empty{font-size:10px;color:var(--muted);line-height:1.5;padding:4px 2px;}
 .img-preview-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:2px;display:none;border:1px solid var(--border2);}
 .img-uploading{position:absolute;inset:0;background:rgba(17,19,20,.85);display:none;align-items:center;justify-content:center;font-size:11px;color:var(--green);font-weight:700;gap:6px;}
 .img-uploading.active{display:flex;}
@@ -567,7 +592,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* ── LOCK ── */
 .cv-el.locked .cv-rh           { display: none !important; }
-.cv-el.locked .cv-el-outline   { border-color: rgba(240,160,48,.4) !important; border-style: dotted !important; }
+/* Locked frames: no visible boundary until the element is clicked/selected */
+.cv-el.locked .cv-el-outline   { border-color: transparent !important; }
+.cv-el.locked.selected .cv-el-outline,
+.cv-el.locked.multi-selected .cv-el-outline { border-color: rgba(240,160,48,.6) !important; border-style: dotted !important; }
 .cv-el.locked                  { cursor: default; }
 .cv-lock-badge {
   position: absolute; top: 3px; right: 4px;
@@ -711,7 +739,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .agent-dd-name{font-size:12px;font-weight:600;color:#e8eaeb;}
 .agent-dd-phone{font-size:10px;color:#6b7175;}
 /* Agent box marker — amber dashed border */
-.cv-el[data-agent-box="1"] .cv-text-inner { outline: 1.5px dashed #f0a030 !important; }
+.cv-el[data-agent-box="1"].selected .cv-text-inner { outline: 1.5px dashed #f0a030 !important; } /* only visible when clicked */
 </style>
 
 <!-- TOOLBAR (top) -->
@@ -767,15 +795,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;">Edit Canvas Size</div>
     <div style="display:flex;gap:12px;margin-bottom:12px;">
       <div style="flex:1;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">WIDTH (mm)</div>
+        <div id="csz-w-label" style="font-size:10px;color:var(--muted);margin-bottom:4px;">WIDTH (mm)</div>
         <input id="csz-w" type="number" min="50" max="2000" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
       </div>
       <div style="flex:1;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">HEIGHT (mm)</div>
+        <div id="csz-h-label" style="font-size:10px;color:var(--muted);margin-bottom:4px;">HEIGHT (mm)</div>
         <input id="csz-h" type="number" min="50" max="2000" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
       </div>
     </div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:16px;">Common: A4=210×297  A3=297×420  Square=200×200</div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">UNITS</div>
+      <select id="csz-unit" onchange="cszUnitChanged()" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:13px;">
+        <option value="mm">Millimetres (mm)</option>
+        <option value="px">Pixels (px)</option>
+      </select>
+    </div>
+    <div id="csz-hint" style="font-size:10px;color:var(--muted);margin-bottom:16px;">Common: A4=210×297  A3=297×420  Square=200×200</div>
     <div style="display:flex;gap:8px;">
       <button onclick="applyCanvasSize()" style="flex:1;padding:8px;background:var(--green-dk);border:1px solid var(--green);border-radius:3px;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;">Apply</button>
       <button onclick="document.getElementById('canvas-size-modal').classList.remove('open')" style="flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Cancel</button>
@@ -797,6 +832,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       <button class="sb-add-btn" onclick="addElement('text')" title="Add a text box">＋ Text Box</button>
       <button class="sb-add-btn" onclick="addElement('img')"  title="Add an image box">＋ Image Box</button>
       <button class="sb-add-btn" onclick="addElement('rect')" title="Add a colour box">＋ Colour Box</button>
+      <button class="sb-add-btn" onclick="addElement('agent')" title="Add an agent card: photo, name and number from the agents list">＋ Agent Card</button>
     </div>
   </div>
 
@@ -837,7 +873,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
     <!-- Apply tab -->
     <div id="tpl-pane-apply" style="flex:1;overflow-y:auto;padding:16px;">
-      <p style="font-size:11px;color:#6b7175;margin-bottom:14px;line-height:1.6;">Choose a template to load onto the current canvas. Your existing work will be replaced.</p>
+      <p style="font-size:11px;color:#6b7175;margin-bottom:14px;line-height:1.6;">Choose a template to load onto the current canvas. Only templates for this tab are shown. Your existing work will be replaced.</p>
       <div id="tpl-list" style="display:flex;flex-direction:column;gap:8px;">
         <div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">Loading templates…</div>
       </div>
@@ -847,12 +883,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       <div id="tpl-admin-warning" style="display:none;font-size:11px;color:#f0a030;background:#2a1800;border:1px solid #7a4a00;border-radius:3px;padding:8px 10px;margin-bottom:14px;">Only admins can manage templates.</div>
       <!-- Save current as template -->
       <div style="background:#202325;border:1px solid #313639;border-radius:4px;padding:14px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:#e8eaeb;margin-bottom:8px;">Save current layout as new template</div>
+        <div id="tpl-save-heading" style="font-size:11px;font-weight:700;color:#e8eaeb;margin-bottom:8px;">Save current layout as new template</div>
         <div style="display:flex;gap:8px;">
           <input id="tpl-new-name" type="text" placeholder="Template name e.g. Retail A4" maxlength="60"
             style="flex:1;padding:8px 10px;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;font-family:inherit;outline:none;">
           <button onclick="saveTemplate()" style="padding:8px 14px;background:#003f2d;border:1px solid #17e88f;border-radius:3px;color:#17e88f;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Save</button>
         </div>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#c9cdd0;cursor:pointer;">
+          <input id="tpl-new-default" type="checkbox"><span>Make this the default for new properties on the <b id="tpl-new-default-tab">current</b> tab</span>
+        </label>
         <div id="tpl-save-status" style="font-size:10px;color:#6b7175;margin-top:6px;min-height:14px;"></div>
       </div>
       <!-- Existing templates list -->
@@ -875,6 +914,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tpl-apply-btn:hover { background:#17e88f; color:#000; }
 .tpl-del-btn { padding:5px 10px; background:transparent; border:1px solid #5a2222; border-radius:3px; color:#e05555; font-size:11px; cursor:pointer; }
 .tpl-del-btn:hover { background:#3a1515; }
+.tpl-badge { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:3px; background:#003f2d; border:1px solid #17e88f; color:#17e88f; font-size:9px; font-weight:700; letter-spacing:.05em; vertical-align:middle; }
+.tpl-def-btn, .tpl-upd-btn { padding:5px 10px; background:transparent; border:1px solid #4a5156; border-radius:3px; color:#b4babd; font-size:11px; cursor:pointer; white-space:nowrap; }
+.tpl-def-btn:hover, .tpl-upd-btn:hover { border-color:#17e88f; color:#17e88f; }
+.tpl-def-btn.on { background:#003f2d; border-color:#17e88f; color:#17e88f; font-weight:700; }
 </style>
 
 <script>
@@ -911,7 +954,8 @@ function tabChannelName(slug) {
 let TAB_DEFINITIONS = [
   { slug:'brochure',      name:'Brochure',             mmW:210, mmH:297,  active:true,  builtIn:true },
   { slug:'brochure2',     name:'Brochure 2 Page',      mmW:210, mmH:297,  active:true  },
-  { slug:'edm',           name:'EDM',                  mmW:158, mmH:800,  active:true  },
+  // EDM default: 900 × 7000 px (stored as mm at 96 dpi, so 900 px = 900*25.4/96 mm)
+  { slug:'edm',           name:'EDM',                  mmW:900*25.4/96, mmH:7000*25.4/96, active:true, unit:'px' },
   { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
   { slug:'pressad',       name:'Press Ad',             mmW:210, mmH:148,  active:true  },
 ];
@@ -936,8 +980,16 @@ async function loadTabDefs() {
             // Update mutable properties from saved state
             existing.name   = savedTab.name;
             existing.active = savedTab.active;
-            existing.mmW    = savedTab.mmW || existing.mmW;
-            existing.mmH    = savedTab.mmH || existing.mmH;
+            // The EDM used to default to 158 × 800 mm. Properties that still have exactly that saved
+            // (it gets re-saved whenever tab settings change) never chose it, so they move to the new
+            // default. Any other saved size is a deliberate choice and is kept.
+            const oldStockEdm = savedTab.slug === 'edm'
+              && Math.abs((savedTab.mmW || 0) - 158) < 0.01 && Math.abs((savedTab.mmH || 0) - 800) < 0.01;
+            if (!oldStockEdm) {
+              existing.mmW    = savedTab.mmW || existing.mmW;
+              existing.mmH    = savedTab.mmH || existing.mmH;
+            }
+            existing.unit   = savedTab.unit || existing.unit; // 'px' or 'mm' — how this tab's size is shown/edited
           } else {
             // Custom tab (e.g. duplicate) — add it
             defaults.push(savedTab);
@@ -976,6 +1028,9 @@ async function saveTabDefs() {
   } catch(e) { console.warn('[B4] saveTabDefs failed:', e); }
 }
 
+// Pixel-sized tabs (e.g. EDM) are exported so 1 canvas px = 1 px at this resolution
+const EXPORT_PPI_PX = 300;
+
 // Convert mm to px at 96dpi
 function mmToPx(mm) { return Math.round(mm * 96 / 25.4); }
 
@@ -983,6 +1038,17 @@ function mmToPx(mm) { return Math.round(mm * 96 / 25.4); }
 function tabPx(tab) {
   return { w: mmToPx(tab.mmW), h: mmToPx(tab.mmH) };
 }
+
+// Sizes are STORED in mm (canvas px = mm at 96 dpi), but each tab can be SHOWN and EDITED in mm or px.
+// def.unit = 'px' -> show px (e.g. EDM); anything else -> mm. Changing the unit never changes the canvas.
+function tabUnit(def) { return def && def.unit === 'px' ? 'px' : 'mm'; }
+function _r1(n) { return Math.round(n * 10) / 10; }
+function sizeParts(def) {
+  if (tabUnit(def) === 'px') { const px = tabPx(def); return { w: px.w, h: px.h, unit: 'px' }; }
+  return { w: _r1(def.mmW), h: _r1(def.mmH), unit: 'mm' };
+}
+// sizeText(def,'×','')  -> "597×3024px"      sizeText(def,' × ',' ') -> "210 × 297 mm"
+function sizeText(def, sep, unitGap) { const z = sizeParts(def); return z.w + sep + z.h + unitGap + z.unit; }
 
 // Current tab slug — set from URL param, fixed for this page instance
 let _currentTab = CURRENT_TAB_SLUG;
@@ -1105,10 +1171,10 @@ async function init() {
 
   // Fetch agents first so dropdown is ready when properties panel opens
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/agents?select=id,name,phone,email&order=name.asc',
+    const res = await fetch(SUPA_URL + '/rest/v1/agents?select=*&order=name.asc',
       { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
     const data = await res.json();
-    if (Array.isArray(data)) { agentList = data; console.log('[B4] Agents loaded:', agentList.length); }
+    if (Array.isArray(data)) { agentList = data; _agentPhotoCol = detectAgentPhotoColumn(agentList); console.log('[B4] Agents loaded:', agentList.length, '· photo column:', _agentPhotoCol || '(none found)'); }
   } catch(e) { console.warn('[B4] Agent load failed:', e); }
 
   // Load tab definitions from Supabase FIRST — so custom/copy tabs get correct dimensions
@@ -1179,43 +1245,105 @@ async function loadFromSupabase() {
   } catch(e) { console.warn('Load failed:', e); }
 }
 
-// Load the template whose name is exactly "Default" (case-insensitive)
+// ── Per-tab defaults ────────────────────────────────────────────
+// Every template belongs to ONE tab (EDM, Brochure, ...). A separate settings row remembers which
+// template is the default for each tab, so changing one tab's default never touches the others.
+//   row: portfolio_id = '_b4_tpl_defaults', property_id = 'defaults'
+//   state_json = { defaults: { edm: 'tpl_123', brochure: 'tpl_456', ... } }
+// Templates saved before this feature have no tab recorded and are treated as Brochure templates.
+const TPL_DEFAULTS_PORTFOLIO = '_b4_tpl_defaults';
+const TPL_DEFAULTS_PROPERTY  = 'defaults';
+const TPL_LEGACY_TAB         = 'brochure';
+
+function _supaHeaders(extra) {
+  return Object.assign({ apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }, extra || {});
+}
+function _tabLabel(slug) { const d = tabDef(slug); return d ? d.name : slug; }
+
+async function fetchTabDefaults() {
+  try {
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TPL_DEFAULTS_PORTFOLIO
+              + '&property_id=eq.' + TPL_DEFAULTS_PROPERTY + '&select=id,state_json';
+    const res  = await fetch(url, { headers: _supaHeaders() });
+    const rows = await res.json();
+    if (rows && rows.length && rows[0].state_json) {
+      const st = JSON.parse(rows[0].state_json);
+      return { rowId: rows[0].id, map: (st && st.defaults) || {} };
+    }
+  } catch(e) { console.warn('[B4] fetchTabDefaults failed:', e); }
+  return { rowId: null, map: {} };
+}
+
+// Set (or clear, with tplSlug = null) the default template for ONE tab. Other tabs are left as they are.
+async function setTabDefault(tabSlug, tplSlug) {
+  if (USER_ROLE !== 'admin') return false;
+  try {
+    const cur = await fetchTabDefaults();
+    const map = Object.assign({}, cur.map);
+    if (tplSlug) map[tabSlug] = tplSlug; else delete map[tabSlug];
+    const body = {
+      portfolio_id: TPL_DEFAULTS_PORTFOLIO,
+      property_id:  TPL_DEFAULTS_PROPERTY,
+      state_json:   JSON.stringify({ defaults: map }),
+      updated_at:   new Date().toISOString()
+    };
+    const url = cur.rowId ? SUPA_URL + '/rest/v1/projects?id=eq.' + cur.rowId : SUPA_URL + '/rest/v1/projects';
+    const res = await fetch(url, {
+      method: cur.rowId ? 'PATCH' : 'POST',
+      headers: _supaHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      body: JSON.stringify(body)
+    });
+    return res.ok;
+  } catch(e) { console.warn('[B4] setTabDefault failed:', e); return false; }
+}
+
+// Load the default template for the CURRENT tab only (used when a property has no saved layout yet).
 async function applyDefaultTemplate() {
   try {
     const templates = await fetchTemplates();
-    const def = templates.find(t => t.name.trim().toLowerCase() === 'default');
+    const { map }   = await fetchTabDefaults();
+    let def = map[_currentTab] && templates.find(t => t.slug === map[_currentTab] && t.tab === _currentTab);
+    // Backwards compatibility: before per-tab defaults existed, a template named "Default" was used.
+    // It still applies — but only to the Brochure tab, never to the other tabs.
+    if (!def && _currentTab === TPL_LEGACY_TAB) {
+      def = templates.find(t => t.tab === TPL_LEGACY_TAB && t.name.trim().toLowerCase() === 'default');
+    }
     if (def) {
       await applyTemplateById(def.slug, false);
-      console.log('[B4] Default template applied:', def.name);
+      console.log('[B4] Default template applied for tab', _currentTab, ':', def.name);
     } else {
-      console.log('[B4] No Default template found — starting blank');
+      console.log('[B4] No default template for tab', _currentTab, '— starting blank');
     }
   } catch(e) { console.warn('[B4] Default template load failed:', e); }
 }
 
-// Fetch all saved templates from Supabase
+// Fetch all saved templates from Supabase (each carries the tab it belongs to)
 async function fetchTemplates() {
   const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&select=id,property_id,state_json,updated_at&order=updated_at.desc';
-  const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+  const res  = await fetch(url, { headers: _supaHeaders() });
   const rows = await res.json();
   return (rows || []).map(r => {
-    let name = r.property_id, createdAt = r.updated_at;
-    try { const s = JSON.parse(r.state_json); if (s.name) name = s.name; } catch(e){}
-    return { id: r.id, slug: r.property_id, name, updatedAt: r.updated_at };
+    let name = r.property_id, tab = TPL_LEGACY_TAB;
+    try { const s = JSON.parse(r.state_json); if (s.name) name = s.name; if (s.tab) tab = s.tab; } catch(e){}
+    return { id: r.id, slug: r.property_id, name, tab, updatedAt: r.updated_at };
   });
 }
 
-// Apply a template by its slug to the current canvas
+// Apply a template by its slug to the current canvas (only if it belongs to this tab)
 async function applyTemplateById(slug, confirm_prompt) {
   if (confirm_prompt) {
     if (!confirm('Load template onto this canvas?\n\nYour current work will be replaced. This cannot be undone.')) return;
   }
   try {
     const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TEMPLATE_PORTFOLIO + '&property_id=eq.' + slug + '&select=state_json';
-    const res  = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    const res  = await fetch(url, { headers: _supaHeaders() });
     const rows = await res.json();
     if (rows && rows.length && rows[0].state_json) {
       const saved = JSON.parse(rows[0].state_json);
+      if ((saved.tab || TPL_LEGACY_TAB) !== _currentTab) {
+        alert('That template belongs to the ' + _tabLabel(saved.tab || TPL_LEGACY_TAB) + ' tab, so it can\'t be applied here.');
+        return;
+      }
       if (saved.elements && saved.elements.length) {
         _pushUndo();
         elements = JSON.parse(JSON.stringify(saved.elements));
@@ -1229,12 +1357,18 @@ async function applyTemplateById(slug, confirm_prompt) {
   } catch(e) { console.warn('Template apply failed:', e); }
 }
 
-// Save current layout as a named template
+function _tplPayload(name) {
+  const def = tabDef(_currentTab);
+  return JSON.stringify({ name, tab: _currentTab, mmW: def && def.mmW, mmH: def && def.mmH, elements });
+}
+
+// Save current layout as a named template for the CURRENT tab
 async function saveTemplate() {
   if (USER_ROLE !== 'admin') return;
   const nameEl = document.getElementById('tpl-new-name');
   const name   = (nameEl && nameEl.value.trim()) || '';
   if (!name) { nameEl && nameEl.focus(); return; }
+  const makeDefault = !!(document.getElementById('tpl-new-default') || {}).checked;
   const slug    = 'tpl_' + Date.now();
   const statusEl = document.getElementById('tpl-save-status');
   if (statusEl) statusEl.textContent = 'Saving…';
@@ -1242,30 +1376,73 @@ async function saveTemplate() {
     const body = {
       portfolio_id: TEMPLATE_PORTFOLIO,
       property_id:  slug,
-      state_json:   JSON.stringify({ name, elements }),
+      state_json:   _tplPayload(name),
       updated_at:   new Date().toISOString()
     };
-    await fetch(SUPA_URL + '/rest/v1/projects', {
+    const res = await fetch(SUPA_URL + '/rest/v1/projects', {
       method: 'POST',
-      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: _supaHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
       body: JSON.stringify(body)
     });
-    if (statusEl) statusEl.textContent = '✓ Saved!';
+    if (!res.ok) throw new Error('save ' + res.status);
+    let msg = '✓ Saved for the ' + _tabLabel(_currentTab) + ' tab';
+    if (makeDefault) {
+      const ok = await setTabDefault(_currentTab, slug);
+      msg += ok ? ' and set as its default' : ' — but setting it as default failed';
+    }
+    if (statusEl) statusEl.textContent = msg;
     if (nameEl) nameEl.value = '';
-    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2500);
+    const cb = document.getElementById('tpl-new-default'); if (cb) cb.checked = false;
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 4000);
     await renderManageList(); // refresh list
   } catch(e) { if (statusEl) statusEl.textContent = 'Save failed'; }
 }
 
-// Delete a template by its DB id
-async function deleteTemplate(id) {
+// Overwrite an existing template (same name, same tab) with what is on the canvas now
+async function updateTemplate(id) {
+  if (USER_ROLE !== 'admin') return;
+  const statusEl = document.getElementById('tpl-save-status');
+  try {
+    const res  = await fetch(SUPA_URL + '/rest/v1/projects?id=eq.' + id + '&select=state_json', { headers: _supaHeaders() });
+    const rows = await res.json();
+    const old  = rows && rows.length ? JSON.parse(rows[0].state_json) : null;
+    if (!old) return;
+    if ((old.tab || TPL_LEGACY_TAB) !== _currentTab) {
+      alert('Open the ' + _tabLabel(old.tab || TPL_LEGACY_TAB) + ' tab to update this template.');
+      return;
+    }
+    if (!confirm('Replace the saved template "' + (old.name || '') + '" with the layout currently on this canvas?\n\nThis cannot be undone.')) return;
+    const put = await fetch(SUPA_URL + '/rest/v1/projects?id=eq.' + id, {
+      method: 'PATCH',
+      headers: _supaHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      body: JSON.stringify({ state_json: _tplPayload(old.name || 'Template'), updated_at: new Date().toISOString() })
+    });
+    if (!put.ok) throw new Error('update ' + put.status);
+    if (statusEl) { statusEl.textContent = '✓ Template updated'; setTimeout(() => { statusEl.textContent = ''; }, 3000); }
+    await renderManageList();
+  } catch(e) { if (statusEl) statusEl.textContent = 'Update failed'; }
+}
+
+// Make a template the default for its tab (or clear it if it already is)
+async function toggleTemplateDefault(tabSlug, tplSlug, isCurrentlyDefault) {
+  const ok = await setTabDefault(tabSlug, isCurrentlyDefault ? null : tplSlug);
+  if (!ok) alert('Could not change the default. Please try again.');
+  await renderManageList();
+}
+
+// Delete a template by its DB id (and un-default it if it was a tab's default)
+async function deleteTemplate(id, slug) {
   if (USER_ROLE !== 'admin') return;
   if (!confirm('Delete this template? This cannot be undone.')) return;
   try {
     await fetch(SUPA_URL + '/rest/v1/projects?id=eq.' + id, {
       method: 'DELETE',
-      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }
+      headers: _supaHeaders()
     });
+    if (slug) {
+      const { map } = await fetchTabDefaults();
+      for (const tab of Object.keys(map)) if (map[tab] === slug) await setTabDefault(tab, null);
+    }
     await renderManageList();
     await renderApplyList();
   } catch(e) { alert('Delete failed'); }
@@ -1300,23 +1477,37 @@ async function tplTab(tab) {
   if (tab === 'manage') await renderManageList();
 }
 
+function _tplDate(t) {
+  return t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
+}
+
+// Apply tab: only templates that belong to the tab you are on
 async function renderApplyList() {
   const el = document.getElementById('tpl-list');
   if (!el) return;
   el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">Loading…</div>';
   try {
-    const templates = await fetchTemplates();
-    if (!templates.length) { el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">No templates saved yet.</div>'; return; }
-    el.innerHTML = templates.map(t => {
-      const d = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
+    const [all, { map }] = await Promise.all([fetchTemplates(), fetchTabDefaults()]);
+    const tabName   = _tabLabel(_currentTab);
+    const templates = all.filter(t => t.tab === _currentTab);
+    const head = '<div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;">TEMPLATES FOR THE ' + esc(tabName.toUpperCase()) + ' TAB</div>';
+    if (!templates.length) {
+      el.innerHTML = head + '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">No templates saved for the ' + esc(tabName) + ' tab yet.</div>';
+      return;
+    }
+    el.innerHTML = head + templates.map(t => {
+      const isDef = map[_currentTab] === t.slug;
       return '<div class="tpl-card">'
-        + '<div><div class="tpl-card-name">' + esc(t.name) + '</div><div class="tpl-card-meta">Saved ' + d + '</div></div>'
-        + '<button class="tpl-apply-btn" onclick="applyTemplateById(\'' + t.slug + '\', true)">Apply →</button>'
+        + '<div style="flex:1;"><div class="tpl-card-name">' + esc(t.name)
+        + (isDef ? ' <span class="tpl-badge">★ DEFAULT</span>' : '') + '</div>'
+        + '<div class="tpl-card-meta">Saved ' + _tplDate(t) + '</div></div>'
+        + '<button class="tpl-apply-btn" onclick="applyTemplateById(\'' + esc(t.slug) + '\', true)">Apply →</button>'
         + '</div>';
     }).join('');
   } catch(e) { el.innerHTML = '<div style="color:#e05555;font-size:12px;padding:12px;">Failed to load templates.</div>'; }
 }
 
+// Manage tab: every template, grouped by tab. Defaults are set per tab and never affect other tabs.
 async function renderManageList() {
   const el = document.getElementById('tpl-manage-list');
   if (!el) return;
@@ -1329,16 +1520,37 @@ async function renderManageList() {
     el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Admin access required to manage templates.</div>';
     return;
   }
+  // Keep the save form's wording in step with the tab you are on
+  const tn = _tabLabel(_currentTab);
+  const h  = document.getElementById('tpl-save-heading');  if (h)  h.textContent  = 'Save current layout as a new template for the ' + tn + ' tab';
+  const dl = document.getElementById('tpl-new-default-tab'); if (dl) dl.textContent = tn;
   el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>';
   try {
-    const templates = await fetchTemplates();
+    const [templates, { map }] = await Promise.all([fetchTemplates(), fetchTabDefaults()]);
     if (!templates.length) { el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">No templates yet — save one above.</div>'; return; }
-    el.innerHTML = templates.map(t => {
-      const d = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '';
-      return '<div class="tpl-card">'
-        + '<div style="flex:1;"><div class="tpl-card-name">' + esc(t.name) + '</div><div class="tpl-card-meta">Saved ' + d + ' · slug: ' + esc(t.slug) + '</div></div>'
-        + '<button class="tpl-del-btn" onclick="deleteTemplate(\'' + t.id + '\')">✕ Delete</button>'
-        + '</div>';
+
+    // Group by tab: current tab first, then the usual tab order, then any unknown tabs
+    const order = [_currentTab].concat(TAB_DEFINITIONS.map(t => t.slug));
+    const tabs  = [...new Set(templates.map(t => t.tab))].sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+    el.innerHTML = tabs.map(tab => {
+      const group = templates.filter(t => t.tab === tab);
+      const isCur = tab === _currentTab;
+      return '<div style="font-size:10px;font-weight:700;color:' + (isCur ? '#17e88f' : '#6b7175') + ';letter-spacing:.06em;margin:10px 0 2px;">'
+        + esc(_tabLabel(tab).toUpperCase()) + ' TAB' + (isCur ? ' (CURRENT)' : '') + '</div>'
+        + group.map(t => {
+          const isDef = map[tab] === t.slug;
+          return '<div class="tpl-card">'
+            + '<div style="flex:1;"><div class="tpl-card-name">' + esc(t.name) + '</div>'
+            + '<div class="tpl-card-meta">Saved ' + _tplDate(t) + '</div></div>'
+            + '<button class="tpl-def-btn' + (isDef ? ' on' : '') + '" title="' + (isDef ? 'Click to remove as default for this tab' : 'Use this for new properties on the ' + esc(_tabLabel(tab)) + ' tab') + '" '
+            +   'onclick="toggleTemplateDefault(\'' + esc(tab) + '\',\'' + esc(t.slug) + '\',' + isDef + ')">' + (isDef ? '★ Default' : '☆ Set default') + '</button>'
+            + (isCur ? '<button class="tpl-upd-btn" title="Replace this template with the layout on the canvas now" onclick="updateTemplate(\'' + t.id + '\')">⟳ Update</button>' : '')
+            + '<button class="tpl-del-btn" onclick="deleteTemplate(\'' + t.id + '\',\'' + esc(t.slug) + '\')">✕</button>'
+            + '</div>';
+        }).join('');
     }).join('');
   } catch(e) { el.innerHTML = '<div style="color:#e05555;font-size:12px;padding:12px;">Failed to load.</div>'; }
 }
@@ -1486,6 +1698,7 @@ function handleMsg(msg) {
     if (payload.type === 'el_content')    { handleRemoteContent(payload);  return; }
     if (payload.type === 'el_delete')     { handleRemoteDelete(payload);   return; }
     if (payload.type === 'el_image')      { handleRemoteImage(payload);    return; }
+    if (payload.type === 'el_agent')      { handleRemoteAgent(payload);    return; }
     if (payload.type === 'cursor')        { handleRemoteCursor(payload);   return; }
     if (payload.type === 'presence')      { handleRemotePresence(payload); return; }
     if (payload.type === 'presence_leave'){ handlePresenceLeave(payload.userId); return; }
@@ -1590,11 +1803,31 @@ function makeRectEl(x, y) {
 // ════════════════════════════════════════════════════════
 // ADD / DELETE ELEMENTS
 // ════════════════════════════════════════════════════════
+// Where a new box should land: the middle of the canvas, or — on a canvas taller than the screen
+// (e.g. the 7000px EDM) — the middle of the part you are currently looking at.
+function _newBoxCenter() {
+  const cx = AW / 2, cy = AH / 2;
+  try {
+    const area = document.getElementById('canvas-area'), card = document.getElementById('canvas-card');
+    if (!area || !card) return { x: cx, y: cy };
+    const a = area.getBoundingClientRect(), c = card.getBoundingClientRect();
+    if (c.height <= a.height) return { x: cx, y: cy };
+    const vx = (a.left + a.width  / 2 - c.left) / _zoom;
+    const vy = (a.top  + a.height / 2 - c.top)  / _zoom;
+    return { x: Math.max(0, Math.min(AW, vx)), y: Math.max(0, Math.min(AH, vy)) };
+  } catch(e) { return { x: cx, y: cy }; }
+}
+
 function addElement(type) {
   _pushUndo();
-  const el = type === 'text' ? makeTextEl(Math.round(AW/2 - 150), Math.round(AH/2 - 30))
-           : type === 'rect' ? makeRectEl(Math.round(AW/2 - 100), Math.round(AH/2 - 60))
-           : makeImgEl(Math.round(AW/2 - 150), Math.round(AH/2 - 100));
+  const mid = _newBoxCenter();
+  const el = type === 'text' ? makeTextEl(Math.round(mid.x - 150), Math.round(mid.y - 30))
+           : type === 'agent' ? makeAgentEl(Math.round(mid.x - 240), Math.round(mid.y - 55))
+           : type === 'rect' ? makeRectEl(Math.round(mid.x - 100), Math.round(mid.y - 60))
+           : makeImgEl(Math.round(mid.x - 150), Math.round(mid.y - 100));
+  // keep the new box fully on the canvas
+  el.x = Math.max(0, Math.min(Math.max(0, AW - el.w), el.x));
+  el.y = Math.max(0, Math.min(Math.max(0, AH - el.h), el.y));
   elements.push(el);
   createElDOM(el);
   selectEl(el.id);
@@ -1751,6 +1984,11 @@ function createElDOM(el) {
       if (el.imageUrl) enterCropMode(el.id);
     });
 
+  } else if (el.type === 'agent') {
+    renderAgentCard(wrap, el);
+    // Double-click opens the searchable agent picker
+    wrap.addEventListener('dblclick', e => { e.stopPropagation(); showAgentDropdown(el.id); });
+
   } else {
     const inner = document.createElement('div');
     inner.className = 'cv-text-inner';
@@ -1766,6 +2004,7 @@ function createElDOM(el) {
     wrap.addEventListener('dblclick', e => { e.stopPropagation(); enterEditMode(wrap, inner, el.id); });
 
     inner.addEventListener('input', () => {
+      _pushUndoGrouped('text:' + el.id); // snapshot the OLD content before it's overwritten below
       el.content = sanitiseHTML(inner.innerHTML);
       if (connected) broadcast({ type: 'el_content', id: el.id, content: el.content, userId, userName });
       scheduleSave();
@@ -1908,7 +2147,7 @@ function showProps(id) {
   const lockBtn = '<button class="lock-btn ' + (locked?'locked':'unlocked') + '" onclick="toggleLock(' + id + ')">'
     + (locked ? '🔒 Locked — click to unlock' : '🔓 Unlocked — click to lock') + '</button>'
     + (locked ? '<div style="font-size:10px;color:var(--amber);background:#2a1800;border:1px solid #5a3000;border-radius:3px;padding:6px 8px;margin-bottom:8px;line-height:1.5;">'
-      + (el.type === 'text' ? 'Position, size &amp; formatting are locked.<br>Double-click to still edit text.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
+      + (el.type === 'text' ? 'Position, size &amp; formatting are locked.<br>Double-click to still edit text.' : el.type === 'agent' ? 'Position &amp; size are locked.<br>You can still choose a different agent.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
       + '</div>' : '');
 
   // Layer order block — shared, always enabled (locking doesn't affect layer order)
@@ -1988,10 +2227,33 @@ function showProps(id) {
       + (el.imageUrl ? '<img class="img-preview-thumb" src="' + el.imageUrl + '" style="display:block">' : '<div class="img-upload-label"><span>Click or drag</span> to upload image</div>')
       + '</label>'
       + (el.imageUrl ? '<button class="del-btn" style="margin-top:6px;color:var(--amber);border-color:#7a4a00;background:#2a1800;" onclick="clearImage(' + id + ')">✕ Remove Image</button>' : '')
+      + '<div class="prop-section" style="margin-top:10px;">Property images</div>'
+      + '<div id="img-library" class="img-lib" data-for="' + id + '"><div class="img-lib-empty">Loading…</div></div>'
       + '<div class="prop-section" style="margin-top:10px;">Fit</div>'
       + '<div class="prop-row"><span class="prop-label">Object fit</span><select class="prop-input" onchange="setImgFit(' + id + ',this.value)">' + fitOpts + '</select></div>';
 
     panel.innerHTML = lockBtn + imgBlock + layerBlock + posSizeBlock + delBtn;
+    renderImageLibrary(id);
+
+  } else if (el.type === 'agent') {
+    const d  = agentCardData(el);
+    const st = el.style || {};
+    const note = !agentList.length
+      ? 'No agents could be loaded from the agents list.'
+      : (!_agentPhotoCol ? 'No photo column found in the agents table, so photos can\'t be shown yet.'
+        : (d.agent && !d.photo ? 'No photo on file for this agent.' : ''));
+    const agentBlock = '<div class="prop-section">Agent</div>'
+      + '<div class="prop-row">' + agentSelectHtml(id, el) + '</div>'
+      + (note ? '<div style="font-size:10px;color:var(--amber);line-height:1.5;margin:4px 0 6px;">' + note + '</div>' : '')
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;">Photo, name and number come from the agents list. Double-click the card for a searchable picker.</div>'
+      + '<div class="prop-section" style="margin-top:8px;">Look</div>'
+      + '<div class="prop-row"><span class="prop-label">Font size</span><input class="prop-input" type="number" min="6" max="200" step="1" value="' + (parseFloat(st.fontSize) || 26) + '" onchange="setAgentStyle(' + id + ',\'fontSize\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
+      + '<div class="prop-row"><span class="prop-label">Colour</span>'
+      + '<input class="prop-input" type="color" value="' + (st.color || '#003f2d') + '" onchange="setAgentStyle(' + id + ',\'color\',this.value);showProps(' + id + ')">'
+      + '<input class="prop-input" type="text" value="' + (st.color || '#003f2d') + '" style="width:68px;flex:none;" onchange="setAgentStyle(' + id + ',\'color\',this.value);showProps(' + id + ')"></div>'
+      + '<div class="prop-row"><span class="prop-label">Photo gap</span><input class="prop-input" type="number" min="0" max="500" step="1" value="' + (el.gap === undefined ? 30 : el.gap) + '" onchange="setAgentStyle(' + id + ',\'gap\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:4px;">The photo is a square the height of the card.</div>';
+    panel.innerHTML = lockBtn + agentBlock + layerBlock + posSizeBlock + delBtn;
 
   } else if (el.type === 'rect') {
     // Colour box properties
@@ -2186,6 +2448,142 @@ function saveFormattedContent(id) {
 // This avoids the problem of bullets getting stored as content then double-applied.
 
 // ════════════════════════════════════════════════════════
+// AGENT CARD — photo + name + number, filled from the agents database via a dropdown
+// ════════════════════════════════════════════════════════
+let _agentPhotoCol = null;
+const AGENT_PHOTO_BUCKET = 'agents'; // only used if the database stores a bare file name (no folder / no http link)
+
+// Which column of the agents table holds the photo? (the table is read with select=*)
+function detectAgentPhotoColumn(rows) {
+  const cols = new Set(); (rows || []).forEach(r => Object.keys(r || {}).forEach(k => cols.add(k)));
+  const prefer = ['photo_url','image_url','headshot_url','avatar_url','picture_url','profile_image_url','profile_photo_url',
+                  'photo','image','headshot','avatar','picture','img_url','img','profile_image','profile_photo','profile_picture',
+                  'photo_path','image_path'];
+  for (const k of prefer) if (cols.has(k)) return k;
+  return [...cols].find(k => /(photo|image|img|headshot|avatar|picture|portrait)/i.test(k)) || null;
+}
+
+function agentById(id) { return (id === '' || id === null || id === undefined) ? null : agentList.find(a => String(a.id) === String(id)) || null; }
+
+// Photo link for an agent: a full web link is used as-is; otherwise it's treated as a Supabase storage path
+function agentPhotoUrl(a) {
+  if (!a || !_agentPhotoCol) return '';
+  let v = a[_agentPhotoCol];
+  if (typeof v !== 'string') return '';
+  v = v.trim(); if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  v = v.replace(/^\/+/, '');
+  if (v.indexOf('storage/v1/object/') === 0) return SUPA_URL + '/' + v;
+  return SUPA_URL + '/storage/v1/object/public/' + (v.indexOf('/') > 0 ? v : AGENT_PHOTO_BUCKET + '/' + v);
+}
+
+// What a card shows: live data from the agents database when the agent is still there, else what was saved on the card
+function agentCardData(el) {
+  const a = agentById(el.agentId);
+  return {
+    agent: a,
+    name:  a ? (a.name  || '') : (el.agentName  || ''),
+    phone: a ? (a.phone || '') : (el.agentPhone || ''),
+    photo: a ? agentPhotoUrl(a) : (el.agentImage || '')
+  };
+}
+
+function makeAgentEl(x, y) {
+  return { id: _nextId++, type: 'agent', x, y, w: 480, h: 110, gap: 30,
+           agentId: '', agentName: '', agentPhone: '', agentImage: '',
+           style: { fontSize: '26px', fontWeight: '400', color: '#003f2d', fontFamily: 'Calibre, sans-serif', lineHeight: '1.4' } };
+}
+
+// (Re)build the inside of an agent card: square photo on the left, name + number on the right
+function renderAgentCard(wrap, el) {
+  const old = wrap.querySelector('.cv-agent'); if (old) old.remove();
+  const d = agentCardData(el);
+  const root = document.createElement('div');
+  root.className = 'cv-agent';
+  root.style.gap = (el.gap === undefined ? 30 : el.gap) + 'px';
+
+  const ph = document.createElement('div'); ph.className = 'cv-agent-photo';
+  const fallback = () => { ph.innerHTML = '<div class="cv-agent-ph">' + (d.name ? esc(initials(d.name)) : '👤') + '</div>'; };
+  if (d.photo) {
+    const im = document.createElement('img'); im.draggable = false; im.alt = '';
+    im.onerror = fallback; im.src = d.photo; ph.appendChild(im);
+  } else fallback();
+
+  const tx = document.createElement('div'); tx.className = 'cv-agent-text';
+  const inner = document.createElement('div');
+  inner.className = 'cv-text-inner'; inner.contentEditable = 'false'; inner.dataset.eid = String(el.id);
+  inner.innerHTML = d.name || d.phone
+    ? '<div>' + esc(d.name) + '</div>' + (d.phone ? '<div>' + esc(d.phone) + '</div>' : '')
+    : '<div style="opacity:.45">Choose an agent</div>';
+  applyTextStyle(inner, el.style || {});
+  tx.appendChild(inner);
+  root.appendChild(ph); root.appendChild(tx);
+  wrap.appendChild(root);
+}
+
+function refreshAgentCard(el) {
+  const wrap = document.querySelector('.cv-el[data-id="' + el.id + '"]');
+  if (wrap) renderAgentCard(wrap, el);
+}
+
+// Choose which agent a card shows (agentId '' = none)
+function setAgentCard(id, agentId) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'agent') return;
+  agentId = (agentId === '__blank__' || agentId === null || agentId === undefined) ? '' : String(agentId);
+  if (String(el.agentId || '') === agentId) return;
+  _pushUndo();
+  const a = agentById(agentId);
+  el.agentId    = a ? String(a.id) : '';
+  el.agentName  = a ? (a.name  || '') : '';
+  el.agentPhone = a ? (a.phone || '') : '';
+  el.agentImage = a ? agentPhotoUrl(a) : '';
+  refreshAgentCard(el);
+  if (connected) broadcast({ type: 'el_agent', id, agentId: el.agentId, userId, userName });
+  if (_selectedId === id) showProps(id);
+  scheduleSave();
+}
+
+// Card look: key = 'fontSize' (number, px) | 'color' | 'gap' (number, px between photo and text)
+function setAgentStyle(id, key, value) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'agent') return;
+  _pushUndo();
+  if (key === 'gap') el.gap = Math.max(0, parseFloat(value) || 0);
+  else { el.style = el.style || {}; el.style[key === 'fontSize' ? 'fontSize' : 'color'] = key === 'fontSize' ? (Math.max(4, parseFloat(value) || 26) + 'px') : value; }
+  refreshAgentCard(el);
+  if (connected) {
+    const msg = { type: 'el_agent', id, userId, userName };
+    if (key === 'gap') msg.gap = el.gap; else if (key === 'fontSize') msg.fontSize = parseFloat(el.style.fontSize); else msg.color = el.style.color;
+    broadcast(msg);
+  }
+  scheduleSave();
+}
+
+function handleRemoteAgent(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el || el.type !== 'agent') return;
+  if (payload.agentId !== undefined) {
+    const a = agentById(payload.agentId);
+    el.agentId = payload.agentId; el.agentName = a ? (a.name || '') : el.agentName; el.agentPhone = a ? (a.phone || '') : el.agentPhone;
+    el.agentImage = a ? agentPhotoUrl(a) : el.agentImage;
+  }
+  el.style = el.style || {};
+  if (payload.fontSize !== undefined) el.style.fontSize = payload.fontSize + 'px';
+  if (payload.color    !== undefined) el.style.color    = payload.color;
+  if (payload.gap      !== undefined) el.gap            = payload.gap;
+  refreshAgentCard(el);
+  if (_selectedId === el.id) showProps(el.id);
+}
+
+// '<select>' for the properties panel
+function agentSelectHtml(id, el) {
+  const opts = agentList.map(a => '<option value="' + esc(String(a.id)) + '"' + (String(a.id) === String(el.agentId) ? ' selected' : '') + '>' + esc(a.name || '') + '</option>').join('');
+  return '<select class="prop-input" style="width:100%;" onchange="setAgentCard(' + id + ',this.value)">'
+       + '<option value="">— Select an agent —</option>' + opts + '</select>';
+}
+
+// ════════════════════════════════════════════════════════
 // AGENT BOX — floating dropdown on canvas click
 // ════════════════════════════════════════════════════════
 let _agentDropdownForId = null;
@@ -2290,6 +2688,7 @@ function insertAgent(id, agentId) {
   hideAgentDropdown();
   if (!agentId) return;
   const el = elements.find(e => e.id === id);
+  if (el && el.type === 'agent') { setAgentCard(id, agentId); return; } // agent card: photo + name + number
   if (!el || el.type !== 'text') return;
 
   _pushUndo();
@@ -2455,13 +2854,19 @@ async function uploadImageForEl(file, id) {
   if (spinner) spinner.classList.add('active');
   setSave('saving','Uploading…');
   try {
-    const ext  = file.name.split('.').pop() || 'jpg';
-    const path = PORTFOLIO_ID + '/' + PROPERTY_ID + '/' + id + '_' + Date.now() + '.' + ext;
+    const hasDot = file.name.indexOf('.') > 0;
+    const ext  = (hasDot ? file.name.split('.').pop() : 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    // Keep the original file name (made storage-safe) in the path so it can be shown in the image picker
+    const safeBase = (hasDot ? file.name.replace(/\.[^.]+$/, '') : file.name)
+                       .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^[_.]+|[_.]+$/g, '').slice(0, 60) || 'image';
+    const path = PORTFOLIO_ID + '/' + PROPERTY_ID + '/' + id + '_' + Date.now() + '_' + safeBase + '.' + ext;
     const res  = await fetch(SUPA_URL + '/storage/v1/object/assets/' + path, { method: 'POST', headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': file.type }, body: file });
     if (!res.ok) throw new Error(await res.text());
     const url = SUPA_URL + '/storage/v1/object/public/assets/' + path;
     const el = elements.find(e => e.id === id);
+    _pushUndo();
     if (el) el.imageUrl = url;
+    _imgLib.at = 0; // new image: refresh the property image list next time
     applyImageToEl(id, url);
     if (connected) broadcast({ type: 'el_image', id, url, userId, userName });
     if (_selectedId === id) showProps(id);
@@ -2471,9 +2876,112 @@ async function uploadImageForEl(file, id) {
 
 function clearImage(id) {
   const el = elements.find(e => e.id === id);
+  _pushUndo();
   if (el) el.imageUrl = '';
+  _imgLib.at = 0;
   applyImageToEl(id, '');
   if (connected) broadcast({ type: 'el_image', id, url: '', userId, userName });
+  if (_selectedId === id) showProps(id);
+  scheduleSave();
+}
+
+// ════════════════════════════════════════════════════════
+// PROPERTY IMAGE LIBRARY — every image already used on any tab of THIS property,
+// listed by file name in the side panel so it can be dropped into any image box.
+// ════════════════════════════════════════════════════════
+let _imgLib = { at: 0, items: [], loading: null };
+const IMG_LIB_TTL = 30000; // re-scan the other tabs at most every 30s (and straight after any image change)
+
+function _isAssetUrl(u) {
+  return typeof u === 'string' && u.indexOf(SUPA_URL + '/storage/v1/object/public/assets/') === 0
+      && u.length < 600 && !/[\s"'<>`\\]/.test(u);
+}
+
+// "…/12_1760000000000_Front_Entrance.jpg" -> { name:'Front_Entrance.jpg', ts:1760000000000 }
+// Images uploaded before names were kept ("12_1760000000000.jpg") have no name -> name:null
+function _parseAssetName(url) {
+  let file = url.split('/').pop() || '';
+  try { file = decodeURIComponent(file); } catch(e) {}
+  const m = file.match(/^(\d+)_(\d{12,})(?:_(.+?))?\.([A-Za-z0-9]+)$/);
+  if (!m) return { name: file || 'image', ts: 0 };
+  return { name: m[3] ? m[3] + '.' + m[4] : null, ts: parseInt(m[2], 10) };
+}
+
+async function loadPropertyImages(force) {
+  if (!force && _imgLib.items.length && Date.now() - _imgLib.at < IMG_LIB_TTL) return _imgLib.items;
+  if (_imgLib.loading) return _imgLib.loading;
+  _imgLib.loading = (async () => {
+    const found = new Map();
+    const add = (url, tabSlug) => {
+      if (!_isAssetUrl(url)) return;
+      let it = found.get(url);
+      if (!it) { const n = _parseAssetName(url); it = { url, name: n.name, ts: n.ts, tabs: [] }; found.set(url, it); }
+      if (it.tabs.indexOf(tabSlug) < 0) it.tabs.push(tabSlug);
+    };
+    // This tab: what's on the canvas right now
+    elements.forEach(e => { if (e.type === 'img') add(e.imageUrl, _currentTab); });
+    // Every other tab of this property: its last saved layout
+    await Promise.all(TAB_DEFINITIONS.filter(t => t.slug !== _currentTab).map(async t => {
+      try {
+        const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID
+                  + '&property_id=eq.' + encodeURIComponent(tabSupabaseId(t.slug)) + '&select=state_json';
+        const res  = await fetch(url, { headers: _supaHeaders() });
+        const rows = await res.json();
+        if (rows && rows.length && rows[0].state_json) {
+          (JSON.parse(rows[0].state_json).elements || []).forEach(e => { if (e && e.type === 'img') add(e.imageUrl, t.slug); });
+        }
+      } catch(e) { console.warn('[B4] image scan failed for tab', t.slug, e); }
+    }));
+    const items = [...found.values()].sort((a, b) => b.ts - a.ts); // newest upload first
+    _imgLib.items = items; _imgLib.at = Date.now();
+    return items;
+  })();
+  try { return await _imgLib.loading; } finally { _imgLib.loading = null; }
+}
+
+function _imgDisplayName(it) {
+  if (it.name) return it.name;
+  const d = it.ts ? new Date(it.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  return 'Image' + (d ? ' · ' + d : '');
+}
+
+async function renderImageLibrary(id) {
+  let items = [];
+  try { items = await loadPropertyImages(); } catch(e) { console.warn('[B4] image library failed:', e); }
+  const box = document.getElementById('img-library');
+  if (!box || box.dataset.for !== String(id)) return; // selection changed while loading
+  const el = elements.find(e => e.id === id);
+  const cur = el && el.imageUrl;
+  box.textContent = '';
+  if (!items.length) {
+    const d = document.createElement('div'); d.className = 'img-lib-empty';
+    d.textContent = 'No images on this property yet. Upload one above and it will be listed here for every tab.';
+    box.appendChild(d); return;
+  }
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'img-lib-item' + (it.url === cur ? ' current' : '');
+    row.title = it.name ? it.name : 'Uploaded before file names were kept';
+    const th = document.createElement('img'); th.src = it.url; th.loading = 'lazy'; th.draggable = false; th.alt = '';
+    const tx = document.createElement('div'); tx.className = 'img-lib-text';
+    const nm = document.createElement('div'); nm.className = 'img-lib-name'; nm.textContent = _imgDisplayName(it);
+    const mt = document.createElement('div'); mt.className = 'img-lib-meta';
+    mt.textContent = (it.url === cur ? 'In this box · ' : '') + 'Used on ' + it.tabs.map(_tabLabel).join(', ');
+    tx.appendChild(nm); tx.appendChild(mt); row.appendChild(th); row.appendChild(tx);
+    row.addEventListener('click', () => useLibraryImage(id, it.url));
+    box.appendChild(row);
+  });
+}
+
+// Put a property image into the selected image box
+function useLibraryImage(id, url) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'img' || el.imageUrl === url || !_isAssetUrl(url)) return;
+  _pushUndo();
+  el.imageUrl = url;
+  _imgLib.at = 0; // refresh "Used on" next time
+  applyImageToEl(id, url);
+  if (connected) broadcast({ type: 'el_image', id, url, userId, userName });
   if (_selectedId === id) showProps(id);
   scheduleSave();
 }
@@ -2677,14 +3185,17 @@ function enterEditMode(wrap, inner, id) {
       }
     });
     sel2.removeAllRanges(); sel2.addRange(r);
-    // Trigger content save
+    // Trigger content save — close any open typing group so the paste is its own undo step
+    _endUndoGroup();
     inner.dispatchEvent(new Event('input'));
+    _endUndoGroup();
   };
   inner.addEventListener('paste', inner._pasteHandler);
 }
 
 function exitEditMode(wrap) {
   if (!wrap) return;
+  if (wrap.classList.contains('editing')) _endUndoGroup();
   wrap.classList.remove('editing');
   const inner = wrap.querySelector('.cv-text-inner');
   if (inner) {
@@ -2762,8 +3273,10 @@ function startResize(e, wrap, dir) {
   const el = elements.find(el => el.id === id);
   if (!el || el.locked) return;
   const sx=e.clientX, sy=e.clientY, ox=el.x, oy=el.y, ow=el.w, oh=el.h;
+  let resized = false;
   function onMove(ev) {
     const dx=ev.clientX-sx, dy=ev.clientY-sy;
+    if (!resized && Math.abs(dx) + Math.abs(dy) > 2) { _pushUndo(); resized = true; }
     let nx=ox,ny=oy,nw=ow,nh=oh;
     if(dir.includes('e')) nw=Math.max(40,ow+dx);
     if(dir.includes('s')) nh=Math.max(20,oh+dy);
@@ -3063,7 +3576,7 @@ function renderTabBar() {
     const div = document.createElement('div');
     div.className = 'tab-item' + (isActive ? ' active' : '');
     div.dataset.slug = tab.slug;
-    div.innerHTML = esc(tab.name) + ' <span class="tab-size">' + tab.mmW + '×' + tab.mmH + 'mm</span>';
+    div.innerHTML = esc(tab.name) + ' <span class="tab-size">' + sizeText(tab, '×', '') + '</span>';
     if (isActive) {
       // Current tab — no navigation, just right-click for context menu
       div.style.cursor = 'default';
@@ -3214,7 +3727,11 @@ async function saveTabToSupabase(slug) {
 
 function updateArtboardLabels(def) {
   const topEl = document.getElementById('ab-label-top-text');
-  if (topEl) topEl.textContent = def.name + '  ·  ' + def.mmW + ' × ' + def.mmH + ' mm  ·  PDF: 300 dpi';
+  if (topEl) topEl.textContent = def.name + '  ·  ' + sizeText(def, ' × ', ' ') + '  ·  PDF: 300 dpi';
+  const z = sizeParts(def);
+  const bot = document.querySelector('.ab-label-bottom');      if (bot)   bot.textContent   = '← ' + z.w + ' ' + z.unit + ' →';
+  const rgt = document.querySelector('.ab-label-right span');  if (rgt)   rgt.textContent   = '↕ ' + z.h + ' ' + z.unit;
+  const bdg = document.querySelector('.artboard-size-badge');  if (bdg)   bdg.textContent   = sizeText(def, ' × ', ' ');
 }
 
 // ── Tab context menu ───────────────────────────────────────────────
@@ -3352,17 +3869,48 @@ function ctxEditSize() {
   if (USER_ROLE !== 'admin') return;
   const def = tabDef(_ctxTabSlug);
   if (!def) return;
-  document.getElementById('csz-w').value = def.mmW;
-  document.getElementById('csz-h').value = def.mmH;
+  const z = sizeParts(def);
+  document.getElementById('csz-unit').value = z.unit;
+  document.getElementById('csz-unit').dataset.prev = z.unit;
+  document.getElementById('csz-w').value = z.w;
+  document.getElementById('csz-h').value = z.h;
+  _cszApplyUnitUI(z.unit);
   document.getElementById('canvas-size-modal').classList.add('open');
+}
+
+function _cszApplyUnitUI(u) {
+  document.getElementById('csz-w-label').textContent = 'WIDTH (' + u + ')';
+  document.getElementById('csz-h-label').textContent = 'HEIGHT (' + u + ')';
+  document.getElementById('csz-w').max = document.getElementById('csz-h').max = (u === 'px' ? 10000 : 2000);
+  document.getElementById('csz-w').min = document.getElementById('csz-h').min = (u === 'px' ? 100 : 50);
+  document.getElementById('csz-hint').textContent = u === 'px'
+    ? 'Pixels at 96 dpi — e.g. 600 px is a common email width. Changing units never resizes the canvas.'
+    : 'Common: A4=210×297  A3=297×420  Square=200×200';
+}
+
+// Switching the unit in the dialog converts the numbers (same physical size, different unit)
+function cszUnitChanged() {
+  const sel = document.getElementById('csz-unit'), to = sel.value, from = sel.dataset.prev || 'mm';
+  if (to === from) return;
+  const conv = v => { v = parseFloat(v); if (isNaN(v)) return ''; return to === 'px' ? Math.round(v * 96 / 25.4) : _r1(v * 25.4 / 96); };
+  const w = document.getElementById('csz-w'), h = document.getElementById('csz-h');
+  w.value = conv(w.value); h.value = conv(h.value);
+  sel.dataset.prev = to;
+  _cszApplyUnitUI(to);
 }
 
 function applyCanvasSize() {
   const def = tabDef(_ctxTabSlug || _currentTab);
   if (!def) return;
-  const w = parseInt(document.getElementById('csz-w').value) || def.mmW;
-  const h = parseInt(document.getElementById('csz-h').value) || def.mmH;
-  def.mmW = w; def.mmH = h;
+  const u = document.getElementById('csz-unit').value === 'px' ? 'px' : 'mm';
+  const cur = sizeParts(def);
+  const wIn = parseFloat(document.getElementById('csz-w').value) || (u === cur.unit ? cur.w : 0);
+  const hIn = parseFloat(document.getElementById('csz-h').value) || (u === cur.unit ? cur.h : 0);
+  if (!wIn || !hIn) return;
+  // Always STORE mm (so saved data and everything else keeps working); px values convert at 96 dpi
+  def.mmW = u === 'px' ? wIn * 25.4 / 96 : wIn;
+  def.mmH = u === 'px' ? hIn * 25.4 / 96 : hIn;
+  def.unit = u;
   document.getElementById('canvas-size-modal').classList.remove('open');
   if ((_ctxTabSlug || _currentTab) === _currentTab) {
     const px = tabPx(def);
@@ -3408,7 +3956,7 @@ function renderMarketingList() {
       + '<div class="mkt-item-check' + check + '"></div>'
       + '<div class="mkt-item-info">'
       + '<div class="mkt-item-name">' + esc(tab.name) + '</div>'
-      + '<div class="mkt-item-size">' + tab.mmW + ' × ' + tab.mmH + ' mm</div>'
+      + '<div class="mkt-item-size">' + sizeText(tab, ' × ', ' ') + '</div>'
       + '</div></div>';
   }).join('');
 }
@@ -3522,20 +4070,62 @@ window.addEventListener('load', () => {
 // ════════════════════════════════════════════════════════
 // UNDO
 // ════════════════════════════════════════════════════════
+// One shared stack for EVERYTHING (box moves/resizes, property changes, typed text).
+// Ctrl/⌘+Z and the Undo button both call undo(), which reverses whichever change was most recent.
+let _undoGroupKey = null, _undoGroupTimer = null;
+const UNDO_GROUP_MS = 800; // typing/nudging pauses longer than this start a new undo step
+
+function _endUndoGroup() {
+  clearTimeout(_undoGroupTimer);
+  _undoGroupKey = null;
+  _undoGroupTimer = null;
+}
+
 function _pushUndo() {
+  _endUndoGroup(); // any discrete action closes an open typing/nudge group
   _undoStack.push(JSON.stringify(elements));
   if (_undoStack.length > UNDO_MAX) _undoStack.shift();
 }
 
+// For rapid repeated changes (typing, arrow-key nudging): one snapshot per burst, not per keystroke.
+// Must be called BEFORE the change is applied to `elements`.
+function _pushUndoGrouped(key) {
+  if (_undoGroupKey === key) {
+    clearTimeout(_undoGroupTimer);
+  } else {
+    _pushUndo();
+    _undoGroupKey = key;
+  }
+  _undoGroupTimer = setTimeout(_endUndoGroup, UNDO_GROUP_MS);
+}
+
 function undo() {
-  if (!_undoStack.length) return;
-  const snap = _undoStack.pop();
+  _endUndoGroup();
+  // Remember if a canvas text box is being edited so we can put the user back in it
+  const activeEl  = document.activeElement;
+  const editWrap  = activeEl && activeEl.classList && activeEl.classList.contains('cv-text-inner')
+                    ? activeEl.closest('.cv-el') : null;
+  const editingId = editWrap ? parseInt(editWrap.dataset.id) : null;
+
+  // Skip snapshots identical to the current state (e.g. typed then deleted) so a press always does something visible
+  const current = JSON.stringify(elements);
+  let snap = null;
+  while (_undoStack.length) {
+    const s = _undoStack.pop();
+    if (s !== current) { snap = s; break; }
+  }
+  if (snap === null) return;
   try {
     elements = JSON.parse(snap);
     _nextId = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
   } catch(e) { return; }
   renderCanvas();
   deselectAll();
+  if (editingId !== null && elements.some(e => e.id === editingId)) {
+    const w  = document.querySelector('.cv-el[data-id="' + editingId + '"]');
+    const in_ = w && w.querySelector('.cv-text-inner');
+    if (w && in_) enterEditMode(w, in_, editingId);
+  }
   scheduleSave();
   if (connected) broadcast({ type: 'full_state', elements: elements.map(e => ({...e})), userId, userName });
 }
@@ -3547,6 +4137,56 @@ const _origSetProp         = setProp;
 const _origSetPosSize      = setPosSize;
 
 // We'll wrap these after they're defined — see bottom of script.
+
+// ════════════════════════════════════════════════════════
+// COPY / PASTE — ⌘C / Ctrl+C copies the selected boxes, ⌘V / Ctrl+V pastes them (also on another tab)
+// ════════════════════════════════════════════════════════
+const CLIP_KEY = 'b4_clipboard_v1';
+let _memClip = null; // fallback when browser storage isn't available
+
+function _readClip() {
+  try { const raw = localStorage.getItem(CLIP_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+  return _memClip;
+}
+function _writeClip(c) {
+  _memClip = c;
+  try { localStorage.setItem(CLIP_KEY, JSON.stringify(c)); } catch(e) {}
+}
+
+function copyElementsToClipboard() {
+  const items = elements.filter(e => _selectedIds.has(e.id)).map(e => JSON.parse(JSON.stringify(e)));
+  if (!items.length) return false;
+  _writeClip({ tab: _currentTab, n: 0, items });
+  setSave('saved', 'Copied ' + items.length + (items.length === 1 ? ' item' : ' items'));
+  setTimeout(() => { const l = document.getElementById('save-lbl'); if (l && /^Copied/.test(l.textContent)) setSave('saved', 'Saved'); }, 1500);
+  return true;
+}
+
+function pasteElementsFromClipboard() {
+  const clip = _readClip();
+  if (!clip || !Array.isArray(clip.items) || !clip.items.length) return false;
+  _pushUndo();
+  clip.n = (clip.n || 0) + 1;
+  _writeClip(clip);
+  // Same tab: each paste steps down-right so copies don't hide the original. Other tab: first paste keeps its position.
+  const off = (clip.tab === _currentTab ? clip.n : clip.n - 1) * 20;
+  const pasted = [];
+  clip.items.forEach(src => {
+    const copy = JSON.parse(JSON.stringify(src));
+    copy.id = _nextId++;
+    delete copy.locked;                       // a copy is a new box; locked boxes stay movable when copied
+    copy.x = Math.max(0, Math.min(Math.max(0, AW - (copy.w || 0)), (copy.x || 0) + off));
+    copy.y = Math.max(0, Math.min(Math.max(0, AH - (copy.h || 0)), (copy.y || 0) + off));
+    elements.push(copy);
+    createElDOM(copy);
+    pasted.push(copy);
+    if (connected) broadcast({ type: 'el_add', el: JSON.parse(JSON.stringify(copy)), userId, userName });
+  });
+  deselectAll();
+  pasted.forEach((c, i) => selectEl(c.id, i > 0));
+  scheduleSave();
+  return true;
+}
 
 // ════════════════════════════════════════════════════════
 // COPY ELEMENT
@@ -3582,13 +4222,21 @@ document.addEventListener('keydown', e => {
   const inText  = active && active.contentEditable === 'true'; // inside a canvas text box
   const typing  = inInput || inText;
 
-  // Always let native copy/paste/cut/select-all pass through when typing
-  if ((e.metaKey || e.ctrlKey) && ['c','v','x','a'].includes(e.key)) return;
+  // Copy / paste / cut / select-all: native while typing; otherwise ⌘C / ⌘V copy and paste canvas boxes
+  if ((e.metaKey || e.ctrlKey) && ['c','v','x','a'].includes(e.key.toLowerCase())) {
+    if (typing) return;
+    const k = e.key.toLowerCase();
+    if (k === 'c' && _selectedIds.size && !String(window.getSelection() || '')) { e.preventDefault(); copyElementsToClipboard(); }
+    if (k === 'v') { const had = _readClip(); if (had && had.items && had.items.length) { e.preventDefault(); pasteElementsFromClipboard(); } }
+    return;
+  }
 
-  // ⌘Z / Ctrl+Z — Undo (only when not typing in a text box or input)
-  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-    if (typing) return; // let browser handle undo inside text boxes
-    e.preventDefault();
+  // ⌘Z / Ctrl+Z — Undo. Uses our shared stack so it reverses the most recent change,
+  // whether that was typed text or a box move. Plain inputs (sidebar fields, name gate)
+  // keep the browser's native undo.
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    if (inInput) return;
+    e.preventDefault(); // also stops the browser's separate text-only undo inside canvas text boxes
     undo();
     return;
   }
@@ -3621,6 +4269,7 @@ document.addEventListener('keydown', e => {
     const el = elements.find(el => el.id === _selectedId);
     if (!el) return;
     const step = e.shiftKey ? 10 : 1;
+    _pushUndoGrouped('nudge:' + el.id);
     if (e.key === 'ArrowUp')    el.y = Math.max(0, el.y - step);
     if (e.key === 'ArrowDown')  el.y = Math.min(AH - el.h, el.y + step);
     if (e.key === 'ArrowLeft')  el.x = Math.max(0, el.x - step);
@@ -3722,17 +4371,50 @@ async function exportPDF(allTabs) {
 
   try {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'mm', format: [210, 297], orientation: 'portrait' });
+    // Page size = THIS TAB's size, not always A4.
+    //  • mm tabs (Brochure, Press Ad…): real physical size; canvas px are 96 dpi.
+    //  • px tabs (EDM): the PDF is built so that 1 canvas px = 1 px when it is opened/rasterised at
+    //    EXPORT_PPI_PX (300 ppi). e.g. 900 × 7000 px -> a 3 × 23.33 in page -> 900 × 7000 px in Photoshop at 300 ppi.
+    const _pdfDef    = tabDef(_currentTab);
+    const _devicePx  = tabUnit(_pdfDef) === 'px';
+    const PX_TO_MM   = 25.4 / (_devicePx ? EXPORT_PPI_PX : 96);
+    const _tabPxSize = _pdfDef ? tabPx(_pdfDef) : { w: AW, h: AH };
+    const PAGE_W = _devicePx ? _tabPxSize.w * PX_TO_MM : ((_pdfDef && _pdfDef.mmW) || 210);
+    const PAGE_H = _devicePx ? _tabPxSize.h * PX_TO_MM : ((_pdfDef && _pdfDef.mmH) || 297);
+    const doc = new jsPDF({ unit: 'mm', format: [PAGE_W, PAGE_H], orientation: PAGE_W > PAGE_H ? 'landscape' : 'portrait' });
 
     btn.textContent = (_pdfFontCache && _pdfFontCache.length) ? '⏳ Building PDF…' : '⏳ Loading fonts…';
     await loadPDFFonts(doc);
 
-    const PX_TO_MM = 25.4 / 96;
-    const PAGE_W = 210, PAGE_H = 297;
-
     btn.textContent = '⏳ Building PDF…';
 
-    for (const el of elements) {
+    // Agent cards are drawn as two ordinary pieces: a square cover-fit photo and a two-line text block
+    const exportEls = [];
+    for (const el0 of elements) {
+      if (el0.type !== 'agent') { exportEls.push(el0); continue; }
+      const d   = agentCardData(el0);
+      const st  = el0.style || {};
+      const gap = el0.gap === undefined ? 30 : el0.gap;
+      const wrapEl = document.querySelector('.cv-el[data-id="' + el0.id + '"]');
+      const inEl   = wrapEl && wrapEl.querySelector('.cv-agent-text .cv-text-inner');
+      const fs = parseFloat(st.fontSize) || 26, lh = parseFloat(st.lineHeight) || 1.4;
+      const lines = (d.name ? 1 : 0) + (d.phone ? 1 : 0) || 1;
+      const blockH  = inEl ? inEl.offsetHeight : lines * fs * lh;
+      const textTop = inEl ? inEl.offsetTop    : (el0.h - blockH) / 2;
+      const textLeft = el0.h + gap;
+      exportEls.push({ id: el0.id + 100000000, type: 'img', x: el0.x, y: el0.y, w: el0.h, h: el0.h,
+                       imageUrl: d.photo, objectFit: 'cover' });
+      if (d.name || d.phone) exportEls.push({
+        id: el0.id, type: 'text', bulletMode: false,
+        // PDF text starts 4px in from its box and puts the first baseline 0.8em down; offset so it lands where the screen shows it
+        x: el0.x + textLeft - 4, y: el0.y + textTop + (lh - 1) * fs / 2,
+        w: Math.max(el0.w - textLeft + 4, 10), h: blockH,
+        content: '<div>' + esc(d.name) + '</div>' + (d.phone ? '<div>' + esc(d.phone) + '</div>' : ''),
+        style: Object.assign({}, st)
+      });
+    }
+
+    for (const el of exportEls) {
       const xMM = el.x * PX_TO_MM;
       const yMM = el.y * PX_TO_MM;
       const wMM = el.w * PX_TO_MM;
@@ -3878,10 +4560,10 @@ async function exportPDF(allTabs) {
       if (el.type === 'text' && el.content && el.content.trim()) {
         const s          = el.style || {};
         // Font size: use same scale approach as old builder
-        // scaleX = artboardWidthMM / artboardWidthPx = 210 / 794 = 0.2645
+        // scaleX = artboardWidthMM / artboardWidthPx  (A4: 210 / 794 = 0.2645; EDM 900px: 238.125 / 900 = 0.2646)
         // fontSizeMM = fontSizePx * scaleX; fontSizePt = fontSizeMM * 2.835
         const fontSizePx = parseFloat(s.fontSize || '16');
-        const scaleX     = 210 / AW; // AW = 794px artboard width
+        const scaleX     = _devicePx ? PX_TO_MM : PAGE_W / AW; // mm per canvas px (mm tabs: page width mm / artboard width px)
         const fontSizePt = Math.max(1, fontSizePx * scaleX * 2.835);
         const baseFont   = pdfFontFor(s.fontFamily, s.fontWeight);
         const rgb        = hexToRgb(s.color || '#111111');
@@ -3973,7 +4655,7 @@ async function exportPDF(allTabs) {
         doc.setTextColor(0, 0, 0);
         try { doc.setFont(baseFont.family, baseFont.style); } catch(e) {}
       }
-    } // end for(const el of elements)
+    } // end for(const el of exportEls)
 
     // Build filename: PropertyName_TabName.pdf
     const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
