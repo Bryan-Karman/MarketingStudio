@@ -584,7 +584,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .cv-img-ph-icon{font-size:24px;opacity:.4;}
 /* text element */
 .cv-text-inner{width:100%;height:100%;outline:none;overflow:hidden;word-break:break-word;padding:4px;}
-.cv-text-inner[contenteditable="true"]{cursor:text;overflow:auto;box-shadow:inset 0 0 0 1px rgba(23,232,143,.4);}
+.cv-text-inner[contenteditable="true"]{cursor:text;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(23,232,143,.4);}
 .canvas-card{cursor:default;}
 
 /* ── COLOUR BOX ── */
@@ -2022,6 +2022,7 @@ function createElDOM(el) {
     inner.addEventListener('input', () => {
       _pushUndoGrouped('text:' + el.id); // snapshot the OLD content before it's overwritten below
       el.content = sanitiseHTML(inner.innerHTML, !!el.bulletMode);
+      autoFitText(el);
       if (connected) broadcast({ type: 'el_content', id: el.id, content: el.content, userId, userName });
       scheduleSave();
     });
@@ -2400,6 +2401,7 @@ function setProp(id, key, value) {
       inner.style[key] = value;
     }
   }
+  autoFitText(el);
   if (connected) broadcast({ type: 'el_style', id, key, value, userId, userName });
   scheduleSave();
 }
@@ -2761,6 +2763,7 @@ function insertAgent(id, agentId) {
   const inner = wrap && wrap.querySelector('.cv-text-inner');
   if (inner) inner.innerHTML = newContent;
 
+  autoFitText(el);
   if (connected) broadcast({ type: 'el_content', id, content: newContent, userId, userName });
   scheduleSave();
 }
@@ -2787,6 +2790,7 @@ function toggleBullets(id) {
   const btn = document.getElementById('btn-bullet-' + id);
   if (btn) btn.classList.toggle('active', el.bulletMode);
 
+  autoFitText(el);
   if (connected) broadcast({ type: 'el_style', id, key: 'bulletMode', value: el.bulletMode, userId, userName });
   scheduleSave();
 }
@@ -2803,6 +2807,7 @@ function setPosSize(id, key, value) {
   if (!el) return;
   if (el.locked) return;
   el[key] = value;
+  if (el.type === 'text' && key === 'h') el.minH = value;
   const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
   if (wrap) {
     if (key === 'x') wrap.style.left   = value + 'px';
@@ -2810,6 +2815,7 @@ function setPosSize(id, key, value) {
     if (key === 'w') wrap.style.width  = value + 'px';
     if (key === 'h') wrap.style.height = value + 'px';
   }
+  if (el.type === 'text' && (key === 'w' || key === 'h')) autoFitText(el);
   if (connected) broadcast({ type: 'el_resize', id, x: el.x, y: el.y, w: el.w, h: el.h, userId, userName });
   scheduleSave();
 }
@@ -3308,6 +3314,27 @@ function _pasteTextAsParagraphs(inner, text) {
   sel.removeAllRanges(); sel.addRange(caret);
 }
 
+// Grow-to-fit: a text box is never shorter than the height you gave it (el.minH), but gets taller when its text
+// needs more room, and comes back down when text is removed. No scrollbar, nothing hidden.
+function autoFitText(el) {
+  if (!el || el.type !== 'text') return false;
+  const wrap  = document.querySelector('.cv-el[data-id="' + el.id + '"]');
+  const inner = wrap && wrap.querySelector('.cv-text-inner');
+  if (!wrap || !inner) return false;
+  if (el.minH === undefined) el.minH = el.h;           // the height as you set it (first time we see this box)
+  const prev = inner.style.height;
+  inner.style.height = 'auto';                           // measure the text at its natural height
+  const need = Math.ceil(inner.offsetHeight);
+  inner.style.height = prev;
+  const newH = Math.min(50000, Math.max(el.minH, need));
+  if (Math.abs(newH - el.h) < 1) return false;
+  el.h = newH;
+  wrap.style.height = newH + 'px';
+  if (connected) broadcast({ type: 'el_resize', id: el.id, x: el.x, y: el.y, w: el.w, h: el.h, userId, userName });
+  if (_selectedId === el.id && _selectedIds.size === 1) showProps(el.id);
+  return true;
+}
+
 function exitEditMode(wrap) {
   if (!wrap) return;
   if (wrap.classList.contains('editing')) _endUndoGroup();
@@ -3403,6 +3430,7 @@ function startResize(e, wrap, dir) {
   function onUp() {
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
+    if (el.type === 'text') { el.minH = el.h; autoFitText(el); }   // the size you dragged to is the new minimum
     if (_selectedId === id) showProps(id);
     if(connected) broadcast({ type:'el_resize', id, x:el.x, y:el.y, w:el.w, h:el.h, userId, userName });
     scheduleSave();
@@ -4482,6 +4510,56 @@ function pdfFontFor(fontFamily, fontWeight) {
   return { family: 'helvetica', style };
 }
 
+// ── PDF image helpers ─────────────────────────────────────────────
+function _loadBlobImage(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image decode failed')); };
+    img.src = url;
+  });
+}
+
+// Does this picture have any see-through pixels? (checked on a small copy)
+function _imageHasAlpha(img) {
+  const k = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+  return false;
+}
+
+// Draw one image box exactly as the editor shows it (manual crop frame + Cover / Contain / Fill), into a canvas the
+// size of the box. Returns { url, fmt }: PNG when the picture is see-through or leaves empty margins (so whatever is
+// behind the box still shows), JPEG otherwise.
+function _renderImageBox(img, el, hasAlpha) {
+  const W = el.w, H = el.h;
+  const nw = img.naturalWidth || W, nh = img.naturalHeight || H;
+  const C = (el.hasCrop && el.imgW) ? { x: el.imgX || 0, y: el.imgY || 0, w: el.imgW, h: el.imgH } : { x: 0, y: 0, w: W, h: H };
+  const fit = el.objectFit || 'cover';
+  let dw, dh;
+  if (fit === 'fill')         { dw = C.w; dh = C.h; }
+  else {
+    const sc = fit === 'contain' ? Math.min(C.w / nw, C.h / nh) : Math.max(C.w / nw, C.h / nh);
+    dw = nw * sc; dh = nh * sc;
+  }
+  const dx = C.x + (C.w - dw) / 2, dy = C.y + (C.h - dh) / 2;
+  const covers = dx <= 0.5 && dy <= 0.5 && dx + dw >= W - 0.5 && dy + dh >= H - 0.5;
+  const usePng = hasAlpha || !covers;
+  const S = Math.max(1, Math.min(3, 4096 / Math.max(W, H)));
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(W * S)); cv.height = Math.max(1, Math.round(H * S));
+  const ctx = cv.getContext('2d');
+  if (!usePng) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height); }
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, nw, nh, dx * S, dy * S, dw * S, dh * S);
+  return usePng ? { url: cv.toDataURL('image/png'), fmt: 'PNG' } : { url: cv.toDataURL('image/jpeg', 1.0), fmt: 'JPEG' };
+}
+
 async function exportPDF(allTabs) {
   const btn = allTabs ? document.getElementById('btn-export-all') : document.getElementById('btn-export');
   btn.textContent = '⏳ Loading fonts…';
@@ -4582,6 +4660,27 @@ async function exportPDF(allTabs) {
           const resp = await fetch(el.imageUrl);
           if (!resp.ok) throw new Error('fetch ' + resp.status);
           const blob    = await resp.blob();
+
+          // Transparent pictures (white PNG logos on a dark box…) and manual crops are drawn here, exactly as the editor
+          // shows them. Flattening a transparent PNG onto white (the old way) turned white logos into white boxes.
+          const _isSvg = blob.type.includes('svg') || el.imageUrl.toLowerCase().includes('.svg');
+          {
+            let handled = false;
+            try {
+              const realCrop0 = el.hasCrop && el.imgW && (el.imgW !== el.w || el.imgH !== el.h || el.imgX || el.imgY);
+              // plain SVGs keep their own route below; an SVG with a manual crop is drawn here so the crop isn't stretched
+              if (!_isSvg || realCrop0) {
+                const srcImg   = await _loadBlobImage(_isSvg ? new Blob([blob], { type: 'image/svg+xml' }) : blob);
+                const hasAlpha = _isSvg ? true : (!/jpe?g/i.test(blob.type) && _imageHasAlpha(srcImg));
+                if (hasAlpha || realCrop0) {
+                  const out = _renderImageBox(srcImg, el, hasAlpha);
+                  doc.addImage(out.url, out.fmt, xMM, yMM, wMM, hMM, undefined, 'SLOW');
+                  handled = true;
+                }
+              }
+            } catch(e) { console.warn('[B4] image render fell back:', e); }
+            if (handled) continue;
+          }
 
           // SVG cannot be embedded directly in jsPDF — convert to JPEG via canvas
           let dataUrl, fmt;
@@ -4718,7 +4817,7 @@ async function exportPDF(allTabs) {
         const dashW    = fontSizePt * 0.75 * (25.4 / 72);
         const indentMM = dashW;
 
-        for (const { text, bold: lineBold, isBlankLine, isSoftReturn, bullet } of textLines) {
+        for (const { text, bold: lineBold, isBlankLine, isSoftReturn, bullet, isDOMLine } of textLines) {
           if (isBlankLine) {
             // Blank line acts as paragraph separator — record it and move down
             prevWasBlank = true;
@@ -4742,7 +4841,7 @@ async function exportPDF(allTabs) {
             const contentX = textX + indentMM;
             const contentW = Math.max(maxW - indentMM, 5);
             // DOM lines are already pre-broken — use directly; fallback to split
-            const lines = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', contentW);
+            const lines = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', contentW);
             const lineArr = Array.isArray(lines) ? lines : [lines];
             doc.text('\u2013 ', bulletX, curY);
             if (lineArr[0]) doc.text(lineArr[0], contentX, curY);
@@ -4754,13 +4853,13 @@ async function exportPDF(allTabs) {
           } else if (isSoftReturn) {
             const softX = lastWasBullet ? textX + indentMM : textX;
             const softW = lastWasBullet ? Math.max(maxW - indentMM, 5) : maxW;
-            const lineArr = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', softW);
+            const lineArr = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', softW);
             for (const wl of lineArr) {
               doc.text(wl, softX, curY, { align: pdfAlign });
               curY += lineHMM;
             }
           } else {
-            const lineArr = text.isDOMLine ? [text] : doc.splitTextToSize(text || ' ', maxW);
+            const lineArr = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', maxW);
             for (const wl of lineArr) {
               doc.text(wl, textX, curY, { align: pdfAlign });
               curY += lineHMM;
@@ -4798,6 +4897,32 @@ async function exportPDF(allTabs) {
 // Extract exact rendered lines from the DOM using the Range API.
 // This captures the browser's actual line wrapping — font metrics, width constraints —
 // so the PDF matches the screen exactly with no jsPDF metric differences.
+// The lines the browser actually shows for a block of text (one string per visual line).
+// A new line starts when a character sits clearly lower than the previous one; "clearly" is measured against the
+// character's own height, so it works at any zoom level.
+function _measureVisualLines(root) {
+  const range = document.createRange();
+  const textNodes = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n; while ((n = walker.nextNode())) textNodes.push(n);
+  const lines = [];
+  let cur = '', curTop = null;
+  textNodes.forEach(tn => {
+    const str = tn.textContent;
+    for (let ci = 0; ci < str.length; ci++) {
+      range.setStart(tn, ci); range.setEnd(tn, ci + 1);
+      const rects = range.getClientRects();
+      if (!rects.length) continue;
+      const top = rects[0].top, h = rects[0].height || 1;
+      if (curTop === null) curTop = top;
+      if (top > curTop + h * 0.5) { lines.push(cur.trimEnd()); cur = str[ci]; curTop = top; }
+      else cur += str[ci];
+    }
+  });
+  if (cur.trim()) lines.push(cur.trimEnd());
+  return lines;
+}
+
 function extractDOMLines(elId, content, bulletMode) {
   const wrap  = document.querySelector('.cv-el[data-id="' + elId + '"]');
   const inner = wrap && wrap.querySelector('.cv-text-inner');
@@ -4807,9 +4932,13 @@ function extractDOMLines(elId, content, bulletMode) {
   // Walk each direct child div (each paragraph line)
   const children = Array.from(inner.children);
   if (!children.length) {
-    // Plain text — treat as single block
+    // Plain text — treat as single block, but use the lines the browser actually shows
     const text = inner.textContent;
-    if (text.trim()) result.push({ text, bold: false, isBlankLine: false, bullet: !!bulletMode });
+    if (text.trim()) {
+      let vls = []; try { vls = _measureVisualLines(inner); } catch(e) {}
+      if (vls.length) vls.forEach((vl, vi) => result.push({ text: vl || ' ', bold: false, isBlankLine: false, isSoftReturn: vi > 0, bullet: !!bulletMode && vi === 0, isDOMLine: true }));
+      else result.push({ text, bold: false, isBlankLine: false, bullet: !!bulletMode });
+    }
     return result;
   }
 
@@ -4842,52 +4971,19 @@ function extractDOMLines(elId, content, bulletMode) {
 
     // Use Range API to get actual rendered visual lines within this div
     try {
-      const range = document.createRange();
-      const textNodes = [];
-      const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
-      let n;
-      while ((n = walker.nextNode())) textNodes.push(n);
-
-      if (!textNodes.length) {
+      if (!document.createTreeWalker(div, NodeFilter.SHOW_TEXT).nextNode()) {
         result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
         return;
       }
-
-      // Get all client rects for the div to find visual line breaks
-      const divRect = div.getBoundingClientRect();
-      const visualLines = [];
-      let currentLine = '';
-      let currentY = null;
-
-      textNodes.forEach(tn => {
-        const str = tn.textContent;
-        for (let ci = 0; ci < str.length; ci++) {
-          range.setStart(tn, ci);
-          range.setEnd(tn, ci + 1);
-          const rects = range.getClientRects();
-          if (!rects.length) continue;
-          const charY = Math.round(rects[0].top);
-          if (currentY === null) currentY = charY;
-          if (charY > currentY + 2) {
-            // New visual line
-            visualLines.push(currentLine.trimEnd());
-            currentLine = str[ci];
-            currentY = charY;
-          } else {
-            currentLine += str[ci];
-          }
-        }
-      });
-      if (currentLine.trim()) visualLines.push(currentLine.trimEnd());
-
+      const visualLines = _measureVisualLines(div);
       if (!visualLines.length) {
         result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
         return;
       }
-
       const hasBold = div.querySelector('b,strong') !== null;
       visualLines.forEach((vl, vi) => {
-        result.push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: bulletMode && vi === 0 });
+        // isDOMLine: this is exactly how the browser wrapped it — the PDF must not wrap it again
+        result.push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: bulletMode && vi === 0, isDOMLine: true });
       });
     } catch(e) {
       // Fallback if Range API fails
