@@ -1718,8 +1718,10 @@ function setupCursorTracking() {
   const card = document.getElementById('canvas-card');
   area.addEventListener('mousemove', e => {
     const r = card.getBoundingClientRect();
-    _pendingCX = Math.round(e.clientX - r.left);
-    _pendingCY = Math.round(e.clientY - r.top);
+    // Send position in ARTBOARD units (undo this user's zoom) so every viewer, at any zoom, maps it to the same spot.
+    // (getBoundingClientRect is already scaled by the zoom transform, so divide it back out.)
+    _pendingCX = Math.round((e.clientX - r.left) / _zoom * 10) / 10;
+    _pendingCY = Math.round((e.clientY - r.top)  / _zoom * 10) / 10;
     if (!_cursorRafId) _cursorRafId = requestAnimationFrame(sendCursor);
   });
   area.addEventListener('mouseleave', () => {
@@ -1751,7 +1753,17 @@ function handleRemoteCursor(payload) {
     el.innerHTML = '<div class="remote-cursor-icon"></div><div class="remote-cursor-label" style="background:' + color + '">' + esc(rname) + '</div>';
     document.getElementById('canvas-wrap').appendChild(el);
   }
-  if (x === null) { el.style.display = 'none'; } else { el.style.display = ''; el.style.left = x + 'px'; el.style.top = y + 'px'; }
+  if (x === null) { el.style.display = 'none'; } else {
+    // x/y are artboard units measured from the card's top-left. canvas-wrap (where cursors live) is scaled by MY zoom
+    // and the card sits at an offset inside it, so place relative to the card, in unscaled wrap coordinates.
+    const card = document.getElementById('canvas-card');
+    el.style.display = '';
+    el.style.left = ((card ? card.offsetLeft : 0) + x) + 'px';
+    el.style.top  = ((card ? card.offsetTop  : 0) + y) + 'px';
+    // keep the pointer + name label a constant on-screen size whatever my zoom is
+    el.style.transformOrigin = '0 0';
+    el.style.transform = 'scale(' + (1 / _zoom) + ')';
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -3168,6 +3180,26 @@ function canvasBgClick(e) {
   if (e.button === 0) startMarquee(e);
 }
 
+// ── Black area around the artboard ───────────────────────────────
+// A plain click on the dark canvas area deselects; click-and-drag from the dark area starts the same rubber-band
+// selection as dragging on the artboard, so you can start outside the artwork and sweep across it.
+window.addEventListener('load', () => {
+  const area = document.getElementById('canvas-area');
+  const card = document.getElementById('canvas-card');
+  if (!area || !card) return;
+  area.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    if (card.contains(e.target)) return;                                  // artboard + elements keep their own handlers
+    if (e.target.closest('button, input, select, textarea, a, [contenteditable="true"]')) return;
+    const ar = area.getBoundingClientRect();                              // ignore clicks on the scrollbars
+    if (e.clientX >= ar.left + area.clientWidth || e.clientY >= ar.top + area.clientHeight) return;
+    if (_cropId !== null) { exitCropMode(); return; }
+    e.preventDefault();                                                   // no text-selection while dragging
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    startMarquee(e);
+  });
+});
+
 // ── Marquee (rubber-band) selection ──────────────────────────────
 let _marqueeStart = null;
 
@@ -4404,22 +4436,34 @@ document.addEventListener('keydown', e => {
     deselectAll();
   }
 
-  // Arrow keys — nudge selected element
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && _selectedId) {
+  // Arrow keys — nudge ALL selected elements by the same amount (locked ones stay put)
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && (_selectedIds.size || _selectedId)) {
     if (typing) return;
     e.preventDefault();
-    const el = elements.find(el => el.id === _selectedId);
-    if (!el) return;
+    const ids = (_selectedIds.size ? [..._selectedIds] : [_selectedId]);
+    const els = ids.map(id => elements.find(el => el.id === id)).filter(el => el && !el.locked);
+    if (!els.length) return;
     const step = e.shiftKey ? 10 : 1;
-    _pushUndoGrouped('nudge:' + el.id);
-    if (e.key === 'ArrowUp')    el.y = Math.max(0, el.y - step);
-    if (e.key === 'ArrowDown')  el.y = Math.min(AH - el.h, el.y + step);
-    if (e.key === 'ArrowLeft')  el.x = Math.max(0, el.x - step);
-    if (e.key === 'ArrowRight') el.x = Math.min(AW - el.w, el.x + step);
-    const wrap = document.querySelector('.cv-el[data-id="' + _selectedId + '"]');
-    if (wrap) { wrap.style.left = el.x + 'px'; wrap.style.top = el.y + 'px'; }
-    showProps(_selectedId);
-    if (connected) broadcast({ type: 'el_move', id: el.id, x: el.x, y: el.y, userId, userName });
+    let dx = 0, dy = 0;
+    if (e.key === 'ArrowUp')    dy = -step;
+    if (e.key === 'ArrowDown')  dy =  step;
+    if (e.key === 'ArrowLeft')  dx = -step;
+    if (e.key === 'ArrowRight') dx =  step;
+    // Clamp the GROUP's movement so the selection stays rigid: if one item reaches the artboard edge, they all stop
+    // together (rather than the others carrying on and changing their spacing).
+    if (dx < 0) dx = Math.max(dx, -Math.min(...els.map(el => el.x)));
+    if (dx > 0) dx = Math.min(dx,  Math.min(...els.map(el => AW - el.w - el.x)));
+    if (dy < 0) dy = Math.max(dy, -Math.min(...els.map(el => el.y)));
+    if (dy > 0) dy = Math.min(dy,  Math.min(...els.map(el => AH - el.h - el.y)));
+    if (!dx && !dy) return;
+    _pushUndoGrouped('nudge:' + els.map(el => el.id).sort().join(','));
+    els.forEach(el => {
+      el.x += dx; el.y += dy;
+      const wrap = document.querySelector('.cv-el[data-id="' + el.id + '"]');
+      if (wrap) { wrap.style.left = el.x + 'px'; wrap.style.top = el.y + 'px'; }
+      if (connected) broadcast({ type: 'el_move', id: el.id, x: el.x, y: el.y, userId, userName });
+    });
+    if (els.length === 1 && _selectedId === els[0].id) showProps(_selectedId);
     scheduleSave();
   }
 });
