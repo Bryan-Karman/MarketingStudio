@@ -3253,10 +3253,6 @@ function _wrapLooseBlocks(inner) {
   Array.from(inner.childNodes).forEach(n => {
     const tag = n.nodeType === 1 ? n.tagName.toLowerCase() : '';
     if (tag === 'div' || tag === 'p') { flush(); out.push(n); }
-    else if (tag === 'br') {
-      if (run.length) flush();
-      else { const d = document.createElement('div'); d.appendChild(document.createElement('br')); out.push(d); }
-    }
     else if (n.nodeType === 3 && n.textContent === '') { /* empty text node */ }
     else run.push(n);
   });
@@ -4533,6 +4529,35 @@ function _imageHasAlpha(img) {
   return false;
 }
 
+// ── PDF image size controls ───────────────────────────────────────
+// Photos are rendered at PDF_TARGET_PPI (300) - NOT more. _pdfImgScale = output px per canvas px, set in exportPDF():
+//   px tabs (EDM, canvas px = 300 ppi)  -> 1x     mm tabs (print, canvas px = 96 dpi) -> 300/96 = 3.125x
+// Previously this was a hard-coded 2-3x on top of that (= 600-900 ppi) saved at JPEG quality 1.0, which made 15 MB PDFs.
+const PDF_TARGET_PPI   = 300;
+const PDF_JPEG_QUALITY = 0.88;   // visually lossless for photos, ~1/20th the size of 1.0
+let   _pdfImgScale     = 1;
+
+// Downscale in 2x steps then a final draw - sharper than one big jump from a 4K photo
+function _drawSmooth(ctx, img, nw, nh, dx, dy, dw, dh, cx0, cy0, cw0, ch0) {
+  let src = img, sw = nw, sh = nh;
+  if (cw0 && ch0 && (cx0 || cy0 || cw0 !== nw || ch0 !== nh)) {      // optional source crop: copy it out first
+    const c0 = document.createElement('canvas');
+    c0.width = Math.max(1, Math.round(cw0)); c0.height = Math.max(1, Math.round(ch0));
+    c0.getContext('2d').drawImage(img, cx0, cy0, cw0, ch0, 0, 0, c0.width, c0.height);
+    src = c0; sw = c0.width; sh = c0.height;
+  }
+  while (sw > dw * 2 && sh > dh * 2) {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(sw / 2)); c.height = Math.max(1, Math.round(sh / 2));
+    const cx = c.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(src, 0, 0, sw, sh, 0, 0, c.width, c.height);
+    src = c; sw = c.width; sh = c.height;
+  }
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, sw, sh, dx, dy, dw, dh);
+}
+
 // Draw one image box exactly as the editor shows it (manual crop frame + Cover / Contain / Fill), into a canvas the
 // size of the box. Returns { url, fmt }: PNG when the picture is see-through or leaves empty margins (so whatever is
 // behind the box still shows), JPEG otherwise.
@@ -4550,14 +4575,14 @@ function _renderImageBox(img, el, hasAlpha) {
   const dx = C.x + (C.w - dw) / 2, dy = C.y + (C.h - dh) / 2;
   const covers = dx <= 0.5 && dy <= 0.5 && dx + dw >= W - 0.5 && dy + dh >= H - 0.5;
   const usePng = hasAlpha || !covers;
-  const S = Math.max(1, Math.min(3, 4096 / Math.max(W, H)));
+  // photos (JPEG): exactly 300 ppi. Transparent PNG logos / line-art: 2x that, they compress to a few KB so stay extra crisp
+  const S = Math.max(0.5, Math.min((usePng && W * H < 250000) ? _pdfImgScale * 2 : _pdfImgScale, 4096 / Math.max(W, H)));
   const cv = document.createElement('canvas');
   cv.width = Math.max(1, Math.round(W * S)); cv.height = Math.max(1, Math.round(H * S));
   const ctx = cv.getContext('2d');
   if (!usePng) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height); }
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, nw, nh, dx * S, dy * S, dw * S, dh * S);
-  return usePng ? { url: cv.toDataURL('image/png'), fmt: 'PNG' } : { url: cv.toDataURL('image/jpeg', 1.0), fmt: 'JPEG' };
+  _drawSmooth(ctx, img, nw, nh, dx * S, dy * S, dw * S, dh * S);
+  return usePng ? { url: cv.toDataURL('image/png'), fmt: 'PNG' } : { url: cv.toDataURL('image/jpeg', PDF_JPEG_QUALITY), fmt: 'JPEG' };
 }
 
 async function exportPDF(allTabs) {
@@ -4574,6 +4599,7 @@ async function exportPDF(allTabs) {
     const _pdfDef    = tabDef(_currentTab);
     const _devicePx  = tabUnit(_pdfDef) === 'px';
     const PX_TO_MM   = 25.4 / (_devicePx ? EXPORT_PPI_PX : 96);
+    _pdfImgScale     = PDF_TARGET_PPI / (_devicePx ? EXPORT_PPI_PX : 96);
     const _tabPxSize = _pdfDef ? tabPx(_pdfDef) : { w: AW, h: AH };
     const PAGE_W = _devicePx ? _tabPxSize.w * PX_TO_MM : ((_pdfDef && _pdfDef.mmW) || 210);
     const PAGE_H = _devicePx ? _tabPxSize.h * PX_TO_MM : ((_pdfDef && _pdfDef.mmH) || 297);
@@ -4686,7 +4712,7 @@ async function exportPDF(allTabs) {
           let dataUrl, fmt;
           if (blob.type.includes('svg') || el.imageUrl.toLowerCase().includes('.svg')) {
             // SVG → canvas at 2×. Keep as PNG to preserve sharp edges/transparency.
-            dataUrl = await svgToPng(el.imageUrl, el.w * 2, el.h * 2);
+            dataUrl = await svgToPng(el.imageUrl, el.w * _pdfImgScale * 2, el.h * _pdfImgScale * 2);
             fmt = 'PNG';
           } else {
             // Resize photo to 2× display size max — avoids embedding full 4K photos
@@ -4706,10 +4732,10 @@ async function exportPDF(allTabs) {
           if (realCrop) {
             // Pre-crop on canvas so the image is clipped correctly in PDF
             // (jsPDF 2.5.1 has no native clip path without GState)
-            const SCALE = 3; // render at 3x for quality
+            const SCALE = _pdfImgScale; // 300 ppi
             const canvas = document.createElement('canvas');
-            canvas.width  = el.w * SCALE;
-            canvas.height = el.h * SCALE;
+            canvas.width  = Math.round(el.w * SCALE);
+            canvas.height = Math.round(el.h * SCALE);
             const ctx = canvas.getContext('2d');
             // Draw only the visible portion: source rect maps from the img coords
             const img2 = new Image();
@@ -4720,8 +4746,10 @@ async function exportPDF(allTabs) {
             const sy = -(el.imgY || 0) / el.imgH * img2.naturalHeight;
             const sw = el.w / el.imgW * img2.naturalWidth;
             const sh = el.h / el.imgH * img2.naturalHeight;
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img2, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-            const croppedUrl = canvas.toDataURL('image/jpeg', 1.0);
+            const croppedUrl = canvas.toDataURL('image/jpeg', PDF_JPEG_QUALITY);
             doc.addImage(croppedUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'SLOW');
           } else if ((el.objectFit || 'cover') === 'contain') {
             // Contain — get natural aspect ratio then fit within box dimensions
@@ -4753,7 +4781,7 @@ async function exportPDF(allTabs) {
               sh = Math.round(info.w / boxAsp);
               sy = Math.round((info.h - sh) / 2);
             }
-            const SCALE = 2;
+            const SCALE = _pdfImgScale; // 300 ppi
             const cvs = document.createElement('canvas');
             cvs.width  = Math.round(el.w * SCALE);
             cvs.height = Math.round(el.h * SCALE);
@@ -4761,8 +4789,9 @@ async function exportPDF(allTabs) {
             const tmpImg = new Image();
             tmpImg.crossOrigin = 'anonymous';
             await new Promise(r => { tmpImg.onload = r; tmpImg.onerror = r; tmpImg.src = dataUrl; });
-            ctx2.drawImage(tmpImg, sx, sy, sw, sh, 0, 0, cvs.width, cvs.height);
-            const covUrl = cvs.toDataURL('image/jpeg', 1.0);
+            ctx2.fillStyle = '#ffffff'; ctx2.fillRect(0, 0, cvs.width, cvs.height);
+            _drawSmooth(ctx2, tmpImg, tmpImg.naturalWidth || info.w, tmpImg.naturalHeight || info.h, 0, 0, cvs.width, cvs.height, sx, sy, sw, sh);
+            const covUrl = cvs.toDataURL('image/jpeg', PDF_JPEG_QUALITY);
             doc.addImage(covUrl, 'JPEG', xMM, yMM, wMM, hMM, undefined, 'SLOW');
           }
         } catch(imgErr) {
@@ -4900,17 +4929,15 @@ async function exportPDF(allTabs) {
 // The lines the browser actually shows for a block of text (one string per visual line).
 // A new line starts when a character sits clearly lower than the previous one; "clearly" is measured against the
 // character's own height, so it works at any zoom level.
-function _measureVisualLines(root) {
+function _measureVisualLines(rootOrNodes) {
+  const roots = Array.isArray(rootOrNodes) ? rootOrNodes : [rootOrNodes];
   const range = document.createRange();
-  const textNodes = [];
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let n; while ((n = walker.nextNode())) textNodes.push(n);
   const lines = [];
   let cur = '', curTop = null;
-  textNodes.forEach(tn => {
-    const str = tn.textContent;
+  const textNode = n => {
+    const str = n.textContent;
     for (let ci = 0; ci < str.length; ci++) {
-      range.setStart(tn, ci); range.setEnd(tn, ci + 1);
+      range.setStart(n, ci); range.setEnd(n, ci + 1);
       const rects = range.getClientRects();
       if (!rects.length) continue;
       const top = rects[0].top, h = rects[0].height || 1;
@@ -4918,9 +4945,52 @@ function _measureVisualLines(root) {
       if (top > curTop + h * 0.5) { lines.push(cur.trimEnd()); cur = str[ci]; curTop = top; }
       else cur += str[ci];
     }
+  };
+  const softReturn = () => { lines.push(cur.trimEnd()); cur = ''; curTop = null; };
+  roots.forEach(root => {
+    if (root.nodeType === 3) { textNode(root); return; }
+    if (root.nodeName === 'BR') { softReturn(); return; }
+    // walk text AND <br> in reading order, at any depth (a soft return can sit inside bold / italic / underline)
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode: n => (n.nodeType === 3 || n.nodeName === 'BR') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+    });
+    let n;
+    while ((n = walker.nextNode())) { if (n.nodeType === 1) softReturn(); else textNode(n); }
   });
-  if (cur.trim()) lines.push(cur.trimEnd());
+  if (cur.trim()) lines.push(cur.trimEnd());   // (a single trailing <br> is just the browser's placeholder — no extra line)
   return lines;
+}
+
+// Fallback when line measuring isn't possible: the text with soft returns kept as line breaks
+function _textLinesWithBreaks(nodes) {
+  const out = [''];
+  (Array.isArray(nodes) ? nodes : [nodes]).forEach(root => {
+    if (root.nodeType === 3) { out[out.length - 1] += root.textContent; return; }
+    if (root.nodeName === 'BR') { out.push(''); return; }
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode: n => (n.nodeType === 3 || n.nodeName === 'BR') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+    });
+    let n;
+    while ((n = walker.nextNode())) { if (n.nodeType === 1) out.push(''); else out[out.length - 1] += n.textContent; }
+  });
+  while (out.length > 1 && out[out.length - 1].trim() === '') out.pop();
+  return out;
+}
+
+// The paragraphs of a text box as the editor shows them. Paragraphs are the <div>s; anything loose between/before them
+// (typically the FIRST line, which the browser leaves without a <div> until the page is reloaded) is a paragraph too,
+// and a <br> is a soft return inside its paragraph.
+function _paragraphNodes(inner) {
+  const paras = []; let run = [];
+  const flush = () => { if (run.length) { paras.push(run); run = []; } };
+  Array.from(inner.childNodes).forEach(n => {
+    const tag = n.nodeType === 1 ? n.tagName.toLowerCase() : '';
+    if (tag === 'div' || tag === 'p') { flush(); paras.push([n]); }
+    else if (n.nodeType === 3 && n.textContent === '') { /* empty text node */ }
+    else run.push(n);
+  });
+  flush();
+  return paras;
 }
 
 function extractDOMLines(elId, content, bulletMode) {
@@ -4929,65 +4999,27 @@ function extractDOMLines(elId, content, bulletMode) {
   if (!inner) return [];
 
   const result = [];
-  // Walk each direct child div (each paragraph line)
-  const children = Array.from(inner.children);
-  if (!children.length) {
-    // Plain text — treat as single block, but use the lines the browser actually shows
-    const text = inner.textContent;
-    if (text.trim()) {
-      let vls = []; try { vls = _measureVisualLines(inner); } catch(e) {}
-      if (vls.length) vls.forEach((vl, vi) => result.push({ text: vl || ' ', bold: false, isBlankLine: false, isSoftReturn: vi > 0, bullet: !!bulletMode && vi === 0, isDOMLine: true }));
-      else result.push({ text, bold: false, isBlankLine: false, bullet: !!bulletMode });
-    }
-    return result;
-  }
-
-  children.forEach((div, i) => {
-    const rawText = div.textContent || '';
-    const isBlank = rawText.trim() === '';
-    if (isBlank) {
+  _paragraphNodes(inner).forEach(nodes => {
+    const rawText = nodes.map(n => n.textContent || '').join('');
+    if (rawText.trim() === '') {
       result.push({ text: '', bold: false, isBlankLine: true, isSoftReturn: false, bullet: false });
       return;
     }
-
-    // Check if this div contains inline BR (soft return)
-    const brs = div.querySelectorAll('br');
-    if (brs.length) {
-      // Split on BR — each segment is a soft return line
-      let seg = '';
-      let isFirstSeg = true;
-      div.childNodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE) seg += node.textContent;
-        else if (node.nodeType === Node.ELEMENT_NODE) {
-          if (node.tagName.toLowerCase() === 'br') {
-            result.push({ text: seg, bold: false, isBlankLine: false, isSoftReturn: !isFirstSeg, bullet: bulletMode && isFirstSeg });
-            seg = ''; isFirstSeg = false;
-          } else seg += node.textContent;
-        }
-      });
-      if (seg) result.push({ text: seg, bold: false, isBlankLine: false, isSoftReturn: !isFirstSeg, bullet: bulletMode && isFirstSeg });
-      return;
-    }
-
-    // Use Range API to get actual rendered visual lines within this div
     try {
-      if (!document.createTreeWalker(div, NodeFilter.SHOW_TEXT).nextNode()) {
-        result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
-        return;
-      }
-      const visualLines = _measureVisualLines(div);
+      // The lines the browser actually shows — wraps AND soft returns
+      const visualLines = _measureVisualLines(nodes);
       if (!visualLines.length) {
-        result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+        _textLinesWithBreaks(nodes).forEach((t, i) => result.push({ text: t, bold: false, isBlankLine: false, isSoftReturn: i > 0, bullet: !!bulletMode && i === 0 }));
         return;
       }
-      const hasBold = div.querySelector('b,strong') !== null;
+      const hasBold = nodes.some(n => n.nodeType === 1 && (/^(b|strong)$/i.test(n.tagName) || n.querySelector('b,strong') !== null));
       visualLines.forEach((vl, vi) => {
         // isDOMLine: this is exactly how the browser wrapped it — the PDF must not wrap it again
-        result.push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: bulletMode && vi === 0, isDOMLine: true });
+        result.push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: !!bulletMode && vi === 0, isDOMLine: true });
       });
     } catch(e) {
       // Fallback if Range API fails
-      result.push({ text: rawText, bold: false, isBlankLine: false, isSoftReturn: false, bullet: !!bulletMode });
+      _textLinesWithBreaks(nodes).forEach((t, i) => result.push({ text: t, bold: false, isBlankLine: false, isSoftReturn: i > 0, bullet: !!bulletMode && i === 0 }));
     }
   });
   return result;
@@ -5163,8 +5195,9 @@ async function resizeForPDF(blob, elW, elH) {
       URL.revokeObjectURL(url);
       // Target: 2× the LARGER of box or natural dimensions, capped to natural size
       // Use natural aspect ratio — never distort the image
-      const SCALE = 2;
-      const maxPx = Math.max(elW, elH) * SCALE;
+      // Intermediate copy = 2x the final 300 ppi size (headroom so a later crop stays sharp). It is transient;
+      // the FINAL embed in the PDF is made at exactly 300 ppi by the cover/contain code below.
+      const maxPx = Math.max(elW, elH) * _pdfImgScale * 2;
       // Scale down so the longest edge = maxPx, never upscale
       const longestEdge = Math.max(img.naturalWidth, img.naturalHeight);
       const ratio = longestEdge > maxPx ? maxPx / longestEdge : 1;
@@ -5177,8 +5210,8 @@ async function resizeForPDF(blob, elW, elH) {
       // White background (JPEG has no transparency)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, outW, outH);
-      ctx.drawImage(img, 0, 0, outW, outH);
-      resolve(canvas.toDataURL('image/jpeg', 1.0));
+      _drawSmooth(ctx, img, img.naturalWidth, img.naturalHeight, 0, 0, outW, outH);
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
     img.onerror = () => { URL.revokeObjectURL(url); blobToDataUrl(blob).then(resolve); };
     img.src = url;
@@ -5194,11 +5227,11 @@ function svgToPng(url, w, h) {
       // Use natural dimensions if available, otherwise fall back to element size
       const natW = img.naturalWidth  || w;
       const natH = img.naturalHeight || h;
-      // Render at 3× for sharpness
-      const scale = 3;
+      // Render the vector at the requested box size (caller passes 2x box = 600 ppi on EDM tabs); capped at 4096px
+      const scale = Math.min(Math.max(w / natW, h / natH), 4096 / Math.max(natW, natH));
       const canvas = document.createElement('canvas');
-      canvas.width  = Math.max(natW * scale, 100);
-      canvas.height = Math.max(natH * scale, 100);
+      canvas.width  = Math.max(Math.round(natW * scale), 100);
+      canvas.height = Math.max(Math.round(natH * scale), 100);
       const ctx = canvas.getContext('2d');
       // PNG preserves transparency for SVGs (logos etc with transparent backgrounds)
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -5261,12 +5294,12 @@ function extractLines(container) {
     } else if (child.nodeType === Node.ELEMENT_NODE) {
       const tag = child.tagName.toLowerCase();
       if (tag === 'br') {
-        lines.push(currentLine);
-        currentLine = '';
+        // Shift+Enter: a soft return INSIDE the line, not a new paragraph
+        currentLine += '<br>';
       } else if (tag === 'div' || tag === 'p') {
         hasBlockChild = true;
         // Flush any preceding inline content as its own line
-        if (currentLine) { lines.push(currentLine); currentLine = ''; }
+        if (currentLine) { lines.push(_dropTrailingBr(currentLine)); currentLine = ''; }
         if (child.querySelector('div, p')) {
           // Paragraphs nested inside a paragraph (e.g. from a paste): keep each one as its own line
           extractLines(child).forEach(l => lines.push(l));
@@ -5280,9 +5313,12 @@ function extractLines(container) {
     }
   });
 
-  if (currentLine || !hasBlockChild) lines.push(currentLine);
+  if (currentLine || !hasBlockChild) lines.push(_dropTrailingBr(currentLine));
   return lines;
 }
+
+// The browser puts one placeholder <br> after text that ends with a soft return; it isn't an extra line
+function _dropTrailingBr(line) { return line.endsWith('<br>') && line !== '<br>' ? line.slice(0, -4) : (line === '<br>' ? '' : line); }
 
 // Get clean inline HTML from a node (preserves <b>, <i>, <u>, strips the rest)
 function cleanInline(node) {
