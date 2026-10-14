@@ -175,6 +175,7 @@
       if (!/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k) || BAD_KEY.test(k)) { note('field name removed', k, ''); return; }
       if (k === 'content')  { if (typeof v === 'string') out.content = safeHtml(v); return; }
       if (k === 'imageUrl') { var u = imageUrl(v); if (u === null) { note('image link removed', v, ''); out.imageUrl = ''; } else out.imageUrl = u; return; }
+      if (k === 'prevImages') { var pa = []; if (Array.isArray(v)) v.slice(0, 30).forEach(function(u){ var c = imageUrl(u); if (c) pa.push(c); }); out.prevImages = pa; return; }
       if (k === 'style')    { out.style = cleanStyleObj(v); return; }
       if (HAS.call(NUM_RANGE, k)) { var n = num(v, NUM_RANGE[k][0], NUM_RANGE[k][1]); if (n === null) note('number removed', k + '=' + String(v), ''); else out[k] = n; return; }
       if (typeof v === 'boolean') { out[k] = v; return; }
@@ -771,7 +772,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <button class="tb-btn" onclick="zoomReset()" style="font-size:10px;padding:4px 7px;">Fit</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-templates" onclick="openTemplatesModal()" title="Templates" style="color:var(--amber);border-color:#7a4a00;">⭐ Templates</button>
-  <button class="tb-btn" id="btn-prefill" onclick="openPrefill()" title="Copy the Brochure's text and images into the labelled boxes on this tab" style="display:none;color:var(--blue);border-color:#245a7f;">⇩ Pre-fill from Brochure</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" onclick="toggleMarketingItems(this)" title="Show/hide page types" style="color:var(--amber);border-color:#7a4a00;">☰ Pages</button>
   <div class="tb-sep"></div>
@@ -845,6 +845,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <!-- PROPERTIES SIDEBAR -->
   <div class="sidebar">
     <div class="sb-head">Properties</div>
+    <!-- Pre-fill (EDM tab only; shown by updatePrefillButton) -->
+    <div id="prefill-bar" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);">
+      <button class="tb-btn" id="btn-prefill" onclick="openPrefill()" title="Copy the Brochure's text and images into the labelled boxes on this tab" style="width:100%;justify-content:center;color:var(--blue);border-color:#245a7f;">⇩ Pre-fill from Brochure</button>
+    </div>
     <div class="sb-body" id="props-panel">
       <div class="sb-empty">Click an element on the canvas to edit its properties.</div>
     </div>
@@ -2957,7 +2961,7 @@ function handleRemoteResize(payload) {
 function handleRemoteImage(payload) {
   const el = elements.find(e => e.id === payload.id);
   if (!el) return;
-  el.imageUrl = payload.url;
+  _setElImageUrl(el, payload.url);
   applyImageToEl(el.id, payload.url);
   if (_selectedId === el.id) showProps(el.id);
 }
@@ -3039,8 +3043,7 @@ async function uploadImageForEl(file, id) {
     const url = SUPA_URL + '/storage/v1/object/public/assets/' + path;
     const el = elements.find(e => e.id === id);
     _pushUndo();
-    if (el) el.imageUrl = url;
-    _imgLib.at = 0; // new image: refresh the property image list next time
+    if (el) _setElImageUrl(el, url);
     applyImageToEl(id, url);
     if (connected) broadcast({ type: 'el_image', id, url, userId, userName });
     if (_selectedId === id) showProps(id);
@@ -3051,8 +3054,7 @@ async function uploadImageForEl(file, id) {
 function clearImage(id) {
   const el = elements.find(e => e.id === id);
   _pushUndo();
-  if (el) el.imageUrl = '';
-  _imgLib.at = 0;
+  if (el) _setElImageUrl(el, '');
   applyImageToEl(id, '');
   if (connected) broadcast({ type: 'el_image', id, url: '', userId, userName });
   if (_selectedId === id) showProps(id);
@@ -3086,14 +3088,15 @@ async function loadPropertyImages(force) {
   if (_imgLib.loading) return _imgLib.loading;
   _imgLib.loading = (async () => {
     const found = new Map();
-    const add = (url, tabSlug) => {
+    const add = (url, tabSlug, prev) => {
       if (!_isAssetUrl(url)) return;
       let it = found.get(url);
-      if (!it) { const n = _parseAssetName(url); it = { url, name: n.name, ts: n.ts, tabs: [] }; found.set(url, it); }
-      if (it.tabs.indexOf(tabSlug) < 0) it.tabs.push(tabSlug);
+      if (!it) { const n = _parseAssetName(url); it = { url, name: n.name, ts: n.ts, tabs: [], prevTabs: [] }; found.set(url, it); }
+      const arr = prev ? it.prevTabs : it.tabs;
+      if (arr.indexOf(tabSlug) < 0) arr.push(tabSlug);
     };
     // This tab: what's on the canvas right now
-    elements.forEach(e => { if (e.type === 'img') add(e.imageUrl, _currentTab); });
+    elements.forEach(e => { if (e.type === 'img') { add(e.imageUrl, _currentTab); (e.prevImages || []).forEach(u => add(u, _currentTab, true)); } });
     // Every other tab of this property: its last saved layout
     await Promise.all(TAB_DEFINITIONS.filter(t => t.slug !== _currentTab).map(async t => {
       try {
@@ -3102,7 +3105,7 @@ async function loadPropertyImages(force) {
         const res  = await fetch(url, { headers: _supaHeaders() });
         const rows = await res.json();
         if (rows && rows.length && rows[0].state_json) {
-          (JSON.parse(rows[0].state_json).elements || []).forEach(e => { if (e && e.type === 'img') add(e.imageUrl, t.slug); });
+          (JSON.parse(rows[0].state_json).elements || []).forEach(e => { if (e && e.type === 'img') { add(e.imageUrl, t.slug); (Array.isArray(e.prevImages) ? e.prevImages : []).forEach(u => add(u, t.slug, true)); } });
         }
       } catch(e) { console.warn('[B4] image scan failed for tab', t.slug, e); }
     }));
@@ -3140,7 +3143,7 @@ async function renderImageLibrary(id) {
     const tx = document.createElement('div'); tx.className = 'img-lib-text';
     const nm = document.createElement('div'); nm.className = 'img-lib-name'; nm.textContent = _imgDisplayName(it);
     const mt = document.createElement('div'); mt.className = 'img-lib-meta';
-    mt.textContent = (it.url === cur ? 'In this box · ' : '') + 'Used on ' + it.tabs.map(_tabLabel).join(', ');
+    mt.textContent = (it.url === cur ? 'In this box · ' : '') + (it.tabs.length ? 'Used on ' + it.tabs.map(_tabLabel).join(', ') : 'Previously used on ' + it.prevTabs.map(_tabLabel).join(', '));
     tx.appendChild(nm); tx.appendChild(mt); row.appendChild(th); row.appendChild(tx);
     row.addEventListener('click', () => useLibraryImage(id, it.url));
     box.appendChild(row);
@@ -3148,12 +3151,34 @@ async function renderImageLibrary(id) {
 }
 
 // Put a property image into the selected image box
+// Change a box's picture AND remember the one it replaces, so it stays in the "Property images" list to switch back to.
+function _setElImageUrl(el, url) {
+  const old = el.imageUrl || '';
+  let prev = Array.isArray(el.prevImages) ? el.prevImages.slice() : [];
+  if (old && old !== url && _isAssetUrl(old)) prev = [old].concat(prev.filter(u => u !== old));
+  if (url) prev = prev.filter(u => u !== url);                 // the picture now showing isn't a "previous" one
+  prev = prev.slice(0, 20);
+  if (prev.length) el.prevImages = prev; else delete el.prevImages;
+  el.imageUrl = url;
+  _imgLib.at = 0;                                              // refresh the picker next time
+}
+// Undo/redo swap in an older copy of the boxes; keep any pictures that would otherwise vanish from the picker
+function _carryImageHistory(oldEls, newEls) {
+  const byId = new Map(newEls.map(e => [e.id, e]));
+  oldEls.forEach(o => {
+    if (!o || o.type !== 'img') return;
+    const n = byId.get(o.id); if (!n || n.type !== 'img') return;
+    const have = new Set(n.prevImages || []);
+    const add = [o.imageUrl].concat(o.prevImages || []).filter(u => u && u !== n.imageUrl && _isAssetUrl(u) && !have.has(u));
+    if (add.length) n.prevImages = add.concat(n.prevImages || []).slice(0, 20);
+  });
+}
+
 function useLibraryImage(id, url) {
   const el = elements.find(e => e.id === id);
   if (!el || el.type !== 'img' || el.imageUrl === url || !_isAssetUrl(url)) return;
   _pushUndo();
-  el.imageUrl = url;
-  _imgLib.at = 0; // refresh "Used on" next time
+  _setElImageUrl(el, url);
   applyImageToEl(id, url);
   if (connected) broadcast({ type: 'el_image', id, url, userId, userName });
   if (_selectedId === id) showProps(id);
@@ -4263,11 +4288,11 @@ function _normLabel(v) {
 }
 
 function updatePrefillButton() {
-  const b = document.getElementById('btn-prefill');
-  if (!b) return;
+  const bar = document.getElementById('prefill-bar');
+  if (!bar) return;
   const d = tabDef(_currentTab);
   const isEdmStyle = _currentTab === 'edm' || (d && tabUnit(d) === 'px');
-  b.style.display = (isEdmStyle && _currentTab !== PREFILL_SOURCE_TAB) ? '' : 'none';
+  bar.style.display = (isEdmStyle && _currentTab !== PREFILL_SOURCE_TAB) ? '' : 'none';
 }
 window.addEventListener('load', () => { updatePrefillButton(); setTimeout(updatePrefillButton, 1500); });
 
@@ -4339,6 +4364,24 @@ function _plainLines(html) {
 }
 function _safeAgentImg(u) { return (typeof u === 'string' && /^https:\/\//i.test(u) && u.length < 600 && !/[\s"'<>`\\]/.test(u)) ? u : ''; }
 
+// The Brochure shows an agent as a plain text box ("Yosh Mendis 0434 413 188"); the EDM shows an agent CARD that is
+// linked to the same agents list (and pulls the photo from it). Find the agent in the list from the Brochure text.
+function _matchAgentFromText(text) {
+  if (typeof agentList === 'undefined' || !agentList || !agentList.length) return { why: 'the agents list has not loaded yet' };
+  const norm   = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const digits = t => String(t || '').replace(/\D+/g, '');
+  const tn = ' ' + norm(text) + ' ', td = digits(text);
+  let best = null, bestScore = 0;
+  agentList.forEach(a => {
+    const nn = norm(a.name), pd = digits(a.phone);
+    let sc = 0;
+    if (nn && tn.indexOf(' ' + nn + ' ') >= 0) sc += 10 + nn.length / 100;     // full name found (longest name wins a tie)
+    if (pd.length >= 8 && td.indexOf(pd) >= 0) sc += 5;                          // phone number found
+    if (sc > bestScore) { best = a; bestScore = sc; }
+  });
+  return best ? { agent: best } : { why: 'no agent in the list matches “' + String(text).slice(0, 40) + '”' };
+}
+
 function _buildPrefillPlan(src, dst) {
   const byLabel = new Map(), dupes = new Set();
   (src || []).forEach(e => {
@@ -4353,7 +4396,8 @@ function _buildPrefillPlan(src, dst) {
     plan.labelled++;
     const s = byLabel.get(l);
     if (!s)               { plan.skip.push({ label: l, why: 'no Brochure box has this label' }); return; }
-    if (s.type !== d.type){ plan.skip.push({ label: l, why: 'Brochure box is ' + s.type + ', this box is ' + d.type }); return; }
+    const textToAgent = (s.type === 'text' && d.type === 'agent');           // Brochure text box -> EDM agent card
+    if (s.type !== d.type && !textToAgent){ plan.skip.push({ label: l, why: 'Brochure box is ' + s.type + ', this box is ' + d.type }); return; }
     if (d.type === 'text') {
       const lines = _plainLines(s.content);
       if (!lines.length)  { plan.skip.push({ label: l, why: 'Brochure box is empty' }); return; }
@@ -4362,6 +4406,12 @@ function _buildPrefillPlan(src, dst) {
       if (!s.imageUrl)    { plan.skip.push({ label: l, why: 'Brochure box has no image' }); return; }
       if (!_isAssetUrl(s.imageUrl)) { plan.skip.push({ label: l, why: 'image is not from your storage' }); return; }
       plan.apply.push({ id: d.id, label: l, kind: 'img', url: s.imageUrl });
+    } else if (textToAgent) {
+      const lines = _plainLines(s.content);
+      if (!lines.length)  { plan.skip.push({ label: l, why: 'Brochure box is empty' }); return; }
+      const m = _matchAgentFromText(lines.join(' '));
+      if (!m.agent)       { plan.skip.push({ label: l, why: m.why }); return; }
+      plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: String(m.agent.id), agentName: m.agent.name || '', agentPhone: m.agent.phone || '', agentImage: '', note: m.agent.name || '' });
     } else {
       if (!(s.agentId || s.agentName || s.agentPhone || s.agentImage)) { plan.skip.push({ label: l, why: 'Brochure card has no agent' }); return; }
       plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: String(s.agentId || ''), agentName: s.agentName || '', agentPhone: s.agentPhone || '', agentImage: s.agentImage || '' });
@@ -4410,7 +4460,7 @@ function _renderPrefillModal(errorMsg) {
     add('div', '', 'This will copy the Brochure’s text and images into ' + plan.apply.length + ' box' + (plan.apply.length === 1 ? '' : 'es') + ' (' + parts.join(', ') + ').');
     add('div', 'pf-warn', 'Whatever is currently in those boxes will be replaced — locked boxes included. Text keeps this tab’s own formatting, and long text makes a box grow downwards. You can undo it with one Ctrl/⌘+Z. The Brochure itself is never changed.');
     const ul = add('ul', 'pf-list');
-    plan.apply.forEach(a => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = a.label; li.appendChild(b); li.appendChild(document.createTextNode(' — ' + (a.kind === 'text' ? 'text' : a.kind === 'img' ? 'image' : 'agent'))); ul.appendChild(li); });
+    plan.apply.forEach(a => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = a.label; li.appendChild(b); li.appendChild(document.createTextNode(' — ' + (a.kind === 'text' ? 'text' : a.kind === 'img' ? 'image' : 'agent' + (a.note ? ': ' + a.note : '')))); ul.appendChild(li); });
   }
   if (plan.skip.length) {
     add('div', '', 'Left untouched (' + plan.skip.length + '):');
@@ -4441,7 +4491,8 @@ function applyPrefill() {
       d.content = cbreSafeHtml(a.lines.map(l => '<div>' + (l ? esc(l) : '<br>') + '</div>').join(''));   // words only; the box's own style stays
       grew.push(d.id);
     } else if (a.kind === 'img') {
-      d.imageUrl = a.url;
+      _setElImageUrl(d, a.url);
+      d.objectFit = 'contain';                                   // pre-filled images sit 'contained' (whole picture visible)
       delete d.imgX; delete d.imgY; delete d.imgW; delete d.imgH; delete d.hasCrop;   // start from a clean fit in the EDM box
     } else {
       const ag = agentById(a.agentId);
@@ -4605,7 +4656,9 @@ function undo() {
   }
   if (snap === null) return;
   try {
+    const _before = elements;
     elements = JSON.parse(snap);
+    _carryImageHistory(_before, elements);
     _nextId = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
   } catch(e) { return; }
   renderCanvas();
