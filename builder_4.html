@@ -3575,7 +3575,7 @@ function enterCropMode(id) {
   if (!lbl) {
     lbl = document.createElement('div');
     lbl.className = 'crop-label';
-    lbl.textContent = '✂ Crop — drag image to pan · ghost corners to scale · Shift = proportional · Esc to exit';
+    lbl.textContent = '✂ Crop — drag image to pan · ghost corners to scale (proportional) · hold Shift to stretch freely · Esc to exit';
     wrap.appendChild(lbl);
   }
 
@@ -3725,7 +3725,7 @@ function _cropResizeStart(e, id, rh) {
 
 // Ghost corner handles — resize the IMAGE (imgW/imgH) from each corner
 // The box stays fixed; the image gets larger/smaller inside it.
-// Shift key locks the image's aspect ratio.
+// Proportional by default; hold Shift to stretch freely in any direction.
 function _cropGhostResizeStart(e, id, dir) {
   const el   = elements.find(el => el.id === id);
   const wrap = document.querySelector('.cv-el[data-id="' + id + '"]');
@@ -3742,22 +3742,30 @@ function _cropGhostResizeStart(e, id, dir) {
     const dy = Math.round((ev.clientY - sy) / _zoom);
     let nw = ow, nh = oh, nx = ox, ny = oy;
 
-    // Each corner scales the image from that corner
-    if (dir === 'se') { nw = Math.max(el.w, ow + dx); nh = Math.max(el.h, oh + dy); }
-    if (dir === 'sw') { nw = Math.max(el.w, ow - dx); nh = Math.max(el.h, oh + dy); nx = Math.min(0, ox + (ow - nw)); }
-    if (dir === 'ne') { nw = Math.max(el.w, ow + dx); nh = Math.max(el.h, oh - dy); ny = Math.min(0, oy + (oh - nh)); }
-    if (dir === 'nw') { nw = Math.max(el.w, ow - dx); nh = Math.max(el.h, oh - dy); nx = Math.min(0, ox + (ow - nw)); ny = Math.min(0, oy + (oh - nh)); }
+    // Raw (unclamped) size this corner is being dragged to
+    let rw = ow, rh = oh;
+    if (dir === 'se') { rw = ow + dx; rh = oh + dy; }
+    if (dir === 'sw') { rw = ow - dx; rh = oh + dy; }
+    if (dir === 'ne') { rw = ow + dx; rh = oh - dy; }
+    if (dir === 'nw') { rw = ow - dx; rh = oh - dy; }
 
-    // Shift = maintain original image aspect ratio
-    if (ev.shiftKey) {
-      const useDx = Math.abs(dx) > Math.abs(dy);
-      if (useDx) { nh = Math.round(nw / aspect); }
-      else        { nw = Math.round(nh * aspect); }
-      nw = Math.max(el.w, nw); nh = Math.max(el.h, nh);
-      // Recalculate offset for w/n directions
-      if (dir === 'sw' || dir === 'nw') nx = Math.min(0, ox + (ow - nw));
-      if (dir === 'ne' || dir === 'nw') ny = Math.min(0, oy + (oh - nh));
+    if (!ev.shiftKey) {
+      // DEFAULT: stay in proportion. Scale uniformly by whichever axis the pointer has moved furthest, and never
+      // let the image shrink below the box (it must still cover it).
+      const sW = rw / ow, sH = rh / oh;
+      let sc = Math.abs(sW - 1) >= Math.abs(sH - 1) ? sW : sH;
+      sc = Math.max(sc, el.w / ow, el.h / oh);
+      nw = Math.round(ow * sc); nh = Math.round(oh * sc);
+    } else {
+      // SHIFT held: free stretch in any direction (width and height independent)
+      nw = Math.max(el.w, rw); nh = Math.max(el.h, rh);
     }
+
+    // Anchor the opposite corner, then keep the image covering the box
+    if (dir === 'sw' || dir === 'nw') nx = ox + (ow - nw);
+    if (dir === 'ne' || dir === 'nw') ny = oy + (oh - nh);
+    nx = Math.min(0, Math.max(el.w - nw, nx));
+    ny = Math.min(0, Math.max(el.h - nh, ny));
 
     el.imgW = nw; el.imgH = nh; el.imgX = nx; el.imgY = ny;
     img.style.width  = nw + 'px'; img.style.height = nh + 'px';
