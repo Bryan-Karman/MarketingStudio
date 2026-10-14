@@ -355,6 +355,10 @@ body.exporting .stem-drag-handle{display:none!important;}
   box-shadow:0 1px 6px rgba(0,0,0,.6);
 }
 .markup-sticker.selected .stem-drag-handle{ display:block; }
+/* Horizontal pin (stem runs left/right from the label's side edge) */
+.sticker-htail{ position:absolute; display:flex; flex-direction:row; align-items:center; pointer-events:none; }
+.sticker-htail .sticker-stem{ height:3px; width:auto; }
+.stem-drag-handle.h-axis{ cursor:ew-resize; }
 
 /* Delete button */
 .sticker-del{
@@ -1904,10 +1908,25 @@ function _buildStickerHTML(s, isSelected, isMulti){
   const stemAbove = stemH < 0;
   const tailStyle = stemAbove ? 'flex-direction:column-reverse;position:absolute;bottom:100%;' : '';
   const hideStem = isRoad || isArea || !!s.hideStem;
-  const tailHtml = hideStem ? '' : `<div class="sticker-tail" style="${tailStyle}">
+  const isHoriz = s.stemDir === 'h';
+  const stemX   = s.stemX || -80;
+  let tailHtml;
+  if(hideStem){
+    tailHtml = '';
+  } else if(isHoriz){
+    const stemLen = Math.abs(stemX);
+    const leftSide = stemX < 0;
+    tailHtml = `<div class="sticker-htail" data-side="${leftSide?'l':'r'}">`
+      + (leftSide
+          ? `<div class="sticker-dot"></div><div class="sticker-stem" style="width:${stemLen}px;"></div>`
+          : `<div class="sticker-stem" style="width:${stemLen}px;"></div><div class="sticker-dot"></div>`)
+      + `</div><div class="stem-drag-handle h-axis" data-id="${s.id}" title="Drag to extend pin"></div>`;
+  } else {
+    tailHtml = `<div class="sticker-tail" style="${tailStyle}">
       <div class="sticker-stem" style="height:${absStemH}px;"></div>
       <div class="sticker-dot"></div>
     </div><div class="stem-drag-handle" data-id="${s.id}" title="Drag to extend pin"></div>`;
+  }
   const arrowAngle = s.arrowAngle || 0;
   const arrowHtml = s.showArrow
     ? `<div class="sticker-arrow" onclick="rotateStickerArrow('${s.id}')" title="Click to rotate arrow">` +
@@ -1934,6 +1953,26 @@ function _positionStickerTail(el){
   const iconBox = el.querySelector('.sticker-icon-box');
   const label   = el.querySelector('.sticker-label');
   const handle  = el.querySelector('.stem-drag-handle');
+  const htail   = el.querySelector('.sticker-htail');
+  if(body && htail){
+    // Horizontal pin: attach to the left/right edge of the body, vertically centred
+    const sid = el.dataset.id;
+    const sx  = pages[currentPage].stickers.find(x=>x.id===sid);
+    const stemX = (sx && sx.stemX) || -80;
+    const len = Math.abs(stemX), dotW = 11;
+    const bodyW = body.offsetWidth, bodyH = body.offsetHeight;
+    const midY = bodyH/2;
+    htail.style.top = (midY - dotW/2) + 'px';
+    htail.style.bottom = 'auto'; htail.style.right = 'auto';
+    if(stemX < 0){
+      htail.style.left = (-len - dotW) + 'px';
+      if(handle){ handle.style.left = (-len - dotW/2) + 'px'; handle.style.top = midY + 'px'; }
+    } else {
+      htail.style.left = bodyW + 'px';
+      if(handle){ handle.style.left = (bodyW + len + dotW/2) + 'px'; handle.style.top = midY + 'px'; }
+    }
+    return;
+  }
   if(!body || !tail) return;
 
   const noIcon  = el.classList.contains('no-icon');
@@ -3457,10 +3496,33 @@ function _attachStemDrag(handle){
     const s  = pages[currentPage].stickers.find(x=>x.id===id);
     if(!s) return;
     const startY  = e.clientY;
+    const startX  = e.clientX;
     const origH   = s.stemHeight || 26;
+    const origX   = s.stemX || -80;
     const stemEl  = document.querySelector('#ms-'+id+' .sticker-stem');
     const stickerEl = document.getElementById('ms-'+id);
+    const isHoriz = s.stemDir === 'h';
     const onMove = ev=>{
+      if(isHoriz){
+        const dx = (ev.clientX - startX) / _zoom;
+        let nx = Math.round(origX + dx);
+        if(Math.abs(nx) < 8) nx = (nx < 0 || (nx===0 && origX<0)) ? -8 : 8;
+        s.stemX = nx;
+        const hs = stickerEl && stickerEl.querySelector('.sticker-htail .sticker-stem');
+        if(hs) hs.style.width = Math.abs(nx) + 'px';
+        // Dot/stem order flips if the pin crosses to the other side
+        const ht = stickerEl && stickerEl.querySelector('.sticker-htail');
+        if(ht){
+          const side = nx < 0 ? 'l' : 'r';
+          if(ht.dataset.side !== side){
+            ht.dataset.side = side;
+            const dot = ht.querySelector('.sticker-dot'), st = ht.querySelector('.sticker-stem');
+            if(side==='l') ht.insertBefore(dot, st); else ht.insertBefore(st, dot);
+          }
+        }
+        _positionStickerTail(stickerEl);
+        return;
+      }
       const dy   = (ev.clientY - startY) / _zoom;
       const newH = Math.round(origH + dy);
       // Allow any value — positive = stem below, negative = stem above
@@ -3696,6 +3758,14 @@ function showProps(s){
     ? '<button onclick="toggleStickerHideStem()" style="width:100%;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid '+(s.hideStem?'#5bbf7a':'#333')+';background:'+(s.hideStem?'#003f2d':'#242424')+';color:'+(s.hideStem?'#5bbf7a':'#888')+';font-family:inherit;text-align:left;">'+(s.hideStem?'☑':'□')+' Hide Stem / Pin</button>'
     : '';
 
+  const _sd = (s.stemDir==='h') ? (s.stemX>0?'right':'left') : (s.stemHeight<0?'up':'down');
+  const _dirBtn = (dir,icon,title)=>'<button onclick="setStickerStemDir(\''+dir+'\')" title="'+title+'" style="flex:1;padding:6px 0;font-size:13px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid '+(_sd===dir?'#5bbf7a':'#333')+';background:'+(_sd===dir?'#003f2d':'#242424')+';color:'+(_sd===dir?'#5bbf7a':'#888')+';font-family:inherit;">'+icon+'</button>';
+  const stemDirBtns = (!isArea && !isRoad && !s.hideStem)
+    ? '<div style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin:2px 0 2px;">Pin Direction</div><div style="display:flex;gap:4px;">'
+      + _dirBtn('down','↓','Pin points down')+_dirBtn('up','↑','Pin points up')+_dirBtn('left','←','Pin points left')+_dirBtn('right','→','Pin points right')
+      + '</div>'
+    : '';
+
   scroll.innerHTML = `
     ${!isProp ? '<div class=\"pf\"><label>Label</label>'
       + '<textarea id=\"prop-label\" rows=\"2\" oninput=\"updateStickerLabel(this.value)\" onkeydown=\"handleLabelKeydown(event)\" placeholder=\"Enter label text...\" style=\"resize:vertical;min-height:36px;\">' + escHtml(s.label||m.name||'') + '</textarea>'
@@ -3757,6 +3827,7 @@ function showProps(s){
       </button>
       ${s.showArrow ? '<div style="font-size:9px;color:#888;margin-top:2px;padding:0 2px;">Click arrow on canvas to rotate ('+((s.arrowAngle||0))+'°)</div>' : ''}
       ${hideStemBtn}
+      ${stemDirBtns}
     </div>
     <button class="props-del-btn" onclick="deleteSticker('${s.id}')">🗑 Delete Markup</button>
 
@@ -3862,6 +3933,22 @@ function rotateStickerArrow(id){
     if(span) span.style.transform = 'rotate('+s.arrowAngle+'deg)';
   }
   scheduleSave();
+}
+
+function setStickerStemDir(dir){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  pushUndo();
+  if(dir==='left' || dir==='right'){
+    const len = Math.abs(s.stemX || 80);
+    s.stemDir = 'h';
+    s.stemX = dir==='left' ? -len : len;
+  } else {
+    s.stemDir = 'v';
+    const len = Math.abs(s.stemHeight || 26);
+    s.stemHeight = dir==='up' ? -len : len;
+  }
+  _rerenderSticker(s); showProps(s); scheduleSave();
 }
 
 function toggleStickerHideStem(){
@@ -4971,6 +5058,7 @@ function _rerenderStickerTail(el, s){
   const handle = el.querySelector('.stem-drag-handle');
   const body   = el.querySelector('.sticker-body');
   const stemEl = el.querySelector('.sticker-stem');
+  if(el.querySelector('.sticker-htail')){ _positionStickerTail(el); return; }
   if(!tail || !body) return;
 
   const stemH = s.stemHeight || 26;
