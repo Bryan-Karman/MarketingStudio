@@ -191,7 +191,7 @@
 
   // ── messages ────────────────────────────────────────────────────
   var MSG = { full_state:1, el_crop:1, el_lock:1, el_rect_prop:1, el_reorder:1, tab_switch:1, el_add:1, el_move:1,
-              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, cursor:1, presence:1, presence_leave:1 };
+              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1, cursor:1, presence:1, presence_leave:1 };
 
   function reject(why, p){ note('message ignored: ' + why, JSON.stringify(p).slice(0, 200), ''); return null; }
 
@@ -209,7 +209,7 @@
     if (uid !== null) out.userId = uid;
     if (typeof p.userName === 'string') out.userName = cleanName(p.userName, 60);
 
-    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1 };
+    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1 };
     if (needId[t]) { var eid = idOf(p.id); if (eid === null) return reject('bad id', p); out.id = eid; }
 
     switch (t) {
@@ -269,6 +269,9 @@
         var url = imageUrl(p.url);
         if (url === null) return reject('image link not from your storage', p);
         out.url = url;
+        break;
+      case 'el_label':
+        out.label = (typeof p.label === 'string') ? p.label.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) : '';
         break;
       case 'el_agent':
         if (p.agentId !== undefined) {
@@ -448,6 +451,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* ── CANVAS SIZE MODAL ── */
 #canvas-size-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8500;display:none;align-items:center;justify-content:center;}
 #canvas-size-modal.open{display:flex;}
+
+/* ── PRE-FILL MODAL ── */
+#prefill-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8600;display:none;align-items:center;justify-content:center;}
+#prefill-modal.open{display:flex;}
+.pf-box{background:var(--surface);border:1px solid var(--border2);border-radius:6px;width:480px;max-width:92vw;max-height:82vh;overflow:auto;padding:20px;color:var(--text);font-size:12px;line-height:1.5;}
+.pf-title{font-size:15px;font-weight:700;margin-bottom:10px;}
+.pf-warn{background:#2a1800;border:1px solid #5a3000;color:var(--amber);border-radius:3px;padding:8px 10px;margin:10px 0;font-size:11px;}
+.pf-list{margin:6px 0 10px;padding:0;list-style:none;font-size:11px;color:var(--muted);}
+.pf-list li{padding:2px 0;}
+.pf-list b{color:var(--text);}
+.pf-btns{display:flex;gap:8px;margin-top:14px;}
+.pf-btns button{flex:1;padding:8px;border-radius:3px;font-size:12px;font-weight:700;cursor:pointer;}
+.pf-go{background:var(--green-dk);border:1px solid var(--green);color:var(--green);}
+.pf-cancel{background:var(--surface2);border:1px solid var(--border2);color:var(--text);}
 
 /* ── LAYOUT ── */
 .app{display:flex;flex:1;overflow:hidden;height:calc(100vh - 154px);} /* mast+toolbar+presence+tabbar */
@@ -754,6 +771,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <button class="tb-btn" onclick="zoomReset()" style="font-size:10px;padding:4px 7px;">Fit</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-templates" onclick="openTemplatesModal()" title="Templates" style="color:var(--amber);border-color:#7a4a00;">⭐ Templates</button>
+  <button class="tb-btn" id="btn-prefill" onclick="openPrefill()" title="Copy the Brochure's text and images into the labelled boxes on this tab" style="display:none;color:var(--blue);border-color:#245a7f;">⇩ Pre-fill from Brochure</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" onclick="toggleMarketingItems(this)" title="Show/hide page types" style="color:var(--amber);border-color:#7a4a00;">☰ Pages</button>
   <div class="tb-sep"></div>
@@ -817,6 +835,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
   </div>
 </div>
+
+<!-- PRE-FILL CONFIRM -->
+<div id="prefill-modal"><div class="pf-box" id="prefill-box"></div></div>
 
 <!-- APP -->
 <div class="app">
@@ -1699,6 +1720,7 @@ function handleMsg(msg) {
     if (payload.type === 'el_delete')     { handleRemoteDelete(payload);   return; }
     if (payload.type === 'el_image')      { handleRemoteImage(payload);    return; }
     if (payload.type === 'el_agent')      { handleRemoteAgent(payload);    return; }
+    if (payload.type === 'el_label')      { handleRemoteLabel(payload);    return; }
     if (payload.type === 'cursor')        { handleRemoteCursor(payload);   return; }
     if (payload.type === 'presence')      { handleRemotePresence(payload); return; }
     if (payload.type === 'presence_leave'){ handlePresenceLeave(payload.userId); return; }
@@ -2192,6 +2214,14 @@ function showProps(id) {
     + '</div>'
     + '<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:4px;">Layer ' + (layerIdx + 1) + ' of ' + layerTotal + '</div>';
 
+  // Pre-fill label (text / image / agent boxes) - always editable, even when the box is locked
+  const labelBlock = (el.type === 'rect') ? '' :
+      '<div class="prop-section">Pre-fill label</div>'
+    + '<div class="prop-row"><input class="prop-input" type="text" list="prefill-labels" maxlength="40" placeholder="e.g. headline" value="' + esc(el.label || '') + '" onchange="setElLabel(' + id + ',this.value)" style="width:100%;"></div>'
+    + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">Boxes with the same label on the Brochure and the EDM are matched by <b>Pre-fill from Brochure</b>.</div>'
+    + '<datalist id="prefill-labels"></datalist>';
+  if (labelBlock) setTimeout(_fillLabelDatalist, 0);
+
   // Position & Size block — shared
   const posSizeBlock = '<div style="' + lkDim + '">'
     + '<div class="prop-section">Position &amp; Size</div>'
@@ -2249,7 +2279,7 @@ function showProps(id) {
       + '<div class="prop-row"><span class="prop-label">Para gap</span><input class="prop-input" type="number" min="0" max="200" step="1" value="' + parseFloat(s.paragraphSpacing||0) + '" ' + dis + ' onchange="setProp(' + id + ',\'paragraphSpacing\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '</div>';
 
-    panel.innerHTML = lockBtn + formattingBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + formattingBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
 
   } else if (el.type === 'img') {
     // Image element
@@ -2266,7 +2296,7 @@ function showProps(id) {
       + '<div class="prop-section" style="margin-top:10px;">Fit</div>'
       + '<div class="prop-row"><span class="prop-label">Object fit</span><select class="prop-input" onchange="setImgFit(' + id + ',this.value)">' + fitOpts + '</select></div>';
 
-    panel.innerHTML = lockBtn + imgBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + imgBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
     renderImageLibrary(id);
 
   } else if (el.type === 'agent') {
@@ -2287,7 +2317,7 @@ function showProps(id) {
       + '<input class="prop-input" type="text" value="' + (st.color || '#003f2d') + '" style="width:68px;flex:none;" onchange="setAgentStyle(' + id + ',\'color\',this.value);showProps(' + id + ')"></div>'
       + '<div class="prop-row"><span class="prop-label">Photo gap</span><input class="prop-input" type="number" min="0" max="500" step="1" value="' + (el.gap === undefined ? 30 : el.gap) + '" onchange="setAgentStyle(' + id + ',\'gap\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:4px;">The photo is a square the height of the card.</div>';
-    panel.innerHTML = lockBtn + agentBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + agentBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
 
   } else if (el.type === 'rect') {
     // Colour box properties
@@ -2310,7 +2340,7 @@ function showProps(id) {
       + '<input class="prop-input" type="number" min="0" max="400" value="' + (el.borderRadius||0) + '" ' + dis + ' onchange="setRectProp(' + id + ',\'borderRadius\',+this.value)">'
       + '<span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>';
 
-    panel.innerHTML = lockBtn + rectBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + rectBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
   }
 }
 
@@ -4213,6 +4243,223 @@ function toggleTabActive(slug) {
   renderTabBar();
 }
 
+
+// ════════════════════════════════════════════════════════
+// PRE-FILL FROM BROCHURE
+// Boxes carry an optional "label" (set in the properties panel). Pressing the button on the EDM tab copies the TEXT
+// and IMAGES (and agent choice) from the Brochure box with the same label into the EDM box with that label.
+//   • One-way and one-time: the Brochure is only ever READ. Nothing is written back, and editing the EDM afterwards
+//     never touches the Brochure.
+//   • Text: words only. All Brochure formatting is dropped; the EDM box keeps its own font / size / colour / bullets.
+//   • Overwrites the labelled EDM boxes (locked ones included) after a confirmation popup.
+//   • If the Brochure has nothing for a label (e.g. only 3 agents, not 4) that EDM box is left untouched.
+//   • Long text grows the box downwards. The whole fill is ONE undo step.
+// ════════════════════════════════════════════════════════
+const PREFILL_SOURCE_TAB = 'brochure';
+const PREFILL_TYPES = ['text', 'img', 'agent'];
+
+function _normLabel(v) {
+  return String(v === undefined || v === null ? '' : v).toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+}
+
+function updatePrefillButton() {
+  const b = document.getElementById('btn-prefill');
+  if (!b) return;
+  const d = tabDef(_currentTab);
+  const isEdmStyle = _currentTab === 'edm' || (d && tabUnit(d) === 'px');
+  b.style.display = (isEdmStyle && _currentTab !== PREFILL_SOURCE_TAB) ? '' : 'none';
+}
+window.addEventListener('load', () => { updatePrefillButton(); setTimeout(updatePrefillButton, 1500); });
+
+// ── labels ───────────────────────────────────────────────
+function setElLabel(id, value) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type === 'rect') return;
+  const v = _normLabel(value);
+  if ((el.label || '') === v) { if (_selectedId === id) showProps(id); return; }
+  _pushUndo();
+  if (v) el.label = v; else delete el.label;
+  if (connected) broadcast({ type: 'el_label', id, label: v, userId, userName });
+  scheduleSave();
+  if (_selectedId === id) showProps(id);          // shows the cleaned-up label
+}
+function handleRemoteLabel(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  if (payload.label) el.label = payload.label; else delete el.label;
+  if (_selectedId === el.id) showProps(el.id);
+}
+
+// Suggestions for the label box: labels already used on this tab + the Brochure/EDM tabs (read-only, cached 60s)
+let _labelSuggest = { at: 0, labels: [], busy: false };
+async function _fillLabelDatalist() {
+  const dl = document.getElementById('prefill-labels');
+  if (!dl) return;
+  const paint = () => {
+    const set = new Set(elements.map(e => e.label).filter(Boolean));
+    _labelSuggest.labels.forEach(l => set.add(l));
+    const dl2 = document.getElementById('prefill-labels');
+    if (dl2) dl2.innerHTML = [...set].sort().map(l => '<option value="' + esc(l) + '"></option>').join('');
+  };
+  paint();
+  if (_labelSuggest.busy || Date.now() - _labelSuggest.at < 60000) return;
+  _labelSuggest.busy = true;
+  try {
+    const slugs = [PREFILL_SOURCE_TAB, 'edm'].filter(sl => sl !== _currentTab);
+    const found = new Set();
+    for (const sl of slugs) { (await _fetchTabElements(sl)).forEach(e => { if (e && e.label) found.add(_normLabel(e.label)); }); }
+    _labelSuggest.labels = [...found].filter(Boolean); _labelSuggest.at = Date.now();
+    paint();
+  } catch (e) { /* suggestions are optional */ }
+  finally { _labelSuggest.busy = false; }
+}
+
+// Read another tab's last SAVED layout (read-only)
+async function _fetchTabElements(slug) {
+  const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(tabSupabaseId(slug)) + '&select=state_json';
+  const res = await fetch(url, { headers: _supaHeaders() });
+  if (!res.ok) throw new Error('read ' + res.status);
+  const rows = await res.json();
+  if (!rows || !rows.length || !rows[0].state_json) return [];
+  const st = JSON.parse(rows[0].state_json);
+  return Array.isArray(st.elements) ? st.elements : [];
+}
+
+// Brochure text -> plain lines (no bold / italics / colours / sizes)
+function _plainLines(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = cbreSafeHtml(html || '');
+  const lines = extractLines(tmp).map(l => {
+    const d = document.createElement('div'); d.innerHTML = l;
+    return (d.textContent || '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').trim();
+  });
+  while (lines.length && lines[0] === '') lines.shift();
+  while (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+function _safeAgentImg(u) { return (typeof u === 'string' && /^https:\/\//i.test(u) && u.length < 600 && !/[\s"'<>`\\]/.test(u)) ? u : ''; }
+
+function _buildPrefillPlan(src, dst) {
+  const byLabel = new Map(), dupes = new Set();
+  (src || []).forEach(e => {
+    if (!e || PREFILL_TYPES.indexOf(e.type) < 0) return;
+    const l = _normLabel(e.label); if (!l) return;
+    if (byLabel.has(l)) dupes.add(l); else byLabel.set(l, e);      // first box (lowest layer) wins
+  });
+  const plan = { apply: [], skip: [], dupes: [...dupes], labelled: 0 };
+  dst.forEach(d => {
+    if (!d || PREFILL_TYPES.indexOf(d.type) < 0) return;
+    const l = _normLabel(d.label); if (!l) return;
+    plan.labelled++;
+    const s = byLabel.get(l);
+    if (!s)               { plan.skip.push({ label: l, why: 'no Brochure box has this label' }); return; }
+    if (s.type !== d.type){ plan.skip.push({ label: l, why: 'Brochure box is ' + s.type + ', this box is ' + d.type }); return; }
+    if (d.type === 'text') {
+      const lines = _plainLines(s.content);
+      if (!lines.length)  { plan.skip.push({ label: l, why: 'Brochure box is empty' }); return; }
+      plan.apply.push({ id: d.id, label: l, kind: 'text', lines });
+    } else if (d.type === 'img') {
+      if (!s.imageUrl)    { plan.skip.push({ label: l, why: 'Brochure box has no image' }); return; }
+      if (!_isAssetUrl(s.imageUrl)) { plan.skip.push({ label: l, why: 'image is not from your storage' }); return; }
+      plan.apply.push({ id: d.id, label: l, kind: 'img', url: s.imageUrl });
+    } else {
+      if (!(s.agentId || s.agentName || s.agentPhone || s.agentImage)) { plan.skip.push({ label: l, why: 'Brochure card has no agent' }); return; }
+      plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: String(s.agentId || ''), agentName: s.agentName || '', agentPhone: s.agentPhone || '', agentImage: s.agentImage || '' });
+    }
+  });
+  return plan;
+}
+
+let _prefillPlan = null;
+async function openPrefill() {
+  const btn = document.getElementById('btn-prefill');
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Reading Brochure…'; }
+  try {
+    const src = await _fetchTabElements(PREFILL_SOURCE_TAB);
+    _prefillPlan = _buildPrefillPlan(src, elements);
+    _prefillPlan.srcCount = src.length;
+    _renderPrefillModal();
+  } catch (e) {
+    console.warn('[B4] pre-fill read failed:', e);
+    _renderPrefillModal('Couldn\'t read the Brochure just now. Check your connection and try again. Nothing was changed.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
+}
+function closePrefill() { document.getElementById('prefill-modal').classList.remove('open'); _prefillPlan = null; }
+
+function _renderPrefillModal(errorMsg) {
+  const box = document.getElementById('prefill-box');
+  box.textContent = '';
+  const add = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; box.appendChild(n); return n; };
+  add('div', 'pf-title', 'Pre-fill from Brochure');
+  const plan = _prefillPlan;
+  const buttons = document.createElement('div'); buttons.className = 'pf-btns';
+  const cancel = document.createElement('button'); cancel.className = 'pf-cancel'; cancel.textContent = errorMsg || !plan || !plan.apply.length ? 'Close' : 'Cancel'; cancel.onclick = closePrefill;
+
+  if (errorMsg) { add('div', '', errorMsg); buttons.appendChild(cancel); box.appendChild(buttons); document.getElementById('prefill-modal').classList.add('open'); return; }
+
+  if (!plan.labelled) {
+    add('div', '', 'No boxes on this tab have a pre-fill label yet. Select a text, image or agent box and type a label in the “Pre-fill label” section of the properties panel — use the same label on the matching Brochure box.');
+  } else if (!plan.apply.length) {
+    add('div', '', 'Nothing to fill: none of the ' + plan.labelled + ' labelled box' + (plan.labelled === 1 ? '' : 'es') + ' on this tab has matching content on the Brochure.');
+  } else {
+    const n = { text: 0, img: 0, agent: 0 }; plan.apply.forEach(a => n[a.kind]++);
+    const parts = []; if (n.text) parts.push(n.text + ' text'); if (n.img) parts.push(n.img + ' image'); if (n.agent) parts.push(n.agent + ' agent');
+    add('div', '', 'This will copy the Brochure’s text and images into ' + plan.apply.length + ' box' + (plan.apply.length === 1 ? '' : 'es') + ' (' + parts.join(', ') + ').');
+    add('div', 'pf-warn', 'Whatever is currently in those boxes will be replaced — locked boxes included. Text keeps this tab’s own formatting, and long text makes a box grow downwards. You can undo it with one Ctrl/⌘+Z. The Brochure itself is never changed.');
+    const ul = add('ul', 'pf-list');
+    plan.apply.forEach(a => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = a.label; li.appendChild(b); li.appendChild(document.createTextNode(' — ' + (a.kind === 'text' ? 'text' : a.kind === 'img' ? 'image' : 'agent'))); ul.appendChild(li); });
+  }
+  if (plan.skip.length) {
+    add('div', '', 'Left untouched (' + plan.skip.length + '):');
+    const ul = add('ul', 'pf-list');
+    plan.skip.slice(0, 14).forEach(k => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = k.label; li.appendChild(b); li.appendChild(document.createTextNode(' — ' + k.why)); ul.appendChild(li); });
+    if (plan.skip.length > 14) add('div', '', '…and ' + (plan.skip.length - 14) + ' more');
+  }
+  if (plan.dupes.length) add('div', 'pf-warn', 'More than one Brochure box uses the label ' + plan.dupes.join(', ') + '. The first one is used.');
+
+  if (plan.apply.length) {
+    const go = document.createElement('button'); go.className = 'pf-go'; go.textContent = 'Overwrite and fill'; go.onclick = applyPrefill;
+    buttons.appendChild(cancel); buttons.appendChild(go);
+  } else buttons.appendChild(cancel);
+  box.appendChild(buttons);
+  document.getElementById('prefill-modal').classList.add('open');
+}
+
+function applyPrefill() {
+  const plan = _prefillPlan;
+  closePrefill();
+  if (!plan || !plan.apply.length) return;
+  _pushUndo();                                   // ONE undo step for the whole fill
+  const grew = [];
+  plan.apply.forEach(a => {
+    const d = elements.find(e => e.id === a.id);   // re-find: the live element, in case collaborators changed things
+    if (!d || d.type !== (a.kind === 'img' ? 'img' : a.kind)) return;
+    if (a.kind === 'text') {
+      d.content = cbreSafeHtml(a.lines.map(l => '<div>' + (l ? esc(l) : '<br>') + '</div>').join(''));   // words only; the box's own style stays
+      grew.push(d.id);
+    } else if (a.kind === 'img') {
+      d.imageUrl = a.url;
+      delete d.imgX; delete d.imgY; delete d.imgW; delete d.imgH; delete d.hasCrop;   // start from a clean fit in the EDM box
+    } else {
+      const ag = agentById(a.agentId);
+      d.agentId    = ag ? String(ag.id) : a.agentId;
+      d.agentName  = ag ? (ag.name  || '') : a.agentName;
+      d.agentPhone = ag ? (ag.phone || '') : a.agentPhone;
+      d.agentImage = ag ? agentPhotoUrl(ag) : _safeAgentImg(a.agentImage);
+    }
+  });
+  deselectAll();
+  renderCanvas();
+  grew.forEach(id => { const e = elements.find(x => x.id === id); if (e) autoFitText(e); });   // longer text -> box grows downwards
+  scheduleSave();
+  if (connected) broadcast({ type: 'full_state', elements: elements.map(e => ({ ...e })), userId, userName });
+  setSave('saved', 'Pre-filled ' + plan.apply.length + ' box' + (plan.apply.length === 1 ? '' : 'es'));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.getElementById('prefill-modal'); if (m && m.classList.contains('open')) closePrefill(); } });
+
 function renderCanvas() {
   // Per-box paragraph/bullet style sheets are keyed by box id. Boxes get rebuilt (template, undo, paste…) and ids get
   // reused, so clear them all first — otherwise a new box can inherit the dash bullets of an old box that had the same id.
@@ -4220,6 +4467,7 @@ function renderCanvas() {
   const card = document.getElementById('canvas-card');
   card.querySelectorAll('.cv-el').forEach(n => n.remove());
   elements.forEach(el => createElDOM(el));
+  if (typeof updatePrefillButton === 'function') updatePrefillButton();
 }
 
 // ════════════════════════════════════════════════════════
