@@ -5088,6 +5088,8 @@ async function exportPDF(allTabs) {
       // ── Image ──────────────────────────────────────────────────
       // Draw placeholder for empty image boxes
       if (el.type === 'img' && !el.imageUrl) {
+        // An empty LOGO box (label "logo") exports completely clear - no grey placeholder - so an unused logo leaves no mark
+        if (/(^|[-_])logo([-_]|$)/.test(String(el.label || '').toLowerCase())) continue;
         doc.setFillColor(224, 228, 224);
         doc.setDrawColor(200, 208, 200);
         doc.setLineWidth(0.1);
