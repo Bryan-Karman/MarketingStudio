@@ -2219,7 +2219,7 @@ function showProps(id) {
     + '<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:4px;">Layer ' + (layerIdx + 1) + ' of ' + layerTotal + '</div>';
 
   // Pre-fill label (text / image / agent boxes) - always editable, even when the box is locked
-  const labelBlock = (el.type === 'rect') ? '' :
+  const labelBlock = (el.type === 'rect' || USER_ROLE !== 'admin') ? '' :       // admins only
       '<div class="prop-section">Pre-fill label</div>'
     + '<div class="prop-row"><input class="prop-input" type="text" list="prefill-labels" maxlength="40" placeholder="e.g. headline" value="' + esc(el.label || '') + '" onchange="setElLabel(' + id + ',this.value)" style="width:100%;"></div>'
     + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">Boxes with the same label on the Brochure and the EDM are matched by <b>Pre-fill from Brochure</b>.</div>'
@@ -4298,6 +4298,7 @@ window.addEventListener('load', () => { updatePrefillButton(); setTimeout(update
 
 // ── labels ───────────────────────────────────────────────
 function setElLabel(id, value) {
+  if (USER_ROLE !== 'admin') return;                    // labels are an admin-only setting
   const el = elements.find(e => e.id === id);
   if (!el || el.type === 'rect') return;
   const v = _normLabel(value);
@@ -4492,7 +4493,8 @@ function applyPrefill() {
       grew.push(d.id);
     } else if (a.kind === 'img') {
       _setElImageUrl(d, a.url);
-      d.objectFit = 'contain';                                   // pre-filled images sit 'contained' (whole picture visible)
+      // Cover by default; only a box labelled "logo" (e.g. logo, tenant-logo, logo-1) is set to Contain so the whole logo shows
+      d.objectFit = /(^|[-_])logo([-_]|$)/.test(a.label) ? 'contain' : 'cover';
       delete d.imgX; delete d.imgY; delete d.imgW; delete d.imgH; delete d.hasCrop;   // start from a clean fit in the EDM box
     } else {
       const ag = agentById(a.agentId);
