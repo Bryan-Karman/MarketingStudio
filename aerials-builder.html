@@ -1961,7 +1961,8 @@ function _positionStickerTail(el){
     const stemX = (sx && sx.stemX) || -80;
     const len = Math.abs(stemX), dotW = 11;
     const bodyW = body.offsetWidth, bodyH = body.offsetHeight;
-    const midY = bodyH/2;
+    const al = (sx && sx.stemAlign) || 'mid';
+    const midY = al==='top' ? 1.5 : (al==='bottom' ? bodyH - 1.5 : bodyH/2);
     htail.style.top = (midY - dotW/2) + 'px';
     htail.style.bottom = 'auto'; htail.style.right = 'auto';
     if(stemX < 0){
@@ -3766,6 +3767,13 @@ function showProps(s){
       + '</div>'
     : '';
 
+  const _al = s.stemAlign || 'mid';
+  const _alBtn = (v,label)=>'<button onclick="setStickerStemAlign(\''+v+'\')" style="flex:1;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px;border:1px solid '+(_al===v?'#5bbf7a':'#333')+';background:'+(_al===v?'#003f2d':'#242424')+';color:'+(_al===v?'#5bbf7a':'#888')+';font-family:inherit;">'+label+'</button>';
+  const stemAlignBtns = (s.stemDir==='h' && !isArea && !isRoad && !s.hideStem)
+    ? '<div style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin:6px 0 2px;">Pin Position</div><div style="display:flex;gap:4px;">'
+      + _alBtn('top','Top')+_alBtn('mid','Middle')+_alBtn('bottom','Bottom')+'</div>'
+    : '';
+
   scroll.innerHTML = `
     ${!isProp ? '<div class=\"pf\"><label>Label</label>'
       + '<textarea id=\"prop-label\" rows=\"2\" oninput=\"updateStickerLabel(this.value)\" onkeydown=\"handleLabelKeydown(event)\" placeholder=\"Enter label text...\" style=\"resize:vertical;min-height:36px;\">' + escHtml(s.label||m.name||'') + '</textarea>'
@@ -3828,6 +3836,7 @@ function showProps(s){
       ${s.showArrow ? '<div style="font-size:9px;color:#888;margin-top:2px;padding:0 2px;">Click arrow on canvas to rotate ('+((s.arrowAngle||0))+'°)</div>' : ''}
       ${hideStemBtn}
       ${stemDirBtns}
+      ${stemAlignBtns}
     </div>
     <button class="props-del-btn" onclick="deleteSticker('${s.id}')">🗑 Delete Markup</button>
 
@@ -3948,6 +3957,14 @@ function setStickerStemDir(dir){
     const len = Math.abs(s.stemHeight || 26);
     s.stemHeight = dir==='up' ? -len : len;
   }
+  _rerenderSticker(s); showProps(s); scheduleSave();
+}
+
+function setStickerStemAlign(v){
+  const s = pages[currentPage].stickers.find(x=>x.id===selectedSticker);
+  if(!s) return;
+  pushUndo();
+  s.stemAlign = v;
   _rerenderSticker(s); showProps(s); scheduleSave();
 }
 
