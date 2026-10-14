@@ -1958,6 +1958,7 @@ function createElDOM(el) {
     const img = document.createElement('img');
     img.className = 'cv-img-crop';
     img.draggable = false;
+    img.decoding = 'async';   // decode off the main thread so big pictures don't freeze the editor
     img.style.display = el.imageUrl ? 'block' : 'none';
     if (el.imageUrl) img.src = el.imageUrl;
 
@@ -2176,7 +2177,7 @@ function showProps(id) {
   const lockBtn = '<button class="lock-btn ' + (locked?'locked':'unlocked') + '" onclick="toggleLock(' + id + ')">'
     + (locked ? '🔒 Locked — click to unlock' : '🔓 Unlocked — click to lock') + '</button>'
     + (locked ? '<div style="font-size:10px;color:var(--amber);background:#2a1800;border:1px solid #5a3000;border-radius:3px;padding:6px 8px;margin-bottom:8px;line-height:1.5;">'
-      + (el.type === 'text' ? 'Position, size &amp; formatting are locked.<br>Double-click to still edit text.' : el.type === 'agent' ? 'Position &amp; size are locked.<br>You can still choose a different agent.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
+      + (el.type === 'text' ? 'Position, size &amp; box styling are locked.<br>Double-click to edit text, then highlight words and use <b>B</b> / <i>I</i> / <u>U</u> to format them.' : el.type === 'agent' ? 'Position &amp; size are locked.<br>You can still choose a different agent.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
       + '</div>' : '');
 
   // Layer order block — shared, always enabled (locking doesn't affect layer order)
@@ -2219,16 +2220,20 @@ function showProps(id) {
     const alignBtns = [['left','⬅'],['center','⬌'],['right','➡'],['justify','≡']]
       .map(function(a){ return '<button class="align-btn ' + ((s.textAlign||'left')===a[0]?'active':'') + '" onclick="setProp(' + id + ',\'textAlign\',\'' + a[0] + '\');this.closest(\'.align-btns\').querySelectorAll(\'.align-btn\').forEach(function(b){b.classList.remove(\'active\')});this.classList.add(\'active\')" title="' + a[0] + '">' + a[1] + '</button>'; }).join('');
 
+    // Bold / Italic / Underline sit OUTSIDE the dimmed 'locked' wrapper: they only format the text the person has
+    // highlighted inside the box, so they stay usable on a locked box (position, size and box styling stay locked).
+    const fmtRow = '<div class="prop-row"><span class="prop-label">Format</span><div class="align-btns">'
+      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'bold\')" title="Bold selected text" style="font-weight:700;width:28px;"><b>B</b></button>'
+      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'italic\')" title="Italic selected text" style="font-style:italic;width:28px;"><i>I</i></button>'
+      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'underline\')" title="Underline selected text" style="text-decoration:underline;width:28px;">U</button>'
+      + '</div></div>';
+
     const formattingBlock = '<div style="' + lkDim + '">'
       + '<div class="prop-section">Typography</div>'
       + '<div class="prop-row"><span class="prop-label">Font</span><select class="prop-input" ' + dis + ' onchange="setProp(' + id + ',\'fontFamily\',this.value)">' + fontOpts + '</select></div>'
       + '<div class="prop-row"><span class="prop-label">Size</span><input class="prop-input" type="number" min="6" max="200" value="' + parseFloat(s.fontSize||16) + '" ' + dis + ' onchange="setProp(' + id + ',\'fontSize\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '<div class="prop-row"><span class="prop-label">Weight</span><select class="prop-input" ' + dis + ' onchange="setProp(' + id + ',\'fontWeight\',this.value)">' + weightOpts + '</select></div>'
-      + '<div class="prop-row"><span class="prop-label">Format</span><div class="align-btns">'
-      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'bold\')" title="Bold selected text" style="font-weight:700;width:28px;"><b>B</b></button>'
-      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'italic\')" title="Italic selected text" style="font-style:italic;width:28px;"><i>I</i></button>'
-      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'underline\')" title="Underline selected text" style="text-decoration:underline;width:28px;">U</button>'
-      + '</div></div>'
+      + '</div>' + fmtRow + '<div style="' + lkDim + '">'
       + '<div class="prop-row"><span class="prop-label">Colour</span>'
       + '<input class="prop-input" type="color" value="' + (s.color||'#111111') + '" ' + dis + ' oninput="setProp(' + id + ',\'color\',this.value)">'
       + '<input class="prop-input" type="text" value="' + (s.color||'#111111') + '" style="width:68px;flex:none;" ' + dis + ' oninput="setProp(' + id + ',\'color\',this.value);this.previousElementSibling.value=this.value"></div>'
@@ -2462,6 +2467,13 @@ function formatSelection(cmd) {
       const wrap = inner.closest('.cv-el');
       if (wrap) targetId = parseInt(wrap.dataset.id);
     }
+  }
+
+  // Locked box: only ever format an explicit highlighted selection (never the whole box by accident)
+  const _lockedEl = (targetId || _selectedId) ? elements.find(e => e.id === (targetId || _selectedId)) : null;
+  if (_lockedEl && _lockedEl.locked) {
+    const sl = window.getSelection();
+    if (!inner || !sl || sl.isCollapsed || !inner.contains(sl.anchorNode)) return;
   }
 
   if (!inner) {
@@ -2934,6 +2946,49 @@ function imgDragLeave(id)   { const a = document.getElementById('img-upload-area
 function imgDrop(e, id)     { e.preventDefault(); imgDragLeave(id); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) uploadImageForEl(f, id); }
 function imgFileSelected(input, id) { if (input.files[0]) uploadImageForEl(input.files[0], id); input.value = ''; }
 
+// ── Shrink big photos BEFORE they are uploaded ───────────────────
+// Originals straight off a camera / phone are often 5-20 MB and 4000-6000 px wide, and the canvas, the image picker
+// and every collaborator then download that whole file. The largest thing we ever print is an A4 page at 300 ppi
+// (2480 px), so anything beyond ~3000 px on the long edge is wasted. We downscale + re-encode once, here, and keep
+// the original untouched if the result wouldn't actually be smaller (or for SVG / GIF / already-small files).
+const UPLOAD_MAX_EDGE = 3000;
+const UPLOAD_JPEG_Q   = 0.9;
+async function _optimiseImageForUpload(file) {
+  if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) return null;               // leave svg / gif / anything else alone
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }  // respects phone rotation (EXIF)
+  catch (e) { return null; }
+  const long = Math.max(bmp.width, bmp.height);
+  if (long <= UPLOAD_MAX_EDGE && file.size < 600 * 1024) { bmp.close && bmp.close(); return null; } // already light
+  const k  = Math.min(1, UPLOAD_MAX_EDGE / long);
+  const w  = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+  // transparency check on a small copy (PNG logos etc. must stay PNG)
+  let hasAlpha = false;
+  if (file.type !== 'image/jpeg') {
+    const t = document.createElement('canvas'); t.width = Math.min(w, 256); t.height = Math.max(1, Math.round(t.width * h / w));
+    const tx = t.getContext('2d', { willReadFrequently: true }); tx.drawImage(bmp, 0, 0, t.width, t.height);
+    const d = tx.getImageData(0, 0, t.width, t.height).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 250) { hasAlpha = true; break; }
+  }
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d');
+  if (!hasAlpha) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, w, h); }
+  cx.imageSmoothingQuality = 'high';
+  // step down in halves for a cleaner result than one big jump
+  let src = bmp, sw = bmp.width, sh = bmp.height;
+  while (sw > w * 2 && sh > h * 2) {
+    const c = document.createElement('canvas'); c.width = Math.round(sw / 2); c.height = Math.round(sh / 2);
+    const c2 = c.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(src, 0, 0, c.width, c.height);
+    src = c; sw = c.width; sh = c.height;
+  }
+  cx.drawImage(src, 0, 0, sw, sh, 0, 0, w, h);
+  bmp.close && bmp.close();
+  const type = hasAlpha ? 'image/png' : 'image/jpeg';
+  const blob = await new Promise(r => cv.toBlob(r, type, UPLOAD_JPEG_Q));
+  if (!blob || blob.size >= file.size) return null;                                // not an improvement: keep original
+  return { blob, ext: hasAlpha ? 'png' : 'jpg' };
+}
+
 async function uploadImageForEl(file, id) {
   const spinner = document.getElementById('img-uploading-' + id);
   if (spinner) spinner.classList.add('active');
@@ -2944,8 +2999,12 @@ async function uploadImageForEl(file, id) {
     // Keep the original file name (made storage-safe) in the path so it can be shown in the image picker
     const safeBase = (hasDot ? file.name.replace(/\.[^.]+$/, '') : file.name)
                        .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^[_.]+|[_.]+$/g, '').slice(0, 60) || 'image';
-    const path = PORTFOLIO_ID + '/' + PROPERTY_ID + '/' + id + '_' + Date.now() + '_' + safeBase + '.' + ext;
-    const res  = await fetch(SUPA_URL + '/storage/v1/object/assets/' + path, { method: 'POST', headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': file.type }, body: file });
+    let upBody = file, upType = file.type, upExt = ext;
+    try { const o = await _optimiseImageForUpload(file); if (o) { upBody = o.blob; upType = o.blob.type; upExt = o.ext; } }
+    catch (e) { console.warn('[B4] image optimise skipped:', e); }
+    const path = PORTFOLIO_ID + '/' + PROPERTY_ID + '/' + id + '_' + Date.now() + '_' + safeBase + '.' + upExt;
+    // file names contain a timestamp so they never change -> tell browsers to cache them for a year
+    const res  = await fetch(SUPA_URL + '/storage/v1/object/assets/' + path, { method: 'POST', headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': upType, 'cache-control': 'max-age=31536000' }, body: upBody });
     if (!res.ok) throw new Error(await res.text());
     const url = SUPA_URL + '/storage/v1/object/public/assets/' + path;
     const el = elements.find(e => e.id === id);
@@ -3047,7 +3106,7 @@ async function renderImageLibrary(id) {
     const row = document.createElement('div');
     row.className = 'img-lib-item' + (it.url === cur ? ' current' : '');
     row.title = it.name ? it.name : 'Uploaded before file names were kept';
-    const th = document.createElement('img'); th.src = it.url; th.loading = 'lazy'; th.draggable = false; th.alt = '';
+    const th = document.createElement('img'); th.decoding = 'async'; th.src = it.url; th.loading = 'lazy'; th.draggable = false; th.alt = '';
     const tx = document.createElement('div'); tx.className = 'img-lib-text';
     const nm = document.createElement('div'); nm.className = 'img-lib-name'; nm.textContent = _imgDisplayName(it);
     const mt = document.createElement('div'); mt.className = 'img-lib-meta';
