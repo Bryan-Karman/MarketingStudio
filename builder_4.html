@@ -1875,12 +1875,11 @@ function addElement(type) {
 
 function deleteSelected() {
   if (!_selectedIds.size) return;
-  // Only delete unlocked elements
-  const ids = [..._selectedIds].filter(id => {
-    const el = elements.find(e => e.id === id);
-    return el && !el.locked;
-  });
+  // Locked boxes can be deleted too (locking protects position / size / styling, not removal) - but ask first
+  const ids = [..._selectedIds].filter(id => elements.some(e => e.id === id));
   if (!ids.length) return;
+  const nLocked = ids.filter(id => (elements.find(e => e.id === id) || {}).locked).length;
+  if (nLocked && !confirm('Delete ' + (nLocked === 1 ? 'this locked box' : nLocked + ' locked boxes') + '?\n\nYou can undo it with Ctrl/⌘+Z.')) return;
   _pushUndo();
   ids.forEach(id => {
     const idx = elements.findIndex(e => e.id === id);
@@ -2237,7 +2236,7 @@ function showProps(id) {
     + '<input class="prop-input" type="number" value="' + el.h + '" style="width:52px;flex:none;" ' + dis + ' onchange="setPosSize(' + id + ',\'h\',+this.value)"></div>'
     + '</div>';
 
-  const delBtn = '<button class="del-btn" style="' + lkDim + '" onclick="deleteSelected()">✕ Delete Element</button>';
+  const delBtn = '<button class="del-btn" onclick="deleteSelected()">✕ Delete Element</button>';
 
   if (el.type === 'text') {
     const s = el.style || {};
