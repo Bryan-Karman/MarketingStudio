@@ -982,7 +982,7 @@ let TAB_DEFINITIONS = [
   // EDM default: 900 × 7000 px (stored as mm at 96 dpi, so 900 px = 900*25.4/96 mm)
   { slug:'edm',           name:'EDM',                  mmW:900*25.4/96, mmH:7000*25.4/96, active:true, unit:'px' },
   { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
-  { slug:'pressad',       name:'Press Ad',             mmW:210, mmH:148,  active:true  },
+  { slug:'pressad',       name:'Press Ad M3x6',        mmW:262, mmH:92,   active:true  },
 ];
 // Supabase storage for tab definitions: portfolio_id='_b4_tabdefs', property_id=PROPERTY_ID
 const TABDEFS_PORTFOLIO = '_b4_tabdefs';
@@ -1003,7 +1003,9 @@ async function loadTabDefs() {
           const existing = defaults.find(d => d.slug === savedTab.slug);
           if (existing) {
             // Update mutable properties from saved state
-            existing.name   = savedTab.name;
+            // The Press Ad tab was renamed 'Press Ad M3x6'. Properties still saved under the old stock name
+            // pick up the new one; any other (custom) name is kept.
+            existing.name   = (savedTab.slug === 'pressad' && savedTab.name === 'Press Ad') ? existing.name : savedTab.name;
             existing.active = savedTab.active;
             // The EDM used to default to 158 × 800 mm. Properties that still have exactly that saved
             // (it gets re-saved whenever tab settings change) never chose it, so they move to the new
@@ -1014,7 +1016,10 @@ async function loadTabDefs() {
             // that never chose it, so they move to the new 420 × 297 mm default. Other sizes are kept.
             const oldStockB2 = savedTab.slug === 'brochure2'
               && Math.abs((savedTab.mmW || 0) - 210) < 0.01 && Math.abs((savedTab.mmH || 0) - 297) < 0.01;
-            if (!oldStockEdm && !oldStockB2) {
+            // Press Ad used to default to 210 × 148 mm; stock-size properties move to 262 × 92 mm.
+            const oldStockPress = savedTab.slug === 'pressad'
+              && Math.abs((savedTab.mmW || 0) - 210) < 0.01 && Math.abs((savedTab.mmH || 0) - 148) < 0.01;
+            if (!oldStockEdm && !oldStockB2 && !oldStockPress) {
               existing.mmW    = savedTab.mmW || existing.mmW;
               existing.mmH    = savedTab.mmH || existing.mmH;
             }
