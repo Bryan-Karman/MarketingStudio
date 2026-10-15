@@ -978,7 +978,7 @@ function tabChannelName(slug) {
 // Default tab definitions — overwritten by Supabase on load
 let TAB_DEFINITIONS = [
   { slug:'brochure',      name:'Brochure',             mmW:210, mmH:297,  active:true,  builtIn:true },
-  { slug:'brochure2',     name:'Brochure 2 Page',      mmW:210, mmH:297,  active:true  },
+  { slug:'brochure2',     name:'Brochure 2 Page',      mmW:420, mmH:297,  active:true  },
   // EDM default: 900 × 7000 px (stored as mm at 96 dpi, so 900 px = 900*25.4/96 mm)
   { slug:'edm',           name:'EDM',                  mmW:900*25.4/96, mmH:7000*25.4/96, active:true, unit:'px' },
   { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
@@ -1010,7 +1010,11 @@ async function loadTabDefs() {
             // default. Any other saved size is a deliberate choice and is kept.
             const oldStockEdm = savedTab.slug === 'edm'
               && Math.abs((savedTab.mmW || 0) - 158) < 0.01 && Math.abs((savedTab.mmH || 0) - 800) < 0.01;
-            if (!oldStockEdm) {
+            // Brochure 2 Page used to default to 210 × 297 mm (single A4). Properties still saved at exactly
+            // that never chose it, so they move to the new 420 × 297 mm default. Other sizes are kept.
+            const oldStockB2 = savedTab.slug === 'brochure2'
+              && Math.abs((savedTab.mmW || 0) - 210) < 0.01 && Math.abs((savedTab.mmH || 0) - 297) < 0.01;
+            if (!oldStockEdm && !oldStockB2) {
               existing.mmW    = savedTab.mmW || existing.mmW;
               existing.mmH    = savedTab.mmH || existing.mmH;
             }
