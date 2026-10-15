@@ -177,6 +177,7 @@
       if (k === 'imageUrl') { var u = imageUrl(v); if (u === null) { note('image link removed', v, ''); out.imageUrl = ''; } else out.imageUrl = u; return; }
       if (k === 'prevImages') { var pa = []; if (Array.isArray(v)) v.slice(0, 30).forEach(function(u){ var c = imageUrl(u); if (c) pa.push(c); }); out.prevImages = pa; return; }
       if (k === 'style')    { out.style = cleanStyleObj(v); return; }
+      if (k === 'agentName' || k === 'agentPhone') { out[k] = cleanName(v, 80); return; }   // typed agent names can contain O'Brien, José, &, etc.
       if (HAS.call(NUM_RANGE, k)) { var n = num(v, NUM_RANGE[k][0], NUM_RANGE[k][1]); if (n === null) note('number removed', k + '=' + String(v), ''); else out[k] = n; return; }
       if (typeof v === 'boolean') { out[k] = v; return; }
       if (typeof v === 'number')  { if (isFinite(v)) out[k] = v; return; }
@@ -280,6 +281,8 @@
           if (typeof aid !== 'string' || !/^[A-Za-z0-9_\-.:]{0,80}$/.test(aid)) return reject('bad agent id', p);
           out.agentId = aid;
         }
+        if (p.agentName  !== undefined) out.agentName  = cleanName(p.agentName, 80);
+        if (p.agentPhone !== undefined) out.agentPhone = cleanName(p.agentPhone, 80);
         if (p.fontSize !== undefined) { out.fontSize = num(p.fontSize, 4, 400);  if (out.fontSize === null) return reject('bad font size', p); }
         if (p.gap !== undefined)      { out.gap      = num(p.gap, 0, 1000);      if (out.gap === null)      return reject('bad gap', p); }
         if (p.color !== undefined)    { var cc = cssVal(p.color); if (typeof cc !== 'string') return reject('bad colour', p); out.color = cc; }
@@ -503,6 +506,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .align-btn{width:26px;height:26px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .align-btn:hover{border-color:var(--muted);color:var(--text);}
 .align-btn.active{background:var(--green-dk);border-color:var(--green);color:var(--green);}
+.fmt-bold-btn{flex:1;height:26px;padding:0 12px;border:1px solid var(--green);border-radius:var(--radius);background:var(--surface2);color:#e8eaeb;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;opacity:1;transition:all .15s;}
+.fmt-bold-btn:hover{background:var(--green-dk);color:var(--green);}
 .del-btn{width:100%;margin-top:10px;padding:6px;border:1px solid #5a2222;border-radius:var(--radius);background:#2a1515;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;}
 .del-btn:hover{background:#3a1818;}
 
@@ -745,9 +750,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <!-- FLOATING AGENT DROPDOWN -->
 <div id="agent-dropdown" style="display:none;position:fixed;z-index:5000;background:#1a1d1f;border:1px solid #313639;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:220px;overflow:hidden;">
   <div style="padding:8px 10px;border-bottom:1px solid #272b2e;">
-    <input id="agent-search" type="text" placeholder="Search agents…" autocomplete="off"
+    <input id="agent-search" type="text" placeholder="Search agents or type a name…" autocomplete="off"
       style="width:100%;padding:6px 8px;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;"
-      oninput="filterAgentList(this.value)">
+      oninput="filterAgentList(this.value)" onkeydown="agentSearchKey(event)">
   </div>
   <div id="agent-dropdown-list" style="max-height:260px;overflow-y:auto;padding:4px;"></div>
 </div>
@@ -2211,7 +2216,7 @@ function showProps(id) {
   const lockBtn = '<button class="lock-btn ' + (locked?'locked':'unlocked') + '" onclick="toggleLock(' + id + ')">'
     + (locked ? '🔒 Locked — click to unlock' : '🔓 Unlocked — click to lock') + '</button>'
     + (locked ? '<div style="font-size:10px;color:var(--amber);background:#2a1800;border:1px solid #5a3000;border-radius:3px;padding:6px 8px;margin-bottom:8px;line-height:1.5;">'
-      + (el.type === 'text' ? 'Position, size &amp; box styling are locked.<br>Double-click to edit text, then highlight words and use <b>B</b> / <i>I</i> / <u>U</u> to format them.' : el.type === 'agent' ? 'Position &amp; size are locked.<br>You can still choose a different agent.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
+      + (el.type === 'text' ? 'Position, size &amp; box styling are locked.<br>Double-click to edit text, then highlight words and click <b>Bold</b> to format them.' : el.type === 'agent' ? 'Position &amp; size are locked.<br>You can still choose a different agent.' : 'Position &amp; size are locked.<br>Double-click to enter crop mode.')
       + '</div>' : '');
 
   // Layer order block — shared, always enabled (locking doesn't affect layer order)
@@ -2262,13 +2267,10 @@ function showProps(id) {
     const alignBtns = [['left','⬅'],['center','⬌'],['right','➡'],['justify','≡']]
       .map(function(a){ return '<button class="align-btn ' + ((s.textAlign||'left')===a[0]?'active':'') + '" onclick="setProp(' + id + ',\'textAlign\',\'' + a[0] + '\');this.closest(\'.align-btns\').querySelectorAll(\'.align-btn\').forEach(function(b){b.classList.remove(\'active\')});this.classList.add(\'active\')" title="' + a[0] + '">' + a[1] + '</button>'; }).join('');
 
-    // Bold / Italic / Underline sit OUTSIDE the dimmed 'locked' wrapper: they only format the text the person has
-    // highlighted inside the box, so they stay usable on a locked box (position, size and box styling stay locked).
-    const fmtRow = '<div class="prop-row"><span class="prop-label">Format</span><div class="align-btns">'
-      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'bold\')" title="Bold selected text" style="font-weight:700;width:28px;"><b>B</b></button>'
-      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'italic\')" title="Italic selected text" style="font-style:italic;width:28px;"><i>I</i></button>'
-      + '<button class="align-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'underline\')" title="Underline selected text" style="text-decoration:underline;width:28px;">U</button>'
-      + '</div></div>';
+    // Bold sits OUTSIDE the dimmed 'locked' wrapper: it only formats the text the person has highlighted inside the box,
+    // so it stays usable (and fully bright) on a locked box while position, size and box styling stay locked.
+    const fmtRow = '<div class="prop-row"><span class="prop-label">Format</span>'
+      + '<button class="fmt-bold-btn" onmousedown="saveSelectionBeforeBlur(event)" onclick="formatSelection(\'bold\')" title="Highlight text in the box, then click to make it bold (works on locked boxes too)">Bold</button></div>';
 
     const formattingBlock = '<div style="' + lkDim + '">'
       + '<div class="prop-section">Typography</div>'
@@ -2321,7 +2323,9 @@ function showProps(id) {
     const agentBlock = '<div class="prop-section">Agent</div>'
       + '<div class="prop-row">' + agentSelectHtml(id, el) + '</div>'
       + (note ? '<div style="font-size:10px;color:var(--amber);line-height:1.5;margin:4px 0 6px;">' + note + '</div>' : '')
-      + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;">Photo, name and number come from the agents list. You can also just click the card on the canvas to pick from a searchable list.</div>'
+      + '<div class="prop-row" style="margin-top:6px;"><span class="prop-label">Name</span><input class="prop-input" type="text" maxlength="80" placeholder="Or type a name" value="' + esc(d.name).replace(/"/g,'&quot;') + '" onchange="setAgentCustom(' + id + ',this.value,undefined)"></div>'
+      + '<div class="prop-row"><span class="prop-label">Phone</span><input class="prop-input" type="text" maxlength="80" placeholder="Number" value="' + esc(d.phone).replace(/"/g,'&quot;') + '" onchange="setAgentCustom(' + id + ',undefined,this.value)"></div>'
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;">Pick an agent from the list (photo, name and number come from the database), or type any name and number above. Typed names have no photo. You can also click the card on the canvas to search or type.</div>'
       + '<div class="prop-section" style="margin-top:8px;">Look</div>'
       + '<div class="prop-row"><span class="prop-label">Font size</span><input class="prop-input" type="number" min="6" max="200" step="1" value="' + (parseFloat(st.fontSize) || 26) + '" onchange="setAgentStyle(' + id + ',\'fontSize\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '<div class="prop-row"><span class="prop-label">Colour</span>'
@@ -2465,7 +2469,7 @@ function setProp(id, key, value) {
   scheduleSave();
 }
 
-// ── Format selection (bold / italic / underline) ──────────────────
+// ── Format selection (bold) ──────────────────
 // Saves the current browser selection BEFORE the sidebar button click
 // steals focus, then restores it and applies execCommand to that range.
 let _savedSelection = null; // { range, innerId }
@@ -2662,6 +2666,36 @@ function setAgentCard(id, agentId) {
   scheduleSave();
 }
 
+// Typed (not from the database) agent for a card. Pass name and/or phone; undefined = leave that part as it is.
+// The card stops being linked to the database (agentId ''), so it shows exactly what was typed.
+function setAgentCustom(id, name, phone) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'agent') return;
+  const d = agentCardData(el);
+  const newName  = name  === undefined ? d.name  : String(name).trim();
+  const newPhone = phone === undefined ? d.phone : String(phone).trim();
+  if (!el.agentId && newName === (el.agentName || '') && newPhone === (el.agentPhone || '')) return;
+  _pushUndo();
+  // Same person with only the number changed: keep their photo. A different name means a different person: no photo.
+  const keepPhoto = d.agent && newName === (d.agent.name || '');
+  el.agentImage = keepPhoto ? d.photo : '';
+  el.agentId = ''; el.agentName = newName; el.agentPhone = newPhone;
+  refreshAgentCard(el);
+  if (connected) broadcast({ type: 'el_agent', id, agentId: '', agentName: el.agentName, agentPhone: el.agentPhone, userId, userName });
+  // keep the dropdown in the properties panel in step without rebuilding the typing boxes (which would drop focus)
+  const sel = document.getElementById('agent-select-' + id); if (sel) sel.value = '';
+  scheduleSave();
+}
+
+// Split typed text like "Jane O'Brien 0412 345 678" or "Jane, 0412 345 678" into { name, phone }
+function parseAgentText(text) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  const m = t.match(/^(.*?)[\s,|\u2013\u2014-]*((?:\+?\(?\d[\d\s().-]{6,}\d))$/);
+  if (m && m[1].trim()) return { name: m[1].trim(), phone: m[2].trim() };
+  if (m && !m[1].trim()) return { name: '', phone: m[2].trim() };
+  return { name: t, phone: '' };
+}
+
 // Card look: key = 'fontSize' (number, px) | 'color' | 'gap' (number, px between photo and text)
 function setAgentStyle(id, key, value) {
   const el = elements.find(e => e.id === id);
@@ -2684,8 +2718,10 @@ function handleRemoteAgent(payload) {
   if (payload.agentId !== undefined) {
     const a = agentById(payload.agentId);
     el.agentId = payload.agentId; el.agentName = a ? (a.name || '') : el.agentName; el.agentPhone = a ? (a.phone || '') : el.agentPhone;
-    el.agentImage = a ? agentPhotoUrl(a) : el.agentImage;
+    el.agentImage = a ? agentPhotoUrl(a) : (payload.agentId === '' ? '' : el.agentImage);
   }
+  if (payload.agentName  !== undefined) el.agentName  = payload.agentName;
+  if (payload.agentPhone !== undefined) el.agentPhone = payload.agentPhone;
   el.style = el.style || {};
   if (payload.fontSize !== undefined) el.style.fontSize = payload.fontSize + 'px';
   if (payload.color    !== undefined) el.style.color    = payload.color;
@@ -2697,7 +2733,7 @@ function handleRemoteAgent(payload) {
 // '<select>' for the properties panel
 function agentSelectHtml(id, el) {
   const opts = agentList.map(a => '<option value="' + esc(String(a.id)) + '"' + (String(a.id) === String(el.agentId) ? ' selected' : '') + '>' + esc(a.name || '') + '</option>').join('');
-  return '<select class="prop-input" style="width:100%;" onchange="setAgentCard(' + id + ',this.value)">'
+  return '<select id="agent-select-' + id + '" class="prop-input" style="width:100%;" onchange="setAgentCard(' + id + ',this.value)">'
        + '<option value="">— Select an agent —</option>' + opts + '</select>';
 }
 
@@ -2719,8 +2755,7 @@ function toggleAgentBox(id) {
   if (wrap) wrap.dataset.agentBox = el.isAgentBox ? '1' : '';
 }
 
-function showAgentDropdown(id) {
-  if (!agentList.length) return;
+function showAgentDropdown(id) {   // works even if the database list is empty, so a name can still be typed
   _agentDropdownForId = id;
   const dropdown = document.getElementById('agent-dropdown');
   const list     = document.getElementById('agent-dropdown-list');
@@ -2761,8 +2796,17 @@ function showAgentDropdown(id) {
 function renderAgentItems(id, filtered) {
   const list = document.getElementById('agent-dropdown-list');
   if (!list) return;
+  const typed = ((document.getElementById('agent-search') || {}).value || '').trim();
+  const customRow = typed
+    ? '<div class="agent-dd-item" onclick="insertCustomAgent(' + id + ')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
+      + '<span class="agent-dd-name" style="color:#17e88f;">✎ Use “' + esc(typed.length > 40 ? typed.slice(0, 40) + '…' : typed) + '” as typed</span>'
+      + '<span class="agent-dd-phone">Not from the database' + (filtered.length ? ' · or pick a match below' : '') + '</span></div>'
+    : '<div class="agent-dd-item" onclick="document.getElementById(\'agent-search\').focus()" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
+      + '<span class="agent-dd-name" style="color:#17e88f;">✎ Type a name instead</span>'
+      + '<span class="agent-dd-phone">Type in the box above, then press Enter (add a number after the name if you like)</span></div>';
   list.innerHTML =
-    '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
+    customRow
+    + '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
     + '<span class="agent-dd-name" style="color:#6b7175;">— No agent (leave blank)</span>'
     + '</div>'
     + (filtered.length
@@ -2772,7 +2816,7 @@ function renderAgentItems(id, filtered) {
             + (a.phone ? '<span class="agent-dd-phone">' + esc(a.phone) + '</span>' : '')
             + '</div>'
           ).join('')
-        : '<div style="padding:10px 8px;font-size:11px;color:#6b7175;">No agents match</div>'
+        : '<div style="padding:10px 8px;font-size:11px;color:#6b7175;">' + (agentList.length ? 'No agents match' : 'No agents loaded') + ' (you can still use what you typed)</div>'
       );
 }
 
@@ -2781,10 +2825,45 @@ function filterAgentList(query) {
   if (!id) return;
   const q = query.trim().toLowerCase();
   const filtered = q ? agentList.filter(a =>
-    a.name.toLowerCase().includes(q) ||
-    (a.phone && a.phone.toLowerCase().includes(q))
+    String(a.name || '').toLowerCase().includes(q) ||
+    (a.phone && String(a.phone).toLowerCase().includes(q))
   ) : agentList;
   renderAgentItems(id, filtered);
+}
+
+// Enter in the search box: first match if there is one, otherwise use the typed text. Esc closes.
+function agentSearchKey(e) {
+  if (e.key === 'Escape') { hideAgentDropdown(); return; }
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const id = _agentDropdownForId; if (!id) return;
+  const q = e.target.value.trim(); if (!q) return;
+  const ql = q.toLowerCase();
+  const hits = agentList.filter(a => String(a.name || '').toLowerCase().includes(ql) || (a.phone && String(a.phone).toLowerCase().includes(ql)));
+  const exact = hits.find(a => String(a.name || '').toLowerCase() === ql);
+  if (exact || (hits.length === 1 && !e.shiftKey)) { insertAgent(id, String((exact || hits[0]).id)); return; }
+  insertCustomAgent(id);   // several or no matches (or Shift+Enter): use exactly what was typed
+}
+
+// Use the text typed in the picker's search box instead of a database agent (works for agent cards and agent boxes)
+function insertCustomAgent(id) {
+  const s = document.getElementById('agent-search');
+  const text = ((s && s.value) || '').replace(/\s+/g, ' ').trim();
+  hideAgentDropdown();
+  if (!text) return;
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  if (el.type === 'agent') { const p = parseAgentText(text); setAgentCustom(id, p.name, p.phone); if (_selectedId === id) showProps(id); return; }
+  if (el.type !== 'text') return;
+  _pushUndo();
+  const newContent = '<div>' + esc(text) + '</div>';
+  el.content = newContent;
+  const wrap  = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const inner = wrap && wrap.querySelector('.cv-text-inner');
+  if (inner) inner.innerHTML = newContent;
+  autoFitText(el);
+  if (connected) broadcast({ type: 'el_content', id, content: newContent, userId, userName });
+  scheduleSave();
 }
 
 function _closeAgentDropdown(e) {
@@ -3247,7 +3326,7 @@ function selectEl(id, addToSelection) {
   _updateMultiSelectUI();
 
   // If this is an agent box, show the floating agent picker
-  if (!addToSelection && agentList.length > 0) {
+  if (!addToSelection) {
     const el = elements.find(e => e.id === id);
     if (el && el.isAgentBox) {
       setTimeout(() => showAgentDropdown(id), 80);
@@ -4419,7 +4498,12 @@ function _buildPrefillPlan(src, dst) {
       const lines = _plainLines(s.content);
       if (!lines.length)  { plan.skip.push({ label: l, why: 'Brochure box is empty' }); return; }
       const m = _matchAgentFromText(lines.join(' '));
-      if (!m.agent)       { plan.skip.push({ label: l, why: m.why }); return; }
+      if (!m.agent) {   // not in the database: use the Brochure text as a typed name + number
+        const pt = parseAgentText(lines.join(' '));
+        if (!pt.name && !pt.phone) { plan.skip.push({ label: l, why: m.why }); return; }
+        plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: '', agentName: pt.name, agentPhone: pt.phone, agentImage: '', note: (pt.name || pt.phone) + ' (typed)' });
+        return;
+      }
       plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: String(m.agent.id), agentName: m.agent.name || '', agentPhone: m.agent.phone || '', agentImage: '', note: m.agent.name || '' });
     } else {
       if (!(s.agentId || s.agentName || s.agentPhone || s.agentImage)) { plan.skip.push({ label: l, why: 'Brochure card has no agent' }); return; }
