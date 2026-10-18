@@ -3229,7 +3229,9 @@ function restoreTab(idx){
         // Restore richHtml for ALL fields — bold/italic is user intent and must persist.
         if(sv.richHtml && _richRxRst.test(sv.richHtml)){
           inner.innerHTML = sv.richHtml;
-          el.dataset.richHtml = sv.richHtml;
+          _purgeStaleIncomeLines(inner, (document.getElementById('fi')||{}).value);
+          el.dataset.richHtml = inner.innerHTML;
+          sv.richHtml = inner.innerHTML;
           inner.style.whiteSpace = 'normal';
           inner.style.wordBreak = 'break-word';
         } else {
@@ -3981,8 +3983,10 @@ function globalSync(){
         }
         if(_svRich3){
           // richHtml exists in savedStates — restore it to the element and skip rebuild
-          el.dataset.richHtml = _svRich3;
           inner.innerHTML = _svRich3;
+          _purgeStaleIncomeLines(inner, (document.getElementById('fi')||{}).value);
+          _svRich3 = inner.innerHTML;
+          el.dataset.richHtml = _svRich3;
           // Also ensure income last-line bold is applied
           var _reFi3 = ((document.getElementById('fi')||{}).value||'').trim();
           if(_reFi3){
@@ -5227,6 +5231,23 @@ function _rgb(str){
   }catch(e){return null;}
 }
 
+
+// Removes stale/duplicate "Net Income: ..." lines from a rich-text container so only the
+// current Net Income field value remains (fixes old "$xxx" placeholder lines reappearing in exports).
+function _purgeStaleIncomeLines(container, fiVal){
+  try{
+    fiVal=(fiVal||'').trim();
+    if(!container||!fiVal) return;
+    var pfx=fiVal.split(':')[0].trim().toLowerCase();
+    if(!pfx) return;
+    var cur=fiVal.toLowerCase(), seen=false;
+    Array.from(container.querySelectorAll('div.plain-line')).forEach(function(d){
+      var t=(d.textContent||'').replace(/\u200B/g,'').trim().toLowerCase();
+      if(t.indexOf(pfx+':')!==0 && t!==cur) return;
+      if(t!==cur || seen){ d.remove(); } else { seen=true; }
+    });
+  }catch(e){}
+}
 async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
   if(addPage) pdf.addPage([pageW,pageH], pageW>pageH?'landscape':'portrait');
   const [canvasW, canvasH] = getTabSize(tabIdx); // use actual artboard size (respects custom sizes)
@@ -5252,6 +5273,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
         offscreen.style.height = realArt.style.height;
         offscreen.style.background = realArt.style.background || '#ffffff';
         offscreen.innerHTML = realArt.innerHTML;
+        if([0,1].indexOf(tabIdx)>-1){ offscreen.querySelectorAll('.el[data-type="text"]').forEach(function(e2){ if(e2.dataset.field==='bullets'||e2.dataset.wasIncomeAnchor==='1') _purgeStaleIncomeLines(e2.querySelector('.el-inner'),(document.getElementById('fi')||{}).value); }); }
         // Remove selection rings and handles from the clone
         offscreen.querySelectorAll('.el-sel-ring,.rh,.crop-label,.crop-overlay,.crop-img-outline,.crop-img-rh').forEach(function(n){n.remove();});
         offscreen.querySelectorAll('.el').forEach(function(el){el.classList.remove('selected','crop-mode','has-crop');});
@@ -5284,6 +5306,7 @@ async function renderTabToPdf_raster(pdf, tabIdx, pageW, pageH, addPage){
             // richHtml: use directly — preserves bold/italic set by B button
             if(sv.richHtml){
               inner.innerHTML=sv.richHtml;
+              if([0,1].indexOf(tabIdx)>-1&&(sv.field==='bullets'||sv.wasIncomeAnchor==='1')) _purgeStaleIncomeLines(inner,(gv('fi')||document.getElementById('fi')?.value||''));
               // If this is an income anchor, ensure the last plain-line div is bold.
               // sv.richHtml may not have font-weight:700 if saved before globalSync ran.
               var _rhFi=(gv('fi')||document.getElementById('fi')?.value||''). trim();
