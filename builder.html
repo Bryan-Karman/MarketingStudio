@@ -5958,17 +5958,24 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
   pdf.rect(0,0,pageW,pageH,'F');
 
   // Render each element (offset by bleedMm so artwork sits within the bleed margins)
+  var _incDone=false;
   for(const sv of sorted){
     if(sv.field==='income' || sv.incomeEl==='1') continue; // skip income placeholder always
     // Never export elements that are hidden on the artboard (they were still being drawn before)
     if(sv.elDisplay==='none') continue;
-    // Brochure tabs: Net Income is only printed inside the Highlight Points box. Any other
-    // text box whose text is a stray "Net Income: ..." line (e.g. stale "$xxx" placeholder) is skipped.
+    // Brochure tabs: skip STALE stand-alone "Net Income: ..." boxes (e.g. the old "$xxx" placeholder).
+    // A stand-alone income box is only drawn if its text matches the current Net Income field exactly,
+    // and only once. The correct line is therefore always kept.
     if(sv.type==='text' && [0,1].indexOf(tabIdx)>-1 && sv.field!=='bullets' && sv.wasIncomeAnchor!=='1'){
-      var _stray=((sv.content||'')+' '+(sv.richHtml||'').replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim().toLowerCase();
-      var _fiNow=((document.getElementById('fi')||{}).value||'').trim();
-      var _fiP=(_fiNow?_fiNow.split(':')[0].trim().toLowerCase():'net income');
-      if(_stray.indexOf(_fiP+':')===0 && _stray.length<80) continue;
+      var _norm=function(t){return String(t||'').replace(/\u200B/g,'').replace(/\s+/g,' ').trim().toLowerCase();};
+      var _stray=_norm((sv.content||'')!==''?sv.content:(sv.richHtml||'').replace(/<[^>]*>/g,' '));
+      var _fiNow=_norm((document.getElementById('fi')||{}).value);
+      var _fiP=(_fiNow?_fiNow.split(':')[0].trim():'net income');
+      if(_stray.length<80 && _stray.indexOf(_fiP+':')===0){
+        if(_stray!==_fiNow) continue;            // stale text (e.g. $xxx)
+        if(_incDone) continue;                   // duplicate
+        _incDone=true;
+      }
     }
     const ex=parseFloat(sv.x)*scaleX + _bleedMm, ey=parseFloat(sv.y)*scaleY + _bleedMm;
     let ew=parseFloat(sv.w)*scaleX; const eh=parseFloat(sv.h)*scaleY;
