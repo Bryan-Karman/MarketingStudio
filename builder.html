@@ -5833,6 +5833,14 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
           // Plain-line mode (brochure highlight points): read from div.plain-line
           _sv2.content = Array.from(_plainDivs).map(function(d){ return d.textContent; }).join('\n');
           _sv2.noWrap = '0';
+          // Keep the paragraph spacing shown on the artboard (saved value may be missing/0)
+          if(!(parseFloat(_sv2.bulletParaSpacing)>0)){
+            var _liveBsp = parseFloat(_liveEl.dataset.bulletParaSpacing)||parseFloat(_inner.dataset.bulletSpacing)||0;
+            if(!_liveBsp){
+              for(var _pi=0;_pi<_plainDivs.length;_pi++){ var _mb=parseFloat(_plainDivs[_pi].style.marginBottom); if(_mb>0){ _liveBsp=_mb; break; } }
+            }
+            if(_liveBsp>0) _sv2.bulletParaSpacing = String(_liveBsp);
+          }
         }
         // richHtml is already set above — it carries bold/italic formatting
       }
@@ -6003,7 +6011,12 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
       const ta=ist.textAlign||'left';
       const lh=parseFloat(ist.lineHeight)||1.35;
       const lineH=fsMm*lh;
-      const bsp=parseFloat(sv.bulletParaSpacing||'0')*scaleY;
+      let _bspPx=parseFloat(sv.bulletParaSpacing||'0')||0;
+      if(!(_bspPx>0) && (sv.field==='bullets' || sv.wasIncomeAnchor==='1') && [0,1].indexOf(tabIdx)>-1 && sv.richHtml){
+        var _mbm=String(sv.richHtml).match(/margin-bottom:\s*([\d.]+)px/i);
+        if(_mbm) _bspPx=parseFloat(_mbm[1])||0;
+      }
+      const bsp=_bspPx*scaleY;
       // Brochure tabs (0,1): bullets field uses plain-line spacing, not dash bullets.
       // Force isBullets=false regardless of what sv.bullets says (stale saves may have bullets:'1').
       const _isBrochureBulletsField = ((sv.field === 'bullets' || sv.wasIncomeAnchor === '1') && (tabIdx === 0 || tabIdx === 1));
