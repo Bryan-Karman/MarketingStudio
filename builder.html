@@ -5865,6 +5865,17 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
     }
     const fi = ((document.getElementById('fi')||{}).value||'').trim();
     if((field==='bullets' || sv.wasIncomeAnchor==='1') && fi){
+      // Drop any Net Income line already inside the Highlight Points text (e.g. a stale
+      // "Net Income: $xxx pa* + GST" typed/pasted into the sidebar box) so only the
+      // current Net Income field value is appended below.
+      (function(){
+        var _pfx = fi.split(':')[0].trim().toLowerCase();
+        if(!_pfx) return;
+        text = text.split('\n').filter(function(l){
+          var c = l.replace(/^\u2013\s*/,'').replace(/\u200B/g,'').trim().toLowerCase();
+          return !(c.indexOf(_pfx+':')===0 || c===fi.toLowerCase());
+        }).join('\n');
+      })();
       if([5,6,8].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text+'\n\u2013 '+fi : '\u2013 '+fi; }
       else if([0,1].indexOf(tabIdx)>-1){ if(!text.trim().endsWith(fi)) text = text ? text.trimEnd()+'\n'+fi : fi; }
     }
