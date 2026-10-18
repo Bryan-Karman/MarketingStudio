@@ -5960,6 +5960,16 @@ async function renderTabToPdf_native(pdf, tabIdx, pageW, pageH, addPage, bleedOp
   // Render each element (offset by bleedMm so artwork sits within the bleed margins)
   for(const sv of sorted){
     if(sv.field==='income' || sv.incomeEl==='1') continue; // skip income placeholder always
+    // Never export elements that are hidden on the artboard (they were still being drawn before)
+    if(sv.elDisplay==='none') continue;
+    // Brochure tabs: Net Income is only printed inside the Highlight Points box. Any other
+    // text box whose text is a stray "Net Income: ..." line (e.g. stale "$xxx" placeholder) is skipped.
+    if(sv.type==='text' && [0,1].indexOf(tabIdx)>-1 && sv.field!=='bullets' && sv.wasIncomeAnchor!=='1'){
+      var _stray=((sv.content||'')+' '+(sv.richHtml||'').replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim().toLowerCase();
+      var _fiNow=((document.getElementById('fi')||{}).value||'').trim();
+      var _fiP=(_fiNow?_fiNow.split(':')[0].trim().toLowerCase():'net income');
+      if(_stray.indexOf(_fiP+':')===0 && _stray.length<80) continue;
+    }
     const ex=parseFloat(sv.x)*scaleX + _bleedMm, ey=parseFloat(sv.y)*scaleY + _bleedMm;
     let ew=parseFloat(sv.w)*scaleX; const eh=parseFloat(sv.h)*scaleY;
     if(ew<=0||eh<=0) continue;
