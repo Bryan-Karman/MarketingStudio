@@ -3681,22 +3681,23 @@ function enterCropMode(id) {
   const img  = clip && clip.querySelector('img');
   if (!el || !wrap || !img) return;
 
-  // Initialise crop state — always start at box size with correct aspect ratio.
-  // Never use naturalWidth/Height directly as 4K photos would expand to thousands of px.
-  const natW = img.naturalWidth  || el.w;
-  const natH = img.naturalHeight || el.h;
-  const aspect = natW / natH;
-  // Start image sized to COVER the box (same as objectFit:cover) so nothing looks wrong
-  if (!el.imgW || !el.imgH) {
-    if (el.w / el.h > aspect) {
-      // Box wider than image aspect — match width, image is taller than box
-      el.imgW = el.w;
-      el.imgH = Math.round(el.w / aspect);
-    } else {
-      // Box taller — match height, image is wider than box
-      el.imgH = el.h;
-      el.imgW = Math.round(el.h * aspect);
+  // Initialise crop state so the image starts EXACTLY where it is already drawn on screen (same Fit, centred),
+  // otherwise the first double-click makes the picture jump to the top-left corner.
+  // Never use naturalWidth/Height directly as the size: 4K photos would expand to thousands of px.
+  if (!(el.hasCrop && el.imgW && el.imgH)) {
+    const natW = img.naturalWidth  || el.w;
+    const natH = img.naturalHeight || el.h;
+    const fit  = el.objectFit || 'cover';
+    let iw, ih;
+    if (fit === 'fill') { iw = el.w; ih = el.h; }
+    else {
+      const sc = fit === 'contain' ? Math.min(el.w / natW, el.h / natH) : Math.max(el.w / natW, el.h / natH);
+      iw = natW * sc; ih = natH * sc;
     }
+    el.imgW = Math.round(iw * 100) / 100;
+    el.imgH = Math.round(ih * 100) / 100;
+    el.imgX = Math.round(((el.w - iw) / 2) * 100) / 100;   // centred, like object-position: center
+    el.imgY = Math.round(((el.h - ih) / 2) * 100) / 100;
   }
   if (el.imgX === undefined) el.imgX = 0;
   if (el.imgY === undefined) el.imgY = 0;
@@ -3809,8 +3810,8 @@ function _cropImgMousedown(e) {
     const dy = Math.round((ev.clientY - sy) / _zoom);
     // Clamp so image edge doesn't go past clip edge
     const iw = el.imgW || el.w, ih = el.imgH || el.h;
-    el.imgX = Math.min(0, Math.max(el.w - iw, ox + dx));
-    el.imgY = Math.min(0, Math.max(el.h - ih, oy + dy));
+    el.imgX = Math.min(Math.max(0, el.w - iw), Math.max(Math.min(0, el.w - iw), ox + dx));
+    el.imgY = Math.min(Math.max(0, el.h - ih), Math.max(Math.min(0, el.h - ih), oy + dy));
     img.style.left = el.imgX + 'px';
     img.style.top  = el.imgY + 'px';
     _updateCropGhost(el, wrap);
@@ -3850,8 +3851,9 @@ function _cropResizeStart(e, id, rh) {
     el.x=nx;el.y=ny;el.w=nw;el.h=nh;
     wrap.style.cssText='left:'+nx+'px;top:'+ny+'px;width:'+nw+'px;height:'+nh+'px;';
     // Keep image clamped within new box
-    el.imgX = Math.min(0, Math.max(nw-(el.imgW||nw), el.imgX||0));
-    el.imgY = Math.min(0, Math.max(nh-(el.imgH||nh), el.imgY||0));
+    { const iw2 = el.imgW||nw, ih2 = el.imgH||nh;
+      el.imgX = Math.min(Math.max(0, nw-iw2), Math.max(Math.min(0, nw-iw2), el.imgX||0));
+      el.imgY = Math.min(Math.max(0, nh-ih2), Math.max(Math.min(0, nh-ih2), el.imgY||0)); }
     img.style.left = el.imgX+'px'; img.style.top = el.imgY+'px';
     _updateCropGhost(el, wrap);
   }
@@ -3891,23 +3893,22 @@ function _cropGhostResizeStart(e, id, dir) {
     if (dir === 'ne') { rw = ow + dx; rh = oh - dy; }
     if (dir === 'nw') { rw = ow - dx; rh = oh - dy; }
 
+    const MIN = 20; // smallest the image can be scaled to (px)
     if (!ev.shiftKey) {
-      // DEFAULT: stay in proportion. Scale uniformly by whichever axis the pointer has moved furthest, and never
-      // let the image shrink below the box (it must still cover it).
+      // DEFAULT: stay in proportion. Scale uniformly by whichever axis the pointer has moved furthest.
+      // The image may be scaled smaller than the box (e.g. to fit a whole logo inside it).
       const sW = rw / ow, sH = rh / oh;
       let sc = Math.abs(sW - 1) >= Math.abs(sH - 1) ? sW : sH;
-      sc = Math.max(sc, el.w / ow, el.h / oh);
+      sc = Math.max(sc, MIN / ow, MIN / oh);
       nw = Math.round(ow * sc); nh = Math.round(oh * sc);
     } else {
       // SHIFT held: free stretch in any direction (width and height independent)
-      nw = Math.max(el.w, rw); nh = Math.max(el.h, rh);
+      nw = Math.max(MIN, Math.round(rw)); nh = Math.max(MIN, Math.round(rh));
     }
 
-    // Anchor the opposite corner, then keep the image covering the box
+    // Anchor the opposite corner (no clamping — the image can sit anywhere, even partly outside the box)
     if (dir === 'sw' || dir === 'nw') nx = ox + (ow - nw);
     if (dir === 'ne' || dir === 'nw') ny = oy + (oh - nh);
-    nx = Math.min(0, Math.max(el.w - nw, nx));
-    ny = Math.min(0, Math.max(el.h - nh, ny));
 
     el.imgW = nw; el.imgH = nh; el.imgX = nx; el.imgY = ny;
     img.style.width  = nw + 'px'; img.style.height = nh + 'px';
