@@ -2049,6 +2049,8 @@ function createElDOM(el) {
 
   } else if (el.type === 'agent') {
     renderAgentCard(wrap, el);
+    // Double-click the card's text to type a name and number straight onto the page (agent not in the database)
+    wrap.addEventListener('dblclick', e => { e.stopPropagation(); editAgentCardText(wrap, el); });
     // A plain click (not a drag or resize) opens the searchable agent picker next to the card.
     // Clicking the card again while the picker is open just closes it.
     let _down = null, _wasOpen = false;
@@ -2079,7 +2081,24 @@ function createElDOM(el) {
     if (el.isAgentBox) wrap.dataset.agentBox = '1';
     wrap.appendChild(inner);
 
-    wrap.addEventListener('dblclick', e => { e.stopPropagation(); enterEditMode(wrap, inner, el.id); });
+    wrap.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      if (wrap.classList.contains('editing')) return;   // already typing: the browser's own double-click word selection does the job
+      enterEditMode(wrap, inner, el.id, e);              // first double-click: edit, and select the word that was clicked
+    });
+    // Agent boxes: one click on the box and you're typing (for agents that aren't in the database).
+    // A drag still moves the box; the agent list stays open below for picking from the database.
+    {
+      let _dn = null;
+      wrap.addEventListener('mousedown', e => { _dn = { x: e.clientX, y: e.clientY, multi: _selectedIds.size > 1, editing: wrap.classList.contains('editing') }; }, true);
+      wrap.addEventListener('click', e => {
+        if (!_dn || !el.isAgentBox || e.button !== 0 || e.shiftKey || _dn.multi || _dn.editing) return;
+        if (e.target.classList && e.target.classList.contains('cv-rh')) return;
+        if (Math.abs(e.clientX - _dn.x) + Math.abs(e.clientY - _dn.y) > 3) return;     // it was a drag
+        if (wrap.classList.contains('editing')) return;
+        enterEditMode(wrap, inner, el.id, e, 'caret');
+      });
+    }
 
     inner.addEventListener('input', () => {
       _pushUndoGrouped('text:' + el.id); // snapshot the OLD content before it's overwritten below
@@ -2656,6 +2675,35 @@ function renderAgentCard(wrap, el) {
   wrap.appendChild(root);
 }
 
+function editAgentCardText(wrap, el) {
+  const inner = wrap.querySelector('.cv-agent-text .cv-text-inner');
+  if (!inner || inner.contentEditable === 'true') return;
+  hideAgentDropdown();
+  const before = agentCardData(el);
+  if (!before.name && !before.phone) inner.innerHTML = '<div><br></div>';      // clear the "Choose an agent" hint
+  wrap.classList.add('editing');
+  inner.contentEditable = 'true';
+  inner.focus();
+  const r = document.createRange(); r.selectNodeContents(inner); r.collapse(false);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  const onPaste = ev => { ev.preventDefault(); document.execCommand('insertText', false, ((ev.clipboardData || window.clipboardData).getData('text/plain') || '').replace(/\s*\n\s*/g, ' ')); };
+  const onKey = ev => { if (ev.key === 'Escape') { ev.preventDefault(); inner.blur(); } };
+  const commit = () => {
+    inner.removeEventListener('blur', commit); inner.removeEventListener('paste', onPaste); inner.removeEventListener('keydown', onKey);
+    inner.contentEditable = 'false'; wrap.classList.remove('editing');
+    const lines = (inner.innerText || '').split(/\n+/).map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    let name = '', phone = '';
+    if (lines.length >= 2) { name = lines[0]; phone = lines.slice(1).join(' '); }
+    else if (lines.length === 1) { const pt = parseAgentText(lines[0]); name = pt.name; phone = pt.phone; }
+    if (name === before.name && phone === before.phone) { refreshAgentCard(el); return; }   // nothing changed: keep the database agent as is
+    setAgentCustom(el.id, name, phone);
+    refreshAgentCard(el);
+  };
+  inner.addEventListener('blur', commit);
+  inner.addEventListener('paste', onPaste);
+  inner.addEventListener('keydown', onKey);
+}
+
 function refreshAgentCard(el) {
   const wrap = document.querySelector('.cv-el[data-id="' + el.id + '"]');
   if (wrap) renderAgentCard(wrap, el);
@@ -2768,7 +2816,7 @@ function toggleAgentBox(id) {
   if (wrap) wrap.dataset.agentBox = el.isAgentBox ? '1' : '';
 }
 
-function showAgentDropdown(id) {   // works even if the database list is empty, so a name can still be typed
+function showAgentDropdown(id, noFocus) {   // works even if the database list is empty, so a name can still be typed
   _agentDropdownForId = id;
   const dropdown = document.getElementById('agent-dropdown');
   const list     = document.getElementById('agent-dropdown-list');
@@ -2794,8 +2842,8 @@ function showAgentDropdown(id) {   // works even if the database list is empty, 
     dropdown.style.left = left + 'px';
   }
 
-  // Focus search input
-  setTimeout(() => {
+  // Focus search input (not when the box itself is being typed into)
+  if (!noFocus) setTimeout(() => {
     const s = document.getElementById('agent-search');
     if (s) s.focus();
   }, 60);
@@ -2816,7 +2864,7 @@ function renderAgentItems(id, filtered) {
       + '<span class="agent-dd-phone">Not from the database' + (filtered.length ? ' · or pick a match below' : '') + '</span></div>'
     : '<div class="agent-dd-item" onclick="document.getElementById(\'agent-search\').focus()" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
       + '<span class="agent-dd-name" style="color:#17e88f;">✎ Type a name instead</span>'
-      + '<span class="agent-dd-phone">Type in the box above, then press Enter (add a number after the name if you like)</span></div>';
+      + '<span class="agent-dd-phone">Click the box on the page and type, or type above and press Enter</span></div>';
   list.innerHTML =
     customRow
     + '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
@@ -3428,7 +3476,7 @@ function selectEl(id, addToSelection) {
   if (!addToSelection) {
     const el = elements.find(e => e.id === id);
     if (el && el.isAgentBox) {
-      setTimeout(() => showAgentDropdown(id), 80);
+      setTimeout(() => showAgentDropdown(id, true), 80);   // the list opens beside the box but focus stays on the box, so you can just type
     } else {
       hideAgentDropdown();
     }
@@ -3551,13 +3599,42 @@ function startMarquee(e) {
 // ════════════════════════════════════════════════════════
 // EDIT MODE (double-click to type)
 // ════════════════════════════════════════════════════════
-function enterEditMode(wrap, inner, id) {
+// Where in the text box a mouse event landed: { node, off } or null
+function _caretFromPoint(inner, x, y) {
+  let node = null, off = 0;
+  try {
+    if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) { node = p.offsetNode; off = p.offset; } }
+    else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); if (r) { node = r.startContainer; off = r.startOffset; } }
+  } catch (e) { return null; }
+  return (node && inner.contains(node)) ? { node, off } : null;
+}
+// The word under that point as a Range (null when the point is on a space / punctuation)
+function _wordRangeAt(pt) {
+  if (!pt || pt.node.nodeType !== 3) return null;
+  const t = pt.node.textContent, isW = ch => /[\p{L}\p{N}_'’]/u.test(ch);
+  const i = (pt.off < t.length && isW(t[pt.off])) ? pt.off : ((pt.off > 0 && isW(t[pt.off - 1])) ? pt.off - 1 : -1);
+  if (i < 0) return null;
+  let a = i, b = i + 1;
+  while (a > 0 && isW(t[a - 1])) a--;
+  while (b < t.length && isW(t[b])) b++;
+  const r = document.createRange(); r.setStart(pt.node, a); r.setEnd(pt.node, b);
+  return r;
+}
+
+// ev given: the caret goes where you clicked, and a DOUBLE-click selects the word there (mode 'caret' = just the caret).
+// No ev: caret at the end of the text.
+function enterEditMode(wrap, inner, id, ev, mode) {
+  const pt = (ev && typeof ev.clientX === 'number') ? _caretFromPoint(inner, ev.clientX, ev.clientY) : null;   // measure BEFORE the box changes
   selectEl(id);
   wrap.classList.add('editing');
   inner.contentEditable = 'true';
   inner.focus();
-  const range = document.createRange();
-  range.selectNodeContents(inner); range.collapse(false);
+  let range = null;
+  if (pt) {
+    range = (mode === 'caret') ? null : _wordRangeAt(pt);
+    if (!range) { range = document.createRange(); range.setStart(pt.node, pt.off); range.collapse(true); }
+  }
+  if (!range) { range = document.createRange(); range.selectNodeContents(inner); range.collapse(false); }
   const sel = window.getSelection();
   sel.removeAllRanges(); sel.addRange(range);
   inner.onblur = () => exitEditMode(wrap);
@@ -3663,11 +3740,30 @@ function autoFitText(el) {
   return true;
 }
 
+// Typed "Jane Smith 0412 345 678" in a 2-line agent box (Press Ad / Signboard): put the number on its own line
+function _autoSplitAgent(el, inner) {
+  if (!el || el.type !== 'text' || !_wantsTwoLineAgent(el)) return;
+  const filled = Array.from(inner.children).filter(n => n.textContent.trim());
+  if (filled.length > 1) return;                                            // already name / number
+  const text = (inner.innerText || inner.textContent || '').replace(/\s+/g, ' ').trim();
+  if (!text) return;
+  const pt = parseAgentText(text);
+  if (!(pt.name && pt.phone)) return;
+  const html = '<div>' + esc(pt.name) + '</div><div>' + esc(pt.phone) + '</div>';
+  _markTwoLine(el);
+  el.content = html; inner.innerHTML = html;
+  autoFitText(el);
+  if (connected) broadcast({ type: 'el_content', id: el.id, content: html, userId, userName });
+  scheduleSave();
+}
+
 function exitEditMode(wrap) {
   if (!wrap) return;
-  if (wrap.classList.contains('editing')) _endUndoGroup();
+  const wasEditing = wrap.classList.contains('editing');
+  if (wasEditing) _endUndoGroup();
   wrap.classList.remove('editing');
   const inner = wrap.querySelector('.cv-text-inner');
+  if (wasEditing && inner) _autoSplitAgent(elements.find(e => e.id === parseInt(wrap.dataset.id)), inner);
   if (inner) {
     inner.contentEditable = 'false';
     inner.onblur = null;
