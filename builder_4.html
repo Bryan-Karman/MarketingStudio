@@ -983,7 +983,7 @@ function tabChannelName(slug) {
 // Default tab definitions — overwritten by Supabase on load
 let TAB_DEFINITIONS = [
   { slug:'brochure',      name:'Brochure',             mmW:210, mmH:297,  active:true,  builtIn:true },
-  { slug:'brochure2',     name:'Brochure 2 Page',      mmW:420, mmH:297,  active:true  },
+  { slug:'brochure2',     name:'Brochure 2 Page',      mmW:420, mmH:297,  active:false },   // only ONE of Brochure / Brochure 2 Page is ever ticked
   // EDM default: 900 × 7000 px (stored as mm at 96 dpi, so 900 px = 900*25.4/96 mm)
   { slug:'edm',           name:'EDM',                  mmW:900*25.4/96, mmH:7000*25.4/96, active:true, unit:'px' },
   { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
@@ -1035,10 +1035,19 @@ async function loadTabDefs() {
           }
         });
         TAB_DEFINITIONS = defaults;
+        _normaliseBrochureTabs();
         console.log('[B4] Tab defs loaded:', TAB_DEFINITIONS.length, 'tabs');
       }
     }
   } catch(e) { console.warn('[B4] loadTabDefs failed:', e); }
+}
+
+// Exactly ONE of 'Brochure' / 'Brochure 2 Page' is ticked at any time. (Hiding a tab never deletes its content.)
+function _normaliseBrochureTabs() {
+  const b1 = TAB_DEFINITIONS.find(t => t.slug === 'brochure'), b2 = TAB_DEFINITIONS.find(t => t.slug === 'brochure2');
+  if (!b1 || !b2) return;
+  if (b1.active && b2.active) b2.active = false;      // both ticked (older properties): keep the Brochure
+  else if (!b1.active && !b2.active) b1.active = true;
 }
 
 async function saveTabDefs() {
@@ -2235,7 +2244,7 @@ function showProps(id) {
   const labelBlock = (el.type === 'rect' || USER_ROLE !== 'admin') ? '' :       // admins only
       '<div class="prop-section">Pre-fill label</div>'
     + '<div class="prop-row"><input class="prop-input" type="text" list="prefill-labels" maxlength="40" placeholder="e.g. headline" value="' + esc(el.label || '') + '" onchange="setElLabel(' + id + ',this.value)" style="width:100%;"></div>'
-    + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">Boxes with the same label on the Brochure and the EDM are matched by <b>Pre-fill from Brochure</b>.</div>'
+    + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">Boxes with the same label on the ' + esc(prefillSourceName()) + ' and on the EDM, Signboard or Press Ad are matched by <b>Pre-fill from ' + esc(prefillSourceName()) + '</b>.</div>'
     + '<datalist id="prefill-labels"></datalist>';
   if (labelBlock) setTimeout(_fillLabelDatalist, 0);
 
@@ -4236,6 +4245,7 @@ function ctxDeleteTab() {
   if (activeTabs().length <= 1) { alert('You must have at least one active tab.'); return; }
   if (!confirm('Delete tab "' + def.name + '"? This cannot be undone.')) return;
   def.active = false;
+  _normaliseBrochureTabs();      // deleting Brochure 2 Page puts the Brochure back
   saveTabDefs();
   if (_currentTab === _ctxTabSlug) {
     const next = activeTabs()[0];
@@ -4345,6 +4355,22 @@ function renderMarketingList() {
 function toggleTabActive(slug) {
   const def = tabDef(slug);
   if (!def) return;
+  // Brochure and Brochure 2 Page are a pair: exactly one is ticked, ticking one unticks the other.
+  // Hiding a tab never deletes its content, so swapping back and forth loses nothing.
+  if (slug === 'brochure' || slug === 'brochure2') {
+    const other = slug === 'brochure' ? 'brochure2' : 'brochure';
+    const otherDef = tabDef(other);
+    if (otherDef) {
+      if (def.active && slug === 'brochure') { alert('One of Brochure / Brochure 2 Page must stay ticked. Tick Brochure 2 Page to switch to it.'); return; }
+      const showSlug = def.active ? other : slug;          // un-ticking Brochure 2 Page switches back to the Brochure
+      const hideSlug = def.active ? slug  : other;
+      tabDef(showSlug).active = true; tabDef(hideSlug).active = false;
+      renderMarketingList(); renderTabBar();
+      const done = saveTabDefs();
+      if (_currentTab === hideSlug) Promise.resolve(done).then(() => switchTab(showSlug));   // you were on the tab that just got hidden
+      return;
+    }
+  }
   if (def.builtIn && def.active) { alert('The Brochure tab cannot be hidden.'); return; }
   def.active = !def.active;
   saveTabDefs();
@@ -4355,7 +4381,6 @@ function toggleTabActive(slug) {
   renderMarketingList();
   renderTabBar();
 }
-
 
 // ════════════════════════════════════════════════════════
 // PRE-FILL FROM BROCHURE
@@ -4368,7 +4393,12 @@ function toggleTabActive(slug) {
 //   • If the Brochure has nothing for a label (e.g. only 3 agents, not 4) that EDM box is left untouched.
 //   • Long text grows the box downwards. The whole fill is ONE undo step.
 // ════════════════════════════════════════════════════════
-const PREFILL_SOURCE_TAB = 'brochure';
+// The source is whichever of Brochure / Brochure 2 Page is ticked (only one ever is).
+function prefillSourceSlug() {
+  const b1 = tabDef('brochure'), b2 = tabDef('brochure2');
+  return (b2 && b2.active && !(b1 && b1.active)) ? 'brochure2' : 'brochure';
+}
+function prefillSourceName() { const d = tabDef(prefillSourceSlug()); return (d && d.name) || 'Brochure'; }
 const PREFILL_TYPES = ['text', 'img', 'agent'];
 
 function _normLabel(v) {
@@ -4378,9 +4408,14 @@ function _normLabel(v) {
 function updatePrefillButton() {
   const bar = document.getElementById('prefill-bar');
   if (!bar) return;
-  const d = tabDef(_currentTab);
-  const isEdmStyle = _currentTab === 'edm' || (d && tabUnit(d) === 'px');
-  bar.style.display = (isEdmStyle && _currentTab !== PREFILL_SOURCE_TAB) ? '' : 'none';
+  // Shown on every tab except the Brochure tabs themselves (EDM, Signboard, Press Ad, and copies of them)
+  const isBrochureTab = /^brochure/.test(_currentTab);
+  bar.style.display = isBrochureTab ? 'none' : '';
+  const btn = document.getElementById('btn-prefill');
+  if (btn && !btn.disabled) {
+    btn.textContent = '⇩ Pre-fill from ' + prefillSourceName();
+    btn.title = 'Copy the ' + prefillSourceName() + '\'s text and images into the labelled boxes on this tab';
+  }
 }
 window.addEventListener('load', () => { updatePrefillButton(); setTimeout(updatePrefillButton, 1500); });
 
@@ -4419,7 +4454,7 @@ async function _fillLabelDatalist() {
   if (_labelSuggest.busy || Date.now() - _labelSuggest.at < 60000) return;
   _labelSuggest.busy = true;
   try {
-    const slugs = [PREFILL_SOURCE_TAB, 'edm'].filter(sl => sl !== _currentTab);
+    const slugs = [prefillSourceSlug(), 'edm'].filter(sl => sl !== _currentTab);
     const found = new Set();
     for (const sl of slugs) { (await _fetchTabElements(sl)).forEach(e => { if (e && e.label) found.add(_normLabel(e.label)); }); }
     _labelSuggest.labels = [...found].filter(Boolean); _labelSuggest.at = Date.now();
@@ -4484,20 +4519,20 @@ function _buildPrefillPlan(src, dst) {
     const l = _normLabel(d.label); if (!l) return;
     plan.labelled++;
     const s = byLabel.get(l);
-    if (!s)               { plan.skip.push({ label: l, why: 'no Brochure box has this label' }); return; }
+    if (!s)               { plan.skip.push({ label: l, why: 'no ' + prefillSourceName() + ' box has this label' }); return; }
     const textToAgent = (s.type === 'text' && d.type === 'agent');           // Brochure text box -> EDM agent card
-    if (s.type !== d.type && !textToAgent){ plan.skip.push({ label: l, why: 'Brochure box is ' + s.type + ', this box is ' + d.type }); return; }
+    if (s.type !== d.type && !textToAgent){ plan.skip.push({ label: l, why: prefillSourceName() + ' box is ' + s.type + ', this box is ' + d.type }); return; }
     if (d.type === 'text') {
       const lines = _plainLines(s.content);
-      if (!lines.length)  { plan.skip.push({ label: l, why: 'Brochure box is empty' }); return; }
+      if (!lines.length)  { plan.skip.push({ label: l, why: prefillSourceName() + ' box is empty' }); return; }
       plan.apply.push({ id: d.id, label: l, kind: 'text', lines });
     } else if (d.type === 'img') {
-      if (!s.imageUrl)    { plan.skip.push({ label: l, why: 'Brochure box has no image' }); return; }
+      if (!s.imageUrl)    { plan.skip.push({ label: l, why: prefillSourceName() + ' box has no image' }); return; }
       if (!_isAssetUrl(s.imageUrl)) { plan.skip.push({ label: l, why: 'image is not from your storage' }); return; }
       plan.apply.push({ id: d.id, label: l, kind: 'img', url: s.imageUrl });
     } else if (textToAgent) {
       const lines = _plainLines(s.content);
-      if (!lines.length)  { plan.skip.push({ label: l, why: 'Brochure box is empty' }); return; }
+      if (!lines.length)  { plan.skip.push({ label: l, why: prefillSourceName() + ' box is empty' }); return; }
       const m = _matchAgentFromText(lines.join(' '));
       if (!m.agent) {   // not in the database: use the Brochure text as a typed name + number
         const pt = parseAgentText(lines.join(' '));
@@ -4507,7 +4542,7 @@ function _buildPrefillPlan(src, dst) {
       }
       plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: String(m.agent.id), agentName: m.agent.name || '', agentPhone: m.agent.phone || '', agentImage: '', note: m.agent.name || '' });
     } else {
-      if (!(s.agentId || s.agentName || s.agentPhone || s.agentImage)) { plan.skip.push({ label: l, why: 'Brochure card has no agent' }); return; }
+      if (!(s.agentId || s.agentName || s.agentPhone || s.agentImage)) { plan.skip.push({ label: l, why: prefillSourceName() + ' card has no agent' }); return; }
       plan.apply.push({ id: d.id, label: l, kind: 'agent', agentId: String(s.agentId || ''), agentName: s.agentName || '', agentPhone: s.agentPhone || '', agentImage: s.agentImage || '' });
     }
   });
@@ -4518,15 +4553,15 @@ let _prefillPlan = null;
 async function openPrefill() {
   const btn = document.getElementById('btn-prefill');
   const label = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Reading Brochure…'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Reading ' + prefillSourceName() + '…'; }
   try {
-    const src = await _fetchTabElements(PREFILL_SOURCE_TAB);
+    const src = await _fetchTabElements(prefillSourceSlug());
     _prefillPlan = _buildPrefillPlan(src, elements);
     _prefillPlan.srcCount = src.length;
     _renderPrefillModal();
   } catch (e) {
     console.warn('[B4] pre-fill read failed:', e);
-    _renderPrefillModal('Couldn\'t read the Brochure just now. Check your connection and try again. Nothing was changed.');
+    _renderPrefillModal('Couldn\'t read the ' + prefillSourceName() + ' just now. Check your connection and try again. Nothing was changed.');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = label; }
   }
@@ -4537,7 +4572,7 @@ function _renderPrefillModal(errorMsg) {
   const box = document.getElementById('prefill-box');
   box.textContent = '';
   const add = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; box.appendChild(n); return n; };
-  add('div', 'pf-title', 'Pre-fill from Brochure');
+  add('div', 'pf-title', 'Pre-fill from ' + prefillSourceName());
   const plan = _prefillPlan;
   const buttons = document.createElement('div'); buttons.className = 'pf-btns';
   const cancel = document.createElement('button'); cancel.className = 'pf-cancel'; cancel.textContent = errorMsg || !plan || !plan.apply.length ? 'Close' : 'Cancel'; cancel.onclick = closePrefill;
@@ -4545,14 +4580,14 @@ function _renderPrefillModal(errorMsg) {
   if (errorMsg) { add('div', '', errorMsg); buttons.appendChild(cancel); box.appendChild(buttons); document.getElementById('prefill-modal').classList.add('open'); return; }
 
   if (!plan.labelled) {
-    add('div', '', 'No boxes on this tab have a pre-fill label yet. Select a text, image or agent box and type a label in the “Pre-fill label” section of the properties panel — use the same label on the matching Brochure box.');
+    add('div', '', 'No boxes on this tab have a pre-fill label yet. Select a text, image or agent box and type a label in the “Pre-fill label” section of the properties panel — use the same label on the matching ' + prefillSourceName() + ' box.');
   } else if (!plan.apply.length) {
-    add('div', '', 'Nothing to fill: none of the ' + plan.labelled + ' labelled box' + (plan.labelled === 1 ? '' : 'es') + ' on this tab has matching content on the Brochure.');
+    add('div', '', 'Nothing to fill: none of the ' + plan.labelled + ' labelled box' + (plan.labelled === 1 ? '' : 'es') + ' on this tab has matching content on the ' + prefillSourceName() + '.');
   } else {
     const n = { text: 0, img: 0, agent: 0 }; plan.apply.forEach(a => n[a.kind]++);
     const parts = []; if (n.text) parts.push(n.text + ' text'); if (n.img) parts.push(n.img + ' image'); if (n.agent) parts.push(n.agent + ' agent');
-    add('div', '', 'This will copy the Brochure’s text and images into ' + plan.apply.length + ' box' + (plan.apply.length === 1 ? '' : 'es') + ' (' + parts.join(', ') + ').');
-    add('div', 'pf-warn', 'Whatever is currently in those boxes will be replaced — locked boxes included. Text keeps this tab’s own formatting, and long text makes a box grow downwards. You can undo it with one Ctrl/⌘+Z. The Brochure itself is never changed.');
+    add('div', '', 'This will copy the ' + prefillSourceName() + '’s text and images into ' + plan.apply.length + ' box' + (plan.apply.length === 1 ? '' : 'es') + ' (' + parts.join(', ') + ').');
+    add('div', 'pf-warn', 'Whatever is currently in those boxes will be replaced — locked boxes included. Text keeps this tab’s own formatting, and long text makes a box grow downwards. You can undo it with one Ctrl/⌘+Z. The ' + prefillSourceName() + ' itself is never changed.');
     const ul = add('ul', 'pf-list');
     plan.apply.forEach(a => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = a.label; li.appendChild(b); li.appendChild(document.createTextNode(' — ' + (a.kind === 'text' ? 'text' : a.kind === 'img' ? 'image' : 'agent' + (a.note ? ': ' + a.note : '')))); ul.appendChild(li); });
   }
@@ -4562,7 +4597,7 @@ function _renderPrefillModal(errorMsg) {
     plan.skip.slice(0, 14).forEach(k => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = k.label; li.appendChild(b); li.appendChild(document.createTextNode(' — ' + k.why)); ul.appendChild(li); });
     if (plan.skip.length > 14) add('div', '', '…and ' + (plan.skip.length - 14) + ' more');
   }
-  if (plan.dupes.length) add('div', 'pf-warn', 'More than one Brochure box uses the label ' + plan.dupes.join(', ') + '. The first one is used.');
+  if (plan.dupes.length) add('div', 'pf-warn', 'More than one ' + prefillSourceName() + ' box uses the label ' + plan.dupes.join(', ') + '. The first one is used.');
 
   if (plan.apply.length) {
     const go = document.createElement('button'); go.className = 'pf-go'; go.textContent = 'Overwrite and fill'; go.onclick = applyPrefill;
@@ -4603,6 +4638,20 @@ function applyPrefill() {
   scheduleSave();
   if (connected) broadcast({ type: 'full_state', elements: elements.map(e => ({ ...e })), userId, userName });
   setSave('saved', 'Pre-filled ' + plan.apply.length + ' box' + (plan.apply.length === 1 ? '' : 'es'));
+  // Longer text makes a box grow downwards. On a fixed-size page (Signboard, Press Ad) that can run off the bottom.
+  const over = grew.map(id => elements.find(x => x.id === id)).filter(e => e && e.y + e.h > AH + 1).map(e => e.label || ('box ' + e.id));
+  if (over.length) _showPrefillNote('Some text runs off the page',
+    'After filling, the text in ' + over.join(', ') + ' is longer than its box and now extends past the bottom of this page. Shorten the text, make the font smaller, or move the box up.');
+}
+function _showPrefillNote(title, msg) {
+  const box = document.getElementById('prefill-box');
+  box.textContent = '';
+  const t = document.createElement('div'); t.className = 'pf-title'; t.textContent = title; box.appendChild(t);
+  const m = document.createElement('div'); m.className = 'pf-warn'; m.textContent = msg; box.appendChild(m);
+  const btns = document.createElement('div'); btns.className = 'pf-btns';
+  const ok = document.createElement('button'); ok.className = 'pf-cancel'; ok.textContent = 'OK'; ok.onclick = closePrefill;
+  btns.appendChild(ok); box.appendChild(btns);
+  document.getElementById('prefill-modal').classList.add('open');
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.getElementById('prefill-modal'); if (m && m.classList.contains('open')) closePrefill(); } });
 
