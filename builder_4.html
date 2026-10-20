@@ -515,6 +515,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .img-upload-area{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;background:var(--bg);transition:all .2s;position:relative;overflow:hidden;margin-top:4px;}
 .img-upload-area:hover,.img-upload-area.drag-over{border-color:var(--green);background:rgba(23,232,143,.04);}
 .img-upload-area input{display:none;}
+.img-upload-area.empty{border:none;background:#17e88f;min-height:66px;padding:0 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;box-shadow:none;}
+.img-upload-area.empty:hover{background:#3ff0a3;border:none;}
+.img-upload-area.empty.drag-over{background:#5cf5b5;outline:2px dashed #fff;outline-offset:-5px;}
+.img-upload-area.empty .img-upload-label{color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;}
+.img-upload-area.empty .img-upload-label span{color:inherit;font-weight:700;}
+.img-upload-area.empty .img-upload-label svg{flex:none;width:20px;height:20px;}
 .img-upload-label{font-size:11px;color:var(--muted);pointer-events:none;}
 .img-upload-label span{color:var(--green);font-weight:600;}
 .cv-agent{position:absolute;inset:0;display:flex;align-items:stretch;overflow:hidden;}
@@ -2331,10 +2337,10 @@ function showProps(id) {
     // Image element
     const fitOpts = ['cover','contain','fill'].map(function(v){ return '<option value="' + v + '"' + ((el.objectFit||'cover')===v?' selected':'') + '>' + v + '</option>'; }).join('');
     const imgBlock = '<div class="prop-section">Image</div>'
-      + '<label class="img-upload-area" id="img-upload-area-' + id + '" ondragover="imgDragOver(event,' + id + ')" ondragleave="imgDragLeave(' + id + ')" ondrop="imgDrop(event,' + id + ')">'
+      + '<label class="img-upload-area' + (el.imageUrl ? '' : ' empty') + '" id="img-upload-area-' + id + '" ondragover="imgDragOver(event,' + id + ')" ondragleave="imgDragLeave(' + id + ')" ondrop="imgDrop(event,' + id + ')">'
       + '<input type="file" accept="image/*" onchange="imgFileSelected(this,' + id + ')">'
       + '<div class="img-uploading" id="img-uploading-' + id + '"><div class="spinner"></div> Uploading…</div>'
-      + (el.imageUrl ? '<img class="img-preview-thumb" src="' + el.imageUrl + '" style="display:block">' : '<div class="img-upload-label"><span>Click or drag</span> to upload image</div>')
+      + (el.imageUrl ? '<img class="img-preview-thumb" src="' + el.imageUrl + '" style="display:block">' : '<div class="img-upload-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M6 10l6-6 6 6"/><path d="M4 20h16"/></svg><span>Upload image</span></div>')
       + '</label>'
       + (el.imageUrl ? '<button class="del-btn" style="margin-top:6px;color:var(--amber);border-color:#7a4a00;background:#2a1800;" onclick="clearImage(' + id + ')">✕ Remove Image</button>' : '')
       + '<div class="prop-section" style="margin-top:10px;">Property images</div>'

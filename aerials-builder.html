@@ -5721,7 +5721,7 @@ async function sendAssistRequest(){
   const SUPA_URL='https://pgsgjafgetdvuctmpibf.supabase.co';
   const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2dqYWZnZXRkdnVjdG1waWJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjQ0MjMsImV4cCI6MjA5NDEwMDQyM30.-IhrtiBgzpnYol4XuesDzYJ0XBLDYDrMzmTx0XsAsmc';
   try{
-    const payload={agent_name:name,agent_email:email,property_name:'',portfolio_name:'',project_link:project,context:context,message:message,status:'new',product:'aerials'};
+    const payload={agent_name:name,agent_email:email,property_name:propertyName||'',portfolio_name:portfolioName||'',project_link:project,context:context,message:message,status:'new',product:'aerials'};
     const res=await fetch(SUPA_URL+'/rest/v1/assistance_requests',{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
     if(!res.ok){ const txt=await res.text(); throw new Error(txt); }
     document.getElementById('assist-form-body').style.display='none';
