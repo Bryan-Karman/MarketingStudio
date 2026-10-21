@@ -1234,6 +1234,25 @@ async function init() {
   // Load tab definitions from Supabase FIRST — so custom/copy tabs get correct dimensions
   await loadTabDefs();
 
+  // Default to the ticked Brochure tab. The URL may carry no ?tab= (or the stock 'brochure'), but this property
+  // may be using 'Brochure 2 Page' — opening the unticked one would show the wrong / empty page.
+  {
+    const isBrochureSlug = s => s === 'brochure' || s === 'brochure2';
+    const wanted = tabDef(_currentTab);
+    const noTabInUrl = !_urlP.get('tab');
+    if (isBrochureSlug(_currentTab) && (noTabInUrl || !wanted || !wanted.active)) {
+      const ticked = TAB_DEFINITIONS.find(t => isBrochureSlug(t.slug) && t.active);
+      if (ticked && ticked.slug !== _currentTab) {
+        _currentTab = ticked.slug;
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.set('tab', ticked.slug);
+          history.replaceState(null, '', u.toString());
+        } catch(e) {}
+      }
+    }
+  }
+
   // Set canvas size from this tab's definition (now includes custom tabs from Supabase)
   const initDef = tabDef(_currentTab);
   if (initDef) {
