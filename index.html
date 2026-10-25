@@ -1497,7 +1497,7 @@ async function renderProperties(){
       _listRow += '</div>';
       _listRow += '<span class="approval-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#b85c00;flex-shrink:0;"></span>';
       _listRow += '<span class="approval-status-txt" style="font-size:10px;font-weight:700;color:#b85c00;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;">In Progress</span>';
-      _listRow += '<button class="prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex-shrink:0;padding:5px 14px;background:#003f2d;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Open →</button>';
+      _listRow += '<a class="prop-open-btn" href="'+escHtml(_buildBuilderUrl(pr.portfolioId, pr.id))+'" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="flex-shrink:0;padding:5px 14px;background:#003f2d;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;text-decoration:none;">Open →</a>';
       _listRow += _move(pr);
       _listRow += _dup(pr);
       _listRow += _del(pr);
@@ -1505,17 +1505,17 @@ async function renderProperties(){
       return _listRow;
     } else {
       return '<div class="property-card" id="pcard-'+pr.id+'">'
-        +'<div class="property-card-thumb prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="cursor:pointer;">'
+        +'<a class="property-card-thumb prop-open-btn" href="'+escHtml(_buildBuilderUrl(pr.portfolioId, pr.id))+'" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="cursor:pointer;text-decoration:none;">'
         +'<div class="property-card-thumb-label" id="pthumb-label-'+pr.id+'">Marketing Studio</div>'
         +'<div class="property-thumb-overlay"><span class="property-thumb-overlay-label">Open Builder</span></div>'
         +'<div class="property-thumb-bar"></div>'
-        +'</div>'
+        +'</a>'
         +'<div class="property-card-body">'
         +'<div class="property-card-name">'+nameRow+'</div>'
         +metaRow
         +'</div>'
         +'<div class="property-card-actions">'
-        +'<button class="card-btn card-btn-open prop-open-btn" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'">Open Builder →</button>'
+        +'<a class="card-btn card-btn-open prop-open-btn" href="'+escHtml(_buildBuilderUrl(pr.portfolioId, pr.id))+'" data-pid="'+pr.portfolioId+'" data-id="'+pr.id+'" style="text-decoration:none;display:inline-block;">Open Builder →</a>'
         +statusWrap
         +(isAdmin ? '<div style="display:flex;gap:6px;margin-top:4px;width:100%;">'+_move(pr)+_dup(pr)+_del(pr)+'</div>' : '')
         +'</div></div>';
@@ -1547,9 +1547,30 @@ async function renderProperties(){
         txtEl.textContent = isApproved ? 'Approved' : 'In Progress';
         txtEl.style.color = isApproved ? '#1a7a3a' : '#b85c00';
       }
-      if(!rows[0].state_json) return;
-      const state = JSON.parse(rows[0].state_json);
-      const heroImg = state?.assets?.img1;
+      let heroImg = null;
+      // Old builder: state.assets.img1
+      if(rows[0].state_json){
+        try {
+          const state = JSON.parse(rows[0].state_json);
+          heroImg = state?.assets?.img1 || _firstImgFromElements(state?.elements);
+        } catch(e){}
+      }
+      // Builder 4: images live in element lists, saved under the brochure row
+      // (property_id = id) or per-tab rows (id_edm, id_brochure2, ...)
+      if(!heroImg){
+        for(const suffix of ['_brochure2','_edm','_pressad','_signboard_8x6']){
+          try {
+            const r2 = await fetch(
+              `${SUPABASE_URL}/rest/v1/projects?portfolio_id=eq.${encodeURIComponent(pr.portfolioId)}&property_id=eq.${encodeURIComponent(pr.id+suffix)}&select=state_json`,
+              { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+            ).then(r => r.json());
+            if(r2 && r2.length && r2[0].state_json){
+              heroImg = _firstImgFromElements(JSON.parse(r2[0].state_json).elements);
+              if(heroImg) break;
+            }
+          } catch(e){}
+        }
+      }
       if(!heroImg) return;
 
       const thumb = document.querySelector(`#pcard-${pr.id} .property-card-thumb`);
@@ -1565,6 +1586,25 @@ async function renderProperties(){
       if(label) label.style.display = 'none';
     } catch(e){ /* silently skip if no project state */ }
   }));
+}
+
+// Pick the best photo for the card thumbnail: the largest image element that is
+// not a logo (label "logo"/"tenant-logo", "logo" in the file name, or an SVG/PNG,
+// which Builder 4 keeps for transparent artwork such as logos).
+function _firstImgFromElements(els){
+  if(!Array.isArray(els)) return null;
+  let best = null, bestArea = -1;
+  els.forEach(e => {
+    if(!e || e.type !== 'img' || typeof e.imageUrl !== 'string' || !e.imageUrl) return;
+    const url = e.imageUrl.toLowerCase();
+    const path = url.split('?')[0];
+    if(/(^|[-_])logo([-_]|$)/.test(String(e.label||'').toLowerCase())) return;
+    if(/logo/.test(path.split('/').pop())) return;
+    if(url.indexOf('data:image/svg') === 0 || /\.(svg|png)$/.test(path)) return;
+    const area = (Number(e.w)||0) * (Number(e.h)||0);
+    if(area > bestArea){ bestArea = area; best = e.imageUrl; }
+  });
+  return best;
 }
 
 function openNewPropertyModal(){
@@ -2032,6 +2072,9 @@ function escHtml(str){ const d=document.createElement('div');d.textContent=str;r
 document.addEventListener('click', function(e){
   const btn = e.target.closest('.prop-open-btn');
   if(btn && btn.dataset.pid && btn.dataset.id){
+    // Real links: Cmd/Ctrl/Shift-click and middle-click open a new tab natively
+    if(btn.tagName === 'A' && (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)) return;
+    e.preventDefault();
     openBuilder(btn.dataset.pid, btn.dataset.id);
     return;
   }
