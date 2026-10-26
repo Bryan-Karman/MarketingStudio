@@ -786,8 +786,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <div class="tb-sep"></div>
   <button class="tb-btn" onclick="toggleMarketingItems(this)" title="Show/hide page types" style="color:var(--amber);border-color:#7a4a00;">☰ Pages</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-export" onclick="exportPDF(false)" title="Export current tab as PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export Tab</button>
-  <button class="tb-btn" id="btn-export-all" onclick="exportPDF(true)" title="Export all active tabs as one PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Export All</button>
+  <button class="tb-btn" id="btn-export" onclick="exportPDF(false)" title="Download this tab as a PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Download PDF</button>
+  <button class="tb-btn" id="btn-export-all" onclick="exportPDF(true)" title="Download every ticked tab as one combined PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Download All PDF's</button>
   <div class="tb-save" id="save-wrap">
     <div class="save-dot"></div>
     <span class="save-lbl" id="save-lbl">—</span>
@@ -1672,7 +1672,7 @@ document.getElementById('tpl-modal-bg').addEventListener('mousedown', function(e
 });
 
 async function saveToSupabase() {
-  if (_isSaving) return;
+  if (_isSaving || _exportBusy) return;
   _isSaving = true;
   setSave('saving','Saving…');
   const sid = tabSupabaseId(_currentTab);
@@ -1693,7 +1693,9 @@ async function saveToSupabase() {
   } catch(e) { setSave('error','Save failed'); } finally { _isSaving = false; }
 }
 
+var _exportBusy = false, _exportMissed = false;   // set while 'Download All PDF's' is stepping through the tabs
 function scheduleSave() {
+  if (_exportBusy) return;
   clearTimeout(saveTimer);
   setSave('saving','Saving…');
   saveTimer = setTimeout(saveToSupabase, 1200);
@@ -1796,6 +1798,7 @@ function handleMsg(msg) {
     if (!payload) return;
     // Ignore messages intended for a different tab
     if (payload.tab && payload.tab !== _currentTab) return;
+    if (_exportBusy) { if (!/^(cursor|presence|presence_leave|tab_switch)$/.test(payload.type)) _exportMissed = true; return; }
     if (payload.type === 'full_state')    { handleRemoteFullState(payload); return; }
     if (payload.type === 'el_crop')       { handleRemoteCrop(payload);     return; }
     if (payload.type === 'el_lock')       { handleRemoteLock(payload);     return; }
@@ -1818,7 +1821,7 @@ function handleMsg(msg) {
 }
 
 function send(msg) { if (wsSocket && wsSocket.readyState === WebSocket.OPEN) wsSocket.send(JSON.stringify(msg)); }
-function broadcast(payload) { send({ topic: currentTopic(), event: 'broadcast', payload: { type: payload.type, tab: _currentTab, ...payload }, ref: nextRef() }); }
+function broadcast(payload) { if (_exportBusy) return; send({ topic: currentTopic(), event: 'broadcast', payload: { type: payload.type, tab: _currentTab, ...payload }, ref: nextRef() }); }
 function nextRef() { return String(_ref++); }
 function scheduleReconnect() { clearTimeout(_rcnTimer); _rcnTimer = setTimeout(openRealtime, 3000); }
 
@@ -5421,12 +5424,9 @@ function _renderImageBox(img, el, hasAlpha) {
   return usePng ? { url: cv.toDataURL('image/png'), fmt: 'PNG' } : { url: cv.toDataURL('image/jpeg', PDF_JPEG_QUALITY), fmt: 'JPEG' };
 }
 
-async function exportPDF(allTabs) {
-  const btn = allTabs ? document.getElementById('btn-export-all') : document.getElementById('btn-export');
-  btn.textContent = '⏳ Loading fonts…';
-  btn.disabled = true;
-
-  try {
+// Draws the tab that is CURRENTLY on the canvas as one page. docIn = null starts a new PDF; otherwise a page is added to it.
+async function _exportBuildPages(docIn, btn) {
+  {
     const { jsPDF } = window.jspdf;
     // Page size = THIS TAB's size, not always A4.
     //  • mm tabs (Brochure, Press Ad…): real physical size; canvas px are 96 dpi.
@@ -5445,12 +5445,16 @@ async function exportPDF(allTabs) {
     const _artOff   = _bleedMM ? _slugMM - _bleedMM : 0;             // where the canvas (trim + bleed) starts on the page
     const PAGE_W = _devicePx ? _tabPxSize.w * PX_TO_MM : (_bleedMM ? _pdfDef.mmW + 2 * _slugMM : ((_pdfDef && _pdfDef.mmW) || 210));
     const PAGE_H = _devicePx ? _tabPxSize.h * PX_TO_MM : (_bleedMM ? _pdfDef.mmH + 2 * _slugMM : ((_pdfDef && _pdfDef.mmH) || 297));
-    const doc = new jsPDF({ unit: 'mm', format: [PAGE_W, PAGE_H], orientation: PAGE_W > PAGE_H ? 'landscape' : 'portrait' });
-
-    btn.textContent = (_pdfFontCache && _pdfFontCache.length) ? '⏳ Building PDF…' : '⏳ Loading fonts…';
-    await loadPDFFonts(doc);
-
-    btn.textContent = '⏳ Building PDF…';
+    const _orient = PAGE_W > PAGE_H ? 'landscape' : 'portrait';
+    let doc = docIn;
+    if (!doc) {
+      doc = new jsPDF({ unit: 'mm', format: [PAGE_W, PAGE_H], orientation: _orient });
+      btn.textContent = (_pdfFontCache && _pdfFontCache.length) ? '⏳ Building PDF…' : '⏳ Loading fonts…';
+      await loadPDFFonts(doc);
+      btn.textContent = '⏳ Building PDF…';
+    } else {
+      doc.addPage([PAGE_W, PAGE_H], _orient);          // every tab keeps its own page size
+    }
 
     // Agent cards are drawn as two ordinary pieces: a square cover-fit photo and a two-line text block
     const exportEls = [];
@@ -5774,22 +5778,102 @@ async function exportPDF(allTabs) {
       });
     }
 
-    // Build filename: PropertyName_TabName.pdf
-    const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
-    const tabName  = (tabDef(_currentTab) || {}).name || 'Brochure';
-    const safeProp = propName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
-    const safeTab  = tabName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
-    const filename = safeProp + '_' + safeTab + '.pdf';
+    return doc;
+  }
+}
+
+function _exportFileBase() {
+  const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
+  return propName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'CBRE';
+}
+
+// Puts one tab on the canvas (its own size + saved content) so it can be drawn exactly as it looks on screen.
+async function _exportShowTab(slug, els) {
+  const def = tabDef(slug);
+  _currentTab = slug;
+  elements = els;
+  _nextId = els.length ? Math.max(...els.map(e => e.id)) + 1 : 1;
+  const px = tabPx(def);
+  AW = px.w; AH = px.h;
+  const card = document.getElementById('canvas-card');
+  if (card) { card.style.width = AW + 'px'; card.style.height = AH + 'px'; }
+  renderCanvas();
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e) {}
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // let the browser lay the boxes out
+}
+
+// One combined PDF: every ticked tab, in tab-bar order, each page at its own size (bleed + crop marks on Signboards).
+async function _exportAllTabs(btn) {
+  const tabs = activeTabs();
+  if (!tabs.length) throw new Error('No tabs are ticked in Marketing Items.');
+  // save what is on screen first, so the saved copy of THIS tab is current when we come back to it
+  clearTimeout(saveTimer);
+  try { await saveToSupabase(); } catch(e) {}
+
+  const orig = { tab: _currentTab, els: elements, nextId: _nextId, aw: AW, ah: AH };
+  const skipped = [];
+  let doc = null, done = 0;
+  deselectAll();
+  _exportBusy = true; _exportMissed = false;
+  document.body.style.pointerEvents = 'none';          // no clicking/typing while tabs are being swapped in
+  try {
+    for (let i = 0; i < tabs.length; i++) {
+      const t = tabs[i];
+      btn.textContent = '⏳ Tab ' + (i + 1) + ' of ' + tabs.length + '…';
+      let els;
+      if (t.slug === orig.tab) {
+        els = JSON.parse(JSON.stringify(orig.els));
+      } else {
+        const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(tabSupabaseId(t.slug)) + '&select=state_json';
+        const rows = await (await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } })).json();
+        let saved = null;
+        try { saved = rows && rows.length && rows[0].state_json ? JSON.parse(rows[0].state_json) : null; } catch(e) {}
+        els = saved && Array.isArray(saved.elements) ? saved.elements : [];
+        if (els.length && tabBleed(t) > 0 && saved.bleed === undefined) _migrateIntoBleed(els, t);   // older Signboards, as when opened
+      }
+      if (!els.length) { skipped.push(t.name); continue; }          // never built - nothing to print
+      await _exportShowTab(t.slug, els);
+      doc = await _exportBuildPages(doc, btn);
+      done++;
+    }
+  } finally {
+    // put the page back exactly as it was
+    _currentTab = orig.tab; elements = orig.els; _nextId = orig.nextId; AW = orig.aw; AH = orig.ah;
+    const card = document.getElementById('canvas-card');
+    if (card) { card.style.width = AW + 'px'; card.style.height = AH + 'px'; }
+    renderCanvas();
+    setZoom(_zoom);
+    document.body.style.pointerEvents = '';
+    _exportBusy = false;
+    if (_exportMissed) { _exportMissed = false; try { await loadFromSupabase(); } catch(e) {} }   // someone edited live while we were busy
+  }
+  if (!doc) throw new Error('None of the ticked tabs have any content yet.');
+  if (skipped.length) setTimeout(() => alert('Combined PDF downloaded (' + done + ' page' + (done === 1 ? '' : 's') + ').\n\nLeft out because nothing has been built on them yet:\n• ' + skipped.join('\n• ')), 400);
+  return doc;
+}
+
+async function exportPDF(allTabs) {
+  const btn = allTabs ? document.getElementById('btn-export-all') : document.getElementById('btn-export');
+  const idle = allTabs ? "⬇ Download All PDF's" : '⬇ Download PDF';
+  btn.textContent = '⏳ Loading fonts…';
+  btn.disabled = true;
+  try {
+    let doc, filename;
+    if (allTabs) {
+      doc = await _exportAllTabs(btn);
+      filename = _exportFileBase() + '_All_Tabs.pdf';
+    } else {
+      doc = await _exportBuildPages(null, btn);
+      const tabName = (tabDef(_currentTab) || {}).name || 'Brochure';
+      filename = _exportFileBase() + '_' + tabName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') + '.pdf';
+    }
     doc.save(filename);
     btn.textContent = '✓ Downloaded';
-    setTimeout(() => {
-      btn.textContent = allTabs ? '⬇ Export All' : '⬇ Export Tab';
-      btn.disabled = false;
-    }, 2500);
+    setTimeout(() => { btn.textContent = idle; btn.disabled = false; }, 2500);
   } catch(e) {
     console.error('PDF export error:', e);
     alert('PDF export failed: ' + e.message);
-    btn.textContent = allTabs ? '⬇ Export All' : '⬇ Export Tab';
+    btn.textContent = idle;
     btn.disabled = false;
   }
 }
