@@ -2147,21 +2147,15 @@ function createElDOM(el) {
     wrap.addEventListener('dblclick', e => {
       e.stopPropagation();
       if (wrap.classList.contains('editing')) return;   // already typing: the browser's own double-click word selection does the job
+      if (el.isAgentBox) {                               // agent box: double-click = highlight ALL the text, ready to type custom details over it
+        hideAgentDropdown();
+        enterEditMode(wrap, inner, el.id, e, 'all');
+        return;
+      }
       enterEditMode(wrap, inner, el.id, e);              // first double-click: edit, and select the word that was clicked
     });
-    // Agent boxes: one click on the box and you're typing (for agents that aren't in the database).
-    // A drag still moves the box; the agent list stays open below for picking from the database.
-    {
-      let _dn = null;
-      wrap.addEventListener('mousedown', e => { _dn = { x: e.clientX, y: e.clientY, multi: _selectedIds.size > 1, editing: wrap.classList.contains('editing') }; }, true);
-      wrap.addEventListener('click', e => {
-        if (!_dn || !el.isAgentBox || e.button !== 0 || e.shiftKey || _dn.multi || _dn.editing) return;
-        if (e.target.classList && e.target.classList.contains('cv-rh')) return;
-        if (Math.abs(e.clientX - _dn.x) + Math.abs(e.clientY - _dn.y) > 3) return;     // it was a drag
-        if (wrap.classList.contains('editing')) return;
-        enterEditMode(wrap, inner, el.id, e, 'caret');
-      });
-    }
+    // Agent boxes: a single click selects the box and puts the cursor in the agent search (see selectEl), so typing
+    // searches the database. Double-click (above) highlights the box's text so custom details can be typed over it.
 
     inner.addEventListener('input', () => {
       _pushUndoGrouped('text:' + el.id); // snapshot the OLD content before it's overwritten below
@@ -2907,6 +2901,8 @@ function showAgentDropdown(id, noFocus) {   // works even if the database list i
 
   // Focus search input (not when the box itself is being typed into)
   if (!noFocus) setTimeout(() => {
+    const w = document.querySelector('.cv-el[data-id="' + id + '"]');
+    if (w && w.classList.contains('editing')) return;      // never pull focus out of a box that is being typed into
     const s = document.getElementById('agent-search');
     if (s) s.focus();
   }, 60);
@@ -2927,7 +2923,7 @@ function renderAgentItems(id, filtered) {
       + '<span class="agent-dd-phone">Not from the database' + (filtered.length ? ' · or pick a match below' : '') + '</span></div>'
     : '<div class="agent-dd-item" onclick="document.getElementById(\'agent-search\').focus()" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
       + '<span class="agent-dd-name" style="color:#17e88f;">✎ Type a name instead</span>'
-      + '<span class="agent-dd-phone">Click the box on the page and type, or type above and press Enter</span></div>';
+      + '<span class="agent-dd-phone">Just start typing above and press Enter · double-click the box to type over its text</span></div>';
   list.innerHTML =
     customRow
     + '<div class="agent-dd-item" onclick="insertAgent(' + id + ', \'__blank__\')" style="border-bottom:1px solid #272b2e;margin-bottom:4px;">'
@@ -3539,7 +3535,11 @@ function selectEl(id, addToSelection) {
   if (!addToSelection) {
     const el = elements.find(e => e.id === id);
     if (el && el.isAgentBox) {
-      setTimeout(() => showAgentDropdown(id, true), 80);   // the list opens beside the box but focus stays on the box, so you can just type
+      setTimeout(() => {                                    // the list opens beside the box with the cursor in its search field, so typing searches
+        const w = document.querySelector('.cv-el[data-id="' + id + '"]');
+        if (w && w.classList.contains('editing')) return;   // double-clicked into the box: leave focus there
+        showAgentDropdown(id);
+      }, 80);
     } else {
       hideAgentDropdown();
     }
@@ -3693,7 +3693,9 @@ function enterEditMode(wrap, inner, id, ev, mode) {
   inner.contentEditable = 'true';
   inner.focus();
   let range = null;
-  if (pt) {
+  if (mode === 'all') {
+    range = document.createRange(); range.selectNodeContents(inner);
+  } else if (pt) {
     range = (mode === 'caret') ? null : _wordRangeAt(pt);
     if (!range) { range = document.createRange(); range.setStart(pt.node, pt.off); range.collapse(true); }
   }
