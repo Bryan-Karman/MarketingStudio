@@ -992,7 +992,12 @@ let TAB_DEFINITIONS = [
   { slug:'brochure2',     name:'Brochure 2 Page',      mmW:420, mmH:297,  active:false },   // only ONE of Brochure / Brochure 2 Page is ever ticked
   // EDM default: 900 × 7000 px (stored as mm at 96 dpi, so 900 px = 900*25.4/96 mm)
   { slug:'edm',           name:'EDM',                  mmW:900*25.4/96, mmH:7000*25.4/96, active:true, unit:'px' },
-  { slug:'signboard_8x6', name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true  },
+  // Signboards: mmW/mmH is the TRIM (finished) size. Each has a 5 mm bleed on every side; the canvas is trim + bleed
+  // and the PDF export adds crop marks. 8×6 stays on by default; the other sizes are ticked on in Marketing Items.
+  { slug:'signboard_6x4',  name:'Signboard 6×4',        mmW:193.9,mmH:122,   active:false, bleed:5 },
+  { slug:'signboard_8x6',  name:'Signboard 8×6',        mmW:2438,mmH:1829, active:true,  bleed:5 },
+  { slug:'signboard_10x8', name:'Signboard 10×8',       mmW:314.1,mmH:242.1, active:false, bleed:5 },
+  { slug:'signboard_12x8', name:'Signboard 12×8',       mmW:374.1,mmH:242.1, active:false, bleed:5 },
   { slug:'pressad',       name:'Press Ad M3x6',        mmW:262, mmH:92,   active:true  },
 ];
 // Supabase storage for tab definitions: portfolio_id='_b4_tabdefs', property_id=PROPERTY_ID
@@ -1089,8 +1094,11 @@ const EXPORT_PPI_PX = 300;
 function mmToPx(mm) { return Math.round(mm * 96 / 25.4); }
 
 // Get canvas px dimensions for a tab definition
+// Bleed (mm) added on EVERY side of the trim size - only Signboard tabs have one. The canvas covers trim + bleed.
+function tabBleed(tab) { return tab && tab.bleed > 0 ? tab.bleed : 0; }
 function tabPx(tab) {
-  return { w: mmToPx(tab.mmW), h: mmToPx(tab.mmH) };
+  const b = tabBleed(tab);
+  return { w: mmToPx(tab.mmW + 2 * b), h: mmToPx(tab.mmH + 2 * b) };
 }
 
 // Sizes are STORED in mm (canvas px = mm at 96 dpi), but each tab can be SHOWN and EDITED in mm or px.
@@ -1102,7 +1110,7 @@ function sizeParts(def) {
   return { w: _r1(def.mmW), h: _r1(def.mmH), unit: 'mm' };
 }
 // sizeText(def,'×','')  -> "597×3024px"      sizeText(def,' × ',' ') -> "210 × 297 mm"
-function sizeText(def, sep, unitGap) { const z = sizeParts(def); return z.w + sep + z.h + unitGap + z.unit; }
+function sizeText(def, sep, unitGap) { const z = sizeParts(def); return z.w + sep + z.h + unitGap + z.unit + (tabBleed(def) ? ' + ' + tabBleed(def) + ' mm bleed' : ''); }
 
 // Current tab slug — set from URL param, fixed for this page instance
 let _currentTab = CURRENT_TAB_SLUG;
@@ -1283,6 +1291,26 @@ async function init() {
 // ════════════════════════════════════════════════════════
 const TEMPLATE_PORTFOLIO = '_b4_template';
 
+let _bleedMigrated = false;
+function _migrateIntoBleed(els, def) {
+  const b  = mmToPx(tabBleed(def));
+  const W0 = mmToPx(def.mmW), H0 = mmToPx(def.mmH);          // old (trim-only) canvas
+  els.forEach(el => {
+    if (!el) return;
+    const x = el.x || 0, y = el.y || 0, w = el.w || 0, h = el.h || 0;
+    const stretch = (el.type === 'rect' || (el.type === 'img' && !el.hasCrop));   // only plain boxes grow into the bleed
+    let nx = x + b, ny = y + b, nr = x + w + b, nb = y + h + b;
+    if (stretch) {
+      if (x <= 1)          nx = 0;
+      if (y <= 1)          ny = 0;
+      if (x + w >= W0 - 1) nr = W0 + 2 * b;
+      if (y + h >= H0 - 1) nb = H0 + 2 * b;
+    }
+    el.x = nx; el.y = ny;
+    if (stretch) { el.w = nr - nx; el.h = nb - ny; }
+  });
+}
+
 async function loadFromSupabase() {
   // Load from the current tab's Supabase row (brochure = bare PROPERTY_ID, others = suffixed)
   const sid = tabSupabaseId(_currentTab);
@@ -1294,6 +1322,10 @@ async function loadFromSupabase() {
       const saved = JSON.parse(rows[0].state_json);
       if (saved.elements && saved.elements.length) {
         elements = saved.elements;
+        // Migration: a Signboard saved BEFORE bleed existed has no 'bleed' marker. Its artwork was laid out on the
+        // trim-size canvas, so move it inward by the bleed and stretch edge-to-edge backgrounds out into the bleed.
+        const _bd = tabDef(_currentTab);
+        if (_bd && tabBleed(_bd) > 0 && saved.bleed === undefined) { _migrateIntoBleed(elements, _bd); _bleedMigrated = true; }
         // Migration: strip embedded "– " from content if bulletMode is true
         // (old system stored dashes in content; new system uses CSS ::before)
         elements.forEach(el => {
@@ -1310,6 +1342,7 @@ async function loadFromSupabase() {
         });
         _nextId = Math.max(...elements.map(e => e.id)) + 1;
         renderCanvas();
+        if (_bleedMigrated) { _bleedMigrated = false; saveToSupabase(); }
       }
     } else {
       // New property — load the template named "Default" as starting point
@@ -1643,7 +1676,7 @@ async function saveToSupabase() {
     const body = {
       portfolio_id: PORTFOLIO_ID,
       property_id:  sid,
-      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH }),
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed }),
       updated_at:   new Date().toISOString()
     };
     const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
@@ -4215,7 +4248,7 @@ function saveSyncBeforeUnload(slug, els) {
   try {
     const def = tabDef(slug);
     const sid = tabSupabaseId(slug);
-    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH });
+    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed });
     const body = JSON.stringify({ portfolio_id: PORTFOLIO_ID, property_id: sid, state_json: stateJson, updated_at: new Date().toISOString() });
 
     // First check if row exists (sync XHR)
@@ -4281,7 +4314,7 @@ function saveTabSnapshot(slug, snapshotElements) {
   const body = JSON.stringify({
     portfolio_id: PORTFOLIO_ID,
     property_id:  sid,
-    state_json:   JSON.stringify({ elements: snapshotElements, mmW: def && def.mmW, mmH: def && def.mmH }),
+    state_json:   JSON.stringify({ elements: snapshotElements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed }),
     updated_at:   new Date().toISOString()
   });
   // Use check+PATCH/POST since upsert requires DB unique constraint
@@ -4306,7 +4339,7 @@ async function saveTabToSupabase(slug) {
     const body = {
       portfolio_id: PORTFOLIO_ID,
       property_id:  sid,
-      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH }),
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed }),
       updated_at:   new Date().toISOString()
     };
     const check = await fetch(
@@ -4326,7 +4359,30 @@ async function saveTabToSupabase(slug) {
   } catch(e) { console.warn('[Tab] Save failed:', slug, e); }
 }
 
+// Shows where the finished (trim) edge is on a bleed tab: a tinted bleed band plus a dashed trim line.
+function updateBleedGuide(def) {
+  const card = document.getElementById('canvas-card');
+  if (!card) return;
+  let g = document.getElementById('bleed-guide');
+  const b = tabBleed(def);
+  if (!b) { if (g) g.remove(); return; }
+  if (!g) {
+    g = document.createElement('div');
+    g.id = 'bleed-guide';
+    g.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:9000;';
+    card.appendChild(g);
+  }
+  const bp = mmToPx(b), px = tabPx(def), tint = 'rgba(255,45,120,.14)';
+  g.innerHTML =
+      '<div style="position:absolute;left:0;top:0;right:0;height:' + bp + 'px;background:' + tint + ';"></div>'
+    + '<div style="position:absolute;left:0;bottom:0;right:0;height:' + bp + 'px;background:' + tint + ';"></div>'
+    + '<div style="position:absolute;left:0;top:' + bp + 'px;bottom:' + bp + 'px;width:' + bp + 'px;background:' + tint + ';"></div>'
+    + '<div style="position:absolute;right:0;top:' + bp + 'px;bottom:' + bp + 'px;width:' + bp + 'px;background:' + tint + ';"></div>'
+    + '<div style="position:absolute;left:' + bp + 'px;top:' + bp + 'px;right:' + bp + 'px;bottom:' + bp + 'px;outline:1.5px dashed #ff2d78;outline-offset:0;" title="Trim line"></div>';
+}
+
 function updateArtboardLabels(def) {
+  updateBleedGuide(def);
   const topEl = document.getElementById('ab-label-top-text');
   if (topEl) topEl.textContent = def.name + '  ·  ' + sizeText(def, ' × ', ' ') + '  ·  PDF: 300 dpi';
   const z = sizeParts(def);
@@ -4416,7 +4472,7 @@ async function _duplicateTabContent(srcSlug, newSlug, newDef) {
   // 2. Save to new tab's Supabase row
   const newSid = tabSupabaseId(newSlug);
   console.log('[B4] Dup: saving to newSid:', newSid);
-  const stateJson = JSON.stringify({ elements: srcElements, mmW: newDef.mmW, mmH: newDef.mmH });
+  const stateJson = JSON.stringify({ elements: srcElements, mmW: newDef.mmW, mmH: newDef.mmH, bleed: newDef.bleed });
   const body = JSON.stringify({
     portfolio_id: PORTFOLIO_ID,
     property_id:  newSid,
@@ -5374,8 +5430,14 @@ async function exportPDF(allTabs) {
     const PX_TO_MM   = 25.4 / (_devicePx ? EXPORT_PPI_PX : 96);
     _pdfImgScale     = PDF_TARGET_PPI / (_devicePx ? EXPORT_PPI_PX : 96);
     const _tabPxSize = _pdfDef ? tabPx(_pdfDef) : { w: AW, h: AH };
-    const PAGE_W = _devicePx ? _tabPxSize.w * PX_TO_MM : ((_pdfDef && _pdfDef.mmW) || 210);
-    const PAGE_H = _devicePx ? _tabPxSize.h * PX_TO_MM : ((_pdfDef && _pdfDef.mmH) || 297);
+    // Bleed tabs (Signboards): the PDF page is trim + bleed + a margin that holds the crop marks.
+    //   crop marks start 1 mm beyond the bleed, are 5 mm long, and sit 1 mm in from the page edge.
+    const _bleedMM  = _devicePx ? 0 : tabBleed(_pdfDef);
+    const _markLen  = 5, _markGap = _bleedMM + 1;
+    const _slugMM   = _bleedMM ? _markGap + _markLen + 1 : 0;        // page margin around the TRIM box
+    const _artOff   = _bleedMM ? _slugMM - _bleedMM : 0;             // where the canvas (trim + bleed) starts on the page
+    const PAGE_W = _devicePx ? _tabPxSize.w * PX_TO_MM : (_bleedMM ? _pdfDef.mmW + 2 * _slugMM : ((_pdfDef && _pdfDef.mmW) || 210));
+    const PAGE_H = _devicePx ? _tabPxSize.h * PX_TO_MM : (_bleedMM ? _pdfDef.mmH + 2 * _slugMM : ((_pdfDef && _pdfDef.mmH) || 297));
     const doc = new jsPDF({ unit: 'mm', format: [PAGE_W, PAGE_H], orientation: PAGE_W > PAGE_H ? 'landscape' : 'portrait' });
 
     btn.textContent = (_pdfFontCache && _pdfFontCache.length) ? '⏳ Building PDF…' : '⏳ Loading fonts…';
@@ -5410,8 +5472,8 @@ async function exportPDF(allTabs) {
     }
 
     for (const el of exportEls) {
-      const xMM = el.x * PX_TO_MM;
-      const yMM = el.y * PX_TO_MM;
+      const xMM = el.x * PX_TO_MM + _artOff;
+      const yMM = el.y * PX_TO_MM + _artOff;
       const wMM = el.w * PX_TO_MM;
       const hMM = el.h * PX_TO_MM;
 
@@ -5584,7 +5646,7 @@ async function exportPDF(allTabs) {
         // scaleX = artboardWidthMM / artboardWidthPx  (A4: 210 / 794 = 0.2645; EDM 900px: 238.125 / 900 = 0.2646)
         // fontSizeMM = fontSizePx * scaleX; fontSizePt = fontSizeMM * 2.835
         const fontSizePx = parseFloat(s.fontSize || '16');
-        const scaleX     = _devicePx ? PX_TO_MM : PAGE_W / AW; // mm per canvas px (mm tabs: page width mm / artboard width px)
+        const scaleX     = (_devicePx || _bleedMM) ? PX_TO_MM : PAGE_W / AW; // mm per canvas px (mm tabs: page width mm / artboard width px)
         const fontSizePt = Math.max(1, fontSizePx * scaleX * 2.835);
         const baseFont   = pdfFontFor(s.fontFamily, s.fontWeight);
         const rgb        = hexToRgb(s.color || '#111111');
@@ -5683,6 +5745,27 @@ async function exportPDF(allTabs) {
         try { doc.setFont(baseFont.family, baseFont.style); } catch(e) {}
       }
     } // end for(const el of exportEls)
+
+    // ── Crop marks (bleed tabs only) ────────────────────────────
+    if (_bleedMM) {
+      // keep anything that strays past the bleed out of the crop-mark margin
+      const bx0 = _artOff, by0 = _artOff, bx1 = PAGE_W - _artOff, by1 = PAGE_H - _artOff;
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, PAGE_W, by0, 'F');
+      doc.rect(0, by1, PAGE_W, PAGE_H - by1, 'F');
+      doc.rect(0, 0, bx0, PAGE_H, 'F');
+      doc.rect(bx1, 0, PAGE_W - bx1, PAGE_H, 'F');
+      // marks: black hairlines lined up with the trim edges
+      const tx0 = _slugMM, ty0 = _slugMM, tx1 = PAGE_W - _slugMM, ty1 = PAGE_H - _slugMM;
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.1);
+      [[tx0, -1], [tx1, 1]].forEach(([tx, sx]) => {
+        [[ty0, -1], [ty1, 1]].forEach(([ty, sy]) => {
+          doc.line(tx + sx * _markGap, ty, tx + sx * (_markGap + _markLen), ty);   // horizontal mark
+          doc.line(tx, ty + sy * _markGap, tx, ty + sy * (_markGap + _markLen));   // vertical mark
+        });
+      });
+    }
 
     // Build filename: PropertyName_TabName.pdf
     const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
