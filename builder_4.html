@@ -993,12 +993,12 @@ let TAB_DEFINITIONS = [
   // EDM default: 900 × 7000 px (stored as mm at 96 dpi, so 900 px = 900*25.4/96 mm)
   { slug:'edm',           name:'EDM',                  mmW:900*25.4/96, mmH:7000*25.4/96, active:true, unit:'px' },
   // Signboards: mmW/mmH is the TRIM (finished) size. Each has a 5 mm bleed on every side; the canvas is trim + bleed
-  // and the PDF export adds crop marks. 8×6 stays on by default; the other sizes are ticked on in Marketing Items.
+  // and the PDF export adds crop marks. Only Brochure and EDM are ticked by default; every other tab is ticked on in Marketing Items.
   { slug:'signboard_6x4',  name:'Signboard 6×4',        mmW:193.9,mmH:122,   active:false, bleed:5 },
-  { slug:'signboard_8x6',  name:'Signboard 8×6',        mmW:240, mmH:181.5, active:true,  bleed:5 },
+  { slug:'signboard_8x6',  name:'Signboard 8×6',        mmW:240, mmH:181.5, active:false, bleed:5 },
   { slug:'signboard_10x8', name:'Signboard 10×8',       mmW:314.1,mmH:242.1, active:false, bleed:5 },
   { slug:'signboard_12x8', name:'Signboard 12×8',       mmW:374.1,mmH:242.1, active:false, bleed:5 },
-  { slug:'pressad',       name:'Press Ad - M3x6',       mmW:262, mmH:92,   active:true  },
+  { slug:'pressad',       name:'Press Ad - M3x6',       mmW:262, mmH:92,   active:false },
   { slug:'pressad_m3x3',  name:'Press Ad - M3x3',       mmW:134.5, mmH:92,    active:false },
   { slug:'pressad_10x7',  name:'Press Ad - 10x7',       mmW:260,   mmH:100,   active:false },
   { slug:'pressad_t44',   name:'Press Ad - T44',        mmW:260,   mmH:186,   active:false },
