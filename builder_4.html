@@ -998,7 +998,10 @@ let TAB_DEFINITIONS = [
   { slug:'signboard_8x6',  name:'Signboard 8×6',        mmW:240, mmH:181.5, active:true,  bleed:5 },
   { slug:'signboard_10x8', name:'Signboard 10×8',       mmW:314.1,mmH:242.1, active:false, bleed:5 },
   { slug:'signboard_12x8', name:'Signboard 12×8',       mmW:374.1,mmH:242.1, active:false, bleed:5 },
-  { slug:'pressad',       name:'Press Ad M3x6',        mmW:262, mmH:92,   active:true  },
+  { slug:'pressad',       name:'Press Ad - M3x6',       mmW:262, mmH:92,   active:true  },
+  { slug:'pressad_m3x3',  name:'Press Ad - M3x3',       mmW:92,    mmH:134.5, active:false },
+  { slug:'pressad_10x7',  name:'Press Ad - 10x7',       mmW:100,   mmH:260,   active:false },
+  { slug:'pressad_t44',   name:'Press Ad - T44',        mmW:186,   mmH:260,   active:false },
   { slug:'pressad_afr2',  name:'Press Ad - AFR 2 Mods', mmW:60.3,  mmH:105.3, active:false },
   { slug:'pressad_afr4',  name:'Press Ad - AFR 4 Mods', mmW:122.8, mmH:105.3, active:false },
 ];
@@ -1023,7 +1026,7 @@ async function loadTabDefs() {
             // Update mutable properties from saved state
             // The Press Ad tab was renamed 'Press Ad M3x6'. Properties still saved under the old stock name
             // pick up the new one; any other (custom) name is kept.
-            existing.name   = (savedTab.slug === 'pressad' && savedTab.name === 'Press Ad') ? existing.name : savedTab.name;
+            existing.name   = (savedTab.slug === 'pressad' && (savedTab.name === 'Press Ad' || savedTab.name === 'Press Ad M3x6')) ? existing.name : savedTab.name;
             existing.active = savedTab.active;
             // The EDM used to default to 158 × 800 mm. Properties that still have exactly that saved
             // (it gets re-saved whenever tab settings change) never chose it, so they move to the new
