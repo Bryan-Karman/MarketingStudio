@@ -1248,6 +1248,7 @@ function switchPage(i){
 
 function addPage(){
   savePageState();
+  pushUndo();
   pages.push(newPage());
   currentPage = pages.length-1;
   renderTabs();
@@ -1257,6 +1258,7 @@ function addPage(){
 
 function duplicatePage(){
   savePageState();
+  pushUndo();
   const src = pages[currentPage];
   // Deep clone the page so stickers/paths are independent
   const clone = JSON.parse(JSON.stringify(src));
@@ -1286,6 +1288,7 @@ function duplicatePage(){
 function deletePage(e, i){
   e.stopPropagation();
   if(!confirm('Delete this page?')) return;
+  pushUndo();
   pages.splice(i,1);
   if(currentPage >= pages.length) currentPage = pages.length-1;
   renderTabs();
@@ -5191,32 +5194,38 @@ function pushUndo(){
   if(undoStack.length > 30) undoStack.shift();
   redoStack = []; // clear redo whenever a new action is taken
 }
-function undoStep(){
-  if(!undoStack.length) return;
-  redoStack.push(JSON.stringify(pages));
-  pages = JSON.parse(undoStack.pop());
+function _afterHistoryChange(){
+  // Page count can change on undo/redo (add/delete page) — keep index valid
+  if(currentPage >= pages.length) currentPage = pages.length - 1;
+  if(currentPage < 0) currentPage = 0;
   selectedSticker = null; selectedStickers.clear(); selectedPath = -1;
   renderTabs();
   renderPage(currentPage);
   attachArtboardEvents(pages[currentPage]);
   attachStickerEvents();
   showProps(null);
+  try{ refreshMarkupList(); }catch(e){}
+  scheduleSave(); // persist the undone/redone state so a refresh doesn't bring it back
+}
+function undoStep(){
+  if(!undoStack.length) return;
+  redoStack.push(JSON.stringify(pages));
+  pages = JSON.parse(undoStack.pop());
+  _afterHistoryChange();
 }
 function redoStep(){
   if(!redoStack.length) return;
   undoStack.push(JSON.stringify(pages));
   pages = JSON.parse(redoStack.pop());
-  selectedSticker = null; selectedStickers.clear(); selectedPath = -1;
-  renderTabs();
-  renderPage(currentPage);
-  attachArtboardEvents(pages[currentPage]);
-  attachStickerEvents();
-  showProps(null);
+  _afterHistoryChange();
 }
 document.addEventListener('keydown',e=>{
-  if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); undoStep(); return; }
-  if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='z'){ e.preventDefault(); redoStep(); return; }
-  if((e.metaKey||e.ctrlKey)&&e.key==='y'){ e.preventDefault(); redoStep(); return; }
+  const _k = (e.key||'').toLowerCase();   // Shift+Z reports 'Z', so normalise
+  const _tag = document.activeElement && document.activeElement.tagName;
+  const _typing = _tag==='INPUT'||_tag==='TEXTAREA'||(document.activeElement&&document.activeElement.isContentEditable);
+  if((e.metaKey||e.ctrlKey)&&_k==='z'&&!e.shiftKey){ if(_typing) return; e.preventDefault(); undoStep(); return; }
+  if((e.metaKey||e.ctrlKey)&&_k==='z'&&e.shiftKey){ if(_typing) return; e.preventDefault(); redoStep(); return; }
+  if((e.metaKey||e.ctrlKey)&&_k==='y'){ if(_typing) return; e.preventDefault(); redoStep(); return; }
   if((e.metaKey||e.ctrlKey)&&e.key==='c'){
     const tag=document.activeElement&&document.activeElement.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA') return;
@@ -5248,56 +5257,100 @@ function savePageState(){
   // called before switching page — nothing needed since pages[] is always current
 }
 
+// Write a local copy immediately (synchronous) so a refresh can never lose work.
+// 'dirty' stays true until Supabase confirms the write.
+function _saveLocal(dirty){
+  try{
+    localStorage.setItem(LS_KEY, JSON.stringify({pages, status, savedAt:Date.now(), dirty:!!dirty}));
+  }catch(e){ console.warn('localStorage save failed:', e.message); }
+}
+function _readLocal(){
+  try{ const ls = localStorage.getItem(LS_KEY); return ls ? JSON.parse(ls) : null; }catch(e){ return null; }
+}
+
+let _saving = false, _saveAgain = false;
+
 function scheduleSave(){
   setCld('saving','Saving…');
+  _saveLocal(true);                 // instant local copy, before any network call
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(doSave, 1200);
 }
 
 async function doSave(){
+  _saveTimer = null;                // (was never reset before, which also froze live-sync)
+  if(_saving){ _saveAgain = true; return; }
+  _saving = true;
+  const savedAt = Date.now();
   const payload = {
     portfolio_id: portfolioId,
     property_id:  propertyId,
     state_json:   JSON.stringify({pages, status}),
-    updated_at:   new Date().toISOString()
+    updated_at:   new Date(savedAt).toISOString()
   };
   try {
-    const existing = await sbGet('aerials_projects',`?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}&select=id`);
+    const q = `?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}`;
+    const existing = await sbGet('aerials_projects', q+'&select=id');
     if(Array.isArray(existing)&&existing.length){
-      await sbPatch('aerials_projects',`?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}`,payload);
+      const r = await sbPatch('aerials_projects', q, payload);
+      // PostgREST returns 200 + [] when RLS blocks the update or no row matched — treat as failure
+      let rows = []; try{ rows = await r.json(); }catch(_){ rows = [{}]; }
+      if(Array.isArray(rows) && rows.length === 0)
+        throw new Error('Update affected 0 rows (check Supabase RLS policy on aerials_projects)');
     } else {
       await sbPost('aerials_projects',{...payload,id:'ap'+Date.now()});
     }
-    // Also save to localStorage as backup
-    localStorage.setItem(LS_KEY, JSON.stringify({pages,status}));
+    _lastKnownUpdatedAt = payload.updated_at;
+    // only clear the dirty flag if nothing changed while we were saving
+    if(!_saveTimer && !_saveAgain) _saveLocal(false);
     setCld('saved','Saved ✓');
   } catch(e){
     console.error('Supabase save failed:', e.message);
-    // Show actual error so we can diagnose
     setCld('error', e.message.includes('relation') ? 'Table missing — see console' :
+                    e.message.includes('0 rows') ? 'Not saved to server (permissions) — see console' :
                     e.message.includes('42') ? 'DB error — see console' :
                     'Save failed — check console');
-    // Still save locally so work isn't lost
-    localStorage.setItem(LS_KEY, JSON.stringify({pages,status}));
+    _saveLocal(true);               // keep local copy flagged as unsynced
+  } finally {
+    _saving = false;
+    if(_saveAgain){ _saveAgain = false; scheduleSave(); }
   }
 }
+
+// Flush on refresh/close: the local copy is written synchronously, and we also
+// fire a keepalive request so the server gets it even as the page unloads.
+function _flushSave(){
+  if(_saveTimer === null && !_saving) return;
+  _saveLocal(true);
+  try{
+    fetch(`${SUPABASE_URL}/rest/v1/aerials_projects?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}`,{
+      method:'PATCH', keepalive:true, headers:SB_H,
+      body: JSON.stringify({state_json: JSON.stringify({pages,status}), updated_at:new Date().toISOString()})
+    });
+  }catch(e){}
+}
+window.addEventListener('pagehide', _flushSave);
+window.addEventListener('beforeunload', _flushSave);
 
 async function loadProject(){
   setCld('saving','Loading…');
   try {
     const rows = await sbGet('aerials_projects',`?portfolio_id=eq.${portfolioId}&property_id=eq.${propertyId}&select=state_json`);
+    const local = _readLocal();
+    let usedLocal = false;
     if(Array.isArray(rows)&&rows.length&&rows[0].state_json){
-      const saved = JSON.parse(rows[0].state_json);
+      const saved = typeof rows[0].state_json === 'string' ? JSON.parse(rows[0].state_json) : rows[0].state_json;
       if(saved.pages&&saved.pages.length){ pages=saved.pages; }
       if(saved.status) status=saved.status;
-    } else {
-      // Try localStorage
-      const ls = localStorage.getItem(LS_KEY);
-      if(ls){ const saved=JSON.parse(ls); if(saved.pages&&saved.pages.length){pages=saved.pages;} if(saved.status)status=saved.status; }
     }
+    // If the local copy has changes the server never confirmed, it is newer — keep it and re-sync.
+    if(local && local.dirty && local.pages && local.pages.length){
+      pages = local.pages; if(local.status) status = local.status; usedLocal = true;
+    }
+    if(usedLocal) setTimeout(scheduleSave, 500);
   } catch(e){
-    const ls = localStorage.getItem(LS_KEY);
-    if(ls){ try{ const saved=JSON.parse(ls); if(saved.pages&&saved.pages.length){pages=saved.pages;} if(saved.status)status=saved.status; }catch(e2){} }
+    const saved = _readLocal();
+    if(saved){ if(saved.pages&&saved.pages.length){pages=saved.pages;} if(saved.status)status=saved.status; }
   }
   setCld('saved','Saved ✓');
   const btn=document.getElementById('btn-status');
@@ -5631,7 +5684,8 @@ function _isUserBusy(){
   const active = document.activeElement;
   if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA')) return true;
   if(active && active.contentEditable==='true') return true;
-  if(_saveTimer !== null) return true; // save in flight
+  if(_saveTimer !== null || _saving) return true; // save pending / in flight
+  const _l = _readLocal(); if(_l && _l.dirty) return true; // unsynced local edits
   return false;
 }
 
