@@ -5473,7 +5473,7 @@ async function _exportBuildPages(docIn, btn) {
       exportEls.push({ id: el0.id + 100000000, type: 'img', x: el0.x, y: el0.y, w: el0.h, h: el0.h,
                        imageUrl: d.photo, objectFit: 'cover' });
       if (d.name || d.phone) exportEls.push({
-        id: el0.id, type: 'text', bulletMode: false,
+        id: el0.id, type: 'text', bulletMode: false, _agentText: true,
         // PDF text starts 4px in from its box and puts the first baseline 0.8em down; offset so it lands where the screen shows it
         x: el0.x + textLeft - 4, y: el0.y + textTop + (lh - 1) * fs / 2,
         w: Math.max(el0.w - textLeft + 4, 10), h: blockH,
@@ -5683,8 +5683,12 @@ async function _exportBuildPages(docIn, btn) {
         // This avoids jsPDF metric differences causing extra/missing line wraps
         const domLines = extractDOMLines(el.id, el.content, el.bulletMode);
         const textLines = domLines.length > 0 ? domLines : extractPDFLines(el.content, el.bulletMode);
+        textLines.forEach(l => { if (l && typeof l.text === 'string') l.text = _pdfCleanText(l.text); });
         const ascMM = fontSizePt * 0.8 * (25.4 / 72);
-        let curY    = yMM + ascMM;
+        // Where the first line really starts on screen: the box's 4px top padding + half the line-height gap.
+        // (Without this the PDF text sat a few px higher than on screen — very visible in small label boxes.)
+        const _topPx  = el._agentText ? 0 : _firstTextTopPx(el);
+        let curY    = yMM + (_topPx || 0) * PX_TO_MM + ascMM;
         let isFirst        = true;
         let lastWasBullet  = false;
         let prevWasBlank   = false; // track if previous line was blank (triggers para gap)
@@ -5884,24 +5888,38 @@ async function exportPDF(allTabs) {
 // The lines the browser actually shows for a block of text (one string per visual line).
 // A new line starts when a character sits clearly lower than the previous one; "clearly" is measured against the
 // character's own height, so it works at any zoom level.
+// Newlines / tabs / non-breaking + zero-width characters inside a text node are just spaces (or nothing) on screen,
+// but jsPDF treats a raw newline as 'start a new line' and can drop or push the rest of the text off the page.
+function _pdfCleanText(t) {
+  return String(t == null ? '' : t)
+    .replace(/[\u200B-\u200D\u2060\uFEFF\u00AD]/g, '')
+    .replace(/[\r\n\t\v\f\u2028\u2029\u00A0\u2007\u202F\u2009\u200A\u2002\u2003]/g, ' ');
+}
 function _measureVisualLines(rootOrNodes) {
   const roots = Array.isArray(rootOrNodes) ? rootOrNodes : [rootOrNodes];
   const range = document.createRange();
   const lines = [];
-  let cur = '', curTop = null;
+  let cur = '', curTop = null, prevLeft = null, prevBottom = null, prevTop = null;
   const textNode = n => {
     const str = n.textContent;
     for (let ci = 0; ci < str.length; ci++) {
       range.setStart(n, ci); range.setEnd(n, ci + 1);
       const rects = range.getClientRects();
-      if (!rects.length) continue;
-      const top = rects[0].top, h = rects[0].height || 1;
-      if (curTop === null) curTop = top;
-      if (top > curTop + h * 0.5) { lines.push(cur.trimEnd()); cur = str[ci]; curTop = top; }
-      else cur += str[ci];
+      if (!rects.length) { cur += _pdfCleanText(str[ci]); continue; }   // keep every character, even ones the browser gives no box
+      const r = rects[0], top = r.top, h = r.height || 1;
+      if (curTop === null) { curTop = top; }
+      // A new line starts when the next character jumps back to the left (a wrap) or sits clearly below the previous one.
+      // Comparing with the previous CHARACTER (not the first one on the line) means small raised characters such as
+      // superscript footnote markers at the start of a line can no longer be mistaken for a line break.
+      const wrapped = prevLeft !== null && (
+            (r.left < prevLeft - 1 && top > prevTop + 1) ||
+            (top > prevBottom - h * 0.25 && r.left <= prevLeft + 1));
+      if (wrapped) { lines.push(cur.trimEnd()); cur = _pdfCleanText(str[ci]); curTop = top; }
+      else cur += _pdfCleanText(str[ci]);
+      prevLeft = r.left; prevTop = top; prevBottom = r.bottom;
     }
   };
-  const softReturn = () => { lines.push(cur.trimEnd()); cur = ''; curTop = null; };
+  const softReturn = () => { lines.push(cur.trimEnd()); cur = ''; curTop = null; prevLeft = prevTop = prevBottom = null; };
   roots.forEach(root => {
     if (root.nodeType === 3) { textNode(root); return; }
     if (root.nodeName === 'BR') { softReturn(); return; }
@@ -5920,13 +5938,13 @@ function _measureVisualLines(rootOrNodes) {
 function _textLinesWithBreaks(nodes) {
   const out = [''];
   (Array.isArray(nodes) ? nodes : [nodes]).forEach(root => {
-    if (root.nodeType === 3) { out[out.length - 1] += root.textContent; return; }
+    if (root.nodeType === 3) { out[out.length - 1] += _pdfCleanText(root.textContent); return; }
     if (root.nodeName === 'BR') { out.push(''); return; }
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
       acceptNode: n => (n.nodeType === 3 || n.nodeName === 'BR') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
     });
     let n;
-    while ((n = walker.nextNode())) { if (n.nodeType === 1) out.push(''); else out[out.length - 1] += n.textContent; }
+    while ((n = walker.nextNode())) { if (n.nodeType === 1) out.push(''); else out[out.length - 1] += _pdfCleanText(n.textContent); }
   });
   while (out.length > 1 && out[out.length - 1].trim() === '') out.pop();
   return out;
@@ -5948,6 +5966,33 @@ function _paragraphNodes(inner) {
   return paras;
 }
 
+// Distance (in canvas px) from the top of a text box to the top of its first visible line, measured from the live DOM.
+function _firstTextTopPx(el) {
+  try {
+    const wrap  = document.querySelector('.cv-el[data-id="' + el.id + '"]');
+    const inner = wrap && wrap.querySelector('.cv-text-inner');
+    if (!inner || !el.h) return null;
+    const wr = wrap.getBoundingClientRect();
+    const scale = wr.height / el.h;                      // on-screen zoom
+    if (!(scale > 0)) return null;
+    const range = document.createRange();
+    const walker = document.createTreeWalker(inner, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) {
+      const str = n.textContent;
+      for (let ci = 0; ci < str.length; ci++) {
+        if (!str[ci].trim()) continue;
+        range.setStart(n, ci); range.setEnd(n, ci + 1);
+        const rc = range.getClientRects();
+        if (!rc.length) continue;
+        const off = (rc[0].top - wr.top) / scale;
+        return Math.max(0, Math.min(off, el.h));
+      }
+    }
+  } catch(e) { console.warn('[B4] first-line measure failed', e); }
+  return null;
+}
+
 function extractDOMLines(elId, content, bulletMode) {
   const wrap  = document.querySelector('.cv-el[data-id="' + elId + '"]');
   const inner = wrap && wrap.querySelector('.cv-text-inner');
@@ -5966,6 +6011,13 @@ function extractDOMLines(elId, content, bulletMode) {
       const visualLines = _measureVisualLines(nodes);
       if (!visualLines.length) {
         _textLinesWithBreaks(nodes).forEach((t, i) => push({ text: t, bold: false, isBlankLine: false, isSoftReturn: i > 0, bullet: !!bulletMode && i === 0 }));
+        return;
+      }
+      // Safety net: if the measured lines don't add up to ALL the paragraph's text, don't trust them — use the plain text
+      // (the PDF then wraps it itself) so nothing can silently fall off the export.
+      const _squash = t => _pdfCleanText(t).replace(/\s+/g, '');
+      if (_squash(visualLines.join('')) !== _squash(rawText)) {
+        _textLinesWithBreaks(nodes).forEach((t, i) => push({ text: t, bold: nodes.some(n => n.nodeType === 1 && (/^(b|strong)$/i.test(n.tagName) || n.querySelector('b,strong') !== null)), isBlankLine: false, isSoftReturn: i > 0, bullet: !!bulletMode && i === 0 }));
         return;
       }
       const hasBold = nodes.some(n => n.nodeType === 1 && (/^(b|strong)$/i.test(n.tagName) || n.querySelector('b,strong') !== null));
@@ -6043,7 +6095,7 @@ function extractPDFLines(html, bulletMode) {
               result.push({ text: cur, bold: curBold, isBlankLine: cur.trim() === '', isSoftReturn: !isFirst });
             }
           } else {
-            const text = child.textContent || '';
+            const text = _pdfCleanText(child.textContent || '');
             const isBlankLine = text.trim() === '';
             result.push({ text, bold: isAllBold(child), isBlankLine });
           }
