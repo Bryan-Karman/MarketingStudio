@@ -5731,10 +5731,10 @@ async function _exportBuildPages(docIn, btn) {
             const lines = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', contentW);
             const lineArr = Array.isArray(lines) ? lines : [lines];
             doc.text('\u2013 ', bulletX, curY);
-            if (lineArr[0]) doc.text(lineArr[0], contentX, curY);
+            if (lineArr[0]) _pdfText(doc, lineArr[0], contentX, curY, 'left');
             curY += lineHk;
             for (let wi = 1; wi < lineArr.length; wi++) {
-              doc.text(lineArr[wi], contentX, curY);
+              _pdfText(doc, lineArr[wi], contentX, curY, 'left');
               curY += lineHk;
             }
           } else if (isSoftReturn) {
@@ -5742,13 +5742,13 @@ async function _exportBuildPages(docIn, btn) {
             const softW = lastWasBullet ? Math.max(maxW - indentMM, 5) : maxW;
             const lineArr = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', softW);
             for (const wl of lineArr) {
-              doc.text(wl, softX, curY, { align: pdfAlign });
+              _pdfText(doc, wl, softX, curY, pdfAlign);
               curY += lineHk;
             }
           } else {
             const lineArr = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', maxW);
             for (const wl of lineArr) {
-              doc.text(wl, textX, curY, { align: pdfAlign });
+              _pdfText(doc, wl, textX, curY, pdfAlign);
               curY += lineHk;
             }
           }
@@ -5784,6 +5784,38 @@ async function _exportBuildPages(docIn, btn) {
 
     return doc;
   }
+}
+
+// Superscript digits (\u00B9 \u00B2 \u00B3 \u2070-\u2079) are drawn by hand as a small raised normal digit. Some of the embedded
+// font files have no glyph for them, and jsPDF then silently stops drawing the REST of that line (the footnote bug).
+const _PDF_SUP = { '\u00B9':'1','\u00B2':'2','\u00B3':'3','\u2070':'0','\u2074':'4','\u2075':'5','\u2076':'6','\u2077':'7','\u2078':'8','\u2079':'9' };
+const _PDF_SUP_RE = /[\u00B9\u00B2\u00B3\u2070\u2074-\u2079]/;
+function _pdfText(doc, str, x, y, align) {
+  str = String(str == null ? '' : str);
+  if (!_PDF_SUP_RE.test(str)) {
+    if (align === 'center' || align === 'right') doc.text(str, x, y, { align: align });
+    else doc.text(str, x, y);
+    return;
+  }
+  const size = doc.getFontSize();
+  const supSize = size * 0.62, raiseMM = size * 0.33 * (25.4 / 72);
+  const runs = [];   // {t, sup}
+  for (const ch of str) {
+    const isSup = Object.prototype.hasOwnProperty.call(_PDF_SUP, ch);
+    const t = isSup ? _PDF_SUP[ch] : ch;
+    const last = runs[runs.length - 1];
+    if (last && last.sup === isSup) last.t += t; else runs.push({ t: t, sup: isSup });
+  }
+  const widthOf = r => { doc.setFontSize(r.sup ? supSize : size); const w = doc.getTextWidth(r.t); return w; };
+  const widths = runs.map(widthOf);
+  const total  = widths.reduce((a, b) => a + b, 0);
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  runs.forEach((r, i) => {
+    doc.setFontSize(r.sup ? supSize : size);
+    doc.text(r.t, cx, r.sup ? y - raiseMM : y);
+    cx += widths[i];
+  });
+  doc.setFontSize(size);
 }
 
 function _exportFileBase() {
