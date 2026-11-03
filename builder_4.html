@@ -5687,8 +5687,10 @@ async function _exportBuildPages(docIn, btn) {
         const ascMM = fontSizePt * 0.8 * (25.4 / 72);
         // Where the first line really starts on screen: the box's 4px top padding + half the line-height gap.
         // (Without this the PDF text sat a few px higher than on screen — very visible in small label boxes.)
-        const _topPx  = el._agentText ? 0 : _firstTextTopPx(el);
-        let curY    = yMM + (_topPx || 0) * PX_TO_MM + ascMM;
+        const _ft     = el._agentText ? null : _firstTextTopPx(el);
+        let curY    = (_ft && _ft.asc)
+                      ? yMM + (_ft.top + _ft.asc) * PX_TO_MM          // exact browser baseline
+                      : yMM + (_ft ? _ft.top : 0) * PX_TO_MM + ascMM;  // fallback: old 0.8 em estimate
         let isFirst        = true;
         let lastWasBullet  = false;
         let prevWasBlank   = false; // track if previous line was blank (triggers para gap)
@@ -6017,8 +6019,19 @@ function _firstTextTopPx(el) {
         range.setStart(n, ci); range.setEnd(n, ci + 1);
         const rc = range.getClientRects();
         if (!rc.length) continue;
-        const off = (rc[0].top - wr.top) / scale;
-        return Math.max(0, Math.min(off, el.h));
+        const off = (rc[0].top - wr.top) / scale;          // top of the first line's content area
+        // The browser puts the baseline one font-ascent below that. Ask the browser for that exact ascent
+        // (instead of assuming 0.8 em) so the PDF baseline lands where the screen shows it for ANY font/size.
+        let asc = null;
+        try {
+          const cs  = getComputedStyle(n.parentElement);
+          const cv  = _firstTextTopPx._cv || (_firstTextTopPx._cv = document.createElement('canvas'));
+          const ctx = cv.getContext('2d');
+          ctx.font  = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+          const m   = ctx.measureText('Hxg');
+          if (m && m.fontBoundingBoxAscent > 0) asc = m.fontBoundingBoxAscent;
+        } catch(e) {}
+        return { top: Math.max(0, Math.min(off, el.h)), asc: asc };
       }
     }
   } catch(e) { console.warn('[B4] first-line measure failed', e); }
