@@ -5319,6 +5319,44 @@ async function loadPDFFonts(doc) {
   });
 }
 
+// CJK fonts (Noto Sans CJK SC subset, TrueType) — only fetched when a page actually contains CJK text.
+// Upload NotoSansCJKsc-Regular.ttf and NotoSansCJKsc-Bold.ttf to the same Supabase "fonts" storage bucket.
+let _pdfCJKCache = null;   // null = not tried yet; [] = tried, unavailable
+async function ensureCJKFonts(doc) {
+  if (_pdfCJKCache === null) {
+    const BASE = SUPA_URL + '/storage/v1/object/public/fonts/';
+    const files = [
+      { file:'NotoSansCJKsc-Regular.ttf', weight:'400' },
+      { file:'NotoSansCJKsc-Bold.ttf',    weight:'700' },
+    ];
+    const res = await Promise.all(files.map(async f => {
+      try {
+        const r = await fetch(BASE + f.file);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        let b64 = ''; const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk) b64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        return { ...f, b64: btoa(b64) };
+      } catch(e) { console.warn('[PDF] CJK font load failed:', f.file, e.message); return null; }
+    }));
+    _pdfCJKCache = res.every(Boolean) ? res : [];
+  }
+  if (!_pdfCJKCache.length || doc._cjkReady) return;
+  _pdfCJKCache.forEach(f => {
+    doc.addFileToVFS(f.file, f.b64);
+    doc.addFont(f.file, 'NotoSansCJKsc_' + f.weight, 'normal');
+  });
+  doc._cjkReady = true;
+}
+// Does the page currently on the canvas contain any CJK text?
+function _pageHasCJK() {
+  try {
+    if (_CJK_RE.test(JSON.stringify(elements))) return true;
+    for (const n of document.querySelectorAll('.cv-el')) if (_CJK_RE.test(n.textContent || '')) return true;
+  } catch(e) {}
+  return false;
+}
+
 // Map fontFamily + weight → jsPDF built-in font (helvetica/times/courier)
 // All three are embedded in every jsPDF document with no external files needed.
 function pdfFontFor(fontFamily, fontWeight) {
@@ -5455,6 +5493,8 @@ async function _exportBuildPages(docIn, btn) {
     } else {
       doc.addPage([PAGE_W, PAGE_H], _orient);          // every tab keeps its own page size
     }
+
+    if (_pageHasCJK()) { btn.textContent = '⏳ Loading CJK font…'; await ensureCJKFonts(doc); btn.textContent = '⏳ Building PDF…'; }
 
     // Agent cards are drawn as two ordinary pieces: a square cover-fit photo and a two-line text block
     const exportEls = [];
@@ -5677,6 +5717,7 @@ async function _exportBuildPages(docIn, btn) {
 
         doc.setFontSize(fontSizePt);
         doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        _pdfTextRGB = rgb;
         doc.setCharSpace(lsMM !== 0 ? lsMM * 2.835 : 0);
 
         // Use DOM-rendered lines for exact browser line breaks
@@ -5792,7 +5833,7 @@ async function _exportBuildPages(docIn, btn) {
 // font files have no glyph for them, and jsPDF then silently stops drawing the REST of that line (the footnote bug).
 const _PDF_SUP = { '\u00B9':'1','\u00B2':'2','\u00B3':'3','\u2070':'0','\u2074':'4','\u2075':'5','\u2076':'6','\u2077':'7','\u2078':'8','\u2079':'9' };
 const _PDF_SUP_RE = /[\u00B9\u00B2\u00B3\u2070\u2074-\u2079]/;
-function _pdfText(doc, str, x, y, align) {
+function _pdfTextLatin(doc, str, x, y, align) {
   str = String(str == null ? '' : str);
   if (!_PDF_SUP_RE.test(str)) {
     if (align === 'center' || align === 'right') doc.text(str, x, y, { align: align });
@@ -5818,6 +5859,94 @@ function _pdfText(doc, str, x, y, align) {
     cx += widths[i];
   });
   doc.setFontSize(size);
+}
+
+// ── CJK (Chinese / Japanese / Korean) support ─────────────────────────────────────────────────────────────
+// Calibre / Financier have no CJK glyphs. CJK runs are drawn as REAL TEXT with an embedded Noto Sans CJK font
+// (see ensureCJKFonts). If that font file isn't available, they fall back to a 300 ppi canvas image so nothing is lost.
+const _CJK_RE = /[\u2E80-\u2FFF\u3000-\u30FF\u3100-\u318F\u31C0-\u4DBF\u4E00-\u9FFF\uA960-\uA97F\uAC00-\uD7FF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF\u{20000}-\u{2FA1F}]/u;
+let _pdfTextRGB = { r: 0, g: 0, b: 0 };
+const _CJK_PPM = 300 / 25.4;   // canvas px per mm
+let _cjkCanvas = null;
+
+function _pdfLatinWidth(doc, str) {
+  const size = doc.getFontSize();
+  if (!_PDF_SUP_RE.test(str)) return doc.getTextWidth(str);
+  let total = 0;
+  for (const ch of str) {
+    const isSup = Object.prototype.hasOwnProperty.call(_PDF_SUP, ch);
+    doc.setFontSize(isSup ? size * 0.62 : size);
+    total += doc.getTextWidth(isSup ? _PDF_SUP[ch] : ch);
+  }
+  doc.setFontSize(size);
+  return total;
+}
+
+function _cjkFontCSS(doc, sizePx) {
+  let name = '', weight = 400;
+  try { const f = doc.getFont(); name = f.fontName || ''; if (/bold/i.test(f.fontStyle || '')) weight = 700; } catch(e) {}
+  const m = /_(\d{3})$/.exec(name); if (m) weight = parseInt(m[1], 10);
+  const fam = /^Financier/i.test(name)
+    ? 'FinancierDisplay, "Songti SC", "Noto Serif CJK SC", "SimSun", serif'
+    : 'Calibre, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Hiragino Sans", "Yu Gothic", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+  return { css: weight + ' ' + sizePx + 'px ' + fam, weight: weight };
+}
+
+function _cjkMeasure(doc, str) {
+  if (!_cjkCanvas) _cjkCanvas = document.createElement('canvas');
+  const ctx = _cjkCanvas.getContext('2d');
+  const sizePx = doc.getFontSize() * (300 / 72);
+  ctx.font = _cjkFontCSS(doc, sizePx).css;
+  return ctx.measureText(str).width / _CJK_PPM;   // mm
+}
+
+function _cjkDraw(doc, str, x, y) {
+  const sizePx = doc.getFontSize() * (300 / 72);
+  const wMM = _cjkMeasure(doc, str);
+  const pad = Math.ceil(sizePx * 0.1);
+  const cw = Math.ceil(wMM * _CJK_PPM) + pad * 2, ch = Math.ceil(sizePx * 1.7);
+  const base = Math.round(sizePx * 1.25);
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d');
+  ctx.font = _cjkFontCSS(doc, sizePx).css;
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgb(' + _pdfTextRGB.r + ',' + _pdfTextRGB.g + ',' + _pdfTextRGB.b + ')';
+  ctx.fillText(str, pad, base);
+  doc.addImage(c.toDataURL('image/png'), 'PNG', x - pad / _CJK_PPM, y - base / _CJK_PPM, cw / _CJK_PPM, ch / _CJK_PPM, undefined, 'FAST');
+}
+
+function _pdfText(doc, str, x, y, align) {
+  str = String(str == null ? '' : str);
+  if (!_CJK_RE.test(str)) return _pdfTextLatin(doc, str, x, y, align);
+  // split into CJK and non-CJK runs
+  const runs = [];
+  for (const chr of str) {
+    const cjk = _CJK_RE.test(chr);
+    const last = runs[runs.length - 1];
+    if (last && last.cjk === cjk) last.t += chr; else runs.push({ t: chr, cjk: cjk });
+  }
+  const real = !!doc._cjkReady;
+  let prev = null, cjkFam = null;
+  if (real) {
+    try { prev = doc.getFont(); } catch(e) {}
+    const m = prev && /_(\d{3})$/.exec(prev.fontName || '');
+    const bold = m ? parseInt(m[1], 10) >= 600 : /bold/i.test((prev && prev.fontStyle) || '');
+    cjkFam = 'NotoSansCJKsc_' + (bold ? '700' : '400');
+  }
+  const useFont  = () => doc.setFont(cjkFam, 'normal');
+  const backFont = () => { if (prev) { try { doc.setFont(prev.fontName, prev.fontStyle); } catch(e) {} } };
+  runs.forEach(r => {
+    if (r.cjk && real) { useFont(); r.w = doc.getTextWidth(r.t); backFont(); }
+    else r.w = r.cjk ? _cjkMeasure(doc, r.t) : _pdfLatinWidth(doc, r.t);
+  });
+  const total = runs.reduce((a, r) => a + r.w, 0);
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  runs.forEach(r => {
+    if (r.cjk && real) { useFont(); doc.text(r.t, cx, y); backFont(); }
+    else if (r.cjk) { try { _cjkDraw(doc, r.t, cx, y); } catch(e) { console.warn('[PDF] CJK draw failed:', e); } }
+    else _pdfTextLatin(doc, r.t, cx, y, 'left');
+    cx += r.w;
+  });
 }
 
 function _exportFileBase() {
