@@ -275,7 +275,7 @@ body.exporting .stem-drag-handle{display:none!important;}
   flex-shrink:0;
   align-self:stretch;
 }
-.sticker-icon-box img{ width:32px;height:32px;object-fit:contain;display:block;flex-shrink:0; }
+.sticker-icon-box img{ height:32px;width:auto;max-width:180px;object-fit:contain;display:block;flex-shrink:0; }
 .sticker-icon-box .st-emoji{ font-size:24px;line-height:1;display:block;flex-shrink:0; }
 
 /* Green label bar — auto-height for multi-line */
@@ -383,7 +383,7 @@ body.exporting .stem-drag-handle{display:none!important;}
 .markup-sticker.multi-label .sticker-stem{ background:#fff; }
 .markup-sticker.multi-label .sticker-dot{ background:#fff; border:2px solid #fff; }
 .mt-icons-row{ background:#fff; display:flex; align-items:center; justify-content:center; gap:16px; padding:3px 16px; min-height:27px; width:100%; box-sizing:border-box; }
-.mt-icons-row img{ height:44px; width:auto; max-width:90px; object-fit:contain; display:block; }
+.mt-icons-row img{ height:44px; width:auto; max-width:200px; object-fit:contain; display:block; }
 .mt-icons-row .st-emoji{ font-size:34px; line-height:1; }
 .mt-placeholder{ color:#ccc; font-size:11px; font-family:inherit; }
 /* Boundary disclaimer */
@@ -512,8 +512,9 @@ body.exporting .stem-drag-handle{display:none!important;}
 }
 .ig-item:hover{border-color:#3a5a3a;background:#333;}
 .ig-item.ig-sel{border-color:#5bbf7a;background:#003f2d;}
-.ig-item img,.ig-item .ig-emoji{width:34px;height:34px;object-fit:contain;display:block;}
-.ig-item-thumb{width:42px;height:42px;background:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;}
+.ig-item .ig-emoji{width:34px;height:34px;object-fit:contain;display:block;}
+.ig-item-thumb img{height:34px;width:auto;max-width:100%;object-fit:contain;display:block;}
+.ig-item-thumb{min-width:42px;max-width:100%;height:42px;padding:0 4px;box-sizing:border-box;background:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;}
 .ig-item .ig-emoji{font-size:26px;line-height:34px;text-align:center;}
 .ig-item .ig-name{font-size:8px;color:#777;text-align:center;line-height:1.2;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ig-item.ig-sel .ig-name{color:#5bbf7a;}
@@ -523,6 +524,12 @@ body.exporting .stem-drag-handle{display:none!important;}
   line-height:14px;text-align:center;display:none;
 }
 .ig-item:hover .ig-del{ display:block; }
+.ig-item .ig-rep{
+  position:absolute;top:-6px;left:-6px;width:16px;height:16px;border-radius:50%;
+  background:#2a6fb0;color:#fff;border:none;cursor:pointer;font-size:10px;
+  line-height:16px;text-align:center;display:none;padding:0;
+}
+.ig-item:hover .ig-rep{ display:block; }
 .icon-upload-zone{
   border:2px dashed #444;border-radius:3px;padding:14px;margin-top:8px;
   text-align:center;cursor:pointer;background:#1a1a1a;transition:all .15s;
@@ -1865,13 +1872,13 @@ function _buildStickerHTML(s, isSelected, isMulti){
   if(!noIcon && !isRoad){
     const iconIds = (s.iconIds && s.iconIds.length) ? s.iconIds : [s.markupId];
     iconContent = iconIds.map(iid=>{
-      if(iid==='_custom' && s.customIconUrl){ hasRealIcon=true; return `<img src="${escHtml(s.customIconUrl)}" crossorigin="anonymous" alt="">`; }
+      if(iid==='_custom' && s.customIconUrl){ hasRealIcon=true; return `<img src="${escHtml(s.customIconUrl)}" crossorigin="anonymous" alt="" onload="_iconImgLoaded(this)">`; }
       // Use cached iconUrls on sticker first — available instantly before DB query completes
       const _cu = s.iconUrls && s.iconUrls[iid];
-      if(_cu){ hasRealIcon=true; return `<img src="${escHtml(_cu)}" crossorigin="anonymous" alt="">`; }
+      if(_cu){ hasRealIcon=true; return `<img src="${escHtml(_cu)}" crossorigin="anonymous" alt="" onload="_iconImgLoaded(this)">`; }
       const lib = LIBRARY.find(x=>x.id===iid);
       if(lib){
-        if(lib.iconUrl){ hasRealIcon=true; return `<img src="${escHtml(lib.iconUrl)}" crossorigin="anonymous" alt="${escHtml(lib.name)}">` ; }
+        if(lib.iconUrl){ hasRealIcon=true; return `<img src="${escHtml(lib.iconUrl)}" crossorigin="anonymous" alt="${escHtml(lib.name)}" onload="_iconImgLoaded(this)">` ; }
         if(lib.emoji && lib.emoji!=='□' && lib.emoji!=='■'){ hasRealIcon=true; return `<span class="st-emoji">${lib.emoji}</span>`; }
       }
       return '';
@@ -1946,6 +1953,12 @@ function _buildStickerHTML(s, isSelected, isMulti){
     </div>
     ${tailHtml}
   </div>`;
+}
+
+// Icons are no longer forced square, so box width depends on the image — re-seat the stem once it loads
+function _iconImgLoaded(img){
+  const el = img.closest && img.closest('.markup-sticker');
+  if(el) requestAnimationFrame(()=>_positionStickerTail(el));
 }
 
 // Position tail so stem sits flush at the seam (left edge of green bar for icon-left,
@@ -4313,7 +4326,7 @@ function openIconPicker(stickerId){
         <input class="icon-search" type="text" placeholder="Search icons…" id="icon-modal-search"
           oninput="_filterIconModal(this.value)" autocomplete="off">
         <div style="font-size:9px;color:#555;margin-bottom:8px;">
-          Click to select or deselect. Add as many icons as you need.
+          Click to select or deselect. Add as many icons as you need.${isAdmin?' Admins: hover an icon and use ⟳ to replace its image.':''}
         </div>
         <div id="icon-modal-grid"></div>
         ${isAdmin ? `
@@ -4377,7 +4390,7 @@ function _renderIconModalGrid(query){
       html += `<div class="ig-item${isSel?' ig-sel':''}" data-id="${m.id}" onclick="_iconModalClick(event,'${m.id}')">
         <div class="ig-item-thumb">${thumb}</div>
         <span class="ig-name">${escHtml(m.name)}</span>
-        ${isAdmin && m.fromDB ? `<button class="ig-del" onclick="_adminDeleteIcon(event,'${m.id}')">✕</button>` : ''}
+        ${isAdmin && m.fromDB ? `<button class="ig-rep" title="Replace this icon's image" onclick="_adminReplaceIcon(event,'${m.id}')">⟳</button><button class="ig-del" onclick="_adminDeleteIcon(event,'${m.id}')">✕</button>` : ''}
       </div>`;
     });
     html += '</div>';
@@ -4473,6 +4486,57 @@ async function _adminUploadIcon(){
   } finally {
     if(btn){ btn.textContent='⬆ Upload & Add to Database'; btn.disabled=false; }
   }
+}
+
+// Admin: replace the image of an existing icon (keeps id, name, category).
+// Every sticker already using it picks up the new image.
+function _adminReplaceIcon(e, iconId){
+  e.stopPropagation();
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,image/svg+xml';
+  input.onchange = async function(){
+    const file = input.files[0];
+    if(!file) return;
+    const lib = LIBRARY.find(x=>x.id===iconId);
+    if(!lib) return;
+    const item = document.querySelector('.ig-item[data-id="'+iconId+'"] .ig-item-thumb');
+    if(item) item.style.opacity = '.4';
+    try {
+      const ext  = (file.name.split('.').pop()||'png').toLowerCase();
+      const path = `icons/${iconId}_${Date.now()}.${ext}`;   // new path = no stale browser cache
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':file.type||'image/png','x-upsert':'true'},
+        body: file
+      });
+      if(!res.ok) throw new Error(await res.text());
+      const iconUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+      await saveIconToDB({ id:iconId, name:lib.name, cat:lib.cat||'Custom', emoji:lib.emoji||'', icon_url:iconUrl });
+
+      lib.iconUrl = iconUrl;
+      filteredLib = [...LIBRARY];
+      renderLibrary();
+
+      // Update the cached URL on every sticker (all pages) that uses this icon
+      pages.forEach(function(pg){
+        (pg.stickers||[]).forEach(function(st){
+          if(st.iconUrls && st.iconUrls[iconId]) st.iconUrls[iconId] = iconUrl;
+        });
+      });
+      // Redraw affected stickers on the page currently showing
+      (pages[currentPage].stickers||[]).forEach(function(st){
+        var ids = (st.iconIds && st.iconIds.length) ? st.iconIds : [st.markupId];
+        if(ids.indexOf(iconId)>=0) _rerenderSticker(st);
+      });
+      scheduleSave();
+      _renderIconModalGrid(document.getElementById('icon-modal-search')?.value||'');
+    } catch(err){
+      alert('Replace failed: ' + err.message);
+      if(item) item.style.opacity = '';
+    }
+  };
+  input.click();
 }
 
 async function _adminDeleteIcon(e, iconId){
