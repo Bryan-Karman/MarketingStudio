@@ -5744,7 +5744,7 @@ async function _exportBuildPages(docIn, btn) {
         const indentMM = dashW;
 
         let prevK = 1;
-        for (const { text, bold: lineBold, isBlankLine, isSoftReturn, bullet, isDOMLine, paraIdx } of textLines) {
+        for (const { text, bold: lineBold, runs: lineRuns, isBlankLine, isSoftReturn, bullet, isDOMLine, paraIdx } of textLines) {
           if (isBlankLine) {
             // Blank line acts as paragraph separator — record it and move down
             prevWasBlank = true;
@@ -5776,7 +5776,8 @@ async function _exportBuildPages(docIn, btn) {
             const lines = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', contentW);
             const lineArr = Array.isArray(lines) ? lines : [lines];
             doc.text('\u2013 ', bulletX, curY);
-            if (lineArr[0]) _pdfText(doc, lineArr[0], contentX, curY, 'left');
+            if (isDOMLine && lineRuns && lineRuns.length) _pdfRuns(doc, lineRuns, contentX, curY, 'left', el.style && el.style.fontFamily, lineFont);
+            else if (lineArr[0]) _pdfText(doc, lineArr[0], contentX, curY, 'left');
             curY += lineHk;
             for (let wi = 1; wi < lineArr.length; wi++) {
               _pdfText(doc, lineArr[wi], contentX, curY, 'left');
@@ -5787,13 +5788,15 @@ async function _exportBuildPages(docIn, btn) {
             const softW = lastWasBullet ? Math.max(maxW - indentMM, 5) : maxW;
             const lineArr = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', softW);
             for (const wl of lineArr) {
-              _pdfText(doc, wl, softX, curY, pdfAlign);
+              if (isDOMLine && lineRuns && lineRuns.length) _pdfRuns(doc, lineRuns, softX, curY, pdfAlign, el.style && el.style.fontFamily, lineFont);
+              else _pdfText(doc, wl, softX, curY, pdfAlign);
               curY += lineHk;
             }
           } else {
             const lineArr = isDOMLine ? [text] : doc.splitTextToSize(text || ' ', maxW);
             for (const wl of lineArr) {
-              _pdfText(doc, wl, textX, curY, pdfAlign);
+              if (isDOMLine && lineRuns && lineRuns.length) _pdfRuns(doc, lineRuns, textX, curY, pdfAlign, el.style && el.style.fontFamily, lineFont);
+              else _pdfText(doc, wl, textX, curY, pdfAlign);
               curY += lineHk;
             }
           }
@@ -5951,6 +5954,25 @@ function _pdfText(doc, str, x, y, align) {
   });
 }
 
+// Draws one line made of runs, each in its own weight (so a few bold words stay bold and the rest stays regular).
+function _pdfRuns(doc, runs, x, y, align, fontFamily, fallbackFont) {
+  const setF = r => {
+    const f = pdfFontFor(fontFamily, String(r.w));
+    try { doc.setFont(f.family, f.style); } catch(e) { doc.setFont('helvetica', r.w >= 600 ? 'bold' : 'normal'); }
+  };
+  let total = 0;
+  runs.forEach(r => { setF(r); r.mw = _pdfRunWidth(doc, r.t); total += r.mw; });
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  runs.forEach(r => { setF(r); _pdfText(doc, r.t, cx, y, 'left'); cx += r.mw; });
+  if (fallbackFont) { try { doc.setFont(fallbackFont.family, fallbackFont.style); } catch(e) {} }
+}
+function _pdfRunWidth(doc, str) {
+  if (!_CJK_RE.test(str)) return _pdfLatinWidth(doc, str);
+  let w = 0;
+  for (const chr of str) w += _CJK_RE.test(chr) ? _cjkMeasure(doc, chr) : _pdfLatinWidth(doc, chr);
+  return w;
+}
+
 function _exportFileBase() {
   const propName = (document.getElementById('mast-property-name') || {}).textContent || 'CBRE';
   return propName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'CBRE';
@@ -6064,13 +6086,31 @@ function _measureVisualLines(rootOrNodes) {
   const roots = Array.isArray(rootOrNodes) ? rootOrNodes : [rootOrNodes];
   const range = document.createRange();
   const lines = [];
+  lines.runs = [];            // per line: [{t, w}] — text runs with their CSS font-weight (so only the bold words export bold)
+  let curRuns = [];
   let cur = '', curTop = null, prevLeft = null, prevBottom = null, prevTop = null;
+  const addRun = (t, w) => {
+    if (!t) return;
+    const last = curRuns[curRuns.length - 1];
+    if (last && last.w === w) last.t += t; else curRuns.push({ t: t, w: w });
+  };
+  const closeLine = () => {
+    // mirror cur.trimEnd() on the runs
+    while (curRuns.length) {
+      const l = curRuns[curRuns.length - 1];
+      l.t = l.t.replace(/\s+$/, '');
+      if (l.t === '') curRuns.pop(); else break;
+    }
+    lines.runs.push(curRuns); curRuns = [];
+  };
   const textNode = n => {
     const str = n.textContent;
+    let wt = 400;
+    try { wt = parseInt(getComputedStyle(n.parentElement).fontWeight, 10) || 400; } catch(e) {}
     for (let ci = 0; ci < str.length; ci++) {
       range.setStart(n, ci); range.setEnd(n, ci + 1);
       const rects = range.getClientRects();
-      if (!rects.length) { cur += _pdfCleanText(str[ci]); continue; }   // keep every character, even ones the browser gives no box
+      if (!rects.length) { cur += _pdfCleanText(str[ci]); addRun(_pdfCleanText(str[ci]), wt); continue; }   // keep every character, even ones the browser gives no box
       const r = rects[0], top = r.top, h = r.height || 1;
       if (curTop === null) { curTop = top; }
       // A new line starts when the next character jumps back to the left (a wrap) or sits clearly below the previous one.
@@ -6079,12 +6119,12 @@ function _measureVisualLines(rootOrNodes) {
       const wrapped = prevLeft !== null && (
             (r.left < prevLeft - 1 && top > prevTop + 1) ||
             (top > prevBottom - h * 0.25 && r.left <= prevLeft + 1));
-      if (wrapped) { lines.push(cur.trimEnd()); cur = _pdfCleanText(str[ci]); curTop = top; }
-      else cur += _pdfCleanText(str[ci]);
+      if (wrapped) { lines.push(cur.trimEnd()); closeLine(); cur = _pdfCleanText(str[ci]); addRun(cur, wt); curTop = top; }
+      else { cur += _pdfCleanText(str[ci]); addRun(_pdfCleanText(str[ci]), wt); }
       prevLeft = r.left; prevTop = top; prevBottom = r.bottom;
     }
   };
-  const softReturn = () => { lines.push(cur.trimEnd()); cur = ''; curTop = null; prevLeft = prevTop = prevBottom = null; };
+  const softReturn = () => { lines.push(cur.trimEnd()); closeLine(); cur = ''; curTop = null; prevLeft = prevTop = prevBottom = null; };
   roots.forEach(root => {
     if (root.nodeType === 3) { textNode(root); return; }
     if (root.nodeName === 'BR') { softReturn(); return; }
@@ -6095,7 +6135,7 @@ function _measureVisualLines(rootOrNodes) {
     let n;
     while ((n = walker.nextNode())) { if (n.nodeType === 1) softReturn(); else textNode(n); }
   });
-  if (cur.trim()) lines.push(cur.trimEnd());   // (a single trailing <br> is just the browser's placeholder — no extra line)
+  if (cur.trim()) { lines.push(cur.trimEnd()); closeLine(); }   // (a single trailing <br> is just the browser's placeholder — no extra line)
   return lines;
 }
 
@@ -6199,7 +6239,7 @@ function extractDOMLines(elId, content, bulletMode) {
       const hasBold = nodes.some(n => n.nodeType === 1 && (/^(b|strong)$/i.test(n.tagName) || n.querySelector('b,strong') !== null));
       visualLines.forEach((vl, vi) => {
         // isDOMLine: this is exactly how the browser wrapped it — the PDF must not wrap it again
-        push({ text: vl || ' ', bold: hasBold, isBlankLine: false, isSoftReturn: vi > 0, bullet: !!bulletMode && vi === 0, isDOMLine: true });
+        push({ text: vl || ' ', bold: hasBold, runs: (visualLines.runs && visualLines.runs[vi]) || null, isBlankLine: false, isSoftReturn: vi > 0, bullet: !!bulletMode && vi === 0, isDOMLine: true });
       });
     } catch(e) {
       // Fallback if Range API fails
