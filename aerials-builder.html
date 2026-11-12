@@ -580,6 +580,7 @@ body.exporting .stem-drag-handle{display:none!important;}
 .pen-colour-row input[type=color]{width:32px;height:26px;border:1px solid #444;border-radius:2px;background:none;cursor:pointer;padding:1px;}
 
 /* ── EXPORT: hide editor chrome ── */
+
 body.exporting .img-rh{display:none!important;}
 body.exporting .pan-img-rh{display:none!important;}
 body.exporting .sticker-del{display:none!important;}
@@ -701,6 +702,7 @@ body.exporting .markup-sticker.selected .sticker-body{outline:none!important;}
 
     <button class="tb-btn btn-dl" id="btn-export-page" onclick="exportCurrentPage()" title="Download current page as JPG">⬇ Download Aerial</button>
     <button class="tb-btn btn-all" id="btn-export-all" onclick="exportAllPages()" title="Download all pages as JPGs">⬇ Download All Aerials</button>
+    <button class="tb-btn btn-all" id="btn-export-tags" onclick="exportTagsAsPNG()" title="Admin: export every tag on this tab as a separate transparent PNG" style="display:none;background:#2a3a1a;color:#b8e87a;border:1px solid #4a6a2a;">⬇ Export Tags (PNG)</button>
     <button class="tb-btn btn-status" id="btn-status" onclick="toggleStatus()">● IN PROGRESS</button>
   </div>
   <div class="topbar-row2" id="page-tabs">
@@ -5600,6 +5602,120 @@ async function exportAllPages(){
   if(btn){ btn.disabled=false; btn.textContent='⬇ Download All Aerials'; }
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: EXPORT EVERY TAG ON THE CURRENT TAB AS INDIVIDUAL PNGs
+// ═══════════════════════════════════════════════════════════════
+function _tagFileName(s, idx, used){
+  let base = s.propLabel ? [s.propLine1, s.propLine2].filter(Boolean).join(' ')
+           : [s.label, s.subLabel].filter(Boolean).join(' - ');
+  if(!base){ const m = LIBRARY.find(x=>x.id===s.markupId); base = (m&&m.name) || 'Tag'; }
+  base = base.replace(/[\\/:*?"<>|\n\r]+/g,' ').replace(/\s+/g,' ').trim() || 'Tag';
+  let name = base, n = 2;
+  while(used.has(name.toLowerCase())) name = base+' '+(n++);
+  used.add(name.toLowerCase());
+  return String(idx+1).padStart(2,'0')+' - '+name+'.png';
+}
+
+async function exportTagsAsPNG(){
+  if(!isAdmin){ alert('Admin only.'); return; }
+  const p = pages[currentPage];
+  const stickers = (p && p.stickers) || [];
+  if(!stickers.length){ alert('There are no tags on this tab to export.'); return; }
+  const btn = document.getElementById('btn-export-tags');
+  const btnTxt = btn ? btn.textContent : '';
+  if(btn) btn.disabled = true;
+
+  // Make sure multi-label icons are present on the live stickers before cloning
+  _reinjectAllMultiGlobal();
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+  await new Promise(r=>setTimeout(r,300));
+
+  // Off-screen, un-transformed stage: each tag is cloned here on its own so it
+  // renders at true 1:1 size with no photo, outlines or editor chrome around it.
+  const stage = document.createElement('div');
+  stage.style.cssText = 'position:fixed;left:0;top:0;width:1500px;height:1129px;z-index:-1;pointer-events:none;background:transparent;overflow:visible;';
+  document.body.appendChild(stage);
+
+  const used = new Set();
+  let done = 0;
+  try {
+    for(let i=0;i<stickers.length;i++){
+      const s = stickers[i];
+      const src = document.getElementById('ms-'+s.id);
+      if(!src) continue;
+      if(btn) btn.textContent = `Exporting ${i+1}/${stickers.length}…`;
+
+      const clone = src.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.classList.remove('selected','multi-selected');
+      clone.querySelectorAll('.sticker-del,.stem-drag-handle').forEach(n=>n.remove());
+      clone.style.left = '400px';
+      clone.style.top  = '400px';
+      clone.style.pointerEvents = 'none';
+
+      // Bake prop-tenant icon colour filter (html2canvas ignores CSS filter)
+      const srcImgs = src.querySelectorAll('.sticker-icon-box img');
+      const cloneImgs = clone.querySelectorAll('.sticker-icon-box img');
+      if(src.classList.contains('prop-tenant')){
+        cloneImgs.forEach((ci,k)=>{
+          const si = srcImgs[k];
+          if(!si || !si.complete || !si.naturalWidth) return;
+          const c = document.createElement('canvas');
+          c.width = si.naturalWidth; c.height = si.naturalHeight;
+          const cx = c.getContext('2d');
+          cx.filter = 'invert(71%) sepia(79%) saturate(499%) hue-rotate(104deg) brightness(101%)';
+          cx.drawImage(si,0,0);
+          c.style.cssText = ci.style.cssText;
+          c.style.width = si.offsetWidth+'px'; c.style.height = si.offsetHeight+'px'; c.style.filter='none';
+          ci.parentNode.replaceChild(c,ci);
+        });
+      }
+
+      stage.innerHTML = '';
+      stage.appendChild(clone);
+      await new Promise(r=>setTimeout(r,120));
+
+      try {
+        const canvas = await html2canvas(stage,{
+          scale:3, useCORS:true, allowTaint:false, backgroundColor:null,
+          width:1500, height:1129, x:0, y:0, scrollX:0, scrollY:0, logging:false
+        });
+
+        // Trim transparent edges so the PNG is tight around the tag
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        const d = ctx.getImageData(0,0,W,H).data;
+        let x0=W,y0=H,x1=-1,y1=-1;
+        for(let yy=0;yy<H;yy++){
+          for(let xx=0;xx<W;xx++){
+            if(d[(yy*W+xx)*4+3]>8){ if(xx<x0)x0=xx; if(xx>x1)x1=xx; if(yy<y0)y0=yy; if(yy>y1)y1=yy; }
+          }
+        }
+        if(x1<0){ console.warn('Tag rendered empty:', s.id); continue; }
+        const pad = 6;
+        x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad); x1=Math.min(W-1,x1+pad); y1=Math.min(H-1,y1+pad);
+        const out = document.createElement('canvas');
+        out.width = x1-x0+1; out.height = y1-y0+1;
+        out.getContext('2d').drawImage(canvas,x0,y0,out.width,out.height,0,0,out.width,out.height);
+
+        const a = document.createElement('a');
+        a.href = out.toDataURL('image/png');
+        a.download = _tagFileName(s,i,used);
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        done++;
+        await new Promise(r=>setTimeout(r,450));
+      } catch(e){
+        console.error('Tag export error', s.id, e);
+      }
+    }
+    if(!done) alert('No tags could be exported. Check the browser console for details.');
+  } finally {
+    stage.remove();
+    if(btn){ btn.disabled=false; btn.textContent=btnTxt; }
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════════════════════════════
@@ -5608,6 +5724,7 @@ function escHtml(s){ const d=document.createElement('div');d.textContent=s;retur
 // ═══════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════
+if(isAdmin){ var _bt=document.getElementById('btn-export-tags'); if(_bt) _bt.style.display=''; }
 setZoom(55);
 renderLibrary();
 setTool('select');
