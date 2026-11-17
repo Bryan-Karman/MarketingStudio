@@ -774,6 +774,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <!-- TOOLBAR (top) -->
 <div class="toolbar">
   <button class="tb-btn" id="btn-undo"   onclick="undo()"         title="Undo (⌘Z)">↩ Undo</button>
+  <button class="tb-btn" id="btn-redo"   onclick="redo()"         title="Redo (⌘⇧Z)">↪ Redo</button>
   <button class="tb-btn" id="btn-copy"   onclick="copySelected()" title="Copy (⌘D)" style="display:none;">⎘ Copy</button>
   <button class="tb-btn" id="btn-delete" onclick="deleteSelected()" title="Delete (⌫)" style="color:var(--red);border-color:#5a2222;display:none;">✕ Delete</button>
   <div class="tb-sep"></div>
@@ -1154,6 +1155,7 @@ const ZOOM_MIN = 0.25, ZOOM_MAX = 3.0;
 // ── Undo stack ────────────────────────────────────────────────────
 // Each entry is a deep snapshot of `elements` at a point in time.
 const _undoStack = [];
+const _redoStack = [];   // states undone by Undo; Redo walks forward through them. Cleared by any new change.
 const UNDO_MAX   = 50;
 
 const USER_COLORS = ['#f0a030','#4ab0f5','#e05555','#b87af5','#f56e42','#5bd4c8','#f5c842','#42f5b3'];
@@ -3739,6 +3741,31 @@ function _wrapLooseBlocks(inner) {
   inner.replaceChildren(...out);
 }
 
+// Browsers leave a placeholder (<br>, <div><br></div> or <div></div>) in a box with no text. Pasting next to it left a
+// stray blank paragraph that was invisible while editing (zero-height <div></div>) but became a real blank line
+// after save/refresh. Clear the placeholder first so the pasted text takes its place.
+function _dropEmptyPlaceholders(inner, sel) {
+  // Deleting a selection that spanned a paragraph break (e.g. a triple-click on a line) leaves a childless <div></div>
+  // behind. It has no height on screen, but after save/refresh it turns into a visible blank paragraph. A real blank
+  // line always holds a <br>, so a top-level <div> with no text and no <br> is never wanted.
+  Array.from(inner.children).forEach(c => { if (c.tagName === 'DIV' && c.textContent === '' && !c.querySelector('br, *')) c.remove(); });
+  const blocks = inner.querySelectorAll('div, p');
+  if (inner.textContent.trim() === '' && blocks.length <= 1 && !inner.querySelector('b, i, u, span, a')) {
+    // Whole box is empty: start from a genuinely empty box
+    inner.replaceChildren();
+    const r = document.createRange(); r.setStart(inner, 0); r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+    return;
+  }
+  // Caret sits in a text-less paragraph: drop its placeholder <br> (re-added by _keepParagraphHeight if it stays empty)
+  let node = sel.getRangeAt(0).startContainer;
+  let block = node.nodeType === 1 ? node : node.parentNode;
+  while (block && block.parentNode !== inner && block !== inner) block = block.parentNode;
+  if (block && block !== inner && block.textContent === '') {
+    Array.from(block.children).forEach(c => { if (c.tagName === 'BR') c.remove(); });
+  }
+}
+
 function _keepParagraphHeight(div) { if (div.textContent === '' && !div.querySelector('br')) div.innerHTML = '<br>'; }
 
 // Insert plain text at the caret. One line stays inline; several lines split the current paragraph at the caret and
@@ -3748,11 +3775,17 @@ function _pasteTextAsParagraphs(inner, text) {
   if (!sel.rangeCount) return;
   const lines = String(text).replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
   sel.deleteFromDocument();
+  _dropEmptyPlaceholders(inner, sel);   // an "empty" box still holds a placeholder <br>/<div>; paste must replace it, not sit beside it
   const range = sel.getRangeAt(0);
 
   if (lines.length === 1) {
     const tn = document.createTextNode(lines[0]);
-    range.insertNode(tn); range.setStartAfter(tn); range.collapse(true);
+    range.insertNode(tn);
+    // Text loose at the top level next to paragraph <div>s gets its own paragraph (as it will after a refresh)
+    if (tn.parentNode === inner && inner.querySelector(':scope > div, :scope > p')) {
+      const d = document.createElement('div'); inner.insertBefore(d, tn); d.appendChild(tn);
+    }
+    range.setStartAfter(tn); range.collapse(true);
     sel.removeAllRanges(); sel.addRange(range);
     return;
   }
@@ -5054,6 +5087,7 @@ function _pushUndo() {
   _endUndoGroup(); // any discrete action closes an open typing/nudge group
   _undoStack.push(JSON.stringify(elements));
   if (_undoStack.length > UNDO_MAX) _undoStack.shift();
+  _redoStack.length = 0; // a brand-new change ends the redo history
 }
 
 // For rapid repeated changes (typing, arrow-key nudging): one snapshot per burst, not per keystroke.
@@ -5068,28 +5102,19 @@ function _pushUndoGrouped(key) {
   _undoGroupTimer = setTimeout(_endUndoGroup, UNDO_GROUP_MS);
 }
 
-function undo() {
-  _endUndoGroup();
+// Put a saved snapshot back on the canvas (shared by Undo and Redo)
+function _applySnapshot(snap) {
   // Remember if a canvas text box is being edited so we can put the user back in it
   const activeEl  = document.activeElement;
   const editWrap  = activeEl && activeEl.classList && activeEl.classList.contains('cv-text-inner')
                     ? activeEl.closest('.cv-el') : null;
   const editingId = editWrap ? parseInt(editWrap.dataset.id) : null;
-
-  // Skip snapshots identical to the current state (e.g. typed then deleted) so a press always does something visible
-  const current = JSON.stringify(elements);
-  let snap = null;
-  while (_undoStack.length) {
-    const s = _undoStack.pop();
-    if (s !== current) { snap = s; break; }
-  }
-  if (snap === null) return;
   try {
     const _before = elements;
     elements = JSON.parse(snap);
     _carryImageHistory(_before, elements);
     _nextId = elements.length ? Math.max(...elements.map(e => e.id)) + 1 : 1;
-  } catch(e) { return; }
+  } catch(e) { return false; }
   renderCanvas();
   deselectAll();
   if (editingId !== null && elements.some(e => e.id === editingId)) {
@@ -5099,6 +5124,36 @@ function undo() {
   }
   scheduleSave();
   if (connected) broadcast({ type: 'full_state', elements: elements.map(e => ({...e})), userId, userName });
+  return true;
+}
+
+function undo() {
+  _endUndoGroup();
+  // Skip snapshots identical to the current state (e.g. typed then deleted) so a press always does something visible
+  const current = JSON.stringify(elements);
+  let snap = null;
+  while (_undoStack.length) {
+    const s = _undoStack.pop();
+    if (s !== current) { snap = s; break; }
+  }
+  if (snap === null) return;
+  if (_applySnapshot(snap)) _redoStack.push(current); // so Redo can come back to where we were
+}
+
+// Redo (⌘⇧Z / Ctrl+Shift+Z / Ctrl+Y): re-applies the change Undo just reversed
+function redo() {
+  _endUndoGroup();
+  const current = JSON.stringify(elements);
+  let snap = null;
+  while (_redoStack.length) {
+    const s = _redoStack.pop();
+    if (s !== current) { snap = s; break; }
+  }
+  if (snap === null) return;
+  if (_applySnapshot(snap)) {
+    _undoStack.push(current);                       // push directly: _pushUndo() would wipe the rest of the redo history
+    if (_undoStack.length > UNDO_MAX) _undoStack.shift();
+  }
 }
 
 // Hook _pushUndo into all mutating operations
@@ -5209,6 +5264,14 @@ document.addEventListener('keydown', e => {
     if (inInput) return;
     e.preventDefault(); // also stops the browser's separate text-only undo inside canvas text boxes
     undo();
+    return;
+  }
+
+  // ⌘⇧Z / Ctrl+Shift+Z (and Ctrl+Y on Windows) — Redo
+  if ((e.metaKey || e.ctrlKey) && ((e.key.toLowerCase() === 'z' && e.shiftKey) || (e.key.toLowerCase() === 'y' && !e.shiftKey && !e.metaKey))) {
+    if (inInput) return;
+    e.preventDefault();
+    redo();
     return;
   }
 
