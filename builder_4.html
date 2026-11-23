@@ -140,6 +140,13 @@
     return s.replace(/[\u0000-\u001f\u007f<>`\\]/g, '').trim().slice(0, max || 60);
   }
   function cleanUserId(s){ return (typeof s === 'string' && /^[A-Za-z0-9_\-.:]{1,80}$/.test(s)) ? s : null; }
+  // Email-slice link (Export HTML): web / mail / phone links or a Campaign Monitor tag like [unsubscribe]; anything else becomes empty
+  function cleanLink(u){
+    if (typeof u !== 'string') return '';
+    u = u.trim();
+    if (u.length > 1000 || /[\s"'<>`\\\u0000-\u001f]/.test(u)) return '';
+    return /^(https?:\/\/|mailto:|tel:|\[)/i.test(u) ? u : '';
+  }
   function imageUrl(u){
     if (u === '' || u === null || u === undefined) return '';
     u = String(u);
@@ -177,6 +184,8 @@
       if (k === 'imageUrl') { var u = imageUrl(v); if (u === null) { note('image link removed', v, ''); out.imageUrl = ''; } else out.imageUrl = u; return; }
       if (k === 'prevImages') { var pa = []; if (Array.isArray(v)) v.slice(0, 30).forEach(function(u){ var c = imageUrl(u); if (c) pa.push(c); }); out.prevImages = pa; return; }
       if (k === 'style')    { out.style = cleanStyleObj(v); return; }
+      if (k === 'sliceLink') { out.sliceLink = cleanLink(v); return; }
+      if (k === 'sliceAlt')  { out.sliceAlt = (typeof v === 'string') ? cleanName(v, 200) : ''; return; }
       if (k === 'agentName' || k === 'agentPhone') { out[k] = cleanName(v, 80); return; }   // typed agent names can contain O'Brien, José, &, etc.
       if (HAS.call(NUM_RANGE, k)) { var n = num(v, NUM_RANGE[k][0], NUM_RANGE[k][1]); if (n === null) note('number removed', k + '=' + String(v), ''); else out[k] = n; return; }
       if (typeof v === 'boolean') { out[k] = v; return; }
@@ -193,7 +202,7 @@
 
   // ── messages ────────────────────────────────────────────────────
   var MSG = { full_state:1, el_crop:1, el_lock:1, el_rect_prop:1, el_reorder:1, tab_switch:1, el_add:1, el_move:1,
-              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1, cursor:1, presence:1, presence_leave:1 };
+              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1, el_slice:1, cursor:1, presence:1, presence_leave:1 };
 
   function reject(why, p){ note('message ignored: ' + why, JSON.stringify(p).slice(0, 200), ''); return null; }
 
@@ -211,7 +220,7 @@
     if (uid !== null) out.userId = uid;
     if (typeof p.userName === 'string') out.userName = cleanName(p.userName, 60);
 
-    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1 };
+    var needId = { el_crop:1, el_lock:1, el_rect_prop:1, el_move:1, el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1, el_slice:1 };
     if (needId[t]) { var eid = idOf(p.id); if (eid === null) return reject('bad id', p); out.id = eid; }
 
     switch (t) {
@@ -274,6 +283,11 @@
         break;
       case 'el_label':
         out.label = (typeof p.label === 'string') ? p.label.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) : '';
+        break;
+      case 'el_slice':
+        out.start = !!p.start;
+        out.link  = cleanLink(p.link);
+        out.alt   = (typeof p.alt === 'string') ? cleanName(p.alt, 200) : '';
         break;
       case 'el_agent':
         if (p.agentId !== undefined) {
@@ -712,6 +726,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:#2a2d30;border-radius:3px;}
+
+/* Export HTML: marks the box that starts a new email slice (editor only; never exported) */
+.cv-el.slice-start::before{content:'';position:absolute;left:-2px;right:-2px;top:-1px;height:0;border-top:2px dashed #f0a030;pointer-events:none;z-index:6;}
+.cv-el.slice-start::after{content:'\2702  SLICE START';position:absolute;left:0;top:-15px;font:700 9px/1 Arial,sans-serif;letter-spacing:.06em;background:#f0a030;color:#1a1a1a;padding:2px 5px;border-radius:2px;pointer-events:none;z-index:6;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -789,6 +807,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-export" onclick="exportPDF(false)" title="Download this tab as a PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Download PDF</button>
   <button class="tb-btn" id="btn-export-all" onclick="exportPDF(true)" title="Download every ticked tab as one combined PDF" style="color:var(--green);border-color:var(--green-md);background:var(--green-dk);">⬇ Download All PDF's</button>
+  <button class="tb-btn" id="btn-export-html" onclick="openHtmlExport()" title="Admin only: slice this EDM into linked images and download a Campaign Monitor-ready HTML file" style="display:none;color:var(--amber);border-color:#7a4a00;">⬇ Export HTML</button>
   <div class="tb-save" id="save-wrap">
     <div class="save-dot"></div>
     <span class="save-lbl" id="save-lbl">—</span>
@@ -1331,6 +1350,8 @@ async function loadFromSupabase() {
       const saved = JSON.parse(rows[0].state_json);
       if (saved.elements && saved.elements.length) {
         elements = saved.elements;
+        _sliceDraft = (saved.sliceDraft && typeof saved.sliceDraft === 'object') ? saved.sliceDraft : null;   // Export HTML cut-line changes
+        _sliceSubject = (typeof saved.sliceSubject === 'string') ? saved.sliceSubject.slice(0, 300) : '';   // Export HTML agent-email subject
         // Migration: a Signboard saved BEFORE bleed existed has no 'bleed' marker. Its artwork was laid out on the
         // trim-size canvas, so move it inward by the bleed and stretch edge-to-edge backgrounds out into the bleed.
         const _bd = tabDef(_currentTab);
@@ -1462,6 +1483,7 @@ async function applyTemplateById(slug, confirm_prompt) {
       if (saved.elements && saved.elements.length) {
         _pushUndo();
         elements = JSON.parse(JSON.stringify(saved.elements));
+        _sliceDraft = null;                                   // a new layout starts with the cut lines its ticked boxes give
         _nextId  = Math.max(...elements.map(e => e.id)) + 1;
         renderCanvas(); deselectAll();
         scheduleSave();
@@ -1685,7 +1707,7 @@ async function saveToSupabase() {
     const body = {
       portfolio_id: PORTFOLIO_ID,
       property_id:  sid,
-      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed }),
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: _sliceDraft || undefined, sliceSubject: _sliceSubject || undefined }),
       updated_at:   new Date().toISOString()
     };
     const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
@@ -1818,6 +1840,7 @@ function handleMsg(msg) {
     if (payload.type === 'el_image')      { handleRemoteImage(payload);    return; }
     if (payload.type === 'el_agent')      { handleRemoteAgent(payload);    return; }
     if (payload.type === 'el_label')      { handleRemoteLabel(payload);    return; }
+    if (payload.type === 'el_slice')      { handleRemoteSlice(payload);    return; }
     if (payload.type === 'cursor')        { handleRemoteCursor(payload);   return; }
     if (payload.type === 'presence')      { handleRemotePresence(payload); return; }
     if (payload.type === 'presence_leave'){ handlePresenceLeave(payload.userId); return; }
@@ -2053,7 +2076,7 @@ function handleRemoteDelete(payload) {
 // ════════════════════════════════════════════════════════
 function createElDOM(el) {
   const wrap = document.createElement('div');
-  wrap.className = 'cv-el' + (el.locked ? ' locked' : '');
+  wrap.className = 'cv-el' + (el.locked ? ' locked' : '') + (el.sliceStart ? ' slice-start' : '');
   wrap.dataset.id = String(el.id);
   wrap.style.cssText = 'left:' + el.x + 'px;top:' + el.y + 'px;width:' + el.w + 'px;height:' + el.h + 'px;';
 
@@ -2331,6 +2354,7 @@ function showProps(id) {
     + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">Boxes with the same label on the ' + esc(prefillSourceName()) + ' and on the EDM, Signboard or Press Ad are matched by <b>Pre-fill from ' + esc(prefillSourceName()) + '</b>.</div>'
     + '<datalist id="prefill-labels"></datalist>';
   if (labelBlock) setTimeout(_fillLabelDatalist, 0);
+  const sliceBlock = _sliceBlockHtml(el);      // Export HTML slice start + link (admin, EDM tabs)
 
   // Position & Size block — shared
   const posSizeBlock = '<div style="' + lkDim + '">'
@@ -2389,7 +2413,7 @@ function showProps(id) {
       + '<div class="prop-row"><span class="prop-label">Para gap</span><input class="prop-input" type="number" min="0" max="200" step="1" value="' + parseFloat(s.paragraphSpacing||0) + '" ' + dis + ' onchange="setProp(' + id + ',\'paragraphSpacing\',this.value+\'px\')"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '</div>';
 
-    panel.innerHTML = lockBtn + formattingBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + formattingBlock + labelBlock + sliceBlock + layerBlock + posSizeBlock + delBtn;
 
   } else if (el.type === 'img') {
     // Image element
@@ -2406,7 +2430,7 @@ function showProps(id) {
       + '<div class="prop-section" style="margin-top:10px;">Fit</div>'
       + '<div class="prop-row"><span class="prop-label">Object fit</span><select class="prop-input" onchange="setImgFit(' + id + ',this.value)">' + fitOpts + '</select></div>';
 
-    panel.innerHTML = lockBtn + imgBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + imgBlock + labelBlock + sliceBlock + layerBlock + posSizeBlock + delBtn;
     renderImageLibrary(id);
 
   } else if (el.type === 'agent') {
@@ -2429,7 +2453,7 @@ function showProps(id) {
       + '<input class="prop-input" type="text" value="' + (st.color || '#003f2d') + '" style="width:68px;flex:none;" onchange="setAgentStyle(' + id + ',\'color\',this.value);showProps(' + id + ')"></div>'
       + '<div class="prop-row"><span class="prop-label">Photo gap</span><input class="prop-input" type="number" min="0" max="500" step="1" value="' + (el.gap === undefined ? 30 : el.gap) + '" onchange="setAgentStyle(' + id + ',\'gap\',this.value)"><span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>'
       + '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:4px;">The photo is a square the height of the card.</div>';
-    panel.innerHTML = lockBtn + agentBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + agentBlock + labelBlock + sliceBlock + layerBlock + posSizeBlock + delBtn;
 
   } else if (el.type === 'rect') {
     // Colour box properties
@@ -2452,7 +2476,7 @@ function showProps(id) {
       + '<input class="prop-input" type="number" min="0" max="400" value="' + (el.borderRadius||0) + '" ' + dis + ' onchange="setRectProp(' + id + ',\'borderRadius\',+this.value)">'
       + '<span style="font-size:10px;color:var(--muted);margin-left:2px;">px</span></div>';
 
-    panel.innerHTML = lockBtn + rectBlock + labelBlock + layerBlock + posSizeBlock + delBtn;
+    panel.innerHTML = lockBtn + rectBlock + labelBlock + sliceBlock + layerBlock + posSizeBlock + delBtn;
   }
 }
 
@@ -4293,7 +4317,7 @@ function saveSyncBeforeUnload(slug, els) {
   try {
     const def = tabDef(slug);
     const sid = tabSupabaseId(slug);
-    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed });
+    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: (slug === _currentTab && _sliceDraft) || undefined, sliceSubject: (slug === _currentTab && _sliceSubject) || undefined });
     const body = JSON.stringify({ portfolio_id: PORTFOLIO_ID, property_id: sid, state_json: stateJson, updated_at: new Date().toISOString() });
 
     // First check if row exists (sync XHR)
@@ -4384,7 +4408,7 @@ async function saveTabToSupabase(slug) {
     const body = {
       portfolio_id: PORTFOLIO_ID,
       property_id:  sid,
-      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed }),
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: _sliceDraft || undefined, sliceSubject: _sliceSubject || undefined }),
       updated_at:   new Date().toISOString()
     };
     const check = await fetch(
@@ -4718,6 +4742,7 @@ function _normLabel(v) {
 }
 
 function updatePrefillButton() {
+  if (typeof updateHtmlExportButton === 'function') updateHtmlExportButton();
   const bar = document.getElementById('prefill-bar');
   if (!bar) return;
   // Shown on every tab except the Brochure tabs themselves (EDM, Signboard, Press Ad, and copies of them)
@@ -6104,6 +6129,888 @@ async function _exportAllTabs(btn) {
   if (!doc) throw new Error('None of the ticked tabs have any content yet.');
   if (skipped.length) setTimeout(() => alert('Combined PDF downloaded (' + done + ' page' + (done === 1 ? '' : 's') + ').\n\nLeft out because nothing has been built on them yet:\n• ' + skipped.join('\n• ')), 400);
   return doc;
+}
+
+// ════════════════════════════════════════════════════════
+// EXPORT TO HTML  (admin only, EDM tabs)
+// Renders the page exactly as it looks on screen, cuts it into slices at the boxes ticked "Start a new slice",
+// uploads each slice to the public "assets" bucket and downloads a Campaign Monitor-ready HTML file made of one
+// image per slice (each wrapped in that slice's link). Text stays inside the images, so every font and size shows
+// exactly as built in every email app.
+// ════════════════════════════════════════════════════════
+function _isEdmTab() { return tabUnit(tabDef(_currentTab)) === 'px'; }
+
+function updateHtmlExportButton() {
+  const b = document.getElementById('btn-export-html');
+  if (b) b.style.display = (USER_ROLE === 'admin' && _isEdmTab()) ? '' : 'none';
+}
+
+function _attr(s) { return esc(s).replace(/"/g, '&quot;'); }
+
+// '' = no link, null = not a usable link, otherwise the cleaned link.
+// Spaces and other awkward characters are encoded rather than rejected (so a mailto subject like
+// "?subject=Request for Information" just works), a bare email gets mailto: in front, a bare www.site.com gets https://.
+function _encMailQuery(q) {
+  const enc = x => { let d = x; try { d = decodeURIComponent(x); } catch (e) {} return encodeURIComponent(d).replace(/'/g, '%27'); };
+  return q.split('&').filter(Boolean).map(pair => {
+    const i = pair.indexOf('=');
+    if (i < 0) return enc(pair);
+    const k = pair.slice(0, i), v = pair.slice(i + 1);
+    let ev = enc(v);
+    if (/^(cc|bcc|to)$/i.test(k)) ev = ev.replace(/%40/g, '@').replace(/%2C/gi, ',');
+    return enc(k) + '=' + ev;
+  }).join('&');
+}
+function _normMailto(v) {
+  const rest = v.replace(/^mailto:/i, '').trim();
+  const qi = rest.indexOf('?');
+  const addr = (qi < 0 ? rest : rest.slice(0, qi)).trim();
+  const query = qi < 0 ? '' : rest.slice(qi + 1);
+  const addrs = addr.split(/[,;]/).map(a => { a = a.trim(); const m = a.match(/<([^<>]+)>/); return (m ? m[1] : a).trim(); }).filter(Boolean);
+  if (!addrs.length) return null;
+  if (!addrs.every(a => /^[^\s@<>"',;:()\[\]\\]+@[^\s@<>"',;:()\[\]\\]+\.[^\s@<>"',;:()\[\]\\]+$/.test(a))) return null;
+  const q = _encMailQuery(query);
+  const out = 'mailto:' + addrs.join(',') + (q ? '?' + q : '');
+  return out.length <= 1000 ? out : null;
+}
+function _normSliceLink(v) {
+  v = String(v == null ? '' : v).trim();
+  if (!v) return '';
+  if (v.length > 2000 || /[\u0000-\u001f\u007f]/.test(v)) return null;
+  if (/^mailto:/i.test(v)) return _normMailto(v);
+  if (/^tel:/i.test(v)) { const t = 'tel:' + v.slice(4).replace(/\s+/g, ''); return /^tel:[+0-9()\-.,;#*pPwW]+$/.test(t) ? t : null; }
+  if (/^[^\s@<>"':\/?#]+@[^\s@<>"':\/?#]+\.[^\s@<>"':\/?#]+$/.test(v)) return _normMailto('mailto:' + v);   // just an email address
+  if (v.charAt(0) === '[') return /^\[[^\s"'<>`\\\]]*\]$/.test(v) ? v : null;                            // Campaign Monitor tag, e.g. [unsubscribe]
+  let u = v;
+  if (!/^https?:\/\//i.test(u)) {
+    if (/^[a-z0-9-]+(\.[a-z0-9-]+)+([\/?#].*)?$/i.test(u)) u = 'https://' + u; else return null;
+  }
+  u = u.replace(/ /g, '%20').replace(/"/g, '%22').replace(/'/g, '%27').replace(/</g, '%3C').replace(/>/g, '%3E').replace(/`/g, '%60').replace(/\\/g, '%5C');
+  if (/\s/.test(u) || u.length > 1000) return null;
+  return u;
+}
+// Why a link was refused, in plain words
+function _linkWhy(v) {
+  v = String(v == null ? '' : v).trim();
+  if (/^mailto:/i.test(v)) return 'The email address after mailto: doesn\'t look right. It should be like mailto:name@company.com (a subject can follow, e.g. ?subject=Hello there).';
+  if (/^tel:/i.test(v)) return 'A phone link should look like tel:+61413860312.';
+  return 'It needs to start with https://, mailto: or tel:, or be an email address.';
+}
+
+// Email address held in an agents-table row (the table is read with select=*, so the column name is found by looking)
+function _agentEmail(a) {
+  if (!a || typeof a !== 'object') return '';
+  const pref = ['email', 'email_address', 'work_email', 'agent_email', 'mail'];
+  const keys = pref.concat(Object.keys(a).filter(k => /e-?mail/i.test(k) && pref.indexOf(k) < 0));
+  for (let n = 0; n < keys.length; n++) {
+    const v = a[keys[n]];
+    if (typeof v === 'string' && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v.trim())) return v.trim();
+  }
+  return '';
+}
+// The subject text for an agent, from the saved default (or a given one): {agent} becomes the agent's name
+function _subjFor(name, subj) {
+  return String(subj === undefined ? _sliceSubject : subj || '').replace(/\{agent\}/gi, name || '').trim();
+}
+function _agentMailto(email, name, subj) {
+  const t = _subjFor(name, subj);
+  return 'mailto:' + email + (t ? '?subject=' + encodeURIComponent(t) : '');    // encoded here so & or = in a subject can't split it
+}
+// The readable subject of a mailto link ('' if it has none, or isn't an email link)
+function _mailSubject(link) {
+  const m = /^mailto:[^?]*\?(.*)$/i.exec(String(link || '').trim());
+  if (!m) return '';
+  const pr = m[1].split('&').find(x => /^subject=/i.test(x));
+  if (!pr) return '';
+  try { return decodeURIComponent(pr.slice(8)); } catch (e) { return pr.slice(8); }
+}
+// The same mailto link with its subject replaced (or removed when empty). Other parts (cc, body, extra addresses) stay.
+function _mailWithSubject(link, subj) {
+  const m = /^(mailto:[^?]*)(?:\?(.*))?$/i.exec(String(link || '').trim());
+  if (!m) return String(link || '');
+  const rest = (m[2] || '').split('&').filter(x => x && !/^subject=/i.test(x));
+  if (subj) rest.unshift('subject=' + encodeURIComponent(subj));
+  return m[1] + (rest.length ? '?' + rest.join('&') : '');
+}
+// Panel: change one box's email subject
+function setSliceSubject(id, value) {
+  const el = elements.find(e => e.id === id); if (!el) return;
+  const em = el.type === 'agent' ? _agentEmail(agentById(el.agentId)) : '';
+  const base = String(el.sliceLink || '').trim() || (em ? 'mailto:' + em : '');
+  if (!/^mailto:/i.test(base)) return;
+  setSliceField(id, 'sliceLink', _mailWithSubject(base, String(value || '').trim()));
+}
+function useAgentEmailForBox(id) {
+  const el = elements.find(e => e.id === id);
+  if (!el || el.type !== 'agent') return;
+  const em = _agentEmail(agentById(el.agentId));
+  if (em) setSliceField(id, 'sliceLink', _agentMailto(em, agentCardData(el).name));
+}
+
+// ── properties panel block (all box types, admin + EDM tabs only) ──
+function _sliceBlockHtml(el) {
+  if (USER_ROLE !== 'admin' || !_isEdmTab()) return '';
+  const on = !!el.sliceStart;
+  let h = '<div class="prop-section">Email slice (Export HTML)</div>'
+    + '<label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:6px;">'
+    + '<input type="checkbox" ' + (on ? 'checked ' : '') + 'onchange="setSliceStart(' + el.id + ',this.checked)"> Start a new slice at the top of this box</label>';
+  if (on) {
+    const _em = el.type === 'agent' ? _agentEmail(agentById(el.agentId)) : '';
+    if (_em) h += '<button class="align-btn" style="width:100%;font-size:10px;margin-bottom:6px;" onclick="useAgentEmailForBox(' + el.id + ')" title="Sets this slice\'s link to an email to the agent">✉ Link to this agent\'s email</button>'
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.4;margin:-2px 0 6px;">' + (_sliceSubject ? 'Subject: ' + esc(_sliceSubject) : 'No subject set. Add one in the Export HTML window.') + '</div>';
+    h += '<div class="prop-row"><input class="prop-input" type="text" maxlength="1000" placeholder="Link for this slice, e.g. https://…" value="' + _attr(el.sliceLink || '') + '" onchange="setSliceField(' + el.id + ',\'sliceLink\',this.value)" style="width:100%;"></div>';
+    if (/^mailto:/i.test(el.sliceLink || '') || (!el.sliceLink && _em)) {
+      h += '<div class="prop-row"><input class="prop-input" type="text" maxlength="300" placeholder="Subject for this email link" value="' + _attr(_mailSubject(el.sliceLink)) + '" onchange="setSliceSubject(' + el.id + ',this.value)" style="width:100%;"></div>';
+    }
+    h += '<div class="prop-row"><input class="prop-input" type="text" maxlength="200" placeholder="Alt text (blank = taken from the slice text)" value="' + _attr(el.sliceAlt || '') + '" onchange="setSliceField(' + el.id + ',\'sliceAlt\',this.value)" style="width:100%;"></div>';
+  }
+  h += '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">Each ticked box starts a slice that runs down to the next ticked box. Tick the top-most box of every section (a section\'s background colour box works well).</div>';
+  return h;
+}
+
+function _sliceBroadcast(el) {
+  if (connected) broadcast({ type: 'el_slice', id: el.id, start: !!el.sliceStart, link: el.sliceLink || '', alt: el.sliceAlt || '', userId, userName });
+}
+function _applySliceClass(id) {
+  const w = document.querySelector('.cv-el[data-id="' + id + '"]');
+  const el = elements.find(e => e.id === id);
+  if (w && el) w.classList.toggle('slice-start', !!el.sliceStart);
+}
+function setSliceStart(id, on) {
+  if (USER_ROLE !== 'admin') return;
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+  _pushUndo();
+  if (on) el.sliceStart = true; else delete el.sliceStart;
+  _applySliceClass(id);
+  _sliceBroadcast(el);
+  scheduleSave();
+  if (_selectedId === id) showProps(id);
+}
+function setSliceField(id, key, value) {
+  if (USER_ROLE !== 'admin') return;
+  const el = elements.find(e => e.id === id);
+  if (!el || (key !== 'sliceLink' && key !== 'sliceAlt')) return;
+  let v;
+  if (key === 'sliceLink') {
+    v = _normSliceLink(value);
+    if (v === null) { alert('That link can\'t be used.\n\n' + _linkWhy(value)); if (_selectedId === id) showProps(id); return; }
+  } else {
+    v = String(value || '').replace(/[\u0000-\u001f\u007f<>`\\]/g, '').trim().slice(0, 200);
+  }
+  if ((el[key] || '') === v) { if (_selectedId === id) showProps(id); return; }
+  _pushUndo();
+  if (v) el[key] = v; else delete el[key];
+  _sliceBroadcast(el);
+  scheduleSave();
+  if (_selectedId === id) showProps(id);
+}
+function handleRemoteSlice(payload) {
+  const el = elements.find(e => e.id === payload.id);
+  if (!el) return;
+  if (payload.start) el.sliceStart = true; else delete el.sliceStart;
+  if (payload.link) el.sliceLink = payload.link; else delete el.sliceLink;
+  if (payload.alt)  el.sliceAlt  = payload.alt;  else delete el.sliceAlt;
+  _applySliceClass(el.id);
+  if (_selectedId === el.id) showProps(el.id);
+}
+
+// ── slice maths ──
+let _hx = null;
+// Manual cut-line changes made in the preview window (moved / added / removed cuts). Saved with the tab, so nothing
+// is lost if the window is closed before exporting. Links and alt text are saved straight onto the ticked boxes.
+var _sliceDraft = null;
+// Subject line used when the agent-email buttons fill in a link (saved with the tab). {agent} = the agent's name.
+var _sliceSubject = '';
+
+// Where the page's content ends (the last slice stops here, so empty white canvas below it is left out)
+function _hxEndY() {
+  let b = 0;
+  elements.forEach(e => { b = Math.max(b, e.y + e.h); });
+  return Math.max(1, Math.min(AH, Math.ceil(b)));
+}
+
+// One cut per ticked box, top to bottom. The first slice always starts at the very top of the page.
+function _hxMarkerCuts(endY) {
+  const marks = elements.filter(e => e.sliceStart && e.y < endY - 4).slice().sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const cuts = [];
+  marks.forEach(m => {
+    const y = Math.max(0, Math.round(m.y));
+    const last = cuts[cuts.length - 1];
+    if (last && y - last.y < 4) {                       // two ticked boxes at the same height: one slice, keep a link if either has one
+      if (!last.link && m.sliceLink) last.link = m.sliceLink;
+      if (!last.alt && m.sliceAlt) last.alt = m.sliceAlt;
+      return;
+    }
+    cuts.push({ y, link: m.sliceLink || '', alt: m.sliceAlt || '', src: m.id });
+  });
+  if (cuts.length) cuts[0].y = 0;
+  return cuts;
+}
+
+// Fallback for an EDM with nothing ticked: cut in the middle of every clear gap between boxes (full-width backgrounds ignored)
+function _hxAutoCuts(endY) {
+  const iv = elements.filter(e => !(e.type === 'rect' && e.w >= AW * 0.9))
+    .map(e => [e.y, e.y + e.h]).filter(a => a[1] > 0 && a[0] < endY).sort((a, b) => a[0] - b[0]);
+  const cuts = [{ y: 0, link: '', alt: '' }];
+  let edge = null;
+  iv.forEach(a => {
+    if (edge !== null && a[0] - edge >= 12) {
+      const y = Math.round((edge + a[0]) / 2);
+      if (y > cuts[cuts.length - 1].y + 20 && y < endY - 20) cuts.push({ y, link: '', alt: '' });
+    }
+    edge = edge === null ? a[1] : Math.max(edge, a[1]);
+  });
+  return cuts;
+}
+
+// The box a cut line "belongs to": the first box that starts at or below the line (the widest one if several start together).
+// Cut lines that aren't on a ticked box are remembered as "this far from that box", so they move when the box moves.
+function _hxAnchorFor(y) {
+  let best = null;
+  elements.forEach(e => {
+    if (e.y < y - 3) return;
+    if (!best || e.y < best.y - 0.5 || (Math.abs(e.y - best.y) <= 0.5 && e.w > best.w)) best = e;
+  });
+  return best;
+}
+
+// Puts the saved manual changes (if any) on top of the cuts the ticked boxes give
+function _hxApplyDraft(cuts, auto, endY) {
+  const d = _sliceDraft;
+  if (!d || typeof d !== 'object') return cuts;
+  let out;
+  if (auto) {
+    if (!d.auto || !Array.isArray(d.extra) || !d.extra.length) return cuts;
+    out = [];
+  } else {
+    const skip = Array.isArray(d.skip) ? d.skip : [];
+    out = cuts.filter(c => skip.indexOf(c.src) < 0).map(c => {
+      const o = Object.assign({}, c), dy = d.dy && d.dy[c.src];
+      if (typeof dy === 'number' && isFinite(dy)) o.y = Math.round(c.y + dy);
+      return o;
+    });
+  }
+  (Array.isArray(d.extra) ? d.extra : []).forEach(x => {
+    if (!x || typeof x.y !== 'number' || !isFinite(x.y)) return;
+    let y = x.y;
+    if (x.a !== undefined && typeof x.dy === 'number') { const an = elements.find(e => e.id === x.a); if (an) y = an.y + x.dy; }   // follows its box
+    out.push({ y: Math.round(y), link: String(x.link || ''), alt: String(x.alt || '') });
+  });
+  out.sort((a, b) => a.y - b.y);
+  const res = [];
+  out.forEach(c => {
+    c.y = Math.max(0, Math.min(c.y, endY - 8));
+    const last = res[res.length - 1];
+    if (last && c.y - last.y < 8) return;
+    res.push(c);
+  });
+  if (!res.length) return cuts;
+  res[0].y = 0;
+  return res;
+}
+
+// Alt text for a slice, taken from the text boxes inside it (shown when a recipient's app blocks images)
+function _hxAltFor(y0, y1, n) {
+  const parts = [];
+  elements.filter(e => (e.type === 'text' || e.type === 'agent') && (e.y + e.h / 2) >= y0 && (e.y + e.h / 2) < y1)
+    .sort((a, b) => (a.y - b.y) || (a.x - b.x)).forEach(e => {
+      if (e.type === 'agent') { const d = agentCardData(e); const t = [d.name, d.phone].filter(Boolean).join(' '); if (t) parts.push(t); return; }
+      const t = document.createElement('div');
+      t.innerHTML = cbreSafeHtml(e.content || '');
+      const blocks = Array.from(t.querySelectorAll('div,p,li')).filter(x => !x.querySelector('div,p,li')).map(x => x.textContent.trim()).filter(Boolean);
+      (blocks.length ? blocks : [t.textContent.trim()]).forEach(x => { if (x) parts.push(x); });
+    });
+  let out = '';
+  parts.forEach(p => { if (out) out += /[.!?:;,]$/.test(out) ? ' ' : ', '; out += p; });
+  out = out.replace(/\s+/g, ' ').trim();
+  if (out.length > 240) out = out.slice(0, 240).replace(/\s+\S*$/, '') + '…';
+  return out || ('Section ' + n);
+}
+
+// ── rendering ──
+async function _hxLoadImg(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const blob = await resp.blob();
+  const isSvg = blob.type.indexOf('svg') >= 0 || /\.svg(\?|$)/i.test(url);
+  return _loadBlobImage(isSvg ? new Blob([blob], { type: 'image/svg+xml' }) : blob);
+}
+
+// One image box drawn exactly as the editor shows it (manual crop frame + Cover / Contain / Fill), at S x resolution
+function _hxDrawBox(img, W, H, el, S) {
+  const nw = img.naturalWidth || W, nh = img.naturalHeight || H;
+  const C = (el.hasCrop && el.imgW) ? { x: el.imgX || 0, y: el.imgY || 0, w: el.imgW, h: el.imgH } : { x: 0, y: 0, w: W, h: H };
+  const fit = el.objectFit || 'cover';
+  let dw, dh;
+  if (fit === 'fill') { dw = C.w; dh = C.h; }
+  else { const sc = fit === 'contain' ? Math.min(C.w / nw, C.h / nh) : Math.max(C.w / nw, C.h / nh); dw = nw * sc; dh = nh * sc; }
+  const dx = C.x + (C.w - dw) / 2, dy = C.y + (C.h - dh) / 2;
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(W * S)); cv.height = Math.max(1, Math.round(H * S));
+  _drawSmooth(cv.getContext('2d'), img, nw, nh, dx * S, dy * S, dw * S, dh * S);
+  return cv;
+}
+
+function _hxSwapForCanvas(doc, node, src, css) {
+  const c = doc.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.getContext('2d').drawImage(src, 0, 0);
+  c.style.cssText = css;
+  node.parentNode.replaceChild(c, node);
+}
+
+// Runs on html2canvas's private copy of the page: strips the editor furniture and swaps pictures for pre-drawn ones
+function _hxPrepareClone(doc, boxes, W, H) {
+  const card = doc.getElementById('canvas-card');
+  if (!card) return;
+  if (card.parentNode) card.parentNode.removeChild(card);
+  Array.from(doc.body.children).forEach(n => { if (n.tagName !== 'STYLE') n.remove(); });
+  doc.documentElement.style.cssText = 'overflow:visible;height:auto;background:#fff;';
+  doc.body.style.cssText = 'margin:0;padding:0;overflow:visible;height:auto;background:#fff;';
+  doc.body.appendChild(card);
+  card.style.position = 'absolute'; card.style.left = '0'; card.style.top = '0';
+  card.style.transform = 'none'; card.style.margin = '0'; card.style.boxShadow = 'none';
+  card.style.width = W + 'px'; card.style.height = H + 'px'; card.style.overflow = 'hidden'; card.style.background = '#fff';
+  Array.from(card.children).forEach(ch => { if (!ch.classList || !ch.classList.contains('cv-el')) ch.remove(); });
+  card.querySelectorAll('.cv-el-outline,.cv-rh,.cv-lock-badge').forEach(n => n.remove());
+  card.querySelectorAll('.cv-el').forEach(n => { n.classList.remove('selected', 'multi-selected', 'editing', 'slice-start', 'crop-mode'); n.style.cursor = 'default'; });
+  elements.forEach(el => {
+    const wrap = card.querySelector('.cv-el[data-id="' + el.id + '"]');
+    if (!wrap) return;
+    if (el.type === 'img') {
+      const clip = wrap.querySelector('.cv-img-clip');
+      if (!clip) return;
+      const im = clip.querySelector('.cv-img-crop'), ph = clip.querySelector('.cv-img-ph');
+      if (ph) ph.remove();
+      if (!el.imageUrl) {          // empty image box: grey like the PDF, except an empty LOGO box which stays clear
+        if (im) im.remove();
+        if (!/(^|[-_])logo([-_]|$)/.test(String(el.label || '').toLowerCase())) clip.style.background = '#e0e4e0';
+        return;
+      }
+      const src = boxes.get('img:' + el.id);
+      if (src && im) _hxSwapForCanvas(doc, im, src, 'position:absolute;left:0;top:0;width:' + el.w + 'px;height:' + el.h + 'px;display:block;');
+    } else if (el.type === 'agent') {
+      const d = agentCardData(el);
+      const txt = wrap.querySelector('.cv-agent-text .cv-text-inner');
+      if (txt && !d.name && !d.phone) txt.innerHTML = '';            // "Choose an agent" prompt is editor-only
+      const src = boxes.get('agent:' + el.id);
+      const im = wrap.querySelector('.cv-agent-photo img');
+      if (src && im) _hxSwapForCanvas(doc, im, src, 'display:block;width:100%;height:100%;');
+      else { const ph = wrap.querySelector('.cv-agent-ph'); if (ph) ph.textContent = ''; }
+    }
+  });
+}
+
+async function _hxRender(btn) {
+  if (typeof html2canvas !== 'function') throw new Error('The page-capture library did not load. Refresh the builder and try again.');
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+  const W = AW, H = AH;
+  const S = Math.min(2, 16000 / Math.max(W, H), Math.sqrt(200e6 / (W * H)));
+  if (S < 1) throw new Error('This EDM is too large to render in one piece (limit is about 16,000 px tall).');
+  btn.textContent = '⏳ Preparing pictures…';
+  const boxes = new Map();
+  let missing = 0;
+  await Promise.all(elements.map(async el => {
+    try {
+      if (el.type === 'img' && el.imageUrl) {
+        boxes.set('img:' + el.id, _hxDrawBox(await _hxLoadImg(el.imageUrl), el.w, el.h, el, S));
+      } else if (el.type === 'agent') {
+        const d = agentCardData(el);
+        if (d.photo) boxes.set('agent:' + el.id, _hxDrawBox(await _hxLoadImg(d.photo), el.h, el.h, { objectFit: 'cover' }, S));
+      }
+    } catch (e) { missing++; console.warn('[HTML export] picture not loaded:', e); }
+  }));
+  btn.textContent = '⏳ Rendering page…';
+  const cv = await html2canvas(document.getElementById('canvas-card'), {
+    scale: S, useCORS: true, backgroundColor: '#ffffff', logging: false,
+    width: W, height: H, windowWidth: W, windowHeight: H, scrollX: 0, scrollY: 0, imageTimeout: 20000,
+    onclone: doc => _hxPrepareClone(doc, boxes, W, H)
+  });
+  return { canvas: cv, S, missing };
+}
+
+// ── autosave of the preview window ──
+function _hxStatus(t) {
+  const st = document.getElementById('hx-status');
+  if (st && _hx && !_hx.busy) st.textContent = t;
+}
+function _hxPersist() {
+  if (!_hx) return;
+  clearTimeout(_hx.pt);
+  _hxStatus('Saving…');
+  _hx.pt = setTimeout(_hxPersistNow, 500);
+}
+function _hxPersistNow() {
+  if (!_hx) return;
+  clearTimeout(_hx.pt); _hx.pt = null;
+  // 1. links + alt text go straight onto the ticked boxes (a link that isn't valid yet is left alone until it is)
+  _hx.cuts.forEach(c => {
+    if (!c.src) return;
+    const el = elements.find(e => e.id === c.src); if (!el) return;
+    let touched = false;
+    const l = _normSliceLink(c.link);
+    if (l !== null && (el.sliceLink || '') !== l) { if (l) el.sliceLink = l; else delete el.sliceLink; touched = true; }
+    const a = String(c.alt || '').replace(/[\u0000-\u001f\u007f<>`\\]/g, '').trim().slice(0, 200);
+    if ((el.sliceAlt || '') !== a) { if (a) el.sliceAlt = a; else delete el.sliceAlt; touched = true; }
+    if (touched) _sliceBroadcast(el);
+  });
+  // 2. where the cut lines were moved / added / removed, compared with where the ticked boxes put them
+  const base = _hxMarkerCuts(_hx.endY);
+  const baseY = new Map(base.map(b => [b.src, b.y]));
+  const have = new Set(_hx.cuts.filter(c => c.src).map(c => c.src));
+  const draft = { skip: [], dy: {}, extra: [], auto: !!_hx.auto };
+  base.forEach(b => { if (!have.has(b.src)) draft.skip.push(b.src); });
+  _hx.cuts.forEach(c => {
+    if (c.src) { if (baseY.has(c.src)) { const d = c.y - baseY.get(c.src); if (d) draft.dy[c.src] = d; } }
+    else {
+      const x = { y: c.y, link: c.link || '', alt: c.alt || '' }, an = _hxAnchorFor(c.y);
+      if (an) { x.a = an.id; x.dy = Math.round(c.y - an.y); }
+      draft.extra.push(x);
+    }
+  });
+  const plain = !draft.auto && !draft.skip.length && !draft.extra.length && !Object.keys(draft.dy).length;
+  _sliceDraft = plain ? null : draft;
+  scheduleSave();
+  _hxStatus('✓ Changes saved automatically');
+}
+
+function _hxSubjectChanged(v) {
+  _sliceSubject = String(v || '').slice(0, 300);
+  const m = document.getElementById('hx-subj-msg'); if (m) m.textContent = '';
+  _hxPersist();
+}
+// Sets the link of every slice that holds exactly one agent (with an email on file) to mailto:their-email?subject=...
+// A slice that already has some OTHER link (a web page, a different address) is left alone.
+function _hxApplySubjectAll() {
+  if (!_hx || _hx.busy) return;
+  let done = 0, kept = 0;
+  _hxSlices().forEach(s => {
+    const ag = _hxAgentInSlice(s.y0, s.y1); if (!ag) return;
+    const c = _hx.cuts[s.i], cur = _normSliceLink(c.link);
+    // "Following the default" = no link yet, or exactly the link the previous default subject would have given.
+    // A slice whose subject (or link) was changed by hand is left alone.
+    const mine = !cur || cur === _normSliceLink(_agentMailto(ag.email, ag.name, _hx.defSubj));
+    if (!mine) { kept++; return; }
+    const n = _normSliceLink(_agentMailto(ag.email, ag.name));
+    if (n) { c.link = n; done++; }
+  });
+  _hx.defSubj = _sliceSubject;
+  _hxRenderList(); _hxPersist();
+  const m = document.getElementById('hx-subj-msg');
+  if (m) m.textContent = done ? ('Updated ' + done + ' slice' + (done === 1 ? '' : 's') + (kept ? ', left ' + kept + ' with their own subject or link' : '')) : (kept ? 'Nothing changed: those slices have their own subject or link' : 'No slice has a single agent card with an email on file');
+}
+
+// Turns every loose cut line into a ticked "Start a new slice" box: the box directly below the line gets the tick (and the
+// link / alt text), and the line moves to that box's top edge. From then on the cut follows the box, and is kept in templates.
+function _hxTickBoxes() {
+  if (!_hx || _hx.busy) return;
+  const todo = _hx.cuts.map((c, i) => ({ c, i })).filter(o => !o.c.src);
+  if (!todo.length) { _hxStatus('Every cut line is already on a box'); return; }
+  if (!confirm('Tick "Start a new slice" on the box directly below ' + (todo.length === 1 ? 'this cut line' : 'each of these ' + todo.length + ' cut lines') + '?\n\nEach line moves to the top edge of that box and stays with it when you move things. Links and alt text are kept.')) return;
+  let done = 0, skipped = 0;
+  todo.forEach(o => {
+    const el = _hxAnchorFor(o.c.y);
+    if (!el || el.y >= _hx.endY - 4 || _hx.cuts.some(k => k !== o.c && k.src === el.id)) { skipped++; return; }
+    el.sliceStart = true;
+    const l = _normSliceLink(o.c.link); if (l) el.sliceLink = l;
+    const a = String(o.c.alt || '').replace(/[\u0000-\u001f\u007f<>`\\]/g, '').trim().slice(0, 200); if (a) el.sliceAlt = a;
+    _applySliceClass(el.id); _sliceBroadcast(el);
+    o.c.src = el.id; o.c.y = o.i === 0 ? 0 : Math.max(0, Math.round(el.y)); done++;
+  });
+  _hx.cuts.sort((a, b) => a.y - b.y);
+  const tidy = [];
+  _hx.cuts.forEach(c => { const last = tidy[tidy.length - 1]; if (last && c.y - last.y < 8) return; tidy.push(c); });
+  tidy[0].y = 0; _hx.cuts = tidy;
+  _hx.auto = !_hx.cuts.some(c => c.src); _hx.legacy = false;
+  _hxRenderPage(); _hxRenderList(); _hxPersistNow();
+  _hxStatus('✓ ' + done + ' cut line' + (done === 1 ? '' : 's') + ' now on boxes' + (skipped ? ' (' + skipped + ' could not be, adjust and try again)' : ''));
+}
+
+function _hxReset() {
+  if (!_hx || _hx.busy) return;
+  if (!confirm('Put the cut lines back to where the ticked boxes place them?\n\nYour links and alt text are kept.')) return;
+  _hxPersistNow();                                   // links / alt typed so far are on the boxes first
+  let cuts = _hxMarkerCuts(_hx.endY), auto = false;
+  if (!cuts.length) { cuts = _hxAutoCuts(_hx.endY); auto = true; }
+  _hx.cuts = cuts; _hx.auto = auto;
+  _sliceDraft = null; scheduleSave();
+  _hxRenderPage(); _hxRenderList();
+  _hxStatus('✓ Cut lines reset');
+}
+
+// ── preview window ──
+function _hxCss() {
+  if (document.getElementById('hx-style')) return;
+  const s = document.createElement('style'); s.id = 'hx-style';
+  s.textContent = '#hx-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100000;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;}'
+    + '.hx-box{background:#1c1f20;border:1px solid #313639;border-radius:6px;width:min(1100px,96vw);height:min(900px,94vh);display:flex;flex-direction:column;color:#e8eaeb;}'
+    + '.hx-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 18px;border-bottom:1px solid #313639;}'
+    + '.hx-title{font-size:14px;font-weight:700;}.hx-sub{font-size:11px;color:#9aa0a3;margin-top:3px;line-height:1.5;}'
+    + '.hx-x{background:none;border:none;color:#9aa0a3;font-size:16px;cursor:pointer;}'
+    + '.hx-body{flex:1;display:flex;min-height:0;}'
+    + '.hx-left{width:430px;flex:none;overflow:auto;background:#111314;padding:18px 24px 18px 18px;border-right:1px solid #313639;}'
+    + '#hx-page{position:relative;width:380px;margin:0 auto;box-shadow:0 2px 14px rgba(0,0,0,.5);}'
+    + '#hx-page img{display:block;width:100%;user-select:none;pointer-events:none;}'
+    + '.hx-cut{position:absolute;left:-6px;right:-6px;height:0;border-top:2px dashed #ff4d4d;}'
+    + '.hx-chip{position:absolute;right:-8px;top:-11px;background:#ff4d4d;color:#fff;font:700 10px/18px Arial,sans-serif;padding:0 7px;border-radius:9px;cursor:ns-resize;user-select:none;touch-action:none;}'
+    + '.hx-chip.fixed{cursor:default;background:#8a2b2b;}'
+    + '.hx-right{flex:1;overflow:auto;padding:14px 18px;min-width:0;}'
+    + '.hx-row{border:1px solid #313639;border-radius:4px;padding:8px 10px;margin-bottom:8px;background:#232728;}'
+    + '.hx-row.nolink{border-color:#7a4a00;}'
+    + '.hx-sbj{border:1px solid #313639;border-radius:4px;padding:8px 10px;margin-bottom:10px;background:#232728;}'
+    + '.hx-rh{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;margin-bottom:6px;}'
+    + '.hx-rh span{font-weight:400;color:#9aa0a3;margin-left:8px;}'
+    + '.hx-lbl{font-size:10px;color:#9aa0a3;margin-bottom:2px;}'
+    + '.hx-in{width:100%;box-sizing:border-box;background:#111314;border:1px solid #313639;border-radius:3px;color:#e8eaeb;font-size:12px;padding:5px 7px;margin-bottom:6px;font-family:inherit;}'
+    + '.hx-foot{display:flex;align-items:center;gap:14px;padding:12px 18px;border-top:1px solid #313639;flex-wrap:wrap;}'
+    + '.hx-foot label{font-size:11px;color:#c8cdd0;display:flex;align-items:center;gap:6px;}'
+    + '.hx-btn{background:#232728;border:1px solid #313639;color:#e8eaeb;border-radius:3px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;}'
+    + '.hx-btn.go{background:#0e3a29;border-color:#17e88f;color:#17e88f;}'
+    + '.hx-btn:disabled{opacity:.5;cursor:default;}'
+    + '.hx-note{font-size:11px;line-height:1.5;border-radius:3px;padding:7px 9px;margin-bottom:8px;background:#2a1800;border:1px solid #7a4a00;color:#f0a030;}';
+  document.head.appendChild(s);
+}
+
+function _hxMk(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+
+function _hxClose() {
+  if (_hx && _hx.pt) { try { _hxPersistNow(); } catch (e) { console.warn(e); } }   // save anything still waiting
+  const m = document.getElementById('hx-modal'); if (m) m.remove();
+  document.removeEventListener('keydown', _hxKey);
+  _hx = null;
+}
+function _hxKey(e) { if (e.key === 'Escape' && !(_hx && _hx.busy)) _hxClose(); }
+
+function _hxSlices() {
+  const c = _hx.cuts;
+  return c.map((k, i) => ({ i, y0: k.y, y1: i + 1 < c.length ? c[i + 1].y : _hx.endY }));
+}
+
+function _hxRenderPage() {
+  const pg = document.getElementById('hx-page'); if (!pg) return;
+  pg.querySelectorAll('.hx-cut').forEach(n => n.remove());
+  _hx.cuts.forEach((c, i) => {
+    const d = _hxMk('div', 'hx-cut'); d.style.top = (c.y * _hx.k) + 'px';
+    const chip = _hxMk('div', 'hx-chip' + (i === 0 ? ' fixed' : ''), (i + 1) + (i ? ' ↕' : ''));
+    if (i > 0) chip.addEventListener('pointerdown', e => _hxDragStart(e, i, chip, d));
+    d.appendChild(chip); pg.appendChild(d);
+  });
+}
+
+function _hxUpdateRanges() {
+  _hxSlices().forEach(s => {
+    const sp = document.querySelector('#hx-list .hx-range[data-i="' + s.i + '"]');
+    if (sp) sp.textContent = s.y0 + '–' + s.y1 + ' px  (' + (s.y1 - s.y0) + ' px tall)';
+  });
+}
+
+function _hxDragStart(e, i, chip, line) {
+  e.preventDefault();
+  const pg = document.getElementById('hx-page');
+  try { chip.setPointerCapture(e.pointerId); } catch (_) {}
+  const move = ev => {
+    const r = pg.getBoundingClientRect();
+    let y = Math.round((ev.clientY - r.top) / _hx.k);
+    const lo = _hx.cuts[i - 1].y + 8;
+    const hi = (i + 1 < _hx.cuts.length ? _hx.cuts[i + 1].y : _hx.endY) - 8;
+    y = Math.max(lo, Math.min(hi, y));
+    _hx.cuts[i].y = y;
+    line.style.top = (y * _hx.k) + 'px';
+    _hxUpdateRanges();
+  };
+  const up = () => {
+    chip.removeEventListener('pointermove', move);
+    chip.removeEventListener('pointerup', up);
+    chip.removeEventListener('pointercancel', up);
+    _hxRenderList();
+    _hxPersist();
+  };
+  chip.addEventListener('pointermove', move);
+  chip.addEventListener('pointerup', up);
+  chip.addEventListener('pointercancel', up);
+}
+
+function _hxRenderList() {
+  const box = document.getElementById('hx-list'); if (!box) return;
+  box.innerHTML = '';
+  _hxSlices().forEach(s => {
+    const c = _hx.cuts[s.i];
+    const row = _hxMk('div', 'hx-row' + (c.link ? '' : ' nolink'));
+    const head = _hxMk('div', 'hx-rh');
+    const ttl = _hxMk('div', '', 'Slice ' + (s.i + 1)); const rng = _hxMk('span', 'hx-range'); rng.dataset.i = s.i; ttl.appendChild(rng);
+    head.appendChild(ttl);
+    if (s.i > 0) {
+      const rm = _hxMk('button', 'hx-btn', '✕ Remove cut'); rm.style.padding = '2px 8px'; rm.title = 'Joins this slice onto the one above it';
+      rm.onclick = () => { _hx.cuts.splice(s.i, 1); _hxRenderPage(); _hxRenderList(); _hxPersist(); };
+      head.appendChild(rm);
+    }
+    row.appendChild(head);
+    row.appendChild(_hxMk('div', 'hx-lbl', 'Link'));
+    const li = _hxMk('input', 'hx-in'); li.type = 'text'; li.value = c.link || ''; li.placeholder = 'https://…  (blank = this slice is not clickable)';
+    let refreshSubj = null;                                   // (set below, once the subject box exists)
+    li.oninput = () => {
+      c.link = li.value; row.classList.toggle('nolink', !li.value.trim());
+      const ok = _normSliceLink(li.value) !== null;
+      li.style.borderColor = ok ? '' : '#ff4d4d';
+      li.title = ok ? '' : ('Not saved yet. ' + _linkWhy(li.value));
+      if (refreshSubj) refreshSubj(true);
+      _hxPersist();
+    };
+    li.onchange = () => { const n = _normSliceLink(li.value); if (n !== null && n !== li.value) { li.value = n; c.link = n; _hxPersist(); } };
+    row.appendChild(li);
+    const ag = _hxAgentInSlice(s.y0, s.y1);
+    if (ag) {
+      const eb = _hxMk('button', 'hx-btn', '✉ Use ' + (ag.name || 'the agent') + '\'s email'); eb.style.cssText = 'padding:2px 8px;margin:0 0 6px;font-size:10px;';
+      eb.onclick = () => { li.value = _agentMailto(ag.email, ag.name); li.oninput(); li.onchange(); };
+      row.appendChild(eb);
+    }
+    // Subject: its own box for every slice with an email link (each button can have a different one)
+    const sw = _hxMk('div'); sw.appendChild(_hxMk('div', 'hx-lbl', 'Subject of the email (for email links)'));
+    const si = _hxMk('input', 'hx-in'); si.type = 'text'; si.maxLength = 300; sw.appendChild(si); row.appendChild(sw);
+    refreshSubj = fromLink => {
+      const has = !!String(c.link || '').trim();
+      sw.style.display = (/^mailto:/i.test(String(c.link || '').trim()) || (!has && ag)) ? '' : 'none';
+      si.placeholder = ag ? ('default: ' + (_subjFor(ag.name) || 'none')) : 'e.g. Request for Information Memorandum';
+      if (fromLink) si.value = _mailSubject(c.link);
+    };
+    si.oninput = () => {
+      const base = String(c.link || '').trim() || (ag ? 'mailto:' + ag.email : '');
+      if (!/^mailto:/i.test(base)) return;
+      c.link = _mailWithSubject(base, si.value);               // not trimmed while typing, so spaces between words work
+      li.value = c.link; li.style.borderColor = ''; li.title = ''; row.classList.remove('nolink');
+      _hxPersist();
+    };
+    refreshSubj(true);
+    row.appendChild(_hxMk('div', 'hx-lbl', 'Alt text (shown when images are blocked)'));
+    const ai = _hxMk('input', 'hx-in'); ai.type = 'text'; ai.value = c.alt || ''; ai.placeholder = _hxAltFor(s.y0, s.y1, s.i + 1);
+    ai.oninput = () => { c.alt = ai.value; _hxPersist(); };
+    row.appendChild(ai);
+    box.appendChild(row);
+  });
+  _hxUpdateRanges();
+}
+
+// The one agent card inside a slice (if there is exactly one) that has an email address on file
+function _hxAgentInSlice(y0, y1) {
+  const a = elements.filter(e => e.type === 'agent' && (e.y + e.h / 2) >= y0 && (e.y + e.h / 2) < y1)
+    .filter(e => { const d = agentCardData(e); return d.name || d.phone; });          // empty agent cards don't count
+  if (a.length !== 1) return null;
+  const d = agentCardData(a[0]), em = _agentEmail(d.agent);
+  return em ? { email: em, name: d.name } : null;
+}
+
+function _hxAddCut() {
+  if (!_hx || _hx.busy) return;
+  const sl = _hxSlices(); let best = sl[0];
+  sl.forEach(s => { if (s.y1 - s.y0 > best.y1 - best.y0) best = s; });
+  if (best.y1 - best.y0 < 24) return;
+  _hx.cuts.splice(best.i + 1, 0, { y: Math.round((best.y0 + best.y1) / 2), link: '', alt: '' });
+  _hxRenderPage(); _hxRenderList();
+  _hxPersist();
+}
+
+function _hxShowPreview() {
+  _hxCss();
+  const old = document.getElementById('hx-modal'); if (old) old.remove();
+  const tabName = (tabDef(_currentTab) || {}).name || 'EDM';
+  const m = _hxMk('div'); m.id = 'hx-modal';
+  m.innerHTML = '<div class="hx-box">'
+    + '<div class="hx-head"><div><div class="hx-title">Export HTML: ' + esc(tabName) + '</div><div class="hx-sub" id="hx-sub"></div></div><button class="hx-x" title="Close" onclick="_hxClose()">✕</button></div>'
+    + '<div class="hx-body"><div class="hx-left"><div id="hx-page"></div></div>'
+    + '<div class="hx-right"><div id="hx-notes"></div>'
+    + '<div class="hx-sbj" id="hx-subj"><div class="hx-lbl">Email subject for the agent buttons (use {agent} for the agent\'s name)</div>'
+    + '<input id="hx-subject" class="hx-in" type="text" maxlength="300" placeholder="e.g. Please send me further information about the sale of Berrinba QLD" oninput="_hxSubjectChanged(this.value)">'
+    + '<button class="hx-btn" style="padding:3px 9px;font-size:10px;" onclick="_hxApplySubjectAll()" title="Fills the link of every slice that has one agent card, unless that slice already has a different link">Apply to all agent slices</button> '
+    + '<span id="hx-subj-msg" style="font-size:10px;color:#9aa0a3;margin-left:6px;"></span></div>'
+    + '<div id="hx-list"></div><button class="hx-btn" onclick="_hxAddCut()">＋ Add cut line</button> <button class="hx-btn" onclick="_hxTickBoxes()" title="Ticks the box under each loose cut line, so the lines stay with the layout when you move things">✂ Save cut lines onto the boxes</button> <button class="hx-btn" onclick="_hxReset()" title="Put the cut lines back to where the ticked boxes place them">↺ Reset cut lines</button></div></div>'
+    + '<div class="hx-foot" id="hx-foot">'
+    + '<label>Width in the email <input id="hx-width" class="hx-in" type="number" min="200" max="1200" style="width:70px;margin:0;"> px</label>'
+    + '<span style="font-size:11px;color:#9aa0a3;max-width:330px;line-height:1.4;">The CBRE disclaimer, Privacy Policy link and Campaign Monitor Unsubscribe link are added under the last slice automatically.</span>'
+    + '<span id="hx-status" style="font-size:11px;color:#9aa0a3;flex:1;min-width:120px;"></span>'
+    + '<button class="hx-btn" onclick="_hxClose()" id="hx-cancel">Cancel</button>'
+    + '<button class="hx-btn go" id="hx-go" onclick="_hxGo()">Create HTML &amp; upload images</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  document.addEventListener('keydown', _hxKey);
+
+  document.getElementById('hx-width').value = _hx.W;
+  document.getElementById('hx-subject').value = _sliceSubject || '';
+  document.getElementById('hx-sub').textContent = 'Page ' + _hx.W + ' × ' + _hx.endY + ' px, rendered at ' + (Math.round(_hx.S * 100) / 100) + 'x. Slices run from one red line to the next. Drag a numbered tab to move a cut, remove one, or add one. Everything here saves automatically.';
+  const notes = document.getElementById('hx-notes');
+  if (_hx.auto) notes.appendChild(_hxMk('div', 'hx-note', 'No boxes are ticked "Start a new slice" on this EDM, so these cuts were suggested from the gaps between boxes. Adjust them here. To make them permanent, tick the top box of each section in the right-hand panel.'));
+  if (_hx.legacy) notes.appendChild(_hxMk('div', 'hx-note', 'Some cut lines here were saved before they could follow the boxes, so they may be out of place if you have moved things since. Drag them back (or press Reset cut lines), then press "Save cut lines onto the boxes" so they stay with the layout.'));
+  if (_hx.missing) notes.appendChild(_hxMk('div', 'hx-note', _hx.missing + ' picture' + (_hx.missing === 1 ? '' : 's') + ' could not be loaded and may be missing or blank in the slices below.'));
+
+  const cv = _hx.canvas, PW = 380, tw = PW * 2, th = Math.max(1, Math.round(_hx.endY * (tw / _hx.W)));
+  const pc = document.createElement('canvas'); pc.width = tw; pc.height = th;
+  _drawSmooth(pc.getContext('2d'), cv, cv.width, cv.height, 0, 0, tw, th, 0, 0, cv.width, Math.min(cv.height, Math.round(_hx.endY * _hx.S)));
+  const img = document.createElement('img'); img.alt = 'Page preview'; img.src = pc.toDataURL('image/jpeg', 0.82);
+  document.getElementById('hx-page').appendChild(img);
+  _hx.k = PW / _hx.W;
+  _hxRenderPage(); _hxRenderList();
+}
+
+async function openHtmlExport() {
+  if (USER_ROLE !== 'admin' || !_isEdmTab()) return;
+  const btn = document.getElementById('btn-export-html');
+  const idle = btn.textContent;
+  if (!elements.length) { alert('This EDM is empty, so there is nothing to export.'); return; }
+  btn.disabled = true; btn.textContent = '⏳ Rendering…';
+  try {
+    deselectAll();
+    const r = await _hxRender(btn);
+    const endY = _hxEndY();
+    let cuts = _hxMarkerCuts(endY), auto = false;
+    if (!cuts.length) { cuts = _hxAutoCuts(endY); auto = true; }
+    cuts = _hxApplyDraft(cuts, auto, endY);
+    const legacy = !!(_sliceDraft && Array.isArray(_sliceDraft.extra) && _sliceDraft.extra.some(x => x && x.a === undefined));
+    _hx = { canvas: r.canvas, S: r.S, W: AW, H: AH, endY, cuts, auto, missing: r.missing, k: 1, busy: false, pt: null, defSubj: _sliceSubject, legacy };
+    _hxShowPreview();
+  } catch (e) {
+    console.error('HTML export error:', e);
+    alert('HTML export failed: ' + e.message);
+  } finally { btn.disabled = false; btn.textContent = idle; }
+}
+
+// ── create files ──
+async function _hxEncode(c) {
+  const toBlob = (t, q) => new Promise(r => c.toBlob(r, t, q));
+  const jpg = await toBlob('image/jpeg', 0.92);
+  const png = await toBlob('image/png');
+  if (!jpg && !png) throw new Error('could not create a slice image');
+  if (png && jpg && png.size <= jpg.size * 1.4) return { blob: png, ext: 'png' };   // flat graphics + text: PNG is as small and crisper
+  return jpg ? { blob: jpg, ext: 'jpg' } : { blob: png, ext: 'png' };
+}
+
+async function _hxUpload(path, blob) {
+  let lastErr;
+  for (let a = 0; a < 2; a++) {
+    try {
+      const res = await fetch(SUPA_URL + '/storage/v1/object/assets/' + path, {
+        method: 'POST',
+        headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': blob.type, 'cache-control': 'max-age=31536000' },
+        body: blob });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 150));
+      return SUPA_URL + '/storage/v1/object/public/assets/' + path;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+// The standard footer: always the last thing in the email, as live small text (not an image) so its links work.
+const HX_PRIVACY_URL = 'https://www.cbre.com.au/about-us/pacific-privacy-notice';
+const HX_FOOTER_PARAS = [
+  '*All areas and figures approx only.',
+  'This communication is from CBRE or one of its associated/subsidiary companies. This communication contains information which is confidential and may be privileged. If you are not the intended recipient, please contact the sender immediately. Any use of its contents is strictly prohibited and you must not copy, send or disclose it, or rely on its contents in any way whatsoever.',
+  'Information herein has been obtained from sources believed reliable. While we do not doubt its accuracy, we have not verified it and make no guarantee, warranty or representation about it. It is your responsibility to independently confirm its accuracy and completeness. Any projections, opinions, assumptions or estimates used are for example only and do not represent the current or future performance of the market.',
+  'Reasonable care has been taken to ensure that this communication (and any attachments or hyperlinks contained within it) is free from computer viruses. No responsibility is accepted by CBRE Pty Ltd or its associated/subsidiary companies and the recipient should carry out any appropriate virus checks.'
+];
+function _hxFooterHtml() {
+  const P = 'margin:0 0 8px 0;padding:0;';
+  const lnk = 'color:#666666;text-decoration:underline;';
+  const paras = HX_FOOTER_PARAS.map(t => '<p style="' + P + '">' + esc(t) + '</p>').join('\n          ');
+  return '        <tr><td align="left" style="padding:20px 24px 28px 24px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;color:#666666;text-align:left;">\n          '
+    + paras + '\n          '
+    + '<p style="' + P + '">CBRE collects, holds, uses and discloses personal information in accordance with our Privacy Policy which can be viewed <a href="' + HX_PRIVACY_URL + '" target="_blank" style="' + lnk + '">here</a>.</p>\n          '
+    + '<p style="margin:0;padding:0;"><unsubscribe style="' + lnk + '">Unsubscribe</unsubscribe></p>\n'
+    + '        </td></tr>';
+}
+
+function _hxBuildHtml(slices, ew, title) {
+  const rows = slices.map(s => {
+    const img = '<img src="' + _attr(s.url) + '" width="' + ew + '" height="' + s.h + '" alt="' + _attr(s.alt) + '" border="0" style="display:block;width:100%;max-width:' + ew + 'px;height:auto;border:0;outline:none;text-decoration:none;">';
+    const inner = s.link ? '<a href="' + _attr(s.link) + '" target="_blank" style="text-decoration:none;border:0;">' + img + '</a>' : img;
+    return '        <tr><td style="padding:0;margin:0;line-height:0;font-size:0;">' + inner + '</td></tr>';
+  }).join('\n');
+  return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    + '<meta http-equiv="X-UA-Compatible" content="IE=edge">\n'
+    + '<meta name="x-apple-disable-message-reformatting">\n'
+    + '<meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">\n'
+    + '<title>' + esc(title) + '</title>\n'
+    + '<style type="text/css">\n'
+    + '  body{margin:0;padding:0;width:100%!important;background-color:#ffffff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}\n'
+    + '  table,td{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;}\n'
+    + '  img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}\n'
+    + '  @media only screen and (max-width:' + ew + 'px){ .edm-wrap{width:100%!important;} }\n'
+    + '</style>\n</head>\n'
+    + '<body style="margin:0;padding:0;background-color:#ffffff;">\n'
+    + '  <center style="width:100%;background-color:#ffffff;">\n'
+    + '    <table role="presentation" class="edm-wrap" width="' + ew + '" align="center" border="0" cellpadding="0" cellspacing="0" style="width:' + ew + 'px;max-width:100%;">\n'
+    + rows + '\n' + _hxFooterHtml() + '\n'
+    + '    </table>\n  </center>\n</body>\n</html>\n';
+}
+
+// Remember each slice's link / alt text on its ticked box so next time they are already filled in
+function _hxSaveBack() {
+  let changed = false;
+  _hx.cuts.forEach(c => {
+    if (!c.src) return;
+    const el = elements.find(e => e.id === c.src); if (!el) return;
+    const l = c.link || '', a = c.alt || '';
+    if ((el.sliceLink || '') === l && (el.sliceAlt || '') === a) return;
+    if (l) el.sliceLink = l; else delete el.sliceLink;
+    if (a) el.sliceAlt = a; else delete el.sliceAlt;
+    _sliceBroadcast(el); changed = true;
+  });
+  if (changed) scheduleSave();
+}
+
+async function _hxGo() {
+  if (!_hx || _hx.busy) return;
+  const cuts = _hx.cuts;
+  for (let i = 0; i < cuts.length; i++) {
+    const n = _normSliceLink(cuts[i].link);
+    if (n === null) { alert('Slice ' + (i + 1) + ': that link can\'t be used.\n\n' + _linkWhy(cuts[i].link)); return; }
+    cuts[i].link = n;
+  }
+  const noLink = cuts.filter(c => !c.link).length;
+  if (noLink && !confirm(noLink + (noLink === 1 ? ' slice has' : ' slices have') + ' no link, so ' + (noLink === 1 ? 'it' : 'they') + ' won\'t be clickable. Continue anyway?')) return;
+  let ew = Math.round(+document.getElementById('hx-width').value);
+  if (!(ew >= 200 && ew <= 1200)) ew = _hx.W;
+
+  _hx.busy = true;
+  const go = document.getElementById('hx-go'), cancel = document.getElementById('hx-cancel'), status = document.getElementById('hx-status');
+  go.disabled = true; cancel.disabled = true;
+  const cv = _hx.canvas, S = _hx.S, W = _hx.W;
+  const sl = _hxSlices();
+  const folder = PORTFOLIO_ID + '/' + PROPERTY_ID + '/edm-email/' + Date.now() + '/';
+  const out = [];
+  try {
+    for (const s of sl) {
+      status.textContent = 'Uploading slice ' + (s.i + 1) + ' of ' + sl.length + '…';
+      const sy0 = Math.round(s.y0 * S), sy1 = Math.round(s.y1 * S);
+      const c = document.createElement('canvas'); c.width = cv.width; c.height = Math.max(1, sy1 - sy0);
+      c.getContext('2d').drawImage(cv, 0, sy0, cv.width, c.height, 0, 0, cv.width, c.height);
+      const enc = await _hxEncode(c);
+      const url = await _hxUpload(folder + 'slice-' + String(s.i + 1).padStart(2, '0') + '.' + enc.ext, enc.blob);
+      out.push({ url, alt: cuts[s.i].alt.trim() || _hxAltFor(s.y0, s.y1, s.i + 1), link: cuts[s.i].link, h: Math.max(1, Math.round((s.y1 - s.y0) * ew / W)) });
+    }
+    const title = ((document.getElementById('mast-property-name') || {}).textContent || 'CBRE').trim() || 'CBRE';
+    const html = _hxBuildHtml(out, ew, title);
+    const fname = _exportFileBase() + '_' + ((tabDef(_currentTab) || {}).name || 'EDM').replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') + '_Email.html';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    _hxSaveBack();
+
+    const foot = document.getElementById('hx-foot');
+    foot.innerHTML = '';
+    foot.appendChild(_hxMk('span', '', '✓ ' + out.length + ' slice image' + (out.length === 1 ? '' : 's') + ' uploaded and ' + fname + ' downloaded.'));
+    foot.lastChild.style.cssText = 'font-size:12px;color:#17e88f;flex:1;';
+    const cp = _hxMk('button', 'hx-btn', 'Copy HTML');
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(html); cp.textContent = 'Copied ✓'; } catch (e) { cp.textContent = 'Copy failed'; } };
+    const cl = _hxMk('button', 'hx-btn go', 'Close'); cl.onclick = _hxClose;
+    foot.appendChild(cp); foot.appendChild(cl);
+    _hx.busy = false;
+  } catch (e) {
+    console.error('HTML export error:', e);
+    status.textContent = '';
+    alert('HTML export failed: ' + e.message + '\n\nNothing was downloaded. You can try again.');
+    _hx.busy = false; go.disabled = false; cancel.disabled = false;
+  }
 }
 
 async function exportPDF(allTabs) {
