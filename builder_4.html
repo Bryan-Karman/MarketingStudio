@@ -341,8 +341,6 @@
 @font-face{font-family:'FinancierDisplay';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap;}
 @font-face{font-family:'FinancierDisplay';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Medium.otf') format('opentype');font-weight:500;font-style:normal;font-display:swap;}
 @font-face{font-family:'FinancierDisplay';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/FinancierDisplay-Semibold.otf') format('opentype');font-weight:600;font-style:normal;font-display:swap;}
-@font-face{font-family:'Noto Sans SC';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/NotoSansCJKsc-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap;}
-@font-face{font-family:'Noto Sans SC';src:url('https://pgsgjafgetdvuctmpibf.supabase.co/storage/v1/object/public/fonts/NotoSansCJKsc-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap;}
 </style>
 <style>
 /* ── RESET ── */
@@ -863,10 +861,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <div id="prefill-bar" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);">
       <button class="tb-btn" id="btn-prefill" onclick="openPrefill()" title="Copy the Brochure's text and images into the labelled boxes on this tab" style="width:100%;justify-content:center;color:var(--blue);border-color:#245a7f;">⇩ Pre-fill from Brochure</button>
     </div>
-    <!-- Convert to Chinese (English EDM tabs only; shown by updatePrefillButton) -->
-    <div id="zh-bar" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);">
-      <button class="tb-btn" id="btn-zh" onclick="convertEdmToChinese()" title="Duplicate this EDM into a new tab and translate every text box into Simplified Chinese. This tab is not changed." style="width:100%;justify-content:center;color:var(--green);border-color:var(--green-md);">🌏 Convert EDM into Chinese</button>
-    </div>
     <div class="sb-body" id="props-panel">
       <div class="sb-empty">Click an element on the canvas to edit its properties.</div>
     </div>
@@ -1060,7 +1054,6 @@ async function loadTabDefs() {
           }
         });
         TAB_DEFINITIONS = defaults;
-        TAB_DEFINITIONS.filter(t => t.after).forEach(_placeTabAfterSource);
         _normaliseBrochureTabs();
         console.log('[B4] Tab defs loaded:', TAB_DEFINITIONS.length, 'tabs');
       }
@@ -2358,7 +2351,7 @@ function showProps(id) {
     // Font options
     const fonts = [['Calibre, sans-serif','Calibre'],['FinancierDisplay, serif','Financier Display'],
       ['Arial, sans-serif','Arial'],['Georgia, serif','Georgia'],['Times New Roman, serif','Times New Roman'],
-      ['Noto Sans SC, sans-serif','Noto Sans (Chinese)'],['Helvetica, sans-serif','Helvetica'],['Verdana, sans-serif','Verdana'],['Courier New, monospace','Courier New']];
+      ['Helvetica, sans-serif','Helvetica'],['Verdana, sans-serif','Verdana'],['Courier New, monospace','Courier New']];
     const fontOpts = fonts.map(function(f){ return '<option value="' + f[0] + '"' + ((s.fontFamily||'Calibre, sans-serif')===f[0]?' selected':'') + '>' + f[1] + '</option>'; }).join('');
 
     const weightOpts = [['300','Light'],['400','Regular'],['500','Medium'],['600','Semi Bold'],['700','Bold'],['800','Extra Bold']]
@@ -4502,7 +4495,7 @@ function ctxDuplicateTab() {
   });
 }
 
-async function _duplicateTabContent(srcSlug, newSlug, newDef, transformFn) {
+async function _duplicateTabContent(srcSlug, newSlug, newDef) {
   // 1. Get source elements
   let srcElements;
   if (srcSlug === _currentTab) {
@@ -4519,7 +4512,6 @@ async function _duplicateTabContent(srcSlug, newSlug, newDef, transformFn) {
       ? (JSON.parse(rows[0].state_json).elements || [])
       : [];
   }
-  if (transformFn) srcElements = await transformFn(srcElements);
   console.log('[B4] Dup: srcElements count:', srcElements.length, 'mmW:', newDef.mmW, 'mmH:', newDef.mmH);
 
   // 2. Save to new tab's Supabase row
@@ -4555,139 +4547,6 @@ async function _duplicateTabContent(srcSlug, newSlug, newDef, transformFn) {
     console.error('[B4] Dup: save failed:', errText);
     throw new Error('Save failed: ' + saveRes.status + ' ' + errText);
   }
-}
-
-// ════════════════════════════════════════════════════════
-// CONVERT EDM → SIMPLIFIED CHINESE
-// Duplicates the current EDM tab; every TEXT element in the copy is translated (en → zh-CN) and set to Noto Sans.
-// Images, logos, rectangles and agent cards are never touched. The English tab is not changed.
-// ════════════════════════════════════════════════════════
-const ZH_FONT = 'Noto Sans SC, sans-serif';
-const _zhCache = {};
-let _zhBusy = false;
-
-// Same engine as the previous build: Google Translate gtx endpoint, en → zh-CN
-async function _zhTranslate(text) {
-  if (_zhCache[text] !== undefined) return _zhCache[text];
-  const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=' + encodeURIComponent(text);
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const data = await r.json();
-  let out = '';
-  if (data && data[0]) data[0].forEach(c => { if (c && c[0]) out += c[0]; });
-  if (!out) throw new Error('empty result');
-  _zhCache[text] = out;
-  return out;
-}
-
-// Very long lines are split on sentence boundaries to keep the request URL short
-async function _zhTranslateLong(text) {
-  if (text.length <= 1500) return _zhTranslate(text);
-  const parts = text.split(/(?<=[.!?])\s+/), chunks = [];
-  let cur = '';
-  parts.forEach(p => { if ((cur + ' ' + p).length > 1500 && cur) { chunks.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; });
-  if (cur) chunks.push(cur);
-  let res = '';
-  for (const c of chunks) res += await _zhTranslate(c);
-  return res;
-}
-
-// Lines with nothing to translate (numbers, phone numbers, prices, URLs, emails) are left exactly as they are
-function _zhShouldSkip(t) {
-  if (!/[A-Za-z]{2}/.test(t)) return true;
-  if (/^(https?:\/\/|www\.)\S+$/i.test(t)) return true;
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return true;
-  return false;
-}
-
-// Translate one line of (inline) HTML, keeping its markup. Returns the new inline HTML.
-async function _zhTranslateLineHtml(lineHtml, stats) {
-  const box = document.createElement('div');
-  box.innerHTML = lineHtml;
-  const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
-  const nodes = []; let n;
-  while ((n = walker.nextNode())) nodes.push(n);
-  let plain = nodes.map(x => x.nodeValue).join('').replace(/\u00a0/g, ' ').trim();
-  if (!plain) return lineHtml;
-  let prefix = '';
-  const m = /^([–—-])\s+/.exec(plain);
-  if (m) { prefix = '– '; plain = plain.slice(m[0].length); }
-  if (_zhShouldSkip(plain)) return lineHtml;
-  stats.done++;
-  let zh;
-  try { zh = await _zhTranslateLong(plain); }
-  catch (e) { stats.failed++; return lineHtml; }
-  const first = nodes.find(x => x.nodeValue.trim());
-  nodes.forEach(x => { if (x !== first) x.nodeValue = ''; });
-  first.nodeValue = prefix + zh;
-  return box.innerHTML;
-}
-
-async function _zhTranslateElement(el, stats) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = el.content || '';
-  const lines = extractLines(tmp);
-  const out = [];
-  for (const l of lines) out.push(l === '' ? '' : await _zhTranslateLineHtml(l, stats));
-  const wasBlocks = /^\s*<div/i.test(el.content || '');
-  el.content = (out.length === 1 && !wasBlocks) ? out[0] : out.map(l => '<div>' + (l || '<br>') + '</div>').join('');
-}
-
-async function _zhTransformElements(els) {
-  const stats = { done: 0, failed: 0 };
-  // Boxes with a pre-fill label containing "address" (e.g. address, address-1) are kept exactly as they are
-  const isAddress = e => /address/.test(String(e.label || ''));
-  const textEls = els.filter(e => e.type === 'text' && !isAddress(e) && e.content && String(e.content).replace(/<[^>]*>/g, '').trim());
-  let i = 0;
-  for (const el of textEls) {
-    setSave('saving', 'Translating ' + (++i) + '/' + textEls.length + '…');
-    await _zhTranslateElement(el, stats);
-    el.style = Object.assign({}, el.style, { fontFamily: ZH_FONT });
-  }
-  // Empty text boxes still switch font so anything typed into them later is Chinese-ready
-  els.forEach(e => { if (e.type === 'text' && !isAddress(e) && !textEls.includes(e)) e.style = Object.assign({}, e.style, { fontFamily: ZH_FONT }); });
-  _zhTransformElements.lastStats = stats;
-  return els;
-}
-
-async function convertEdmToChinese() {
-  if (_zhBusy) return;
-  const def = tabDef(_currentTab);
-  if (!def) return;
-  if (!confirm('Create a Chinese copy of "' + def.name + '"?\n\nEvery text box is translated to Simplified Chinese in a new tab. This tab is not changed.')) return;
-  _zhBusy = true;
-  const btn = document.getElementById('btn-zh');
-  if (btn) { btn.disabled = true; btn.textContent = 'Translating…'; }
-  const newSlug = _currentTab + '_zh_' + Date.now();
-  const newDef  = { ...def, slug: newSlug, name: def.name + ' (Chinese)', active: true, builtIn: false, lang: 'zh', after: def.slug };
-  try {
-    setSave('saving', 'Translating…');
-    await _duplicateTabContent(_currentTab, newSlug, newDef, async (els) => {
-      const out = await _zhTransformElements(els);
-      const s = _zhTransformElements.lastStats;
-      if (s.failed && !confirm(s.failed + ' of ' + s.done + ' lines could not be translated (translation service unavailable) and will stay in English.\n\nCreate the tab anyway?')) throw new Error('cancelled');
-      return out;
-    });
-    _placeTabAfterSource(newDef);
-    await saveTabDefs();
-    setSave('saved', 'Chinese EDM created');
-    window.location.href = tabUrl(newSlug);
-  } catch (e) {
-    console.warn('[B4] Chinese convert failed:', e);
-    setSave('error', e && e.message === 'cancelled' ? 'Cancelled' : 'Convert failed');
-    if (btn) { btn.disabled = false; btn.textContent = '🌏 Convert EDM into Chinese'; }
-    _zhBusy = false;
-  }
-}
-
-// Put a tab that was created from another tab (def.after = source slug) directly after its source in TAB_DEFINITIONS
-function _placeTabAfterSource(t) {
-  const from = TAB_DEFINITIONS.indexOf(t);
-  if (from >= 0) TAB_DEFINITIONS.splice(from, 1);
-  let at = TAB_DEFINITIONS.findIndex(x => x.slug === t.after);
-  if (at < 0) { TAB_DEFINITIONS.push(t); return; }
-  while (TAB_DEFINITIONS[at + 1] && TAB_DEFINITIONS[at + 1].after === t.after) at++;
-  TAB_DEFINITIONS.splice(at + 1, 0, t);
 }
 
 function ctxDeleteTab() {
@@ -4864,8 +4723,6 @@ function updatePrefillButton() {
   // Shown on every tab except the Brochure tabs themselves (EDM, Signboard, Press Ad, and copies of them)
   const isBrochureTab = /^brochure/.test(_currentTab);
   bar.style.display = isBrochureTab ? 'none' : '';
-  const zhBar = document.getElementById('zh-bar');
-  if (zhBar) { const d = tabDef(_currentTab); zhBar.style.display = (/^edm/.test(_currentTab) && !(d && d.lang)) ? '' : 'none'; }
   const btn = document.getElementById('btn-prefill');
   if (btn && !btn.disabled) {
     btn.textContent = '⇩ Pre-fill from ' + prefillSourceName();
