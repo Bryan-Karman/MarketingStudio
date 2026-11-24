@@ -440,6 +440,13 @@ document.addEventListener('click', function(e){
   }
 });
 
+// Folder type helpers. Stored in the existing product field (no new column):
+//   'marketing'              = Classic builder.html
+//   'marketing_b4'           = Builder 4, Portfolio look   (all existing folders)
+//   'marketing_b4_district'  = Builder 4, District look
+function _tplFromProduct(product){ return (product==='marketing_b4' || product==='marketing_b4_district') ? 'builder4' : 'classic'; }
+function _folderTypeFromProduct(product){ return product==='marketing_b4_district' ? 'district' : 'portfolio'; }
+
 function _buildBuilderUrl(portfolioId, propertyId){
   const port = portfolios.find(function(p){ return p.id===portfolioId; });
   const pr   = (properties[portfolioId]||[]).find(function(p){ return p.id===propertyId; });
@@ -449,7 +456,8 @@ function _buildBuilderUrl(portfolioId, propertyId){
     portfolioName: port ? port.name : '',
     propertyName:  pr   ? pr.name  : '',
   });
-  const tpl = (port && port.template) || (port && port.product === 'marketing_b4' ? 'builder4' : 'classic');
+  const tpl = (port && port.template) || (port && _tplFromProduct(port.product));
+  if(port && port.folderType === 'district') params.set('folderType','district');
   const builderFile = tpl === 'builder4' ? 'builder_4.html' : 'builder.html';
   return builderFile + '?' + params.toString();
 }
@@ -688,13 +696,13 @@ function runGlobalSearch(query){
      MODAL: NEW PORTFOLIO
 ════════════════════════════════════════ -->
 <div class="modal-bg" id="modal-portfolio">
-  <div class="modal" style="width:480px;">
+  <div class="modal" style="width:640px;max-width:96vw;">
     <div class="modal-title">New Portfolio</div>
 
     <!-- Step 1: Choose template -->
     <div id="modal-pf-step1">
       <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Choose which builder this portfolio will use. This cannot be changed later.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:4px;">
         <div id="tpl-classic" onclick="selectTemplate('classic')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
           <div style="font-size:20px;margin-bottom:8px;">🏢</div>
           <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Classic Builder</div>
@@ -703,8 +711,14 @@ function runGlobalSearch(query){
         </div>
         <div id="tpl-builder4" onclick="selectTemplate('builder4')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
           <div style="font-size:20px;margin-bottom:8px;">📄</div>
-          <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Builder 4 <span style="font-size:9px;background:#003f2d;color:#17e88f;padding:2px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;">NEW</span></div>
-          <div style="font-size:11px;color:var(--muted);line-height:1.5;">Free-form A4 canvas — add text and image boxes, live multi-user editing with cursors.</div>
+          <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Builder 4 &middot; Portfolio <span style="font-size:9px;background:#003f2d;color:#17e88f;padding:2px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;">NEW</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5;">Free-form A4 canvas — add text and image boxes, live multi-user editing with cursors. Standard Portfolio brochure &amp; EDM look.</div>
+          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">builder_4.html</div>
+        </div>
+        <div id="tpl-district" onclick="selectTemplate('district')" style="border:2px solid var(--border);border-radius:4px;padding:16px;cursor:pointer;transition:all .15s;position:relative;">
+          <div style="font-size:20px;margin-bottom:8px;">🏙️</div>
+          <div style="font-size:13px;font-weight:700;color:var(--dk);margin-bottom:4px;">Builder 4 &middot; District <span style="font-size:9px;background:#003f2d;color:#17e88f;padding:2px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;">NEW</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5;">Same builder, with the District brochure &amp; EDM look as the starting point.</div>
           <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">builder_4.html</div>
         </div>
       </div>
@@ -729,9 +743,9 @@ function runGlobalSearch(query){
   </div>
 </div>
 <style>
-#tpl-classic:hover,#tpl-builder4:hover{border-color:var(--g);}
-#tpl-classic.selected,#tpl-builder4.selected{border-color:var(--g);background:#f0faf5;}
-#tpl-classic.selected::after,#tpl-builder4.selected::after{content:'✓';position:absolute;top:8px;right:10px;font-size:14px;color:var(--g);font-weight:700;}
+#tpl-classic:hover,#tpl-builder4:hover,#tpl-district:hover{border-color:var(--g);}
+#tpl-classic.selected,#tpl-builder4.selected,#tpl-district.selected{border-color:var(--g);background:#f0faf5;}
+#tpl-classic.selected::after,#tpl-builder4.selected::after,#tpl-district.selected::after{content:'✓';position:absolute;top:8px;right:10px;font-size:14px;color:var(--g);font-weight:700;}
 </style>
 
 <!-- ═══════════════════════════════════════
@@ -915,7 +929,7 @@ async function loadDemoData(){
   // Load portfolios — fetch both classic (marketing) and builder4 (marketing_b4)
   // Template is encoded in the product field to avoid needing a new Supabase column.
   try {
-    const pfs = await SB.get('portfolios', '?product=in.(marketing,marketing_b4)&order=created_at.asc');
+    const pfs = await SB.get('portfolios', '?product=in.(marketing,marketing_b4,marketing_b4_district)&order=created_at.asc');
     if(Array.isArray(pfs)){
       // Also read localStorage store as a signal for portfolios created before this fix
       let _tplStore = {};
@@ -923,15 +937,16 @@ async function loadDemoData(){
 
       portfolios = pfs.map(p => {
         // Primary source: product field in Supabase
-        let template = p.product === 'marketing_b4' ? 'builder4' : 'classic';
+        let template = _tplFromProduct(p.product);
         // Secondary: localStorage override (catches portfolios created before product-field fix)
         if(_tplStore[p.id]) template = _tplStore[p.id];
-        return { id: p.id, name: p.name, createdAt: p.created_at, product: p.product, template };
+        return { id: p.id, name: p.name, createdAt: p.created_at, product: p.product, template, folderType: _folderTypeFromProduct(p.product) };
       });
 
       // Auto-patch any portfolio whose template comes from localStorage but product is wrong in Supabase
       portfolios.forEach(async p => {
-        const expectedProduct = p.template === 'builder4' ? 'marketing_b4' : 'marketing';
+        // District folders keep their own product value; only reconcile Portfolio/Classic ones
+        const expectedProduct = p.folderType === 'district' ? 'marketing_b4_district' : (p.template === 'builder4' ? 'marketing_b4' : 'marketing');
         if(p.product !== expectedProduct){
           try {
             await SB.patch('portfolios', '?id=eq.'+p.id, {product: expectedProduct});
@@ -1286,6 +1301,7 @@ function renderPortfolios(){
     const isAdmin = currentUser && currentUser.role === 'admin';
     const tplLabel = p.template === 'builder4'
       ? '<span style="font-size:9px;font-weight:700;background:#003f2d;color:#17e88f;border-radius:2px;padding:2px 6px;margin-left:6px;vertical-align:middle;">BUILDER 4</span>'
+        + (p.folderType === 'district' ? '<span style="font-size:9px;font-weight:700;background:#17e88f;color:#003f2d;border-radius:2px;padding:2px 6px;margin-left:4px;vertical-align:middle;">DISTRICT</span>' : '')
       : '<span style="font-size:9px;font-weight:700;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border-radius:2px;padding:2px 6px;margin-left:6px;vertical-align:middle;">CLASSIC</span>';
     return `
     <div class="portfolio-card">
@@ -1319,6 +1335,7 @@ function openNewPortfolioModal(){
   document.getElementById('new-portfolio-name').value = '';
   document.getElementById('tpl-classic').classList.remove('selected');
   document.getElementById('tpl-builder4').classList.remove('selected');
+  document.getElementById('tpl-district').classList.remove('selected');
   const btn = document.getElementById('btn-tpl-next');
   btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed';
   showPortfolioTemplateStep();
@@ -1329,6 +1346,7 @@ function selectTemplate(tpl){
   _selectedTemplate = tpl;
   document.getElementById('tpl-classic').classList.toggle('selected',  tpl === 'classic');
   document.getElementById('tpl-builder4').classList.toggle('selected', tpl === 'builder4');
+  document.getElementById('tpl-district').classList.toggle('selected', tpl === 'district');
   const btn = document.getElementById('btn-tpl-next');
   btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
 }
@@ -1341,7 +1359,7 @@ function showPortfolioTemplateStep(){
 function showPortfolioNameStep(){
   if(!_selectedTemplate) return;
   document.getElementById('tpl-chosen-label').textContent =
-    _selectedTemplate === 'builder4' ? 'Builder 4 (A4)' : 'Classic Builder';
+    _selectedTemplate === 'district' ? 'Builder 4 (A4) · District' : _selectedTemplate === 'builder4' ? 'Builder 4 (A4) · Portfolio' : 'Classic Builder';
   document.getElementById('modal-pf-step1').style.display = 'none';
   document.getElementById('modal-pf-step2').style.display = '';
   setTimeout(() => document.getElementById('new-portfolio-name').focus(), 50);
@@ -1351,12 +1369,14 @@ async function createPortfolio(){
   const name = document.getElementById('new-portfolio-name').value.trim();
   if(!name || !_selectedTemplate) return;
   const id = 'p' + Date.now();
-  const template = _selectedTemplate;
+  const folderType = _selectedTemplate === 'district' ? 'district' : 'portfolio';
+  const template = _selectedTemplate === 'classic' ? 'classic' : 'builder4';
 
-  // Encode the template choice in the product field — no new Supabase column needed.
-  // 'marketing'    = Classic builder.html
-  // 'marketing_b4' = Builder 4 builder_4.html
-  const product = template === 'builder4' ? 'marketing_b4' : 'marketing';
+  // Encode the choice in the product field — no new Supabase column needed.
+  // 'marketing'             = Classic builder.html
+  // 'marketing_b4'          = Builder 4, Portfolio look
+  // 'marketing_b4_district' = Builder 4, District look
+  const product = template === 'classic' ? 'marketing' : (folderType === 'district' ? 'marketing_b4_district' : 'marketing_b4');
 
   try {
     await SB.post('portfolios', {id, name, product, created_at: new Date().toISOString()});
@@ -1364,7 +1384,7 @@ async function createPortfolio(){
     console.warn('Supabase portfolio save failed:', e);
   }
 
-  portfolios.unshift({id, name, product, template, createdAt: new Date().toISOString()});
+  portfolios.unshift({id, name, product, template, folderType, createdAt: new Date().toISOString()});
   saveDemoData();
   closeModal('modal-portfolio');
   renderPortfolios();
@@ -1790,7 +1810,7 @@ function openBuilder(portfolioId, propertyId){
 
   // Derive template from portfolio — check template field first, then product field as fallback
   const template = (portfolio && portfolio.template)
-    || (portfolio && portfolio.product === 'marketing_b4' ? 'builder4' : 'classic');
+    || (portfolio && _tplFromProduct(portfolio.product));
   console.log('[CBRE] openBuilder:', portfolioId, '| template:', template, '| product:', portfolio?.product);
   const builderFile = template === 'builder4' ? 'builder_4.html' : 'builder.html';
   const params = new URLSearchParams({
@@ -1799,6 +1819,7 @@ function openBuilder(portfolioId, propertyId){
     portfolioName: portfolio?.name || '',
     propertyName: property?.name || '',
   });
+  if(portfolio && portfolio.folderType === 'district') params.set('folderType','district');
   console.log('[CBRE] Routing to:', builderFile);
   window.location.href = builderFile + '?' + params.toString();
 }

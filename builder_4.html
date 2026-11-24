@@ -1001,6 +1001,9 @@ const _urlP        = new URLSearchParams(window.location.search);
 const PORTFOLIO_ID = _urlP.get('portfolioId') || 'builder4';
 const PROPERTY_ID  = _urlP.get('propertyId')  || 'builder4_001';
 const USER_ROLE    = (window.Auth && Auth.profile() && Auth.profile().role === 'admin') ? 'admin' : 'user'; // from the signed-in profile
+// Folder type: 'district' folders use their own template library + defaults; everything else is 'portfolio' (the original look).
+const FOLDER_TYPE  = (_urlP.get('folderType') === 'district') ? 'district' : 'portfolio';
+const IS_DISTRICT  = FOLDER_TYPE === 'district';
 const CURRENT_TAB_SLUG = _urlP.get('tab')     || 'brochure'; // which tab this page instance is
 // Channel name is per-tab — updated when switching tabs
 let CHANNEL_NAME = 'project:' + PORTFOLIO_ID + ':' + PROPERTY_ID + ':brochure';
@@ -1247,7 +1250,7 @@ function joinSession() {
   if (productsLink) productsLink.href = portfolioAnchor;
   if (portfolioLink) {
     portfolioLink.href        = portfolioAnchor;
-    portfolioLink.textContent = portName || 'Portfolio';
+    portfolioLink.textContent = (portName || (IS_DISTRICT ? 'District' : 'Portfolio')) + (IS_DISTRICT ? '  \u00b7  DISTRICT' : '');
   }
   if (propertySpan) {
     propertySpan.textContent = propName || 'A4 Portrait';
@@ -1331,7 +1334,8 @@ async function init() {
 // ════════════════════════════════════════════════════════
 // TEMPLATE SYSTEM
 // ════════════════════════════════════════════════════════
-const TEMPLATE_PORTFOLIO = '_b4_template';
+// Portfolio keeps the original storage ids untouched; District uses its own so the two libraries never mix.
+const TEMPLATE_PORTFOLIO = IS_DISTRICT ? '_b4_template_district' : '_b4_template';
 
 let _bleedMigrated = false;
 function _migrateIntoBleed(els, def) {
@@ -1404,7 +1408,7 @@ async function loadFromSupabase() {
 //   row: portfolio_id = '_b4_tpl_defaults', property_id = 'defaults'
 //   state_json = { defaults: { edm: 'tpl_123', brochure: 'tpl_456', ... } }
 // Templates saved before this feature have no tab recorded and are treated as Brochure templates.
-const TPL_DEFAULTS_PORTFOLIO = '_b4_tpl_defaults';
+const TPL_DEFAULTS_PORTFOLIO = IS_DISTRICT ? '_b4_tpl_defaults_district' : '_b4_tpl_defaults';
 const TPL_DEFAULTS_PROPERTY  = 'defaults';
 const TPL_LEGACY_TAB         = 'brochure';
 
@@ -1644,7 +1648,7 @@ async function renderApplyList() {
     const [all, { map }] = await Promise.all([fetchTemplates(), fetchTabDefaults()]);
     const tabName   = _tabLabel(_currentTab);
     const templates = all.filter(t => t.tab === _currentTab);
-    const head = '<div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;">TEMPLATES FOR THE ' + esc(tabName.toUpperCase()) + ' TAB</div>';
+    const head = '<div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;">' + (IS_DISTRICT ? 'DISTRICT ' : '') + 'TEMPLATES FOR THE ' + esc(tabName.toUpperCase()) + ' TAB</div>';
     if (!templates.length) {
       el.innerHTML = head + '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">No templates saved for the ' + esc(tabName) + ' tab yet.</div>';
       return;
@@ -1676,7 +1680,7 @@ async function renderManageList() {
   }
   // Keep the save form's wording in step with the tab you are on
   const tn = _tabLabel(_currentTab);
-  const h  = document.getElementById('tpl-save-heading');  if (h)  h.textContent  = 'Save current layout as a new template for the ' + tn + ' tab';
+  const h  = document.getElementById('tpl-save-heading');  if (h)  h.textContent  = 'Save current layout as a new ' + (IS_DISTRICT ? 'DISTRICT ' : '') + 'template for the ' + tn + ' tab';
   const dl = document.getElementById('tpl-new-default-tab'); if (dl) dl.textContent = tn;
   el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>';
   try {
