@@ -6375,6 +6375,9 @@ function handleRemoteEdmMeta(payload) {
   if (_isEdmTab()) _edmMetaFill(false);
 }
 
+// Width the email is shown at unless changed in the preview window (slices are made at 2x this for sharp screens)
+const HX_DEFAULT_WIDTH = 600;
+
 // ── slice maths ──
 let _hx = null;
 // Manual cut-line changes made in the preview window (moved / added / removed cuts). Saved with the tab, so nothing
@@ -6894,7 +6897,7 @@ function _hxShowPreview() {
   document.body.appendChild(m);
   document.addEventListener('keydown', _hxKey);
 
-  document.getElementById('hx-width').value = _hx.W;
+  document.getElementById('hx-width').value = HX_DEFAULT_WIDTH;
   document.getElementById('hx-subject').value = _sliceSubject || '';
   document.getElementById('hx-sub').textContent = 'Page ' + _hx.W + ' × ' + _hx.endY + ' px, rendered at ' + (Math.round(_hx.S * 100) / 100) + 'x. Slices run from one red line to the next. Drag a numbered tab to move a cut, remove one, or add one. Everything here saves automatically.';
   const notes = document.getElementById('hx-notes');
@@ -7029,7 +7032,7 @@ async function _hxGo() {
   const noLink = cuts.filter(c => !c.link).length;
   if (noLink && !confirm(noLink + (noLink === 1 ? ' slice has' : ' slices have') + ' no link, so ' + (noLink === 1 ? 'it' : 'they') + ' won\'t be clickable. Continue anyway?')) return;
   let ew = Math.round(+document.getElementById('hx-width').value);
-  if (!(ew >= 200 && ew <= 1200)) ew = _hx.W;
+  if (!(ew >= 200 && ew <= 1200)) ew = HX_DEFAULT_WIDTH;
 
   _hx.busy = true;
   const go = document.getElementById('hx-go'), cancel = document.getElementById('hx-cancel'), status = document.getElementById('hx-status');
@@ -7042,8 +7045,11 @@ async function _hxGo() {
     for (const s of sl) {
       status.textContent = 'Uploading slice ' + (s.i + 1) + ' of ' + sl.length + '…';
       const sy0 = Math.round(s.y0 * S), sy1 = Math.round(s.y1 * S);
-      const c = document.createElement('canvas'); c.width = cv.width; c.height = Math.max(1, sy1 - sy0);
-      c.getContext('2d').drawImage(cv, 0, sy0, cv.width, c.height, 0, 0, cv.width, c.height);
+      // Slice images are made at 2x the email width (sharp on high-resolution screens without being heavier than needed)
+      const tw = Math.min(cv.width, Math.round(ew * 2));
+      const c = document.createElement('canvas'); c.width = tw; c.height = Math.max(1, Math.round((sy1 - sy0) * tw / cv.width));
+      if (tw === cv.width) c.getContext('2d').drawImage(cv, 0, sy0, cv.width, sy1 - sy0, 0, 0, tw, c.height);
+      else _drawSmooth(c.getContext('2d'), cv, cv.width, cv.height, 0, 0, tw, c.height, 0, sy0, cv.width, Math.max(1, sy1 - sy0));
       const enc = await _hxEncode(c);
       const url = await _hxUpload(folder + 'slice-' + String(s.i + 1).padStart(2, '0') + '.' + enc.ext, enc.blob);
       out.push({ url, alt: cuts[s.i].alt.trim() || _hxAltFor(s.y0, s.y1, s.i + 1), link: cuts[s.i].link, h: Math.max(1, Math.round((s.y1 - s.y0) * ew / W)) });
