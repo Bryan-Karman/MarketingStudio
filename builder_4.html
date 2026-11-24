@@ -1395,6 +1395,10 @@ async function loadFromSupabase() {
         _nextId = Math.max(...elements.map(e => e.id)) + 1;
         renderCanvas();
         if (_bleedMigrated) { _bleedMigrated = false; saveToSupabase(); }
+      } else {
+        // A row exists but the canvas is empty (e.g. the property was opened before a default was set):
+        // treat it as "no layout yet" and start from this folder type's default for the tab.
+        await applyDefaultTemplate();
       }
     } else {
       // New property — load the template named "Default" as starting point
@@ -1461,6 +1465,7 @@ async function applyDefaultTemplate() {
   try {
     const templates = await fetchTemplates();
     const { map }   = await fetchTabDefaults();
+    console.log('[B4] Default lookup — folder type:', FOLDER_TYPE, '| tab:', _currentTab, '| defaults:', JSON.stringify(map), '| templates:', templates.length);
     let def = map[_currentTab] && templates.find(t => t.slug === map[_currentTab] && t.tab === _currentTab);
     // Backwards compatibility: before per-tab defaults existed, a template named "Default" was used.
     // It still applies — but only to the Brochure tab, never to the other tabs.
