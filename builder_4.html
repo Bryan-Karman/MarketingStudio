@@ -202,7 +202,7 @@
 
   // ── messages ────────────────────────────────────────────────────
   var MSG = { full_state:1, el_crop:1, el_lock:1, el_rect_prop:1, el_reorder:1, tab_switch:1, el_add:1, el_move:1,
-              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1, el_slice:1, cursor:1, presence:1, presence_leave:1 };
+              el_resize:1, el_style:1, el_content:1, el_delete:1, el_image:1, el_agent:1, el_label:1, el_slice:1, edm_meta:1, cursor:1, presence:1, presence_leave:1 };
 
   function reject(why, p){ note('message ignored: ' + why, JSON.stringify(p).slice(0, 200), ''); return null; }
 
@@ -283,6 +283,10 @@
         break;
       case 'el_label':
         out.label = (typeof p.label === 'string') ? p.label.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) : '';
+        break;
+      case 'edm_meta':
+        out.subject = (typeof p.subject === 'string') ? cleanName(p.subject, 300) : '';
+        out.preview = (typeof p.preview === 'string') ? cleanName(p.preview, 300) : '';
         break;
       case 'el_slice':
         out.start = !!p.start;
@@ -728,6 +732,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 ::-webkit-scrollbar-thumb{background:#2a2d30;border-radius:3px;}
 
 /* Export HTML: marks the box that starts a new email slice (editor only; never exported) */
+.edm-count{font-size:10px;color:var(--muted);margin-top:3px;text-align:right;min-height:12px;}
 .cv-el.slice-start::before{content:'';position:absolute;left:-2px;right:-2px;top:-1px;height:0;border-top:2px dashed #f0a030;pointer-events:none;z-index:6;}
 .cv-el.slice-start::after{content:'\2702  SLICE START';position:absolute;left:0;top:-15px;font:700 9px/1 Arial,sans-serif;letter-spacing:.06em;background:#f0a030;color:#1a1a1a;padding:2px 5px;border-radius:2px;pointer-events:none;z-index:6;white-space:nowrap;}
 </style>
@@ -879,6 +884,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <!-- Pre-fill (EDM tab only; shown by updatePrefillButton) -->
     <div id="prefill-bar" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);">
       <button class="tb-btn" id="btn-prefill" onclick="openPrefill()" title="Copy the Brochure's text and images into the labelled boxes on this tab" style="width:100%;justify-content:center;color:var(--blue);border-color:#245a7f;">⇩ Pre-fill from Brochure</button>
+    </div>
+    <!-- Subject line + preview text (EDM tabs only; shown by updateEdmMetaBar) -->
+    <div id="edm-meta-bar" style="display:none;padding:8px 10px 10px;border-bottom:1px solid var(--border);">
+      <div class="prop-section" style="margin-top:2px;">Subject Line</div>
+      <input id="edm-subject" class="prop-input" type="text" maxlength="300" placeholder="Email subject line…" oninput="edmMetaChanged()" style="width:100%;box-sizing:border-box;">
+      <div class="edm-count" id="edm-subject-count"></div>
+      <div class="prop-section">Preview Text</div>
+      <textarea id="edm-preview" class="prop-input" rows="2" maxlength="300" placeholder="Preview text shown after the subject in the inbox…" oninput="edmMetaChanged()" onkeydown="if(event.key==='Enter')event.preventDefault()" style="width:100%;box-sizing:border-box;resize:vertical;line-height:1.4;"></textarea>
+      <div class="edm-count" id="edm-preview-count"></div>
     </div>
     <div class="sb-body" id="props-panel">
       <div class="sb-empty">Click an element on the canvas to edit its properties.</div>
@@ -1348,6 +1362,9 @@ async function loadFromSupabase() {
     const rows = await res.json();
     if (rows && rows.length && rows[0].state_json) {
       const saved = JSON.parse(rows[0].state_json);
+      _edmSubject = (typeof saved.edmSubject === 'string') ? saved.edmSubject.slice(0, 300) : '';   // email subject line + preview text
+      _edmPreview = (typeof saved.edmPreview === 'string') ? saved.edmPreview.slice(0, 300) : '';
+      if (typeof updateEdmMetaBar === 'function') updateEdmMetaBar();
       if (saved.elements && saved.elements.length) {
         elements = saved.elements;
         _sliceDraft = (saved.sliceDraft && typeof saved.sliceDraft === 'object') ? saved.sliceDraft : null;   // Export HTML cut-line changes
@@ -1707,7 +1724,7 @@ async function saveToSupabase() {
     const body = {
       portfolio_id: PORTFOLIO_ID,
       property_id:  sid,
-      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: _sliceDraft || undefined, sliceSubject: _sliceSubject || undefined }),
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: _sliceDraft || undefined, sliceSubject: _sliceSubject || undefined, edmSubject: _edmSubject || undefined, edmPreview: _edmPreview || undefined }),
       updated_at:   new Date().toISOString()
     };
     const check = await fetch(SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + PORTFOLIO_ID + '&property_id=eq.' + encodeURIComponent(sid) + '&select=id', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
@@ -1841,6 +1858,7 @@ function handleMsg(msg) {
     if (payload.type === 'el_agent')      { handleRemoteAgent(payload);    return; }
     if (payload.type === 'el_label')      { handleRemoteLabel(payload);    return; }
     if (payload.type === 'el_slice')      { handleRemoteSlice(payload);    return; }
+    if (payload.type === 'edm_meta')      { handleRemoteEdmMeta(payload);  return; }
     if (payload.type === 'cursor')        { handleRemoteCursor(payload);   return; }
     if (payload.type === 'presence')      { handleRemotePresence(payload); return; }
     if (payload.type === 'presence_leave'){ handlePresenceLeave(payload.userId); return; }
@@ -4317,7 +4335,7 @@ function saveSyncBeforeUnload(slug, els) {
   try {
     const def = tabDef(slug);
     const sid = tabSupabaseId(slug);
-    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: (slug === _currentTab && _sliceDraft) || undefined, sliceSubject: (slug === _currentTab && _sliceSubject) || undefined });
+    const stateJson = JSON.stringify({ elements: els, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: (slug === _currentTab && _sliceDraft) || undefined, sliceSubject: (slug === _currentTab && _sliceSubject) || undefined, edmSubject: (slug === _currentTab && _edmSubject) || undefined, edmPreview: (slug === _currentTab && _edmPreview) || undefined });
     const body = JSON.stringify({ portfolio_id: PORTFOLIO_ID, property_id: sid, state_json: stateJson, updated_at: new Date().toISOString() });
 
     // First check if row exists (sync XHR)
@@ -4408,7 +4426,7 @@ async function saveTabToSupabase(slug) {
     const body = {
       portfolio_id: PORTFOLIO_ID,
       property_id:  sid,
-      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: _sliceDraft || undefined, sliceSubject: _sliceSubject || undefined }),
+      state_json:   JSON.stringify({ elements, mmW: def && def.mmW, mmH: def && def.mmH, bleed: def && def.bleed, sliceDraft: _sliceDraft || undefined, sliceSubject: _sliceSubject || undefined, edmSubject: _edmSubject || undefined, edmPreview: _edmPreview || undefined }),
       updated_at:   new Date().toISOString()
     };
     const check = await fetch(
@@ -4743,6 +4761,7 @@ function _normLabel(v) {
 
 function updatePrefillButton() {
   if (typeof updateHtmlExportButton === 'function') updateHtmlExportButton();
+  if (typeof updateEdmMetaBar === 'function') updateEdmMetaBar();
   const bar = document.getElementById('prefill-bar');
   if (!bar) return;
   // Shown on every tab except the Brochure tabs themselves (EDM, Signboard, Press Ad, and copies of them)
@@ -6315,6 +6334,47 @@ function handleRemoteSlice(payload) {
   if (_selectedId === el.id) showProps(el.id);
 }
 
+// ════════════════════════════════════════════════════════
+// EMAIL SUBJECT LINE + PREVIEW TEXT  (EDM tabs, everyone)
+// Two boxes under the Pre-fill button. They are saved with the tab, kept in step between people editing at once,
+// and used by Export HTML (subject = page title, preview text = the hidden inbox preview line).
+// ════════════════════════════════════════════════════════
+var _edmSubject = '', _edmPreview = '';
+let _edmMetaTimer = null;
+
+function updateEdmMetaBar() {
+  const bar = document.getElementById('edm-meta-bar'); if (!bar) return;
+  const on = _isEdmTab();
+  bar.style.display = on ? '' : 'none';
+  if (on) _edmMetaFill(true);
+}
+function _edmMetaCounts() {
+  const a = document.getElementById('edm-subject-count'), b = document.getElementById('edm-preview-count');
+  if (a) a.textContent = _edmSubject.length ? _edmSubject.length + ' characters' : '';
+  if (b) b.textContent = _edmPreview.length ? _edmPreview.length + ' characters' : '';
+}
+// Puts the saved text into the boxes (never overwrites a box someone is typing in right now)
+function _edmMetaFill(force) {
+  const s = document.getElementById('edm-subject'), p = document.getElementById('edm-preview');
+  if (s && (force || document.activeElement !== s) && s.value !== _edmSubject) s.value = _edmSubject;
+  if (p && (force || document.activeElement !== p) && p.value !== _edmPreview) p.value = _edmPreview;
+  _edmMetaCounts();
+}
+function edmMetaChanged() {
+  const s = document.getElementById('edm-subject'), p = document.getElementById('edm-preview');
+  _edmSubject = String(s ? s.value : '').replace(/[\r\n]+/g, ' ').slice(0, 300);
+  _edmPreview = String(p ? p.value : '').replace(/[\r\n]+/g, ' ').slice(0, 300);
+  _edmMetaCounts();
+  scheduleSave();
+  clearTimeout(_edmMetaTimer);
+  _edmMetaTimer = setTimeout(() => { if (connected) broadcast({ type: 'edm_meta', subject: _edmSubject, preview: _edmPreview, userId, userName }); }, 400);
+}
+function handleRemoteEdmMeta(payload) {
+  _edmSubject = String(payload.subject || '');
+  _edmPreview = String(payload.preview || '');
+  if (_isEdmTab()) _edmMetaFill(false);
+}
+
 // ── slice maths ──
 let _hx = null;
 // Manual cut-line changes made in the preview window (moved / added / removed cuts). Saved with the tab, so nothing
@@ -6917,7 +6977,7 @@ function _hxFooterHtml() {
     + '        </td></tr>';
 }
 
-function _hxBuildHtml(slices, ew, title) {
+function _hxBuildHtml(slices, ew, title, pre) {
   const rows = slices.map(s => {
     const img = '<img src="' + _attr(s.url) + '" width="' + ew + '" height="' + s.h + '" alt="' + _attr(s.alt) + '" border="0" style="display:block;width:100%;max-width:' + ew + 'px;height:auto;border:0;outline:none;text-decoration:none;">';
     const inner = s.link ? '<a href="' + _attr(s.link) + '" target="_blank" style="text-decoration:none;border:0;">' + img + '</a>' : img;
@@ -6936,6 +6996,7 @@ function _hxBuildHtml(slices, ew, title) {
     + '  @media only screen and (max-width:' + ew + 'px){ .edm-wrap{width:100%!important;} }\n'
     + '</style>\n</head>\n'
     + '<body style="margin:0;padding:0;background-color:#ffffff;">\n'
+    + (pre ? '  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">' + esc(pre) + '&zwnj;&nbsp;'.repeat(90) + '</div>\n' : '')
     + '  <center style="width:100%;background-color:#ffffff;">\n'
     + '    <table role="presentation" class="edm-wrap" width="' + ew + '" align="center" border="0" cellpadding="0" cellspacing="0" style="width:' + ew + 'px;max-width:100%;">\n'
     + rows + '\n' + _hxFooterHtml() + '\n'
@@ -6987,8 +7048,8 @@ async function _hxGo() {
       const url = await _hxUpload(folder + 'slice-' + String(s.i + 1).padStart(2, '0') + '.' + enc.ext, enc.blob);
       out.push({ url, alt: cuts[s.i].alt.trim() || _hxAltFor(s.y0, s.y1, s.i + 1), link: cuts[s.i].link, h: Math.max(1, Math.round((s.y1 - s.y0) * ew / W)) });
     }
-    const title = ((document.getElementById('mast-property-name') || {}).textContent || 'CBRE').trim() || 'CBRE';
-    const html = _hxBuildHtml(out, ew, title);
+    const title = (_edmSubject || '').trim() || ((document.getElementById('mast-property-name') || {}).textContent || 'CBRE').trim() || 'CBRE';
+    const html = _hxBuildHtml(out, ew, title, (_edmPreview || '').trim());
     const fname = _exportFileBase() + '_' + ((tabDef(_currentTab) || {}).name || 'EDM').replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') + '_Email.html';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = fname;
