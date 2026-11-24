@@ -960,12 +960,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
           <button onclick="saveTemplate()" style="padding:8px 14px;background:#003f2d;border:1px solid #17e88f;border-radius:3px;color:#17e88f;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Save</button>
         </div>
         <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#c9cdd0;cursor:pointer;">
-          <input id="tpl-new-default" type="checkbox"><span>Make this the default for new properties on the <b id="tpl-new-default-tab">current</b> tab</span>
+          <input id="tpl-new-default" type="checkbox"><span>Make this the default for new properties on the <b id="tpl-new-default-tab">current</b> tab in <b id="tpl-brand-label">Portfolio</b> folders</span>
         </label>
         <div id="tpl-save-status" style="font-size:10px;color:#6b7175;margin-top:6px;min-height:14px;"></div>
       </div>
       <!-- Existing templates list -->
-      <div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;margin-bottom:8px;">SAVED TEMPLATES</div>
+      <div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;margin-bottom:8px;">SAVED TEMPLATES <span style="font-weight:400;">&mdash; shared by all folders; ★ Default marks the starting look for <b id="tpl-brand-label2">Portfolio</b> folders</span></div>
       <div id="tpl-manage-list" style="display:flex;flex-direction:column;gap:6px;">
         <div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>
       </div>
@@ -1334,8 +1334,9 @@ async function init() {
 // ════════════════════════════════════════════════════════
 // TEMPLATE SYSTEM
 // ════════════════════════════════════════════════════════
-// Portfolio keeps the original storage ids untouched; District uses its own so the two libraries never mix.
-const TEMPLATE_PORTFOLIO = IS_DISTRICT ? '_b4_template_district' : '_b4_template';
+// ONE shared template library for every folder type (Portfolio and District see the same templates).
+// Only the per-tab DEFAULTS differ by folder type (see TPL_DEFAULTS_PORTFOLIO below).
+const TEMPLATE_PORTFOLIO = '_b4_template';
 
 let _bleedMigrated = false;
 function _migrateIntoBleed(els, def) {
@@ -1403,6 +1404,7 @@ async function loadFromSupabase() {
 }
 
 // ── Per-tab defaults ────────────────────────────────────────────
+// Defaults are kept separately for each folder type (Portfolio / District), so each brand can start from its own look.
 // Every template belongs to ONE tab (EDM, Brochure, ...). A separate settings row remembers which
 // template is the default for each tab, so changing one tab's default never touches the others.
 //   row: portfolio_id = '_b4_tpl_defaults', property_id = 'defaults'
@@ -1648,7 +1650,7 @@ async function renderApplyList() {
     const [all, { map }] = await Promise.all([fetchTemplates(), fetchTabDefaults()]);
     const tabName   = _tabLabel(_currentTab);
     const templates = all.filter(t => t.tab === _currentTab);
-    const head = '<div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;">' + (IS_DISTRICT ? 'DISTRICT ' : '') + 'TEMPLATES FOR THE ' + esc(tabName.toUpperCase()) + ' TAB</div>';
+    const head = '<div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;">' + 'TEMPLATES FOR THE ' + esc(tabName.toUpperCase()) + ' TAB</div>';
     if (!templates.length) {
       el.innerHTML = head + '<div style="font-size:12px;color:#6b7175;text-align:center;padding:20px;">No templates saved for the ' + esc(tabName) + ' tab yet.</div>';
       return;
@@ -1680,8 +1682,10 @@ async function renderManageList() {
   }
   // Keep the save form's wording in step with the tab you are on
   const tn = _tabLabel(_currentTab);
-  const h  = document.getElementById('tpl-save-heading');  if (h)  h.textContent  = 'Save current layout as a new ' + (IS_DISTRICT ? 'DISTRICT ' : '') + 'template for the ' + tn + ' tab';
+  const h  = document.getElementById('tpl-save-heading');  if (h)  h.textContent  = 'Save current layout as a new template for the ' + tn + ' tab';
   const dl = document.getElementById('tpl-new-default-tab'); if (dl) dl.textContent = tn;
+  const bl = document.getElementById('tpl-brand-label'); if (bl) bl.textContent = IS_DISTRICT ? 'District' : 'Portfolio';
+  const bl2 = document.getElementById('tpl-brand-label2'); if (bl2) bl2.textContent = IS_DISTRICT ? 'District' : 'Portfolio';
   el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>';
   try {
     const [templates, { map }] = await Promise.all([fetchTemplates(), fetchTabDefaults()]);
