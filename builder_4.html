@@ -960,12 +960,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
           <button onclick="saveTemplate()" style="padding:8px 14px;background:#003f2d;border:1px solid #17e88f;border-radius:3px;color:#17e88f;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Save</button>
         </div>
         <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#c9cdd0;cursor:pointer;">
-          <input id="tpl-new-default" type="checkbox"><span>Make this the default for new properties on the <b id="tpl-new-default-tab">current</b> tab in <b id="tpl-brand-label">Portfolio</b> folders</span>
+          <input id="tpl-new-default" type="checkbox"><span>Make this the default for new properties on the <b id="tpl-new-default-tab">current</b> tab (<b id="tpl-brand-label">Portfolio folders</b>)</span>
         </label>
         <div id="tpl-save-status" style="font-size:10px;color:#6b7175;margin-top:6px;min-height:14px;"></div>
       </div>
       <!-- Existing templates list -->
-      <div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;margin-bottom:8px;">SAVED TEMPLATES <span style="font-weight:400;">&mdash; shared by all folders; ★ Default marks the starting look for <b id="tpl-brand-label2">Portfolio</b> folders</span></div>
+      <div style="font-size:10px;font-weight:700;color:#6b7175;letter-spacing:.06em;margin-bottom:8px;">SAVED TEMPLATES <span style="font-weight:400;">&mdash; shared by all folders. ★ Default = starting look for new properties (Brochure &amp; EDM are set separately for Portfolio and District; all other tabs are shared)</span></div>
       <div id="tpl-manage-list" style="display:flex;flex-direction:column;gap:6px;">
         <div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>
       </div>
@@ -1335,7 +1335,7 @@ async function init() {
 // TEMPLATE SYSTEM
 // ════════════════════════════════════════════════════════
 // ONE shared template library for every folder type (Portfolio and District see the same templates).
-// Only the per-tab DEFAULTS differ by folder type (see TPL_DEFAULTS_PORTFOLIO below).
+// Only the Brochure and EDM DEFAULTS differ by folder type (see TPL_DEFAULTS_SHARED / TPL_DEFAULTS_DISTRICT below).
 const TEMPLATE_PORTFOLIO = '_b4_template';
 
 let _bleedMigrated = false;
@@ -1414,18 +1414,25 @@ async function loadFromSupabase() {
 //   row: portfolio_id = '_b4_tpl_defaults', property_id = 'defaults'
 //   state_json = { defaults: { edm: 'tpl_123', brochure: 'tpl_456', ... } }
 // Templates saved before this feature have no tab recorded and are treated as Brochure templates.
-const TPL_DEFAULTS_PORTFOLIO = IS_DISTRICT ? '_b4_tpl_defaults_district' : '_b4_tpl_defaults';
+const TPL_DEFAULTS_SHARED   = '_b4_tpl_defaults';            // the original defaults row: used by Portfolio, and by every non-brand tab in District
+const TPL_DEFAULTS_DISTRICT = '_b4_tpl_defaults_district';   // District-only defaults
 const TPL_DEFAULTS_PROPERTY  = 'defaults';
 const TPL_LEGACY_TAB         = 'brochure';
+// Only these tabs get a different starting look per folder type. Every other tab (signboards, press ads, ...)
+// uses the shared defaults, so it is identical in Portfolio and District folders.
+const TPL_BRAND_TABS = ['brochure', 'edm'];
+
+// Which defaults row a tab's default lives in, for the folder type we are in
+function _defaultsRowFor(tab) { return (IS_DISTRICT && TPL_BRAND_TABS.indexOf(tab) >= 0) ? TPL_DEFAULTS_DISTRICT : TPL_DEFAULTS_SHARED; }
 
 function _supaHeaders(extra) {
   return Object.assign({ apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }, extra || {});
 }
 function _tabLabel(slug) { const d = tabDef(slug); return d ? d.name : slug; }
 
-async function fetchTabDefaults() {
+async function _fetchDefaultsRow(pid) {
   try {
-    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + TPL_DEFAULTS_PORTFOLIO
+    const url = SUPA_URL + '/rest/v1/projects?portfolio_id=eq.' + pid
               + '&property_id=eq.' + TPL_DEFAULTS_PROPERTY + '&select=id,state_json';
     const res  = await fetch(url, { headers: _supaHeaders() });
     const rows = await res.json();
@@ -1433,31 +1440,47 @@ async function fetchTabDefaults() {
       const st = JSON.parse(rows[0].state_json);
       return { rowId: rows[0].id, map: (st && st.defaults) || {} };
     }
-  } catch(e) { console.warn('[B4] fetchTabDefaults failed:', e); }
+  } catch(e) { console.warn('[B4] fetch defaults failed:', pid, e); }
   return { rowId: null, map: {} };
 }
 
-// Set (or clear, with tplSlug = null) the default template for ONE tab. Other tabs are left as they are.
+// The defaults that apply in THIS folder type: Portfolio = the original row, untouched.
+// District = the shared row, except Brochure/EDM which come from the District row.
+async function fetchTabDefaults() {
+  const shared = await _fetchDefaultsRow(TPL_DEFAULTS_SHARED);
+  if (!IS_DISTRICT) return shared;
+  const dist = await _fetchDefaultsRow(TPL_DEFAULTS_DISTRICT);
+  const map = Object.assign({}, shared.map);
+  TPL_BRAND_TABS.forEach(t => { delete map[t]; if (dist.map[t]) map[t] = dist.map[t]; });
+  return { rowId: shared.rowId, map };
+}
+
+// Write (or clear, with tplSlug = null) one tab's default into one specific defaults row
+async function _setDefaultInRow(pid, tabSlug, tplSlug) {
+  const cur = await _fetchDefaultsRow(pid);
+  const map = Object.assign({}, cur.map);
+  if (tplSlug) map[tabSlug] = tplSlug; else delete map[tabSlug];
+  const body = {
+    portfolio_id: pid,
+    property_id:  TPL_DEFAULTS_PROPERTY,
+    state_json:   JSON.stringify({ defaults: map }),
+    updated_at:   new Date().toISOString()
+  };
+  const url = cur.rowId ? SUPA_URL + '/rest/v1/projects?id=eq.' + cur.rowId : SUPA_URL + '/rest/v1/projects';
+  const res = await fetch(url, {
+    method: cur.rowId ? 'PATCH' : 'POST',
+    headers: _supaHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+    body: JSON.stringify(body)
+  });
+  return res.ok;
+}
+
+// Set (or clear) the default template for ONE tab. Brochure/EDM in a District folder -> District default;
+// every other case -> the shared default (so signboards etc. stay the same for both folder types).
 async function setTabDefault(tabSlug, tplSlug) {
   if (USER_ROLE !== 'admin') return false;
-  try {
-    const cur = await fetchTabDefaults();
-    const map = Object.assign({}, cur.map);
-    if (tplSlug) map[tabSlug] = tplSlug; else delete map[tabSlug];
-    const body = {
-      portfolio_id: TPL_DEFAULTS_PORTFOLIO,
-      property_id:  TPL_DEFAULTS_PROPERTY,
-      state_json:   JSON.stringify({ defaults: map }),
-      updated_at:   new Date().toISOString()
-    };
-    const url = cur.rowId ? SUPA_URL + '/rest/v1/projects?id=eq.' + cur.rowId : SUPA_URL + '/rest/v1/projects';
-    const res = await fetch(url, {
-      method: cur.rowId ? 'PATCH' : 'POST',
-      headers: _supaHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-      body: JSON.stringify(body)
-    });
-    return res.ok;
-  } catch(e) { console.warn('[B4] setTabDefault failed:', e); return false; }
+  try { return await _setDefaultInRow(_defaultsRowFor(tabSlug), tabSlug, tplSlug); }
+  catch(e) { console.warn('[B4] setTabDefault failed:', e); return false; }
 }
 
 // Load the default template for the CURRENT tab only (used when a property has no saved layout yet).
@@ -1605,8 +1628,11 @@ async function deleteTemplate(id, slug) {
       headers: _supaHeaders()
     });
     if (slug) {
-      const { map } = await fetchTabDefaults();
-      for (const tab of Object.keys(map)) if (map[tab] === slug) await setTabDefault(tab, null);
+      // un-default it everywhere it was a default (shared row and District row)
+      for (const pid of [TPL_DEFAULTS_SHARED, TPL_DEFAULTS_DISTRICT]) {
+        const row = await _fetchDefaultsRow(pid);
+        for (const tab of Object.keys(row.map)) if (row.map[tab] === slug) await _setDefaultInRow(pid, tab, null);
+      }
     }
     await renderManageList();
     await renderApplyList();
@@ -1689,8 +1715,7 @@ async function renderManageList() {
   const tn = _tabLabel(_currentTab);
   const h  = document.getElementById('tpl-save-heading');  if (h)  h.textContent  = 'Save current layout as a new template for the ' + tn + ' tab';
   const dl = document.getElementById('tpl-new-default-tab'); if (dl) dl.textContent = tn;
-  const bl = document.getElementById('tpl-brand-label'); if (bl) bl.textContent = IS_DISTRICT ? 'District' : 'Portfolio';
-  const bl2 = document.getElementById('tpl-brand-label2'); if (bl2) bl2.textContent = IS_DISTRICT ? 'District' : 'Portfolio';
+  const bl = document.getElementById('tpl-brand-label'); if (bl) bl.textContent = (TPL_BRAND_TABS.indexOf(_currentTab) >= 0) ? (IS_DISTRICT ? 'District folders' : 'Portfolio folders') : 'all folders';
   el.innerHTML = '<div style="font-size:12px;color:#6b7175;text-align:center;padding:16px;">Loading…</div>';
   try {
     const [templates, { map }] = await Promise.all([fetchTemplates(), fetchTabDefaults()]);
